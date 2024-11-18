@@ -1,0 +1,27 @@
+[toolchain]
+anchor_version = "0.29.0" # `anchor-cli` version to use
+solana_version = "1.18.16" # Solana version to use
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+multisig = "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.account]]
+address = "D3oQ6QxSYk6aKUsmBTa9BghFQvbRi7kxP6h95NSdjjXz"
+filename = "tests/fixtures/pre-rent-collector/multisig-account.json"
+
+[scripts]
+test = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/index.ts"
