@@ -55,6 +55,8 @@ impl<'info> SynchronousTransactionMessage<'info> {
                     account_info.is_writable = false;
                 } else if multisig.is_member(account.key.to_owned()).is_some() && account.is_signer
                 {
+                    // We may want to remove this so that a member can be a rent
+                    // or feepayer on any of the CPI instructions
                     account_info.is_signer = false;
                 }
             }
