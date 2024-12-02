@@ -23,7 +23,7 @@ mod utils;
 
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
-    name: "Squads Multisig Program",
+    name: "Squads Smart Account Program",
     project_url: "https://squads.so",
     contacts: "email:security@sqds.io,email:contact@osec.io",
     policy: "https://github.com/Squads-Protocol/v4/blob/main/SECURITY.md",
@@ -33,13 +33,13 @@ security_txt! {
 }
 
 #[cfg(not(feature = "testing"))]
-declare_id!("SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf");
+declare_id!("SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk");
 
 #[cfg(feature = "testing")]
 declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
 
 #[program]
-pub mod squads_multisig_program {
+pub mod squads_smart_account_program {
     use errors::MultisigError;
 
     use super::*;
@@ -320,5 +320,21 @@ pub mod squads_multisig_program {
     /// in the `batch` are already closed: `batch.size == 0`.
     pub fn batch_accounts_close(ctx: Context<BatchAccountsClose>) -> Result<()> {
         BatchAccountsClose::batch_accounts_close(ctx)
+    }
+
+    /// Synchronously execute a transaction
+    pub fn vault_transaction_sync(
+            ctx: Context<VaultTransactionSync>,
+        args: VaultTransactionSyncArgs,
+    ) -> Result<()> {
+        VaultTransactionSync::vault_transaction_sync(ctx, args)
+    }
+
+    /// Synchronously execute a config transaction
+    pub fn config_transaction_sync<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ConfigTransactionSync<'info>>,
+        args: ConfigTransactionSyncArgs,
+    ) -> Result<()> {
+        ConfigTransactionSync::config_transaction_sync(ctx, args)
     }
 }

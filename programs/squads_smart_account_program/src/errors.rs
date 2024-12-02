@@ -92,4 +92,18 @@ pub enum MultisigError {
     FinalBufferSizeMismatch,
     #[msg("multisig_create has been deprecated. Use multisig_create_v2 instead.")]
     MultisigCreateDeprecated,
+    #[msg("Signers do not reach consensus threshold")]
+    ThresholdNotReached,
+    #[msg("Invalid number of signer accounts. Must be greater or equal to the threshold")]
+    InvalidSignerCount,
+    #[msg("Duplicate signers not allowed")]
+    DuplicateSigner,
+    #[msg("Missing signature")]
+    MissingSignature,
+    #[msg("Insufficient aggregate permissions across signing members")]
+    InsufficientAggregatePermissions,
+    #[msg("Insufficient vote permissions across signing members")]
+    InsufficientVotePermissions,
+    #[msg("Multisig must not be time locked")]
+    TimeLockNotZero,
 }

@@ -53,7 +53,7 @@ export const vaultTransactionAccountsCloseInstructionDiscriminator = [
  */
 export function createVaultTransactionAccountsCloseInstruction(
   accounts: VaultTransactionAccountsCloseInstructionAccounts,
-  programId = new web3.PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf')
+  programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
   const [data] = vaultTransactionAccountsCloseStruct.serialize({
     instructionDiscriminator:

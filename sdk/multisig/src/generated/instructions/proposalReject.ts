@@ -70,7 +70,7 @@ export const proposalRejectInstructionDiscriminator = [
 export function createProposalRejectInstruction(
   accounts: ProposalRejectInstructionAccounts,
   args: ProposalRejectInstructionArgs,
-  programId = new web3.PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf')
+  programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
   const [data] = proposalRejectStruct.serialize({
     instructionDiscriminator: proposalRejectInstructionDiscriminator,

@@ -4158,13 +4158,13 @@ version = "2.0.1"
 dependencies = [
  "futures",
  "solana-client",
- "squads-multisig-program",
+ "squads-smart-account-program",
  "thiserror",
 ]
 
 [[package]]
-name = "squads-multisig-program"
-version = "2.1.0"
+name = "squads-smart-account-program"
+version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "anchor-spl",

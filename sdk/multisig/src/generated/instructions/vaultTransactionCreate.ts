@@ -73,7 +73,7 @@ export const vaultTransactionCreateInstructionDiscriminator = [
 export function createVaultTransactionCreateInstruction(
   accounts: VaultTransactionCreateInstructionAccounts,
   args: VaultTransactionCreateInstructionArgs,
-  programId = new web3.PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf')
+  programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
   const [data] = vaultTransactionCreateStruct.serialize({
     instructionDiscriminator: vaultTransactionCreateInstructionDiscriminator,

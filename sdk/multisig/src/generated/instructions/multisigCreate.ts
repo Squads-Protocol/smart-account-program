@@ -46,7 +46,7 @@ export const multisigCreateInstructionDiscriminator = [
  */
 export function createMultisigCreateInstruction(
   accounts: MultisigCreateInstructionAccounts,
-  programId = new web3.PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf')
+  programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
   const [data] = multisigCreateStruct.serialize({
     instructionDiscriminator: multisigCreateInstructionDiscriminator,

@@ -1,13 +1,13 @@
 [package]
-name = "squads-multisig-program"
-version = "2.1.0"
-description = "Squads Multisig Program V4"
+name = "squads-smart-account-program"
+version = "0.1.0"
+description = "Squads Smart Account Program V0.1"
 edition = "2021"
 license-file = "../../LICENSE"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "squads_multisig_program"
+name = "squads_smart_account_program"
 
 [features]
 default = ["custom-heap"]

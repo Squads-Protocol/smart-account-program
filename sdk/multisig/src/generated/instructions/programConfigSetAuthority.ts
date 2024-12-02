@@ -68,7 +68,7 @@ export const programConfigSetAuthorityInstructionDiscriminator = [
 export function createProgramConfigSetAuthorityInstruction(
   accounts: ProgramConfigSetAuthorityInstructionAccounts,
   args: ProgramConfigSetAuthorityInstructionArgs,
-  programId = new web3.PublicKey('SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf')
+  programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
   const [data] = programConfigSetAuthorityStruct.serialize({
     instructionDiscriminator: programConfigSetAuthorityInstructionDiscriminator,

@@ -1,12 +1,12 @@
-import assert from "assert";
 import {
-  MessageHeader,
-  MessageAddressTableLookup,
   AccountKeysFromLookups,
   AddressLookupTableAccount,
-  TransactionInstruction,
+  MessageAddressTableLookup,
+  MessageHeader,
   PublicKey,
+  TransactionInstruction,
 } from "@solana/web3.js";
+import assert from "assert";
 
 export type CompiledKeyMeta = {
   isSigner: boolean;
@@ -21,10 +21,10 @@ type KeyMetaMap = Map<string, CompiledKeyMeta>;
  *  @see https://github.com/solana-labs/solana-web3.js/blob/87d33ac68e2453b8a01cf8c425aa7623888434e8/packages/library-legacy/src/message/compiled-keys.ts
  */
 export class CompiledKeys {
-  payer: PublicKey;
+  payer?: PublicKey;
   keyMetaMap: KeyMetaMap;
 
-  constructor(payer: PublicKey, keyMetaMap: KeyMetaMap) {
+  constructor(payer: PublicKey | undefined, keyMetaMap: KeyMetaMap) {
     this.payer = payer;
     this.keyMetaMap = keyMetaMap;
   }
@@ -71,6 +71,42 @@ export class CompiledKeys {
     return new CompiledKeys(payer, keyMetaMap);
   }
 
+  /**
+   * Compiles instructions without a payer.
+   */
+  static compileWithoutPayer(
+    instructions: Array<TransactionInstruction>,
+  ): CompiledKeys {
+    const keyMetaMap: KeyMetaMap = new Map();
+    const getOrInsertDefault = (pubkey: PublicKey): CompiledKeyMeta => {
+      const address = pubkey.toBase58();
+      let keyMeta = keyMetaMap.get(address);
+      if (keyMeta === undefined) {
+        keyMeta = {
+          isSigner: false,
+          isWritable: false,
+          isInvoked: false,
+        };
+        keyMetaMap.set(address, keyMeta);
+      }
+      return keyMeta;
+    };
+
+    for (const ix of instructions) {
+      // This is the only difference from the original.
+      // getOrInsertDefault(ix.programId).isInvoked = true;
+      getOrInsertDefault(ix.programId).isInvoked = false;
+      for (const accountMeta of ix.keys) {
+        const keyMeta = getOrInsertDefault(accountMeta.pubkey);
+        keyMeta.isSigner ||= accountMeta.isSigner;
+        keyMeta.isWritable ||= accountMeta.isWritable;
+      }
+    }
+
+    return new CompiledKeys(undefined, keyMetaMap);
+  }
+
+
   getMessageComponents(): [MessageHeader, Array<PublicKey>] {
     const mapEntries = [...this.keyMetaMap.entries()];
     assert(mapEntries.length <= 256, "Max static account keys length exceeded");
@@ -101,10 +137,12 @@ export class CompiledKeys {
         "Expected at least one writable signer key"
       );
       const [payerAddress] = writableSigners[0];
-      assert(
-        payerAddress === this.payer.toBase58(),
-        "Expected first writable signer key to be the fee payer"
-      );
+      if (this.payer) {
+        assert(
+          payerAddress === this.payer.toBase58(),
+          "Expected first writable signer key to be the fee payer"
+        );
+      }
     }
 
     const staticAccountKeys = [

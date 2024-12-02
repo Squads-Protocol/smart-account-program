@@ -1039,6 +1039,175 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * ThresholdNotReached: 'Signers do not reach consensus threshold'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ThresholdNotReachedError extends Error {
+  readonly code: number = 0x179d
+  readonly name: string = 'ThresholdNotReached'
+  constructor() {
+    super('Signers do not reach consensus threshold')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ThresholdNotReachedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179d, () => new ThresholdNotReachedError())
+createErrorFromNameLookup.set(
+  'ThresholdNotReached',
+  () => new ThresholdNotReachedError()
+)
+
+/**
+ * InvalidSignerCount: 'Invalid number of signer accounts. Must be greater or equal to the threshold'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSignerCountError extends Error {
+  readonly code: number = 0x179e
+  readonly name: string = 'InvalidSignerCount'
+  constructor() {
+    super(
+      'Invalid number of signer accounts. Must be greater or equal to the threshold'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSignerCountError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179e, () => new InvalidSignerCountError())
+createErrorFromNameLookup.set(
+  'InvalidSignerCount',
+  () => new InvalidSignerCountError()
+)
+
+/**
+ * DuplicateSigner: 'Duplicate signers not allowed'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicateSignerError extends Error {
+  readonly code: number = 0x179f
+  readonly name: string = 'DuplicateSigner'
+  constructor() {
+    super('Duplicate signers not allowed')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicateSignerError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x179f, () => new DuplicateSignerError())
+createErrorFromNameLookup.set(
+  'DuplicateSigner',
+  () => new DuplicateSignerError()
+)
+
+/**
+ * MissingSignature: 'Missing signature'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingSignatureError extends Error {
+  readonly code: number = 0x17a0
+  readonly name: string = 'MissingSignature'
+  constructor() {
+    super('Missing signature')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingSignatureError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a0, () => new MissingSignatureError())
+createErrorFromNameLookup.set(
+  'MissingSignature',
+  () => new MissingSignatureError()
+)
+
+/**
+ * InsufficientAggregatePermissions: 'Insufficient aggregate permissions across signing members'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InsufficientAggregatePermissionsError extends Error {
+  readonly code: number = 0x17a1
+  readonly name: string = 'InsufficientAggregatePermissions'
+  constructor() {
+    super('Insufficient aggregate permissions across signing members')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InsufficientAggregatePermissionsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17a1,
+  () => new InsufficientAggregatePermissionsError()
+)
+createErrorFromNameLookup.set(
+  'InsufficientAggregatePermissions',
+  () => new InsufficientAggregatePermissionsError()
+)
+
+/**
+ * InsufficientVotePermissions: 'Insufficient vote permissions across signing members'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InsufficientVotePermissionsError extends Error {
+  readonly code: number = 0x17a2
+  readonly name: string = 'InsufficientVotePermissions'
+  constructor() {
+    super('Insufficient vote permissions across signing members')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InsufficientVotePermissionsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17a2,
+  () => new InsufficientVotePermissionsError()
+)
+createErrorFromNameLookup.set(
+  'InsufficientVotePermissions',
+  () => new InsufficientVotePermissionsError()
+)
+
+/**
+ * TimeLockNotZero: 'Multisig must not be time locked'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class TimeLockNotZeroError extends Error {
+  readonly code: number = 0x17a3
+  readonly name: string = 'TimeLockNotZero'
+  constructor() {
+    super('Multisig must not be time locked')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, TimeLockNotZeroError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a3, () => new TimeLockNotZeroError())
+createErrorFromNameLookup.set(
+  'TimeLockNotZero',
+  () => new TimeLockNotZeroError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

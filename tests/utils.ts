@@ -23,7 +23,7 @@ export function getTestProgramId() {
         readFileSync(
           path.join(
             __dirname,
-            "../target/deploy/squads_multisig_program-keypair.json"
+            "../target/deploy/squads_smart_account_program-keypair.json"
           ),
           "utf-8"
         )
@@ -49,7 +49,18 @@ export function getTestProgramConfigInitializer() {
     )
   );
 }
-
+export function getProgramConfigInitializer() {
+  return Keypair.fromSecretKey(
+    Buffer.from(
+      JSON.parse(
+        readFileSync(
+          "/Users/orion/Desktop/Squads/sqdcVVoTcKZjXU8yPUwKFbGx1Hig1rhbWJQtMRXp2E1.json",
+          "utf-8"
+        )
+      )
+    )
+  );
+}
 export function getTestProgramConfigAuthority() {
   return Keypair.fromSecretKey(
     new Uint8Array([
@@ -175,6 +186,7 @@ export async function createAutonomousMultisigV2({
   timeLock,
   rentCollector,
   programId,
+  creator
 }: {
   createKey?: Keypair;
   members: TestMembers;
@@ -183,8 +195,11 @@ export async function createAutonomousMultisigV2({
   rentCollector: PublicKey | null;
   connection: Connection;
   programId: PublicKey;
+  creator?: Keypair;
 }) {
-  const creator = await generateFundedKeypair(connection);
+  if (!creator) {
+    creator = await generateFundedKeypair(connection);
+  }
 
   const programConfig =
     await multisig.accounts.ProgramConfig.fromAccountAddress(

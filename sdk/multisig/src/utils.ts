@@ -1,17 +1,19 @@
-import { u8, u32, u64, bignum } from "@metaplex-foundation/beet";
-import { Buffer } from "buffer";
-import { VaultTransactionMessage } from "./generated";
+import { bignum, u32, u64, u8 } from "@metaplex-foundation/beet";
 import {
   AccountMeta,
   AddressLookupTableAccount,
   Connection,
   PublicKey,
+  TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { transactionMessageBeet } from "./types";
-import { getEphemeralSignerPda } from "./pda";
+import { Buffer } from "buffer";
 import invariant from "invariant";
+import { VaultTransactionMessage } from "./generated";
+import { getEphemeralSignerPda } from "./pda";
+import { transactionMessageBeet } from "./types";
+import { compileToSynchronousMessageAndAccounts } from "./utils/compileToSynchronousMessage";
 import { compileToWrappedMessageV0 } from "./utils/compileToWrappedMessageV0";
 
 export function toUtfBytes(str: string): Uint8Array {
@@ -141,6 +143,30 @@ export function transactionMessageToMultisigTransactionMessageBytes({
   });
 
   return transactionMessageBytes;
+}
+
+export function instructionsToSynchronousTransactionDetails({
+  vaultPda,
+  members,
+  transaction_instructions,
+}: {
+  vaultPda: PublicKey;
+  members: PublicKey[];
+  transaction_instructions: TransactionInstruction[];
+}): {
+  instructions: Uint8Array;
+  accounts: AccountMeta[];
+} {
+  const { instructions, accounts } = compileToSynchronousMessageAndAccounts({
+    vaultPda,
+    members,
+    instructions: transaction_instructions,
+  });
+
+  return {
+    instructions,
+    accounts,
+  };
 }
 
 /** Populate remaining accounts required for execution of the transaction. */
