@@ -14,7 +14,7 @@ export function configTransactionSync({
   blockhash,
   feePayer,
   multisigPda,
-  numSigners,
+  signers,
   configActions,
   memo,
   programId,
@@ -22,7 +22,7 @@ export function configTransactionSync({
   blockhash: string;
   feePayer: PublicKey;
   multisigPda: PublicKey;
-  numSigners: number;
+  signers: PublicKey[];
   configActions: ConfigAction[];
   memo?: string;
   programId?: PublicKey;
@@ -33,7 +33,8 @@ export function configTransactionSync({
     instructions: [
       instructions.configTransactionSync({
         multisigPda,
-        numSigners,
+        feePayer,
+        signers,
         configActions,
         memo,
         programId,

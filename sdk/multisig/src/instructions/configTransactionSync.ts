@@ -1,31 +1,42 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { ConfigAction, createConfigTransactionSyncInstruction, PROGRAM_ID } from "../generated";
 
 export function configTransactionSync({
     multisigPda,
-    numSigners,
+    signers,
     configActions,
+    feePayer,
     memo,
     programId = PROGRAM_ID,
 }: {
     multisigPda: PublicKey;
-    numSigners: number;
+    signers: PublicKey[];
     configActions: ConfigAction[];
-    memo?: string,
+    feePayer: PublicKey;
+    memo?: string;
     programId?: PublicKey;
 }) {
     const ix = createConfigTransactionSyncInstruction(
         {
             multisig: multisigPda,
+            rentPayer: feePayer ?? undefined,
+            systemProgram: SystemProgram.programId,
         },
         {
             args: {
-                numSigners,
+                numSigners: signers.length,
                 actions: configActions,
                 memo: memo ? memo : null,
+
             },
         },
         programId
     );
+    // Append each of the signers into ix.keys
+    ix.keys.push(...signers.map(signer => ({
+        pubkey: signer,
+        isSigner: true,
+        isWritable: false,
+    })));
     return ix;
 }

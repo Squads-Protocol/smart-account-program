@@ -5,9 +5,9 @@ import {
   Signer,
   TransactionSignature,
 } from "@solana/web3.js";
-import * as transactions from "../transactions";
 import { translateAndThrowAnchorError } from "../errors";
 import { ConfigAction } from "../generated";
+import * as transactions from "../transactions";
 
 /**
  * Synchronously execute configuration changes for the multisig.
@@ -37,13 +37,13 @@ export async function configTransactionSync({
     blockhash,
     feePayer: feePayer.publicKey,
     multisigPda,
-    numSigners: signers?.length ?? 0,
+    signers: signers.map(signer => signer.publicKey),
     configActions,
     memo,
     programId,
   });
 
-  tx.sign([feePayer, ...(signers ?? [])]);
+  tx.sign([feePayer, ...(signers)]);
 
   try {
     return await connection.sendTransaction(tx, sendOptions);
