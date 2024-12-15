@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::MultisigError;
+use crate::errors::SmartAccountError;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -41,14 +41,14 @@ impl ProgramConfig<'_> {
         require_keys_eq!(
             program_config.authority,
             authority.key(),
-            MultisigError::Unauthorized
+            SmartAccountError::Unauthorized
         );
 
         Ok(())
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn program_config_set_authority(
+    pub fn set_authority(
         ctx: Context<Self>,
         args: ProgramConfigSetAuthorityArgs,
     ) -> Result<()> {
@@ -62,13 +62,13 @@ impl ProgramConfig<'_> {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn program_config_set_multisig_creation_fee(
+    pub fn set_smart_account_creation_fee(
         ctx: Context<Self>,
         args: ProgramConfigSetMultisigCreationFeeArgs,
     ) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
 
-        program_config.multisig_creation_fee = args.new_multisig_creation_fee;
+        program_config.smart_account_creation_fee = args.new_multisig_creation_fee;
 
         program_config.invariant()?;
 
@@ -76,7 +76,7 @@ impl ProgramConfig<'_> {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn program_config_set_treasury(
+    pub fn set_treasury(
         ctx: Context<Self>,
         args: ProgramConfigSetTreasuryArgs,
     ) -> Result<()> {

@@ -11,8 +11,8 @@ use anchor_lang::system_program;
 /// the latter can be executed only after the `Proposal` has been approved and its time lock is released.
 #[account]
 pub struct Proposal {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
+    /// The settings this belongs to.
+    pub settings: Pubkey,
     /// Index of the multisig transaction this proposal is associated with.
     pub transaction_index: u64,
     /// The status of the transaction.
@@ -49,7 +49,7 @@ impl Proposal {
 
         // Insert the vote of approval.
         match self.approved.binary_search(&member) {
-            Ok(_) => return err!(MultisigError::AlreadyApproved),
+            Ok(_) => return err!(SmartAccountError::AlreadyApproved),
             Err(pos) => self.approved.insert(pos, member),
         };
 
@@ -72,7 +72,7 @@ impl Proposal {
 
         // Insert the vote of rejection.
         match self.rejected.binary_search(&member) {
-            Ok(_) => return err!(MultisigError::AlreadyRejected),
+            Ok(_) => return err!(SmartAccountError::AlreadyRejected),
             Err(pos) => self.rejected.insert(pos, member),
         };
 
@@ -90,7 +90,7 @@ impl Proposal {
     pub fn cancel(&mut self, member: Pubkey, threshold: usize) -> Result<()> {
         // Insert the vote of cancellation.
         match self.cancelled.binary_search(&member) {
-            Ok(_) => return err!(MultisigError::AlreadyCancelled),
+            Ok(_) => return err!(SmartAccountError::AlreadyCancelled),
             Err(pos) => self.cancelled.insert(pos, member),
         };
 
@@ -136,7 +136,7 @@ impl Proposal {
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
         // Sanity checks
-        require_keys_eq!(*proposal.owner, id(), MultisigError::IllegalAccountOwner);
+        require_keys_eq!(*proposal.owner, id(), SmartAccountError::IllegalAccountOwner);
 
         let current_account_size = proposal.data.borrow().len();
         let account_size_to_fit_members = Proposal::size(members_length);
@@ -158,14 +158,14 @@ impl Proposal {
             rent_exempt_lamports.saturating_sub(proposal.to_account_info().lamports());
 
         if top_up_lamports > 0 {
-            let system_program = system_program.ok_or(MultisigError::MissingAccount)?;
+            let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
             require_keys_eq!(
                 *system_program.key,
                 system_program::ID,
-                MultisigError::InvalidAccount
+                SmartAccountError::InvalidAccount
             );
 
-            let rent_payer = rent_payer.ok_or(MultisigError::MissingAccount)?;
+            let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
 
             system_program::transfer(
                 CpiContext::new(

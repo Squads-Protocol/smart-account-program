@@ -4,14 +4,14 @@ use crate::errors::*;
 
 #[account]
 pub struct SpendingLimit {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
+    /// The settings this belongs to.
+    pub settings: Pubkey,
 
     /// Key that is used to seed the SpendingLimit PDA.
-    pub create_key: Pubkey,
+    pub seed: Pubkey,
 
-    /// The index of the vault that the spending limit is for.
-    pub vault_index: u8,
+    /// The index of the smart account that the spending limit is for.
+    pub account_index: u8,
 
     /// The token mint the spending limit is for.
     /// Pubkey::default() means SOL.
@@ -37,10 +37,8 @@ pub struct SpendingLimit {
     /// PDA bump.
     pub bump: u8,
 
-    /// Members of the multisig that can use the spending limit.
-    /// In case a member is removed from the multisig, the spending limit will remain existent
-    /// (until explicitly deleted), but the removed member will not be able to use it anymore.
-    pub members: Vec<Pubkey>,
+    /// Signers that can use the spending limit.
+    pub signers: Vec<Pubkey>,
 
     /// The destination addresses the spending limit is allowed to sent funds to.
     /// If empty, funds can be sent to any address.
@@ -48,7 +46,7 @@ pub struct SpendingLimit {
 }
 
 impl SpendingLimit {
-    pub fn size(members_length: usize, destinations_length: usize) -> usize {
+    pub fn size(signers_length: usize, destinations_length: usize) -> usize {
         8  + // anchor discriminator
         32 + // multisig
         32 + // create_key
@@ -59,21 +57,25 @@ impl SpendingLimit {
         8  + // remaining_amount
         8  + // last_reset
         1  + // bump
-        4  + // members vector length
-        members_length * 32 + // members
+        4  + // signers vector length
+        signers_length * 32 + // signers
         4  + // destinations vector length
         destinations_length * 32 // destinations
     }
 
     pub fn invariant(&self) -> Result<()> {
         // Amount must be a non-zero value.
-        require_neq!(self.amount, 0, MultisigError::SpendingLimitInvalidAmount);
+        require_neq!(
+            self.amount,
+            0,
+            SmartAccountError::SpendingLimitInvalidAmount
+        );
 
-        require!(!self.members.is_empty(), MultisigError::EmptyMembers);
+        require!(!self.signers.is_empty(), SmartAccountError::EmptySigners);
 
         // There must be no duplicate members, we make sure members are sorted when creating a SpendingLimit.
-        let has_duplicates = self.members.windows(2).any(|win| win[0] == win[1]);
-        require!(!has_duplicates, MultisigError::DuplicateMember);
+        let has_duplicates = self.signers.windows(2).any(|win| win[0] == win[1]);
+        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 
         Ok(())
     }

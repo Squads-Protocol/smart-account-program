@@ -688,7 +688,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
         // Execute synchronous transaction
         assert.rejects(async () => {
             const signature = await connection.sendRawTransaction(transaction.serialize());
-        }, /NotAMember/);
+        }, /NotASigner/);
     });
 
     it("error: duplicate signer", async () => {

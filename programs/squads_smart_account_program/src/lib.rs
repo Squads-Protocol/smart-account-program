@@ -40,277 +40,252 @@ declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
 
 #[program]
 pub mod squads_smart_account_program {
-    use errors::MultisigError;
+
+
+    use instruction::{AddSignerAsAuthority, RemoveSignerAsAuthority, SetTimeLockAsAuthority};
 
     use super::*;
 
     /// Initialize the program config.
-    pub fn program_config_init(
-        ctx: Context<ProgramConfigInit>,
-        args: ProgramConfigInitArgs,
+    pub fn initialize_program_config(
+        ctx: Context<InitProgramConfig>,
+        args: InitProgramConfigArgs,
     ) -> Result<()> {
-        ProgramConfigInit::program_config_init(ctx, args)
+        InitProgramConfig::init_program_config(ctx, args)
     }
 
     /// Set the `authority` parameter of the program config.
-    pub fn program_config_set_authority(
+    pub fn set_program_config_authority(
         ctx: Context<ProgramConfig>,
         args: ProgramConfigSetAuthorityArgs,
     ) -> Result<()> {
-        ProgramConfig::program_config_set_authority(ctx, args)
+        ProgramConfig::set_authority(ctx, args)
     }
 
     /// Set the `multisig_creation_fee` parameter of the program config.
-    pub fn program_config_set_multisig_creation_fee(
+    pub fn set_program_config_multisig_creation_fee(
         ctx: Context<ProgramConfig>,
         args: ProgramConfigSetMultisigCreationFeeArgs,
     ) -> Result<()> {
-        ProgramConfig::program_config_set_multisig_creation_fee(ctx, args)
+        ProgramConfig::set_smart_account_creation_fee(ctx, args)
     }
 
     /// Set the `treasury` parameter of the program config.
-    pub fn program_config_set_treasury(
+    pub fn set_program_config_treasury(
         ctx: Context<ProgramConfig>,
         args: ProgramConfigSetTreasuryArgs,
     ) -> Result<()> {
-        ProgramConfig::program_config_set_treasury(ctx, args)
+        ProgramConfig::set_treasury(ctx, args)
     }
-
-    /// Create a multisig.
-    pub fn multisig_create(_ctx: Context<Deprecated>) -> Result<()> {
-        msg!("multisig_create has been deprecated. Use multisig_create_v2 instead.");
-        Err(MultisigError::MultisigCreateDeprecated.into())
-    }
-
-    /// Create a multisig.
-    pub fn multisig_create_v2(
-        ctx: Context<MultisigCreateV2>,
-        args: MultisigCreateArgsV2,
+    /// Create a smart account.
+    pub fn create_smart_account(
+        ctx: Context<CreateSmartAccount>,
+        args: CreateSmartAccountArgs,
     ) -> Result<()> {
-        MultisigCreateV2::multisig_create(ctx, args)
+        CreateSmartAccount::create_smart_account(ctx, args)
     }
 
-    /// Add a new member to the controlled multisig.
-    pub fn multisig_add_member(
-        ctx: Context<MultisigConfig>,
-        args: MultisigAddMemberArgs,
+    /// Add a new signer to the controlled multisig.
+    pub fn add_signer_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: AddSignerArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_add_member(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::add_signer(ctx, args)
     }
 
-    /// Remove a member/key from the controlled multisig.
-    pub fn multisig_remove_member(
-        ctx: Context<MultisigConfig>,
-        args: MultisigRemoveMemberArgs,
+    /// Remove a signer from the controlled multisig.
+    pub fn remove_signer_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: RemoveSignerArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_remove_member(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::remove_signer(ctx, args)
     }
 
     /// Set the `time_lock` config parameter for the controlled multisig.
-    pub fn multisig_set_time_lock(
-        ctx: Context<MultisigConfig>,
-        args: MultisigSetTimeLockArgs,
+    pub fn set_time_lock_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: SetTimeLockArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_set_time_lock(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::set_time_lock(ctx, args)
     }
 
     /// Set the `threshold` config parameter for the controlled multisig.
-    pub fn multisig_change_threshold(
-        ctx: Context<MultisigConfig>,
-        args: MultisigChangeThresholdArgs,
+    pub fn change_threshold_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: ChangeThresholdArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_change_threshold(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::change_threshold(ctx, args)
     }
 
     /// Set the multisig `config_authority`.
-    pub fn multisig_set_config_authority(
-        ctx: Context<MultisigConfig>,
-        args: MultisigSetConfigAuthorityArgs,
+    pub fn set_new_settings_authority_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: SetNewSettingsAuthorityArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_set_config_authority(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::set_new_settings_authority(ctx, args)
     }
 
     /// Set the multisig `rent_collector`.
-    pub fn multisig_set_rent_collector(
-        ctx: Context<MultisigConfig>,
-        args: MultisigSetRentCollectorArgs,
+    pub fn set_rent_collector_as_authority(
+        ctx: Context<ExecuteSettingsTransactionAsAuthority>,
+        args: SetRentCollectorArgs,
     ) -> Result<()> {
-        MultisigConfig::multisig_set_rent_collector(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::set_rent_collector(ctx, args)
     }
 
     /// Create a new spending limit for the controlled multisig.
-    pub fn multisig_add_spending_limit(
-        ctx: Context<MultisigAddSpendingLimit>,
-        args: MultisigAddSpendingLimitArgs,
+    pub fn add_spending_limit_as_authority(
+        ctx: Context<AddSpendingLimitAsAuthority>,
+        args: AddSpendingLimitArgs,
     ) -> Result<()> {
-        MultisigAddSpendingLimit::multisig_add_spending_limit(ctx, args)
+        AddSpendingLimitAsAuthority::add_spending_limit(ctx, args)
     }
 
     /// Remove the spending limit from the controlled multisig.
-    pub fn multisig_remove_spending_limit(
-        ctx: Context<MultisigRemoveSpendingLimit>,
-        args: MultisigRemoveSpendingLimitArgs,
+    pub fn remove_spending_limit_as_authority(
+        ctx: Context<RemoveSpendingLimitAsAuthority>,
+        args: RemoveSpendingLimitArgs,
     ) -> Result<()> {
-        MultisigRemoveSpendingLimit::multisig_remove_spending_limit(ctx, args)
+        RemoveSpendingLimitAsAuthority::remove_spending_limit(ctx, args)
     }
 
-    /// Create a new config transaction.
-    pub fn config_transaction_create(
-        ctx: Context<ConfigTransactionCreate>,
-        args: ConfigTransactionCreateArgs,
+    /// Create a new settings transaction.
+    pub fn create_settings_transaction(
+        ctx: Context<CreateSettingsTransaction>,
+        args: CreateSettingsTransactionArgs,
     ) -> Result<()> {
-        ConfigTransactionCreate::config_transaction_create(ctx, args)
+        CreateSettingsTransaction::create_settings_transaction(ctx, args)
     }
 
-    /// Execute a config transaction.
+    /// Execute a settings transaction.
     /// The transaction must be `Approved`.
-    pub fn config_transaction_execute<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ConfigTransactionExecute<'info>>,
+    pub fn execute_settings_transaction<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransaction<'info>>,
     ) -> Result<()> {
-        ConfigTransactionExecute::config_transaction_execute(ctx)
+        ExecuteSettingsTransaction::execute_settings_transaction(ctx)
     }
 
     /// Create a new vault transaction.
-    pub fn vault_transaction_create(
-        ctx: Context<VaultTransactionCreate>,
-        args: VaultTransactionCreateArgs,
+    pub fn create_transaction(
+        ctx: Context<CreateTransaction>,
+        args: CreateTransactionArgs,
     ) -> Result<()> {
-        VaultTransactionCreate::vault_transaction_create(ctx, args)
+        CreateTransaction::create_transaction(ctx, args)
     }
 
     /// Create a transaction buffer account.
-    pub fn transaction_buffer_create(
-        ctx: Context<TransactionBufferCreate>,
-        args: TransactionBufferCreateArgs,
+    pub fn create_transaction_buffer(
+        ctx: Context<CreateTransactionBuffer>,
+        args: CreateTransactionBufferArgs,
     ) -> Result<()> {
-        TransactionBufferCreate::transaction_buffer_create(ctx, args)
+        CreateTransactionBuffer::create_transaction_buffer(ctx, args)
     }
 
     /// Close a transaction buffer account.
-    pub fn transaction_buffer_close(ctx: Context<TransactionBufferClose>) -> Result<()> {
-        TransactionBufferClose::transaction_buffer_close(ctx)
+    pub fn close_transaction_buffer(ctx: Context<CloseTransactionBuffer>) -> Result<()> {
+        CloseTransactionBuffer::close_transaction_buffer(ctx)
     }
 
     /// Extend a transaction buffer account.
-    pub fn transaction_buffer_extend(
-        ctx: Context<TransactionBufferExtend>,
-        args: TransactionBufferExtendArgs,
+    pub fn extend_transaction_buffer(
+        ctx: Context<ExtendTransactionBuffer>,
+        args: ExtendTransactionBufferArgs,
     ) -> Result<()> {
-        TransactionBufferExtend::transaction_buffer_extend(ctx, args)
+        ExtendTransactionBuffer::extend_transaction_buffer(ctx, args)
     }
 
     /// Create a new vault transaction from a completed transaction buffer.
     /// Finalized buffer hash must match `final_buffer_hash`
-    pub fn vault_transaction_create_from_buffer<'info>(
-        ctx: Context<'_, '_, 'info, 'info, VaultTransactionCreateFromBuffer<'info>>,
-        args: VaultTransactionCreateArgs,
+    pub fn create_transaction_from_buffer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionFromBuffer<'info>>,
+        args: CreateTransactionArgs,
     ) -> Result<()> {
-        VaultTransactionCreateFromBuffer::vault_transaction_create_from_buffer(ctx, args)
+        CreateTransactionFromBuffer::create_transaction_from_buffer(ctx, args)
     }
 
-    /// Execute a vault transaction.
+    /// Execute a smart account transaction.
     /// The transaction must be `Approved`.
-    pub fn vault_transaction_execute(ctx: Context<VaultTransactionExecute>) -> Result<()> {
-        VaultTransactionExecute::vault_transaction_execute(ctx)
+    pub fn execute_transaction(ctx: Context<ExecuteTransaction>) -> Result<()> {
+        ExecuteTransaction::execute_transaction(ctx)
     }
 
     /// Create a new batch.
-    pub fn batch_create(ctx: Context<BatchCreate>, args: BatchCreateArgs) -> Result<()> {
-        BatchCreate::batch_create(ctx, args)
+    pub fn create_batch(ctx: Context<CreateBatch>, args: CreateBatchArgs) -> Result<()> {
+        CreateBatch::create_batch(ctx, args)
     }
 
     /// Add a transaction to the batch.
-    pub fn batch_add_transaction(
-        ctx: Context<BatchAddTransaction>,
-        args: BatchAddTransactionArgs,
+    pub fn add_transaction_to_batch(
+        ctx: Context<AddTransactionToBatch>,
+        args: AddTransactionToBatchArgs,
     ) -> Result<()> {
-        BatchAddTransaction::batch_add_transaction(ctx, args)
+        AddTransactionToBatch::add_transaction_to_batch(ctx, args)
     }
 
     /// Execute a transaction from the batch.
-    pub fn batch_execute_transaction(ctx: Context<BatchExecuteTransaction>) -> Result<()> {
-        BatchExecuteTransaction::batch_execute_transaction(ctx)
+    pub fn execute_batch_transaction(ctx: Context<ExecuteBatchTransaction>) -> Result<()> {
+        ExecuteBatchTransaction::execute_batch_transaction(ctx)
     }
 
     /// Create a new multisig proposal.
-    pub fn proposal_create(ctx: Context<ProposalCreate>, args: ProposalCreateArgs) -> Result<()> {
-        ProposalCreate::proposal_create(ctx, args)
+    pub fn create_proposal(ctx: Context<CreateProposal>, args: CreateProposalArgs) -> Result<()> {
+        CreateProposal::create_proposal(ctx, args)
     }
 
     /// Update status of a multisig proposal from `Draft` to `Active`.
-    pub fn proposal_activate(ctx: Context<ProposalActivate>) -> Result<()> {
-        ProposalActivate::proposal_activate(ctx)
+    pub fn activate_proposal(ctx: Context<ActivateProposal>) -> Result<()> {
+        ActivateProposal::activate_proposal(ctx)
     }
 
     /// Approve a multisig proposal on behalf of the `member`.
     /// The proposal must be `Active`.
-    pub fn proposal_approve(ctx: Context<ProposalVote>, args: ProposalVoteArgs) -> Result<()> {
-        ProposalVote::proposal_approve(ctx, args)
+    pub fn approve_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
+        VoteOnProposal::approve_proposal(ctx, args)
     }
 
     /// Reject a multisig proposal on behalf of the `member`.
     /// The proposal must be `Active`.
-    pub fn proposal_reject(ctx: Context<ProposalVote>, args: ProposalVoteArgs) -> Result<()> {
-        ProposalVote::proposal_reject(ctx, args)
+    pub fn reject_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
+        VoteOnProposal::reject_proposal(ctx, args)
     }
 
     /// Cancel a multisig proposal on behalf of the `member`.
     /// The proposal must be `Approved`.
-    pub fn proposal_cancel(ctx: Context<ProposalVote>, args: ProposalVoteArgs) -> Result<()> {
-        ProposalVote::proposal_cancel(ctx, args)
-    }
-
-    /// Cancel a multisig proposal on behalf of the `member`.
-    /// The proposal must be `Approved`.
-    /// This was introduced to incorporate proper state update, as old multisig members
-    /// may have lingering votes, and the proposal size may need to be reallocated to
-    /// accommodate the new amount of cancel votes.
-    /// The previous implemenation still works if the proposal size is in line with the
-    /// threshold size.
-    pub fn proposal_cancel_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ProposalCancelV2<'info>>,
-        args: ProposalVoteArgs,
-    ) -> Result<()> {
-        ProposalCancelV2::proposal_cancel_v2(ctx, args)
+    pub fn cancel_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
+        VoteOnProposal::cancel_proposal(ctx, args)
     }
 
     /// Use a spending limit to transfer tokens from a multisig vault to a destination account.
-    pub fn spending_limit_use(
-        ctx: Context<SpendingLimitUse>,
-        args: SpendingLimitUseArgs,
+    pub fn use_spending_limit(
+        ctx: Context<UseSpendingLimit>,
+        args: UseSpendingLimitArgs,
     ) -> Result<()> {
-        SpendingLimitUse::spending_limit_use(ctx, args)
+        UseSpendingLimit::use_spending_limit(ctx, args)
     }
 
-    /// Closes a `ConfigTransaction` and the corresponding `Proposal`.
+    /// Closes a `SettingsTransaction` and the corresponding `Proposal`.
     /// `transaction` can be closed if either:
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale.
-    pub fn config_transaction_accounts_close(
-        ctx: Context<ConfigTransactionAccountsClose>,
-    ) -> Result<()> {
-        ConfigTransactionAccountsClose::config_transaction_accounts_close(ctx)
+    pub fn close_settings_transaction(ctx: Context<CloseSettingsTransaction>) -> Result<()> {
+        CloseSettingsTransaction::close_settings_transaction(ctx)
     }
 
-    /// Closes a `VaultTransaction` and the corresponding `Proposal`.
+    /// Closes a `Transaction` and the corresponding `Proposal`.
     /// `transaction` can be closed if either:
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale and not `Approved`.
-    pub fn vault_transaction_accounts_close(
-        ctx: Context<VaultTransactionAccountsClose>,
-    ) -> Result<()> {
-        VaultTransactionAccountsClose::vault_transaction_accounts_close(ctx)
+    pub fn close_transaction(ctx: Context<CloseTransaction>) -> Result<()> {
+        CloseTransaction::close_transaction(ctx)
     }
 
-    /// Closes a `VaultBatchTransaction` belonging to the `batch` and `proposal`.
+    /// Closes a `BatchTransaction` belonging to the `batch` and `proposal`.
     /// `transaction` can be closed if either:
     /// - it's marked as executed within the `batch`;
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale and not `Approved`.
-    pub fn vault_batch_transaction_account_close(
-        ctx: Context<VaultBatchTransactionAccountClose>,
-    ) -> Result<()> {
-        VaultBatchTransactionAccountClose::vault_batch_transaction_account_close(ctx)
+    pub fn close_batch_transaction(ctx: Context<CloseBatchTransaction>) -> Result<()> {
+        CloseBatchTransaction::close_batch_transaction(ctx)
     }
 
     /// Closes Batch and the corresponding Proposal accounts for proposals in terminal states:
@@ -318,23 +293,23 @@ pub mod squads_smart_account_program {
     ///
     /// This instruction is only allowed to be executed when all `VaultBatchTransaction` accounts
     /// in the `batch` are already closed: `batch.size == 0`.
-    pub fn batch_accounts_close(ctx: Context<BatchAccountsClose>) -> Result<()> {
-        BatchAccountsClose::batch_accounts_close(ctx)
+    pub fn close_batch(ctx: Context<CloseBatch>) -> Result<()> {
+        CloseBatch::close_batch(ctx)
     }
 
     /// Synchronously execute a transaction
-    pub fn vault_transaction_sync(
-            ctx: Context<VaultTransactionSync>,
-        args: VaultTransactionSyncArgs,
+    pub fn execute_transaction_sync(
+        ctx: Context<SyncTransaction>,
+        args: SyncTransactionArgs,
     ) -> Result<()> {
-        VaultTransactionSync::vault_transaction_sync(ctx, args)
+        SyncTransaction::sync_transaction(ctx, args)
     }
 
     /// Synchronously execute a config transaction
-    pub fn config_transaction_sync<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ConfigTransactionSync<'info>>,
-        args: ConfigTransactionSyncArgs,
+    pub fn execute_settings_transaction_sync<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncSettingsTransaction<'info>>,
+        args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
-        ConfigTransactionSync::config_transaction_sync(ctx, args)
+        SyncSettingsTransaction::sync_settings_transaction(ctx, args)
     }
 }

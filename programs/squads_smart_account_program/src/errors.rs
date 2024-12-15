@@ -1,19 +1,19 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum MultisigError {
-    #[msg("Found multiple members with the same pubkey")]
-    DuplicateMember,
-    #[msg("Members array is empty")]
-    EmptyMembers,
-    #[msg("Too many members, can be up to 65535")]
-    TooManyMembers,
-    #[msg("Invalid threshold, must be between 1 and number of members with Vote permission")]
+pub enum SmartAccountError {
+    #[msg("Found multiple signers with the same pubkey")]
+    DuplicateSigner,
+    #[msg("Signers array is empty")]
+    EmptySigners,
+    #[msg("Too many signers, can be up to 65535")]
+    TooManySigners,
+    #[msg("Invalid threshold, must be between 1 and number of signers with vote permissions")]
     InvalidThreshold,
     #[msg("Attempted to perform an unauthorized action")]
     Unauthorized,
-    #[msg("Provided pubkey is not a member of multisig")]
-    NotAMember,
+    #[msg("Provided pubkey is not a signer of the smart account")]
+    NotASigner,
     #[msg("TransactionMessage is malformed.")]
     InvalidTransactionMessage,
     #[msg("Proposal is stale")]
@@ -22,23 +22,23 @@ pub enum MultisigError {
     InvalidProposalStatus,
     #[msg("Invalid transaction index")]
     InvalidTransactionIndex,
-    #[msg("Member already approved the transaction")]
+    #[msg("Signer already approved the transaction")]
     AlreadyApproved,
-    #[msg("Member already rejected the transaction")]
+    #[msg("Signer already rejected the transaction")]
     AlreadyRejected,
-    #[msg("Member already cancelled the transaction")]
+    #[msg("Signer already cancelled the transaction")]
     AlreadyCancelled,
     #[msg("Wrong number of accounts provided")]
     InvalidNumberOfAccounts,
     #[msg("Invalid account provided")]
     InvalidAccount,
-    #[msg("Cannot remove last member")]
-    RemoveLastMember,
-    #[msg("Members don't include any voters")]
+    #[msg("Cannot remove last signer")]
+    RemoveLastSigner,
+    #[msg("Signers don't include any voters")]
     NoVoters,
-    #[msg("Members don't include any proposers")]
+    #[msg("Signers don't include any proposers")]
     NoProposers,
-    #[msg("Members don't include any executors")]
+    #[msg("Signers don't include any executors")]
     NoExecutors,
     #[msg("`stale_transaction_index` must be <= `transaction_index`")]
     InvalidStaleTransactionIndex,
@@ -58,22 +58,22 @@ pub enum MultisigError {
     SpendingLimitExceeded,
     #[msg("Decimals don't match the mint")]
     DecimalsMismatch,
-    #[msg("Member has unknown permission")]
+    #[msg("Signer has unknown permission")]
     UnknownPermission,
     #[msg("Account is protected, it cannot be passed into a CPI as writable")]
     ProtectedAccount,
     #[msg("Time lock exceeds the maximum allowed (90 days)")]
     TimeLockExceedsMaxAllowed,
-    #[msg("Account is not owned by Multisig program")]
+    #[msg("Account is not owned by Smart Account program")]
     IllegalAccountOwner,
-    #[msg("Rent reclamation is disabled for this multisig")]
+    #[msg("Rent reclamation is disabled for this smart account")]
     RentReclamationDisabled,
     #[msg("Invalid rent collector address")]
     InvalidRentCollector,
-    #[msg("Proposal is for another multisig")]
-    ProposalForAnotherMultisig,
-    #[msg("Transaction is for another multisig")]
-    TransactionForAnotherMultisig,
+    #[msg("Proposal is for another smart account")]
+    ProposalForAnotherSmartAccount,
+    #[msg("Transaction is for another smart account")]
+    TransactionForAnotherSmartAccount,
     #[msg("Transaction doesn't match proposal")]
     TransactionNotMatchingProposal,
     #[msg("Transaction is not last in batch")]
@@ -90,20 +90,18 @@ pub enum MultisigError {
     FinalBufferSizeExceeded,
     #[msg("Final buffer size mismatch")]
     FinalBufferSizeMismatch,
-    #[msg("multisig_create has been deprecated. Use multisig_create_v2 instead.")]
-    MultisigCreateDeprecated,
+    #[msg("smart_account_create has been deprecated. Use smart_account_create_v2 instead.")]
+    SmartAccountCreateDeprecated,
     #[msg("Signers do not reach consensus threshold")]
     ThresholdNotReached,
     #[msg("Invalid number of signer accounts. Must be greater or equal to the threshold")]
     InvalidSignerCount,
-    #[msg("Duplicate signers not allowed")]
-    DuplicateSigner,
     #[msg("Missing signature")]
     MissingSignature,
     #[msg("Insufficient aggregate permissions across signing members")]
     InsufficientAggregatePermissions,
     #[msg("Insufficient vote permissions across signing members")]
     InsufficientVotePermissions,
-    #[msg("Multisig must not be time locked")]
+    #[msg("Smart account must not be time locked")]
     TimeLockNotZero,
 }

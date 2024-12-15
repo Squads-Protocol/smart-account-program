@@ -1,5 +1,5 @@
 // // The order of imports is the order the test suite will run in.
-import "./suites/program-config-init"
+import "./suites/program-config-init";
 // import "./suites/account-migrations";
 // import "./suites/examples/batch-sol-transfer";
 // import "./suites/examples/create-mint";
@@ -20,8 +20,8 @@ import "./suites/program-config-init"
 // import "./suites/instructions/vaultTransactionAccountsClose";
 // import "./suites/instructions/vaultTransactionCreateFromBuffer";
 // import "./suites/multisig-sdk";
-import "./suites/instructions/vaultTransactionSynchronous";
-
+//import "./suites/instructions/vaultTransactionSynchronous";
+import "./suites/instructions/configTransactionSync";
 // // // Uncomment to enable the heapTest instruction testing
 // // //import "./suites/instructions/heapTest";
 // // import "./suites/examples/custom-heap";

@@ -4,21 +4,21 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigRemoveSpendingLimitArgs {
+pub struct RemoveSpendingLimitArgs {
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(Accounts)]
-pub struct MultisigRemoveSpendingLimit<'info> {
+pub struct RemoveSpendingLimitAsAuthority<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     /// Multisig `config_authority` that must authorize the configuration change.
-    pub config_authority: Signer<'info>,
+    pub settings_authority: Signer<'info>,
 
     #[account(mut, close = rent_collector)]
     pub spending_limit: Account<'info, SpendingLimit>,
@@ -29,20 +29,20 @@ pub struct MultisigRemoveSpendingLimit<'info> {
     pub rent_collector: AccountInfo<'info>,
 }
 
-impl MultisigRemoveSpendingLimit<'_> {
+impl RemoveSpendingLimitAsAuthority<'_> {
     fn validate(&self) -> Result<()> {
         // config_authority
         require_keys_eq!(
-            self.config_authority.key(),
-            self.multisig.config_authority,
-            MultisigError::Unauthorized
+            self.settings_authority.key(),
+            self.settings.settings_authority,
+            SmartAccountError::Unauthorized
         );
 
         // `spending_limit`
         require_keys_eq!(
-            self.spending_limit.multisig,
-            self.multisig.key(),
-            MultisigError::InvalidAccount
+            self.spending_limit.settings,
+            self.settings.key(),
+            SmartAccountError::InvalidAccount
         );
 
         Ok(())
@@ -52,9 +52,9 @@ impl MultisigRemoveSpendingLimit<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_remove_spending_limit(
+    pub fn remove_spending_limit(
         ctx: Context<Self>,
-        _args: MultisigRemoveSpendingLimitArgs,
+        _args: RemoveSpendingLimitArgs,
     ) -> Result<()> {
         Ok(())
     }

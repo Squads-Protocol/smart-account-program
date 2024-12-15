@@ -7,7 +7,7 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SpendingLimitUseArgs {
+pub struct UseSpendingLimitArgs {
     /// Amount of tokens to transfer.
     pub amount: u64,
     /// Decimals of the token mint. Used for double-checking against incorrect order of magnitude of `amount`.
@@ -17,24 +17,24 @@ pub struct SpendingLimitUseArgs {
 }
 
 #[derive(Accounts)]
-pub struct SpendingLimitUse<'info> {
+pub struct UseSpendingLimit<'info> {
     /// The multisig account the `spending_limit` is for.
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Box<Account<'info, Multisig>>,
+    pub settings: Box<Account<'info, Settings>>,
 
-    pub member: Signer<'info>,
+    pub signer: Signer<'info>,
 
     /// The SpendingLimit account to use.
     #[account(
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_SPENDING_LIMIT,
-            spending_limit.create_key.key().as_ref(),
+            spending_limit.seed.as_ref(),
         ],
         bump = spending_limit.bump,
     )]
@@ -46,13 +46,13 @@ pub struct SpendingLimitUse<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
-            SEED_VAULT,
-            &spending_limit.vault_index.to_le_bytes(),
+            settings.key().as_ref(),
+            SEED_SMART_ACCOUNT,
+            &spending_limit.account_index.to_le_bytes(),
         ],
         bump
     )]
-    pub vault: AccountInfo<'info>,
+    pub smart_account: AccountInfo<'info>,
 
     /// Destination account to transfer tokens to.
     /// CHECK: We do the checks in `SpendingLimitUse::validate`.
@@ -70,7 +70,7 @@ pub struct SpendingLimitUse<'info> {
     #[account(
         mut,
         token::mint = mint,
-        token::authority = vault,
+        token::authority = smart_account,
     )]
     pub vault_token_account: Option<InterfaceAccount<'info, TokenAccount>>,
 
@@ -86,11 +86,11 @@ pub struct SpendingLimitUse<'info> {
     pub token_program: Option<Interface<'info, TokenInterface>>,
 }
 
-impl SpendingLimitUse<'_> {
+impl UseSpendingLimit<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            multisig,
-            member,
+            settings,
+            signer,
             spending_limit,
             mint,
             ..
@@ -98,8 +98,8 @@ impl SpendingLimitUse<'_> {
 
         // member
         require!(
-            spending_limit.members.contains(&member.key()),
-            MultisigError::Unauthorized
+            spending_limit.signers.contains(&signer.key()),
+            SmartAccountError::Unauthorized
         );
 
         // spending_limit - needs no checking.
@@ -107,12 +107,12 @@ impl SpendingLimitUse<'_> {
         // mint
         if spending_limit.mint == Pubkey::default() {
             // SpendingLimit is for SOL, there should be no mint account in this case.
-            require!(mint.is_none(), MultisigError::InvalidMint);
+            require!(mint.is_none(), SmartAccountError::InvalidMint);
         } else {
             // SpendingLimit is for an SPL token, `mint` must match `spending_limit.mint`.
             require!(
                 spending_limit.mint == mint.as_ref().unwrap().key(),
-                MultisigError::InvalidMint
+                SmartAccountError::InvalidMint
             );
         }
 
@@ -126,7 +126,7 @@ impl SpendingLimitUse<'_> {
                 spending_limit
                     .destinations
                     .contains(&self.destination.key()),
-                MultisigError::InvalidDestination
+                SmartAccountError::InvalidDestination
             );
         }
 
@@ -137,13 +137,13 @@ impl SpendingLimitUse<'_> {
 
     /// Use a spending limit to transfer tokens from a multisig vault to a destination account.
     #[access_control(ctx.accounts.validate())]
-    pub fn spending_limit_use(ctx: Context<Self>, args: SpendingLimitUseArgs) -> Result<()> {
+    pub fn use_spending_limit(ctx: Context<Self>, args: UseSpendingLimitArgs) -> Result<()> {
         let spending_limit = &mut ctx.accounts.spending_limit;
-        let vault = &mut ctx.accounts.vault;
+        let smart_account = &mut ctx.accounts.smart_account;
         let destination = &mut ctx.accounts.destination;
 
-        let multisig_key = ctx.accounts.multisig.key();
-        let vault_bump = ctx.bumps.vault;
+        let settings_key = ctx.accounts.settings.key();
+        let smart_account_bump = ctx.bumps.smart_account;
         let now = Clock::get()?.unix_timestamp;
 
         // Reset `spending_limit.remaining_amount` if the `spending_limit.period` has passed.
@@ -168,7 +168,7 @@ impl SpendingLimitUse<'_> {
         spending_limit.remaining_amount = spending_limit
             .remaining_amount
             .checked_sub(args.amount)
-            .ok_or(MultisigError::SpendingLimitExceeded)?;
+            .ok_or(SmartAccountError::SpendingLimitExceeded)?;
 
         // Transfer tokens.
         if spending_limit.mint == Pubkey::default() {
@@ -177,24 +177,24 @@ impl SpendingLimitUse<'_> {
                 .accounts
                 .system_program
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(SmartAccountError::MissingAccount)?;
 
             // Sanity check for the decimals. Similar to the one in token_interface::transfer_checked.
-            require!(args.decimals == 9, MultisigError::DecimalsMismatch);
+            require!(args.decimals == 9, SmartAccountError::DecimalsMismatch);
 
             anchor_lang::system_program::transfer(
                 CpiContext::new_with_signer(
                     system_program.to_account_info(),
                     anchor_lang::system_program::Transfer {
-                        from: vault.clone(),
+                        from: smart_account.clone(),
                         to: destination.clone(),
                     },
                     &[&[
                         SEED_PREFIX,
-                        multisig_key.as_ref(),
-                        SEED_VAULT,
-                        &spending_limit.vault_index.to_le_bytes(),
-                        &[vault_bump],
+                        settings_key.as_ref(),
+                        SEED_SMART_ACCOUNT,
+                        &spending_limit.account_index.to_le_bytes(),
+                        &[smart_account_bump],
                     ]],
                 ),
                 args.amount,
@@ -205,28 +205,28 @@ impl SpendingLimitUse<'_> {
                 .accounts
                 .mint
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(SmartAccountError::MissingAccount)?;
             let vault_token_account = &ctx
                 .accounts
                 .vault_token_account
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(SmartAccountError::MissingAccount)?;
             let destination_token_account = &ctx
                 .accounts
                 .destination_token_account
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(SmartAccountError::MissingAccount)?;
             let token_program = &ctx
                 .accounts
                 .token_program
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(SmartAccountError::MissingAccount)?;
 
             msg!(
                 "token_program {} mint {} vault {} destination {} amount {} decimals {}",
                 &token_program.key,
                 &mint.key(),
-                &vault.key,
+                &smart_account.key,
                 &destination.key,
                 &args.amount,
                 &args.decimals
@@ -239,14 +239,14 @@ impl SpendingLimitUse<'_> {
                         from: vault_token_account.to_account_info(),
                         mint: mint.to_account_info(),
                         to: destination_token_account.to_account_info(),
-                        authority: vault.clone(),
+                        authority: smart_account.clone(),
                     },
                     &[&[
                         SEED_PREFIX,
-                        multisig_key.as_ref(),
-                        SEED_VAULT,
-                        &spending_limit.vault_index.to_le_bytes(),
-                        &[vault_bump],
+                        settings_key.as_ref(),
+                        SEED_SMART_ACCOUNT,
+                        &spending_limit.account_index.to_le_bytes(),
+                        &[smart_account_bump],
                     ]],
                 ),
                 args.amount,

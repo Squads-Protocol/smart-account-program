@@ -4,21 +4,21 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(Accounts)]
-pub struct ProposalActivate<'info> {
+pub struct ActivateProposal<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(mut)]
-    pub member: Signer<'info>,
+    pub signer: Signer<'info>,
 
     #[account(
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &proposal.transaction_index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -28,34 +28,34 @@ pub struct ProposalActivate<'info> {
     pub proposal: Account<'info, Proposal>,
 }
 
-impl ProposalActivate<'_> {
+impl ActivateProposal<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            multisig,
+            settings,
             proposal,
-            member,
+            signer,
             ..
         } = self;
 
-        // `member`
+        // `signer`
         require!(
-            multisig.is_member(member.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(signer.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
             // We consider this action a part of the proposal initiation.
-            multisig.member_has_permission(member.key(), Permission::Initiate),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(signer.key(), Permission::Initiate),
+            SmartAccountError::Unauthorized
         );
 
         // `proposal`
         require!(
             matches!(proposal.status, ProposalStatus::Draft { .. }),
-            MultisigError::InvalidProposalStatus
+            SmartAccountError::InvalidProposalStatus
         );
         require!(
-            proposal.transaction_index > multisig.stale_transaction_index,
-            MultisigError::StaleProposal
+            proposal.transaction_index > settings.stale_transaction_index,
+            SmartAccountError::StaleProposal
         );
 
         Ok(())
@@ -63,7 +63,7 @@ impl ProposalActivate<'_> {
 
     /// Update status of a multisig proposal from `Draft` to `Active`.
     #[access_control(ctx.accounts.validate())]
-    pub fn proposal_activate(ctx: Context<Self>) -> Result<()> {
+    pub fn activate_proposal(ctx: Context<Self>) -> Result<()> {
         ctx.accounts.proposal.status = ProposalStatus::Active {
             timestamp: Clock::get()?.unix_timestamp,
         };

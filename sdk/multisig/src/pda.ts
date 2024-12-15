@@ -1,12 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
+import invariant from "invariant";
 import { PROGRAM_ID } from "./generated";
 import { toU32Bytes, toU64Bytes, toU8Bytes, toUtfBytes } from "./utils";
-import invariant from "invariant";
 
 const SEED_PREFIX = toUtfBytes("multisig");
 const SEED_PROGRAM_CONFIG = toUtfBytes("program_config");
-const SEED_MULTISIG = toUtfBytes("multisig");
-const SEED_VAULT = toUtfBytes("vault");
+const SEED_SETTINGS = toUtfBytes("multisig");
+const SEED_SMART_ACCOUNT = toUtfBytes("vault");
 const SEED_TRANSACTION = toUtfBytes("transaction");
 const SEED_PROPOSAL = toUtfBytes("proposal");
 const SEED_BATCH_TRANSACTION = toUtfBytes("batch_transaction");
@@ -32,7 +32,7 @@ export function getMultisigPda({
   programId?: PublicKey;
 }): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [SEED_PREFIX, SEED_MULTISIG, createKey.toBytes()],
+    [SEED_PREFIX, SEED_SETTINGS, createKey.toBytes()],
     programId
   );
 }
@@ -50,7 +50,7 @@ export function getVaultPda({
   invariant(index >= 0 && index < 256, "Invalid vault index");
 
   return PublicKey.findProgramAddressSync(
-    [SEED_PREFIX, multisigPda.toBytes(), SEED_VAULT, toU8Bytes(index)],
+    [SEED_PREFIX, multisigPda.toBytes(), SEED_SMART_ACCOUNT, toU8Bytes(index)],
     programId
   );
 }

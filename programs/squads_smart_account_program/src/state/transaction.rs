@@ -9,19 +9,19 @@ use crate::instructions::{CompiledInstruction, MessageAddressTableLookup, Transa
 /// and wraps arbitrary Solana instructions, typically calling into other Solana programs.
 #[account]
 #[derive(Default)]
-pub struct VaultTransaction {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
+pub struct Transaction {
+    /// The settings this belongs to.
+    pub settings: Pubkey,
     /// Member of the Multisig who submitted the transaction.
     pub creator: Pubkey,
     /// Index of this transaction within the multisig.
     pub index: u64,
     /// bump for the transaction seeds.
     pub bump: u8,
-    /// Index of the vault this transaction belongs to.
-    pub vault_index: u8,
-    /// Derivation bump of the vault PDA this transaction belongs to.
-    pub vault_bump: u8,
+    /// The account index of the smart account this transaction belongs to.
+    pub account_index: u8,
+    /// Derivation bump of the smart account PDA this transaction belongs to.
+    pub account_bump: u8,
     /// Derivation bumps for additional signers.
     /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
     /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
@@ -31,12 +31,12 @@ pub struct VaultTransaction {
     /// thus "signing" on behalf of these PDAs.
     pub ephemeral_signer_bumps: Vec<u8>,
     /// data required for executing the transaction.
-    pub message: VaultTransactionMessage,
+    pub message: SmartAccountTransactionMessage,
 }
 
-impl VaultTransaction {
+impl Transaction {
     pub fn size(ephemeral_signers_length: u8, transaction_message: &[u8]) -> Result<usize> {
-        let transaction_message: VaultTransactionMessage =
+        let transaction_message: SmartAccountTransactionMessage =
             TransactionMessage::deserialize(&mut &transaction_message[..])?.try_into()?;
         let message_size = get_instance_packed_len(&transaction_message).unwrap_or_default();
 
@@ -54,13 +54,13 @@ impl VaultTransaction {
     }
     /// Reduces the VaultTransaction to its default empty value and moves
     /// ownership of the data to the caller/return value.
-    pub fn take(&mut self) -> VaultTransaction {
+    pub fn take(&mut self) -> Transaction {
         core::mem::take(self)
     }
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
-pub struct VaultTransactionMessage {
+pub struct SmartAccountTransactionMessage {
     /// The number of signer pubkeys in the account_keys vec.
     pub num_signers: u8,
     /// The number of writable signer pubkeys in the account_keys vec.
@@ -79,13 +79,13 @@ pub struct VaultTransactionMessage {
     /// ```
     pub account_keys: Vec<Pubkey>,
     /// List of instructions making up the tx.
-    pub instructions: Vec<MultisigCompiledInstruction>,
+    pub instructions: Vec<SmartAccountCompiledInstruction>,
     /// List of address table lookups used to load additional accounts
     /// for this transaction.
-    pub address_table_lookups: Vec<MultisigMessageAddressTableLookup>,
+    pub address_table_lookups: Vec<SmartAccountMessageAddressTableLookup>,
 }
 
-impl VaultTransactionMessage {
+impl SmartAccountTransactionMessage {
     /// Returns the number of all the account keys (static + dynamic) in the message.
     pub fn num_all_account_keys(&self) -> usize {
         let num_account_keys_from_lookups = self
@@ -130,15 +130,15 @@ impl VaultTransactionMessage {
     }
 }
 
-impl TryFrom<TransactionMessage> for VaultTransactionMessage {
+impl TryFrom<TransactionMessage> for SmartAccountTransactionMessage {
     type Error = Error;
 
     fn try_from(message: TransactionMessage) -> Result<Self> {
         let account_keys: Vec<Pubkey> = message.account_keys.into();
         let instructions: Vec<CompiledInstruction> = message.instructions.into();
-        let instructions: Vec<MultisigCompiledInstruction> = instructions
+        let instructions: Vec<SmartAccountCompiledInstruction> = instructions
             .into_iter()
-            .map(MultisigCompiledInstruction::from)
+            .map(SmartAccountCompiledInstruction::from)
             .collect();
         let address_table_lookups: Vec<MessageAddressTableLookup> =
             message.address_table_lookups.into();
@@ -151,31 +151,31 @@ impl TryFrom<TransactionMessage> for VaultTransactionMessage {
 
         require!(
             usize::from(message.num_signers) <= account_keys.len(),
-            MultisigError::InvalidTransactionMessage
+            SmartAccountError::InvalidTransactionMessage
         );
         require!(
             message.num_writable_signers <= message.num_signers,
-            MultisigError::InvalidTransactionMessage
+            SmartAccountError::InvalidTransactionMessage
         );
         require!(
             usize::from(message.num_writable_non_signers)
                 <= account_keys
                     .len()
                     .saturating_sub(usize::from(message.num_signers)),
-            MultisigError::InvalidTransactionMessage
+            SmartAccountError::InvalidTransactionMessage
         );
 
         // Validate that all program ID indices and account indices are within the bounds of the account keys.
         for instruction in &instructions {
             require!(
                 usize::from(instruction.program_id_index) < num_all_account_keys,
-                MultisigError::InvalidTransactionMessage
+                SmartAccountError::InvalidTransactionMessage
             );
 
             for account_index in &instruction.account_indexes {
                 require!(
                     usize::from(*account_index) < num_all_account_keys,
-                    MultisigError::InvalidTransactionMessage
+                    SmartAccountError::InvalidTransactionMessage
                 );
             }
         }
@@ -188,7 +188,7 @@ impl TryFrom<TransactionMessage> for VaultTransactionMessage {
             instructions,
             address_table_lookups: address_table_lookups
                 .into_iter()
-                .map(MultisigMessageAddressTableLookup::from)
+                .map(SmartAccountMessageAddressTableLookup::from)
                 .collect(),
         })
     }
@@ -197,7 +197,7 @@ impl TryFrom<TransactionMessage> for VaultTransactionMessage {
 /// Concise serialization schema for instructions that make up a transaction.
 /// Closely mimics the Solana transaction wire format.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MultisigCompiledInstruction {
+pub struct SmartAccountCompiledInstruction {
     pub program_id_index: u8,
     /// Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction.
     pub account_indexes: Vec<u8>,
@@ -205,7 +205,7 @@ pub struct MultisigCompiledInstruction {
     pub data: Vec<u8>,
 }
 
-impl From<CompiledInstruction> for MultisigCompiledInstruction {
+impl From<CompiledInstruction> for SmartAccountCompiledInstruction {
     fn from(compiled_instruction: CompiledInstruction) -> Self {
         Self {
             program_id_index: compiled_instruction.program_id_index,
@@ -218,7 +218,7 @@ impl From<CompiledInstruction> for MultisigCompiledInstruction {
 /// Address table lookups describe an on-chain address lookup table to use
 /// for loading more readonly and writable accounts into a transaction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MultisigMessageAddressTableLookup {
+pub struct SmartAccountMessageAddressTableLookup {
     /// Address lookup table account key.
     pub account_key: Pubkey,
     /// List of indexes used to load writable accounts.
@@ -227,7 +227,7 @@ pub struct MultisigMessageAddressTableLookup {
     pub readonly_indexes: Vec<u8>,
 }
 
-impl From<MessageAddressTableLookup> for MultisigMessageAddressTableLookup {
+impl From<MessageAddressTableLookup> for SmartAccountMessageAddressTableLookup {
     fn from(m: MessageAddressTableLookup) -> Self {
         Self {
             account_key: m.account_key,

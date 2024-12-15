@@ -1,16 +1,11 @@
 use anchor_lang::prelude::*;
 
-use crate::{
-    errors::*,
-    state::*,
-    utils::{ExecutableTransactionMessage, SynchronousTransactionMessage},
-    SmallVec,
-};
+use crate::{errors::*, state::*, utils::SynchronousTransactionMessage, SmallVec};
 
 use super::CompiledInstruction;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct VaultTransactionSyncArgs {
+pub struct SyncTransactionArgs {
     pub vault_index: u8,
     /// The number of signers to reach threshold and adequate permissions
     pub num_signers: u8,
@@ -19,32 +14,35 @@ pub struct VaultTransactionSyncArgs {
 }
 
 #[derive(Accounts)]
-pub struct VaultTransactionSync<'info> {
+pub struct SyncTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Box<Account<'info, Multisig>>,
+    pub settings: Box<Account<'info, Settings>>,
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. The exact amount of signers required to reach the threshold
     // 2. Any remaining accounts associated with the instructions
 }
 
-impl VaultTransactionSync<'_> {
+impl SyncTransaction<'_> {
     fn validate(&self, num_signers: u8, remaining_accounts: &[AccountInfo]) -> Result<()> {
-        let Self { multisig } = self;
+        let Self { settings } = self;
 
         // Multisig must not be time locked
-        require_eq!(multisig.time_lock, 0, MultisigError::TimeLockNotZero);
+        require_eq!(settings.time_lock, 0, SmartAccountError::TimeLockNotZero);
 
         // Get signers from remaining accounts using threshold
-        let required_signer_count = multisig.threshold as usize;
+        let required_signer_count = settings.threshold as usize;
         let signer_count = num_signers as usize;
-        require!(signer_count >= required_signer_count, MultisigError::InvalidSignerCount);
+        require!(
+            signer_count >= required_signer_count,
+            SmartAccountError::InvalidSignerCount
+        );
 
         let signers = remaining_accounts
             .get(..signer_count)
-            .ok_or(MultisigError::InvalidSignerCount)?;
+            .ok_or(SmartAccountError::InvalidSignerCount)?;
 
         // Setup the aggregated permissions and the vote permission count
         let mut aggregated_permissions = Permissions { mask: 0 };
@@ -53,18 +51,18 @@ impl VaultTransactionSync<'_> {
 
         // Check permissions for all signers
         for signer in signers.iter() {
-            if let Some(member_index) = multisig.is_member(signer.key()) {
+            if let Some(member_index) = settings.is_signer(signer.key()) {
                 // Check that the signer is indeed a signer
                 if !signer.is_signer {
-                    return err!(MultisigError::MissingSignature);
+                    return err!(SmartAccountError::MissingSignature);
                 }
                 // Check for duplicate signer
                 if seen_members.contains(&signer.key()) {
-                    return err!(MultisigError::DuplicateMember);
+                    return err!(SmartAccountError::DuplicateSigner);
                 }
                 seen_members.push(signer.key());
 
-                let member_permissions = multisig.members[member_index].permissions;
+                let member_permissions = settings.signers[member_index].permissions;
                 // Add to the aggregated permissions mask
                 aggregated_permissions.mask |= member_permissions.mask;
 
@@ -73,7 +71,7 @@ impl VaultTransactionSync<'_> {
                     vote_permission_count += 1;
                 }
             } else {
-                return err!(MultisigError::NotAMember);
+                return err!(SmartAccountError::NotASigner);
             }
         }
 
@@ -81,61 +79,59 @@ impl VaultTransactionSync<'_> {
         // = 7)
         require!(
             aggregated_permissions.mask == 7,
-            MultisigError::InsufficientAggregatePermissions
+            SmartAccountError::InsufficientAggregatePermissions
         );
 
         // Verify threshold is met across all voting permissions
         require!(
-            vote_permission_count >= multisig.threshold as usize,
-            MultisigError::InsufficientVotePermissions
+            vote_permission_count >= settings.threshold as usize,
+            SmartAccountError::InsufficientVotePermissions
         );
 
         Ok(())
     }
 
     #[access_control(ctx.accounts.validate(args.num_signers, &ctx.remaining_accounts))]
-    pub fn vault_transaction_sync(
-        ctx: Context<Self>,
-        args: VaultTransactionSyncArgs,
-    ) -> Result<()> {
+    pub fn sync_transaction(ctx: Context<Self>, args: SyncTransactionArgs) -> Result<()> {
         // Readonly Accounts
-        let multisig = &ctx.accounts.multisig;
+        let settings = &ctx.accounts.settings;
 
-        let multisig_key = multisig.key();
+        let settings_key = settings.key();
         // Deserialize the instructions
         let compiled_instructions =
             SmallVec::<u8, CompiledInstruction>::try_from_slice(&args.instructions)
-                .map_err(|_| MultisigError::InvalidInstructionArgs)?;
+                .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
         // Convert to MultisigCompiledInstruction
-        let multisig_compiled_instructions: Vec<MultisigCompiledInstruction> =
+        let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
             Vec::from(compiled_instructions)
                 .into_iter()
-                .map(MultisigCompiledInstruction::from)
+                .map(SmartAccountCompiledInstruction::from)
                 .collect();
 
-        let vault_seeds = &[
+        let smart_account_seeds = &[
             SEED_PREFIX,
-            multisig_key.as_ref(),
-            SEED_VAULT,
+            settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
             &args.vault_index.to_le_bytes(),
         ];
 
-        let (vault_pubkey, vault_bump) = Pubkey::find_program_address(vault_seeds, ctx.program_id);
+        let (smart_account_pubkey, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
         // Get the signer seeds for the vault
         let vault_signer_seeds = &[
-            vault_seeds[0],
-            vault_seeds[1],
-            vault_seeds[2],
-            vault_seeds[3],
-            &[vault_bump],
+            smart_account_seeds[0],
+            smart_account_seeds[1],
+            smart_account_seeds[2],
+            smart_account_seeds[3],
+            &[smart_account_bump],
         ];
 
         let executable_message = SynchronousTransactionMessage::new_validated(
-            &multisig.key(),
-            &multisig,
-            &vault_pubkey,
-            multisig_compiled_instructions,
+            &settings.key(),
+            &settings,
+            &smart_account_pubkey,
+            settings_compiled_instructions,
             &ctx.remaining_accounts,
         )?;
 

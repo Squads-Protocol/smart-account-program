@@ -417,7 +417,7 @@ describe("Instructions / transaction_buffer_create", () => {
         connection
           .sendTransaction(tx)
           .catch(multisig.errors.translateAndThrowAnchorError),
-      /NotAMember/
+      /NotASigner/
     );
   });
 

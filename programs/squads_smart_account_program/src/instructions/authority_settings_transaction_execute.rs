@@ -4,58 +4,58 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigAddMemberArgs {
-    pub new_member: Member,
+pub struct AddSignerArgs {
+    pub new_signer: SmartAccountSigner,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigRemoveMemberArgs {
-    pub old_member: Pubkey,
+pub struct RemoveSignerArgs {
+    pub old_signer: Pubkey,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigChangeThresholdArgs {
+pub struct ChangeThresholdArgs {
     pub new_threshold: u16,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigSetTimeLockArgs {
+pub struct SetTimeLockArgs {
     pub time_lock: u32,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigSetConfigAuthorityArgs {
-    pub config_authority: Pubkey,
+pub struct SetNewSettingsAuthorityArgs {
+    pub new_settings_authority: Pubkey,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MultisigSetRentCollectorArgs {
+pub struct SetRentCollectorArgs {
     pub rent_collector: Option<Pubkey>,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
 
 #[derive(Accounts)]
-pub struct MultisigConfig<'info> {
+pub struct ExecuteSettingsTransactionAsAuthority<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    multisig: Account<'info, Multisig>,
+    settings: Account<'info, Settings>,
 
-    /// Multisig `config_authority` that must authorize the configuration change.
-    pub config_authority: Signer<'info>,
+    /// Settings `settings_authority` that must authorize the configuration change.
+    pub settings_authority: Signer<'info>,
 
     /// The account that will be charged or credited in case the multisig account needs to reallocate space,
     /// for example when adding a new member or a spending limit.
@@ -67,12 +67,12 @@ pub struct MultisigConfig<'info> {
     pub system_program: Option<Program<'info, System>>,
 }
 
-impl MultisigConfig<'_> {
+impl ExecuteSettingsTransactionAsAuthority<'_> {
     fn validate(&self) -> Result<()> {
         require_keys_eq!(
-            self.config_authority.key(),
-            self.multisig.config_authority,
-            MultisigError::Unauthorized
+            self.settings_authority.key(),
+            self.settings.settings_authority,
+            SmartAccountError::Unauthorized
         );
 
         Ok(())
@@ -83,23 +83,23 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_add_member(ctx: Context<Self>, args: MultisigAddMemberArgs) -> Result<()> {
-        let MultisigAddMemberArgs { new_member, .. } = args;
+    pub fn add_signer(ctx: Context<Self>, args: AddSignerArgs) -> Result<()> {
+        let AddSignerArgs { new_signer, .. } = args;
 
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
 
         // Make sure that the new member is not already in the multisig.
         require!(
-            multisig.is_member(new_member.key).is_none(),
-            MultisigError::DuplicateMember
+            settings.is_signer(new_signer.key).is_none(),
+            SmartAccountError::DuplicateSigner
         );
 
-        multisig.add_member(new_member);
+        settings.add_signer(new_signer);
 
         // Make sure the multisig account can fit the newly set rent_collector.
-        Multisig::realloc_if_needed(
-            multisig.to_account_info(),
-            multisig.members.len(),
+        Settings::realloc_if_needed(
+            settings.to_account_info(),
+            settings.signers.len(),
             ctx.accounts
                 .rent_payer
                 .as_ref()
@@ -110,9 +110,9 @@ impl MultisigConfig<'_> {
                 .map(ToAccountInfo::to_account_info),
         )?;
 
-        multisig.invalidate_prior_transactions();
+        settings.invalidate_prior_transactions();
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }
@@ -122,19 +122,19 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_remove_member(
-        ctx: Context<Self>,
-        args: MultisigRemoveMemberArgs,
-    ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn remove_signer(ctx: Context<Self>, args: RemoveSignerArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
 
-        require!(multisig.members.len() > 1, MultisigError::RemoveLastMember);
+        require!(
+            settings.signers.len() > 1,
+            SmartAccountError::RemoveLastSigner
+        );
 
-        multisig.remove_member(args.old_member)?;
+        settings.remove_signer(args.old_signer)?;
 
-        multisig.invalidate_prior_transactions();
+        settings.invalidate_prior_transactions();
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }
@@ -142,19 +142,16 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_change_threshold(
-        ctx: Context<Self>,
-        args: MultisigChangeThresholdArgs,
-    ) -> Result<()> {
-        let MultisigChangeThresholdArgs { new_threshold, .. } = args;
+    pub fn change_threshold(ctx: Context<Self>, args: ChangeThresholdArgs) -> Result<()> {
+        let ChangeThresholdArgs { new_threshold, .. } = args;
 
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
 
-        multisig.threshold = new_threshold;
+        settings.threshold = new_threshold;
 
-        multisig.invalidate_prior_transactions();
+        settings.invalidate_prior_transactions();
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }
@@ -164,14 +161,14 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_set_time_lock(ctx: Context<Self>, args: MultisigSetTimeLockArgs) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn set_time_lock(ctx: Context<Self>, args: SetTimeLockArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
 
-        multisig.time_lock = args.time_lock;
+        settings.time_lock = args.time_lock;
 
-        multisig.invalidate_prior_transactions();
+        settings.invalidate_prior_transactions();
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }
@@ -181,17 +178,17 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_set_config_authority(
+    pub fn set_new_settings_authority(
         ctx: Context<Self>,
-        args: MultisigSetConfigAuthorityArgs,
+        args: SetNewSettingsAuthorityArgs,
     ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
 
-        multisig.config_authority = args.config_authority;
+        settings.settings_authority = args.new_settings_authority;
 
-        multisig.invalidate_prior_transactions();
+        settings.invalidate_prior_transactions();
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }
@@ -201,18 +198,18 @@ impl MultisigConfig<'_> {
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn multisig_set_rent_collector(
+    pub fn set_rent_collector(
         ctx: Context<Self>,
-        args: MultisigSetRentCollectorArgs,
+        args: SetRentCollectorArgs,
     ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
 
-        multisig.rent_collector = args.rent_collector;
+        settings.rent_collector = args.rent_collector;
 
         // Make sure the multisig account can fit the newly set rent_collector.
-        Multisig::realloc_if_needed(
-            multisig.to_account_info(),
-            multisig.members.len(),
+        Settings::realloc_if_needed(
+            settings.to_account_info(),
+            settings.signers.len(),
             ctx.accounts
                 .rent_payer
                 .as_ref()
@@ -226,7 +223,7 @@ impl MultisigConfig<'_> {
         // We don't need to invalidate prior transactions here because changing
         // `rent_collector` doesn't affect the consensus parameters of the multisig.
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }

@@ -1,24 +1,24 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::*, state::*, utils::*};
+use crate::{errors::*, id, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ConfigTransactionSyncArgs {
+pub struct SyncSettingsTransactionArgs {
     /// The number of signers to reach threshold and adequate permissions
     pub num_signers: u8,
     /// The configuration actions to execute
-    pub actions: Vec<ConfigAction>,
+    pub actions: Vec<SettingsAction>,
     pub memo: Option<String>,
 }
 
 #[derive(Accounts)]
-pub struct ConfigTransactionSync<'info> {
+pub struct SyncSettingsTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Box<Account<'info, Multisig>>,
+    pub settings: Box<Account<'info, Settings>>,
 
     /// The account that will be charged/credited in case the config transaction causes space reallocation,
     /// for example when adding a new member, adding or removing a spending limit.
@@ -33,48 +33,48 @@ pub struct ConfigTransactionSync<'info> {
     // 2. Any SpendingLimit accounts that need to be initialized/closed based on actions
 }
 
-impl<'info> ConfigTransactionSync<'info> {
+impl<'info> SyncSettingsTransaction<'info> {
     fn validate(
         &self,
-        args: &ConfigTransactionSyncArgs,
+        args: &SyncSettingsTransactionArgs,
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
-        let Self { multisig, .. } = self;
+        let Self { settings, .. } = self;
 
-        // Multisig must not be controlled
+        // Settings must not be controlled
         require_keys_eq!(
-            multisig.config_authority,
+            settings.settings_authority,
             Pubkey::default(),
-            MultisigError::NotSupportedForControlled
+            SmartAccountError::NotSupportedForControlled
         );
 
-        // Multisig must not be time locked
-        require_eq!(multisig.time_lock, 0, MultisigError::TimeLockNotZero);
+        // Settings must not be time locked
+        require_eq!(settings.time_lock, 0, SmartAccountError::TimeLockNotZero);
 
         // Config transaction must have at least one action
-        require!(!args.actions.is_empty(), MultisigError::NoActions);
+        require!(!args.actions.is_empty(), SmartAccountError::NoActions);
 
-        // time_lock must not exceed the maximum allowed
+        // new time_lock must not exceed the maximum allowed
         for action in &args.actions {
-            if let ConfigAction::SetTimeLock { new_time_lock } = action {
+            if let SettingsAction::SetTimeLock { new_time_lock } = action {
                 require!(
                     *new_time_lock <= MAX_TIME_LOCK,
-                    MultisigError::TimeLockExceedsMaxAllowed
+                    SmartAccountError::TimeLockExceedsMaxAllowed
                 );
             }
         }
 
         // Get signers from remaining accounts using threshold
-        let required_signer_count = multisig.threshold as usize;
+        let required_signer_count = settings.threshold as usize;
         let signer_count = args.num_signers as usize;
         require!(
             signer_count >= required_signer_count,
-            MultisigError::InvalidSignerCount
+            SmartAccountError::InvalidSignerCount
         );
 
         let signers = remaining_accounts
             .get(..signer_count)
-            .ok_or(MultisigError::InvalidSignerCount)?;
+            .ok_or(SmartAccountError::InvalidSignerCount)?;
 
         msg!("Signers contributing to Consensus:");
         for (index, signer) in signers.iter().enumerate() {
@@ -88,18 +88,18 @@ impl<'info> ConfigTransactionSync<'info> {
 
         // Check permissions for all signers
         for signer in signers.iter() {
-            if let Some(member_index) = multisig.is_member(signer.key()) {
+            if let Some(member_index) = settings.is_signer(signer.key()) {
                 // Check that the signer is indeed a signer
                 if !signer.is_signer {
-                    return err!(MultisigError::MissingSignature);
+                    return err!(SmartAccountError::MissingSignature);
                 }
                 // Check for duplicate signer
                 if seen_members.contains(&signer.key()) {
-                    return err!(MultisigError::DuplicateMember);
+                    return err!(SmartAccountError::DuplicateSigner);
                 }
                 seen_members.push(signer.key());
 
-                let member_permissions = multisig.members[member_index].permissions;
+                let member_permissions = settings.signers[member_index].permissions;
                 // Add to the aggregated permissions mask
                 aggregated_permissions.mask |= member_permissions.mask;
 
@@ -108,7 +108,7 @@ impl<'info> ConfigTransactionSync<'info> {
                     vote_permission_count += 1;
                 }
             } else {
-                return err!(MultisigError::NotAMember);
+                return err!(SmartAccountError::NotASigner);
             }
         }
 
@@ -119,68 +119,68 @@ impl<'info> ConfigTransactionSync<'info> {
         );
         require!(
             aggregated_permissions.mask == 7,
-            MultisigError::InsufficientAggregatePermissions
+            SmartAccountError::InsufficientAggregatePermissions
         );
 
         // Verify threshold is met across all voting permissions
         require!(
-            vote_permission_count >= multisig.threshold as usize,
-            MultisigError::InsufficientVotePermissions
+            vote_permission_count >= settings.threshold as usize,
+            SmartAccountError::InsufficientVotePermissions
         );
 
         Ok(())
     }
 
     #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
-    pub fn config_transaction_sync(
+    pub fn sync_settings_transaction(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        args: ConfigTransactionSyncArgs,
+        args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
         let rent = Rent::get()?;
 
         // Execute the actions one by one
         for action in args.actions.iter() {
             match action {
-                ConfigAction::AddMember { new_member } => {
-                    multisig.add_member(new_member.to_owned());
+                SettingsAction::AddSigner { new_signer } => {
+                    settings.add_signer(new_signer.to_owned());
 
-                    multisig.invalidate_prior_transactions();
+                    settings.invalidate_prior_transactions();
                 }
 
-                ConfigAction::RemoveMember { old_member } => {
-                    multisig.remove_member(old_member.to_owned())?;
+                SettingsAction::RemoveSigner { old_signer } => {
+                    settings.remove_signer(old_signer.to_owned())?;
 
-                    multisig.invalidate_prior_transactions();
+                    settings.invalidate_prior_transactions();
                 }
 
-                ConfigAction::ChangeThreshold { new_threshold } => {
-                    multisig.threshold = *new_threshold;
+                SettingsAction::ChangeThreshold { new_threshold } => {
+                    settings.threshold = *new_threshold;
 
-                    multisig.invalidate_prior_transactions();
+                    settings.invalidate_prior_transactions();
                 }
 
-                ConfigAction::SetTimeLock { new_time_lock } => {
-                    multisig.time_lock = *new_time_lock;
+                SettingsAction::SetTimeLock { new_time_lock } => {
+                    settings.time_lock = *new_time_lock;
 
-                    multisig.invalidate_prior_transactions();
+                    settings.invalidate_prior_transactions();
                 }
 
-                ConfigAction::AddSpendingLimit {
-                    create_key,
-                    vault_index,
+                SettingsAction::AddSpendingLimit {
+                    seed,
+                    account_index,
+                    signers,
                     mint,
                     amount,
                     period,
-                    members,
                     destinations,
                 } => {
                     let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                         &[
                             SEED_PREFIX,
-                            multisig.key().as_ref(),
+                            settings.key().as_ref(),
                             SEED_SPENDING_LIMIT,
-                            create_key.as_ref(),
+                            seed.as_ref(),
                         ],
                         ctx.program_id,
                     );
@@ -190,53 +190,53 @@ impl<'info> ConfigTransactionSync<'info> {
                         .remaining_accounts
                         .iter()
                         .find(|acc| acc.key == &spending_limit_key)
-                        .ok_or(MultisigError::MissingAccount)?;
+                        .ok_or(SmartAccountError::MissingAccount)?;
 
                     // `rent_payer` and `system_program` must also be present.
                     let rent_payer = &ctx
                         .accounts
                         .rent_payer
                         .as_ref()
-                        .ok_or(MultisigError::MissingAccount)?;
+                        .ok_or(SmartAccountError::MissingAccount)?;
                     let system_program = &ctx
                         .accounts
                         .system_program
                         .as_ref()
-                        .ok_or(MultisigError::MissingAccount)?;
+                        .ok_or(SmartAccountError::MissingAccount)?;
 
                     // Initialize the SpendingLimit account.
                     create_account(
                         rent_payer,
                         spending_limit_info,
                         system_program,
-                        &crate::id(),
+                        &id(),
                         &rent,
-                        SpendingLimit::size(members.len(), destinations.len()),
+                        SpendingLimit::size(signers.len(), destinations.len()),
                         vec![
                             SEED_PREFIX.to_vec(),
-                            multisig.key().as_ref().to_vec(),
+                            settings.key().as_ref().to_vec(),
                             SEED_SPENDING_LIMIT.to_vec(),
-                            create_key.as_ref().to_vec(),
+                            seed.as_ref().to_vec(),
                             vec![spending_limit_bump],
                         ],
                     )?;
 
-                    let mut members = members.to_vec();
-                    // Make sure members are sorted.
-                    members.sort();
+                    let mut signers = signers.to_vec();
+                    // Make sure signers are sorted.
+                    signers.sort();
 
                     // Serialize the SpendingLimit data into the account info.
                     let spending_limit = SpendingLimit {
-                        multisig: multisig.key().to_owned(),
-                        create_key: create_key.to_owned(),
-                        vault_index: *vault_index,
+                        settings: settings.key().to_owned(),
+                        seed: seed.to_owned(),
+                        account_index: *account_index,
+                        signers,
                         amount: *amount,
                         mint: *mint,
                         period: *period,
                         remaining_amount: *amount,
                         last_reset: Clock::get()?.unix_timestamp,
                         bump: spending_limit_bump,
-                        members,
                         destinations: destinations.to_vec(),
                     };
 
@@ -246,7 +246,7 @@ impl<'info> ConfigTransactionSync<'info> {
                         .try_serialize(&mut &mut spending_limit_info.data.borrow_mut()[..])?;
                 }
 
-                ConfigAction::RemoveSpendingLimit {
+                SettingsAction::RemoveSpendingLimit {
                     spending_limit: spending_limit_key,
                 } => {
                     // Find the SpendingLimit account in `remaining_accounts`.
@@ -254,22 +254,22 @@ impl<'info> ConfigTransactionSync<'info> {
                         .remaining_accounts
                         .iter()
                         .find(|acc| acc.key == spending_limit_key)
-                        .ok_or(MultisigError::MissingAccount)?;
+                        .ok_or(SmartAccountError::MissingAccount)?;
 
                     // `rent_payer` must also be present.
                     let rent_payer = &ctx
                         .accounts
                         .rent_payer
                         .as_ref()
-                        .ok_or(MultisigError::MissingAccount)?;
+                        .ok_or(SmartAccountError::MissingAccount)?;
 
                     let spending_limit = Account::<SpendingLimit>::try_from(spending_limit_info)?;
 
-                    // SpendingLimit must belong to the `multisig`.
+                    // SpendingLimit must belong to the `settings`.
                     require_keys_eq!(
-                        spending_limit.multisig,
-                        multisig.key(),
-                        MultisigError::InvalidAccount
+                        spending_limit.settings,
+                        settings.key(),
+                        SmartAccountError::InvalidAccount
                     );
 
                     spending_limit.close(rent_payer.to_account_info())?;
@@ -278,8 +278,8 @@ impl<'info> ConfigTransactionSync<'info> {
                     // a spending limit doesn't affect the consensus parameters of the multisig.
                 }
 
-                ConfigAction::SetRentCollector { new_rent_collector } => {
-                    multisig.rent_collector = *new_rent_collector;
+                SettingsAction::SetRentCollector { new_rent_collector } => {
+                    settings.rent_collector = *new_rent_collector;
 
                     // We don't need to invalidate prior transactions here because changing
                     // `rent_collector` doesn't affect the consensus parameters of the multisig.
@@ -288,9 +288,9 @@ impl<'info> ConfigTransactionSync<'info> {
         }
 
         // Make sure the multisig account can fit the updated state: added members or newly set rent_collector.
-        Multisig::realloc_if_needed(
-            multisig.to_account_info(),
-            multisig.members.len(),
+        Settings::realloc_if_needed(
+            settings.to_account_info(),
+            settings.signers.len(),
             ctx.accounts
                 .rent_payer
                 .as_ref()
@@ -302,7 +302,7 @@ impl<'info> ConfigTransactionSync<'info> {
         )?;
 
         // Make sure the multisig state is valid after applying the actions
-        multisig.invariant()?;
+        settings.invariant()?;
 
         Ok(())
     }

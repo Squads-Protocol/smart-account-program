@@ -13,7 +13,7 @@ use crate::state::*;
 /// Sanitized and validated combination of a `MsTransactionMessage` and `AccountInfo`s it references.
 pub struct ExecutableTransactionMessage<'a, 'info> {
     /// Message which loaded a collection of lookup table addresses.
-    message: VaultTransactionMessage,
+    message: SmartAccountTransactionMessage,
     /// Resolved `account_keys` of the message.
     static_accounts: Vec<&'a AccountInfo<'info>>,
     /// Concatenated vector of resolved `writable_indexes` from all address lookups.
@@ -29,7 +29,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     /// `address_lookup_table_account_infos` - AccountInfo's that are expected to correspond to the lookup tables mentioned in `message.address_table_lookups`.
     /// `vault_pubkey` - The vault PDA that is expected to sign the message.
     pub fn new_validated(
-        message: VaultTransactionMessage,
+        message: SmartAccountTransactionMessage,
         message_account_infos: &'a [AccountInfo<'info>],
         address_lookup_table_account_infos: &'a [AccountInfo<'info>],
         vault_pubkey: &'a Pubkey,
@@ -40,7 +40,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         require_eq!(
             address_lookup_table_account_infos.len(),
             message.address_table_lookups.len(),
-            MultisigError::InvalidNumberOfAccounts
+            SmartAccountError::InvalidNumberOfAccounts
         );
         let lookup_tables: HashMap<&Pubkey, &AccountInfo> = address_lookup_table_account_infos
             .iter()
@@ -49,7 +49,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 // The lookup table account must be owned by SolanaAddressLookupTableProgram.
                 require!(
                     maybe_lookup_table.owner == &address_lookup_table::program::ID,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 // The lookup table must be mentioned in `message.address_table_lookups` at the same index.
                 require!(
@@ -58,7 +58,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                         .get(index)
                         .map(|lookup| &lookup.account_key)
                         == Some(maybe_lookup_table.key),
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 Ok((maybe_lookup_table.key, maybe_lookup_table))
             })
@@ -68,7 +68,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         require_eq!(
             message_account_infos.len(),
             message.num_all_account_keys(),
-            MultisigError::InvalidNumberOfAccounts
+            SmartAccountError::InvalidNumberOfAccounts
         );
 
         let mut static_accounts = Vec::new();
@@ -79,7 +79,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             require_keys_eq!(
                 *account_info.key,
                 *account_key,
-                MultisigError::InvalidAccount
+                SmartAccountError::InvalidAccount
             );
             // If the account is marked as signer in the message, it must be a signer in the account infos too.
             // Unless it's a vault or an ephemeral signer PDA, as they cannot be passed as signers to `remaining_accounts`,
@@ -88,11 +88,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 && account_info.key != vault_pubkey
                 && !ephemeral_signer_pdas.contains(account_info.key)
             {
-                require!(account_info.is_signer, MultisigError::InvalidAccount);
+                require!(account_info.is_signer, SmartAccountError::InvalidAccount);
             }
             // If the account is marked as writable in the message, it must be writable in the account infos too.
             if message.is_static_writable_index(i) {
-                require!(account_info.is_writable, MultisigError::InvalidAccount);
+                require!(account_info.is_writable, SmartAccountError::InvalidAccount);
             }
             static_accounts.push(account_info);
         }
@@ -112,7 +112,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .data
                 .borrow()[..];
             let lookup_table = AddressLookupTable::deserialize(lookup_table_data)
-                .map_err(|_| MultisigError::InvalidAccount)?;
+                .map_err(|_| SmartAccountError::InvalidAccount)?;
 
             // Accounts listed as writable in lookup, should be loaded as writable.
             for (i, index_in_lookup_table) in lookup.writable_indexes.iter().enumerate() {
@@ -120,21 +120,21 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
                     .get(index)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+                    .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
                 require_eq!(
                     loaded_account_info.is_writable,
                     true,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 // Check that the pubkey matches the one from the actual lookup table.
                 let pubkey_from_lookup_table = lookup_table
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
-                    .ok_or(MultisigError::InvalidAccount)?;
+                    .ok_or(SmartAccountError::InvalidAccount)?;
                 require_keys_eq!(
                     *loaded_account_info.key,
                     *pubkey_from_lookup_table,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
 
                 writable_accounts.push(*loaded_account_info);
@@ -147,16 +147,16 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
                     .get(index)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+                    .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
                 // Check that the pubkey matches the one from the actual lookup table.
                 let pubkey_from_lookup_table = lookup_table
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
-                    .ok_or(MultisigError::InvalidAccount)?;
+                    .ok_or(SmartAccountError::InvalidAccount)?;
                 require_keys_eq!(
                     *loaded_account_info.key,
                     *pubkey_from_lookup_table,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
 
                 readonly_accounts.push(*loaded_account_info);
@@ -205,7 +205,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             for account_meta in ix.accounts.iter().filter(|m| m.is_writable) {
                 require!(
                     !protected_accounts.contains(&account_meta.pubkey),
-                    MultisigError::ProtectedAccount
+                    SmartAccountError::ProtectedAccount
                 );
             }
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
@@ -232,7 +232,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             return Ok(self.loaded_readonly_accounts[index]);
         }
 
-        Err(MultisigError::InvalidTransactionMessage.into())
+        Err(SmartAccountError::InvalidTransactionMessage.into())
     }
 
     /// Whether the account at the `index` is requested as writable.

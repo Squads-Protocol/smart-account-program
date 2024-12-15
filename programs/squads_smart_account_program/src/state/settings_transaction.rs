@@ -7,9 +7,9 @@ use super::*;
 /// Config transaction can perform a predefined set of actions on the Multisig PDA, such as adding/removing members,
 /// changing the threshold, etc.
 #[account]
-pub struct ConfigTransaction {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
+pub struct SettingsTransaction {
+    /// The settings this belongs to.
+    pub settings: Pubkey,
     /// Member of the Multisig who submitted the transaction.
     pub creator: Pubkey,
     /// Index of this transaction within the multisig.
@@ -17,11 +17,11 @@ pub struct ConfigTransaction {
     /// bump for the transaction seeds.
     pub bump: u8,
     /// Action to be performed on the multisig.
-    pub actions: Vec<ConfigAction>,
+    pub actions: Vec<SettingsAction>,
 }
 
-impl ConfigTransaction {
-    pub fn size(actions: &[ConfigAction]) -> usize {
+impl SettingsTransaction {
+    pub fn size(actions: &[SettingsAction]) -> usize {
         let actions_size: usize = actions
             .iter()
             .map(|action| get_instance_packed_len(action).unwrap())
@@ -31,7 +31,7 @@ impl ConfigTransaction {
         32 +  // multisig
         32 +  // creator
         8 +   // index
-        1 +   // bump 
+        1 +   // bump
         4 +  // actions vector length
         actions_size
     }
@@ -39,11 +39,11 @@ impl ConfigTransaction {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum ConfigAction {
+pub enum SettingsAction {
     /// Add a new member to the multisig.
-    AddMember { new_member: Member },
+    AddSigner { new_signer: SmartAccountSigner },
     /// Remove a member from the multisig.
-    RemoveMember { old_member: Pubkey },
+    RemoveSigner { old_signer: Pubkey },
     /// Change the `threshold` of the multisig.
     ChangeThreshold { new_threshold: u16 },
     /// Change the `time_lock` of the multisig.
@@ -51,9 +51,9 @@ pub enum ConfigAction {
     /// Change the `time_lock` of the multisig.
     AddSpendingLimit {
         /// Key that is used to seed the SpendingLimit PDA.
-        create_key: Pubkey,
-        /// The index of the vault that the spending limit is for.
-        vault_index: u8,
+        seed: Pubkey,
+        /// The index of the account that the spending limit is for.
+        account_index: u8,
         /// The token mint the spending limit is for.
         mint: Pubkey,
         /// The amount of tokens that can be spent in a period.
@@ -66,7 +66,7 @@ pub enum ConfigAction {
         /// Members of the multisig that can use the spending limit.
         /// In case a member is removed from the multisig, the spending limit will remain existent
         /// (until explicitly deleted), but the removed member will not be able to use it anymore.
-        members: Vec<Pubkey>,
+        signers: Vec<Pubkey>,
         /// The destination addresses the spending limit is allowed to sent funds to.
         /// If empty, funds can be sent to any address.
         destinations: Vec<Pubkey>,

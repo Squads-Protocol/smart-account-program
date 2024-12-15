@@ -1,27 +1,27 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 
-use crate::{TransactionMessage, VaultTransactionMessage};
+use crate::{TransactionMessage, SmartAccountTransactionMessage};
 
-/// Stores data required for serial execution of a batch of multisig vault transactions.
-/// Vault transaction is a transaction that's executed on behalf of the multisig vault PDA
+/// Stores data required for serial execution of a batch of smart account transactions.
+/// A smart account transaction is a transaction that's executed on behalf of the smart account
 /// and wraps arbitrary Solana instructions, typically calling into other Solana programs.
 /// The transactions themselves are stored in separate PDAs associated with the this account.
 #[account]
 #[derive(InitSpace)]
 pub struct Batch {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
-    /// Member of the Multisig who submitted the batch.
+    /// The settings this belongs to.
+    pub settings: Pubkey,
+    /// Signer of the smart account who submitted the batch.
     pub creator: Pubkey,
-    /// Index of this batch within the multisig transactions.
+    /// Index of this batch within the smart account transactions.
     pub index: u64,
     /// PDA bump.
     pub bump: u8,
-    /// Index of the vault this batch belongs to.
-    pub vault_index: u8,
-    /// Derivation bump of the vault PDA this batch belongs to.
-    pub vault_bump: u8,
+    /// Index of the smart account this batch belongs to.
+    pub account_index: u8,
+    /// Derivation bump of the smart account PDA this batch belongs to.
+    pub account_bump: u8,
     /// Number of transactions in the batch.
     pub size: u32,
     /// Index of the last executed transaction within the batch.
@@ -41,7 +41,7 @@ impl Batch {
 /// Stores data required for execution of one transaction from a batch.
 #[account]
 #[derive(Default)]
-pub struct VaultBatchTransaction {
+pub struct BatchTransaction {
     /// PDA bump.
     pub bump: u8,
     /// Derivation bumps for additional signers.
@@ -53,12 +53,12 @@ pub struct VaultBatchTransaction {
     /// thus "signing" on behalf of these PDAs.
     pub ephemeral_signer_bumps: Vec<u8>,
     /// data required for executing the transaction.
-    pub message: VaultTransactionMessage,
+    pub message: SmartAccountTransactionMessage,
 }
 
-impl VaultBatchTransaction {
+impl BatchTransaction {
     pub fn size(ephemeral_signers_length: u8, transaction_message: &[u8]) -> Result<usize> {
-        let transaction_message: VaultTransactionMessage =
+        let transaction_message: SmartAccountTransactionMessage =
             TransactionMessage::deserialize(&mut &transaction_message[..])?.try_into()?;
 
         let message_size = get_instance_packed_len(&transaction_message).unwrap_or_default();
@@ -71,9 +71,9 @@ impl VaultBatchTransaction {
         )
     }
 
-    /// Reduces the VaultBatchTransaction to its default empty value and moves
+    /// Reduces the BatchTransaction to its default empty value and moves
     /// ownership of the data to the caller/return value.
-    pub fn take(&mut self) -> VaultBatchTransaction {
+    pub fn take(&mut self) -> BatchTransaction {
         core::mem::take(self)
     }
 }

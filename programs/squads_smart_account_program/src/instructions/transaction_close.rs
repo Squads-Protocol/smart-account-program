@@ -16,13 +16,13 @@ use crate::state::*;
 use crate::utils;
 
 #[derive(Accounts)]
-pub struct ConfigTransactionAccountsClose<'info> {
+pub struct CloseSettingsTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
-        constraint = multisig.rent_collector.is_some() @ MultisigError::RentReclamationDisabled,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
+        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
     ///         the logic within `config_transaction_accounts_close` does the rest of the checks.
@@ -30,7 +30,7 @@ pub struct ConfigTransactionAccountsClose<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &transaction.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -42,34 +42,34 @@ pub struct ConfigTransactionAccountsClose<'info> {
     /// ConfigTransaction corresponding to the `proposal`.
     #[account(
         mut,
-        has_one = multisig @ MultisigError::TransactionForAnotherMultisig,
+        has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
         close = rent_collector
     )]
-    pub transaction: Account<'info, ConfigTransaction>,
+    pub transaction: Account<'info, SettingsTransaction>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = multisig.rent_collector.unwrap().key() @ MultisigError::InvalidRentCollector,
+        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
     )]
     pub rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-impl ConfigTransactionAccountsClose<'_> {
+impl CloseSettingsTransaction<'_> {
     /// Closes a `ConfigTransaction` and the corresponding `Proposal`.
     /// `transaction` can be closed if either:
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale.
-    pub fn config_transaction_accounts_close(ctx: Context<Self>) -> Result<()> {
-        let multisig = &ctx.accounts.multisig;
+    pub fn close_settings_transaction(ctx: Context<Self>) -> Result<()> {
+        let settings = &ctx.accounts.settings;
         let transaction = &ctx.accounts.transaction;
         let proposal = &mut ctx.accounts.proposal;
         let rent_collector = &ctx.accounts.rent_collector;
 
-        let is_stale = transaction.index <= multisig.stale_transaction_index;
+        let is_stale = transaction.index <= settings.stale_transaction_index;
 
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
@@ -105,7 +105,7 @@ impl ConfigTransactionAccountsClose<'_> {
             is_stale
         };
 
-        require!(can_close, MultisigError::InvalidProposalStatus);
+        require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
         if proposal_account.is_some() {
@@ -121,13 +121,13 @@ impl ConfigTransactionAccountsClose<'_> {
 }
 
 #[derive(Accounts)]
-pub struct VaultTransactionAccountsClose<'info> {
+pub struct CloseTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
-        constraint = multisig.rent_collector.is_some() @ MultisigError::RentReclamationDisabled,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
+        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
     ///         the logic within `vault_transaction_accounts_close` does the rest of the checks.
@@ -135,7 +135,7 @@ pub struct VaultTransactionAccountsClose<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &transaction.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -147,36 +147,34 @@ pub struct VaultTransactionAccountsClose<'info> {
     /// VaultTransaction corresponding to the `proposal`.
     #[account(
         mut,
-        has_one = multisig @ MultisigError::TransactionForAnotherMultisig,
+        has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
         close = rent_collector
     )]
-    pub transaction: Account<'info, VaultTransaction>,
+    pub transaction: Account<'info, Transaction>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = multisig.rent_collector.unwrap().key() @ MultisigError::InvalidRentCollector,
+        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
     )]
     pub rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-impl VaultTransactionAccountsClose<'_> {
-    /// Closes a `VaultTransaction` and the corresponding `Proposal`.
+impl CloseTransaction<'_> {
+    /// Closes a `Transaction` and the corresponding `Proposal`.
     /// `transaction` can be closed if either:
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale and not `Approved`.
-    pub fn vault_transaction_accounts_close(
-        ctx: Context<VaultTransactionAccountsClose>,
-    ) -> Result<()> {
-        let multisig = &ctx.accounts.multisig;
+    pub fn close_transaction(ctx: Context<Self>) -> Result<()> {
+        let settings = &ctx.accounts.settings;
         let transaction = &ctx.accounts.transaction;
         let proposal = &mut ctx.accounts.proposal;
         let rent_collector = &ctx.accounts.rent_collector;
 
-        let is_stale = transaction.index <= multisig.stale_transaction_index;
+        let is_stale = transaction.index <= settings.stale_transaction_index;
 
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
@@ -212,7 +210,7 @@ impl VaultTransactionAccountsClose<'_> {
             is_stale
         };
 
-        require!(can_close, MultisigError::InvalidProposalStatus);
+        require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
         if proposal_account.is_some() {
@@ -229,24 +227,24 @@ impl VaultTransactionAccountsClose<'_> {
 
 //region VaultBatchTransactionAccountClose
 #[derive(Accounts)]
-pub struct VaultBatchTransactionAccountClose<'info> {
+pub struct CloseBatchTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
-        constraint = multisig.rent_collector.is_some() @ MultisigError::RentReclamationDisabled,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
+        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
-        has_one = multisig @ MultisigError::ProposalForAnotherMultisig,
+        has_one = settings @ SmartAccountError::ProposalForAnotherSmartAccount,
     )]
     pub proposal: Account<'info, Proposal>,
 
     /// `Batch` corresponding to the `proposal`.
     #[account(
         mut,
-        has_one = multisig @ MultisigError::TransactionForAnotherMultisig,
-        constraint = batch.index == proposal.transaction_index @ MultisigError::TransactionNotMatchingProposal,
+        has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
+        constraint = batch.index == proposal.transaction_index @ SmartAccountError::TransactionNotMatchingProposal,
     )]
     pub batch: Account<'info, Batch>,
 
@@ -256,23 +254,23 @@ pub struct VaultBatchTransactionAccountClose<'info> {
         mut,
         close = rent_collector,
     )]
-    pub transaction: Account<'info, VaultBatchTransaction>,
+    pub transaction: Account<'info, BatchTransaction>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = multisig.rent_collector.unwrap().key() @ MultisigError::InvalidRentCollector,
+        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
     )]
     pub rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-impl VaultBatchTransactionAccountClose<'_> {
+impl CloseBatchTransaction<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            multisig,
+            settings,
             proposal,
             batch,
             transaction,
@@ -286,7 +284,7 @@ impl VaultBatchTransactionAccountClose<'_> {
         let last_transaction_address = Pubkey::create_program_address(
             &[
                 SEED_PREFIX,
-                multisig.key().as_ref(),
+                settings.key().as_ref(),
                 SEED_TRANSACTION,
                 &batch.index.to_le_bytes(),
                 SEED_BATCH_TRANSACTION,
@@ -297,16 +295,16 @@ impl VaultBatchTransactionAccountClose<'_> {
             ],
             &crate::id(),
         )
-        .map_err(|_| MultisigError::TransactionNotLastInBatch)?;
+        .map_err(|_| SmartAccountError::TransactionNotLastInBatch)?;
 
         // Then compare it to the provided transaction address.
         require_keys_eq!(
             transaction.key(),
             last_transaction_address,
-            MultisigError::TransactionNotLastInBatch
+            SmartAccountError::TransactionNotLastInBatch
         );
 
-        let is_proposal_stale = proposal.transaction_index <= multisig.stale_transaction_index;
+        let is_proposal_stale = proposal.transaction_index <= settings.stale_transaction_index;
 
         #[allow(deprecated)]
         let can_close = match proposal.status {
@@ -329,7 +327,7 @@ impl VaultBatchTransactionAccountClose<'_> {
             ProposalStatus::Executing => false,
         };
 
-        require!(can_close, MultisigError::InvalidProposalStatus);
+        require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         Ok(())
     }
@@ -341,7 +339,7 @@ impl VaultBatchTransactionAccountClose<'_> {
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale and not `Approved`.
     #[access_control(ctx.accounts.validate())]
-    pub fn vault_batch_transaction_account_close(ctx: Context<Self>) -> Result<()> {
+    pub fn close_batch_transaction(ctx: Context<Self>) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
 
         batch.size = batch.size.checked_sub(1).expect("overflow");
@@ -355,13 +353,13 @@ impl VaultBatchTransactionAccountClose<'_> {
 
 //region BatchAccountsClose
 #[derive(Accounts)]
-pub struct BatchAccountsClose<'info> {
+pub struct CloseBatch<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
-        constraint = multisig.rent_collector.is_some() @ MultisigError::RentReclamationDisabled,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
+        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     // pub proposal: Account<'info, Proposal>,
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
@@ -370,7 +368,7 @@ pub struct BatchAccountsClose<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -382,7 +380,7 @@ pub struct BatchAccountsClose<'info> {
     /// `Batch` corresponding to the `proposal`.
     #[account(
         mut,
-        has_one = multisig @ MultisigError::TransactionForAnotherMultisig,
+        has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
         close = rent_collector
     )]
     pub batch: Account<'info, Batch>,
@@ -391,26 +389,26 @@ pub struct BatchAccountsClose<'info> {
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = multisig.rent_collector.unwrap().key() @ MultisigError::InvalidRentCollector,
+        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
     )]
     pub rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-impl BatchAccountsClose<'_> {
+impl CloseBatch<'_> {
     /// Closes Batch and the corresponding Proposal accounts for proposals in terminal states:
     /// `Executed`, `Rejected`, or `Cancelled` or stale proposals that aren't `Approved`.
     ///
-    /// This instruction is only allowed to be executed when all `VaultBatchTransaction` accounts
+    /// This instruction is only allowed to be executed when all `BatchTransaction` accounts
     /// in the `batch` are already closed: `batch.size == 0`.
-    pub fn batch_accounts_close(ctx: Context<Self>) -> Result<()> {
-        let multisig = &ctx.accounts.multisig;
+    pub fn close_batch(ctx: Context<Self>) -> Result<()> {
+        let settings = &ctx.accounts.settings;
         let batch = &ctx.accounts.batch;
         let proposal = &mut ctx.accounts.proposal;
         let rent_collector = &ctx.accounts.rent_collector;
 
-        let is_stale = batch.index <= multisig.stale_transaction_index;
+        let is_stale = batch.index <= settings.stale_transaction_index;
 
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
@@ -446,10 +444,10 @@ impl BatchAccountsClose<'_> {
             is_stale
         };
 
-        require!(can_close, MultisigError::InvalidProposalStatus);
+        require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Batch must be empty.
-        require_eq!(batch.size, 0, MultisigError::BatchNotEmpty);
+        require_eq!(batch.size, 0, SmartAccountError::BatchNotEmpty);
 
         // Close the `proposal` account if exists.
         if proposal_account.is_some() {

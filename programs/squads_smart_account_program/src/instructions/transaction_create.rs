@@ -6,9 +6,9 @@ use crate::state::*;
 use crate::utils::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct VaultTransactionCreateArgs {
-    /// Index of the vault this transaction belongs to.
-    pub vault_index: u8,
+pub struct CreateTransactionArgs {
+    /// Index of the smart account this transaction belongs to.
+    pub account_index: u8,
     /// Number of ephemeral signing PDAs required by the transaction.
     pub ephemeral_signers: u8,
     pub transaction_message: Vec<u8>,
@@ -16,28 +16,28 @@ pub struct VaultTransactionCreateArgs {
 }
 
 #[derive(Accounts)]
-#[instruction(args: VaultTransactionCreateArgs)]
-pub struct VaultTransactionCreate<'info> {
+#[instruction(args: CreateTransactionArgs)]
+pub struct CreateTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         init,
         payer = rent_payer,
-        space = VaultTransaction::size(args.ephemeral_signers, &args.transaction_message)?,
+        space = Transaction::size(args.ephemeral_signers, &args.transaction_message)?,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
-            &multisig.transaction_index.checked_add(1).unwrap().to_le_bytes(),
+            &settings.transaction_index.checked_add(1).unwrap().to_le_bytes(),
         ],
         bump
     )]
-    pub transaction: Account<'info, VaultTransaction>,
+    pub transaction: Account<'info, Transaction>,
 
     /// The member of the multisig that is creating the transaction.
     pub creator: Signer<'info>,
@@ -49,20 +49,20 @@ pub struct VaultTransactionCreate<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> VaultTransactionCreate<'info> {
+impl<'info> CreateTransaction<'info> {
     pub fn validate(&self) -> Result<()> {
         let Self {
-            multisig, creator, ..
+            settings, creator, ..
         } = self;
 
         // creator
         require!(
-            multisig.is_member(creator.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(creator.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
-            multisig.member_has_permission(creator.key(), Permission::Initiate),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            SmartAccountError::Unauthorized
         );
 
         Ok(())
@@ -70,27 +70,25 @@ impl<'info> VaultTransactionCreate<'info> {
 
     /// Create a new vault transaction.
     #[access_control(ctx.accounts.validate())]
-    pub fn vault_transaction_create(
-        ctx: Context<Self>,
-        args: VaultTransactionCreateArgs,
-    ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn create_transaction(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
 
         let transaction_message =
             TransactionMessage::deserialize(&mut args.transaction_message.as_slice())?;
 
-        let multisig_key = multisig.key();
+        let settings_key = settings.key();
         let transaction_key = transaction.key();
 
-        let vault_seeds = &[
+        let smart_account_seeds = &[
             SEED_PREFIX,
-            multisig_key.as_ref(),
-            SEED_VAULT,
-            &args.vault_index.to_le_bytes(),
+            settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
+            &args.account_index.to_le_bytes(),
         ];
-        let (_, vault_bump) = Pubkey::find_program_address(vault_seeds, ctx.program_id);
+        let (_, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
         let ephemeral_signer_bumps: Vec<u8> = (0..args.ephemeral_signers)
             .map(|ephemeral_signer_index| {
@@ -108,22 +106,22 @@ impl<'info> VaultTransactionCreate<'info> {
             .collect();
 
         // Increment the transaction index.
-        let transaction_index = multisig.transaction_index.checked_add(1).unwrap();
+        let transaction_index = settings.transaction_index.checked_add(1).unwrap();
 
         // Initialize the transaction fields.
-        transaction.multisig = multisig_key;
+        transaction.settings = settings_key;
         transaction.creator = creator.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
-        transaction.vault_index = args.vault_index;
-        transaction.vault_bump = vault_bump;
+        transaction.account_index = args.account_index;
+        transaction.account_bump = smart_account_bump;
         transaction.ephemeral_signer_bumps = ephemeral_signer_bumps;
         transaction.message = transaction_message.try_into()?;
 
         // Updated last transaction index in the multisig account.
-        multisig.transaction_index = transaction_index;
+        settings.transaction_index = transaction_index;
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         // Logs for indexing.
         msg!("transaction index: {}", transaction_index);

@@ -4,24 +4,24 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(Accounts)]
-pub struct TransactionBufferClose<'info> {
+pub struct CloseTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         mut,
         // Rent gets returned to the creator
         close = creator,
         // Only the creator can close the buffer
-        constraint = transaction_buffer.creator == creator.key() @ MultisigError::Unauthorized,
+        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
         // Account can be closed anytime by the creator, regardless of the
         // current multisig transaction index
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()
@@ -34,14 +34,14 @@ pub struct TransactionBufferClose<'info> {
     pub creator: Signer<'info>,
 }
 
-impl TransactionBufferClose<'_> {
+impl CloseTransactionBuffer<'_> {
     fn validate(&self) -> Result<()> {
         Ok(())
     }
 
     /// Close a transaction buffer account.
     #[access_control(ctx.accounts.validate())]
-    pub fn transaction_buffer_close(ctx: Context<Self>) -> Result<()> {
+    pub fn close_transaction_buffer(ctx: Context<Self>) -> Result<()> {
         Ok(())
     }
 }

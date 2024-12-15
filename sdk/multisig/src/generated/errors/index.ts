@@ -12,26 +12,26 @@ const createErrorFromCodeLookup: Map<number, () => ErrorWithCode> = new Map()
 const createErrorFromNameLookup: Map<string, () => ErrorWithCode> = new Map()
 
 /**
- * DuplicateMember: 'Found multiple members with the same pubkey'
+ * DuplicateSigner: 'Found multiple members with the same pubkey'
  *
  * @category Errors
  * @category generated
  */
-export class DuplicateMemberError extends Error {
+export class DuplicateSignerError extends Error {
   readonly code: number = 0x1770
-  readonly name: string = 'DuplicateMember'
+  readonly name: string = 'DuplicateSigner'
   constructor() {
     super('Found multiple members with the same pubkey')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, DuplicateMemberError)
+      Error.captureStackTrace(this, DuplicateSignerError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1770, () => new DuplicateMemberError())
+createErrorFromCodeLookup.set(0x1770, () => new DuplicateSignerError())
 createErrorFromNameLookup.set(
-  'DuplicateMember',
-  () => new DuplicateMemberError()
+  'DuplicateSigner',
+  () => new DuplicateSignerError()
 )
 
 /**
@@ -120,24 +120,24 @@ createErrorFromCodeLookup.set(0x1774, () => new UnauthorizedError())
 createErrorFromNameLookup.set('Unauthorized', () => new UnauthorizedError())
 
 /**
- * NotAMember: 'Provided pubkey is not a member of multisig'
+ * NotASigner: 'Provided pubkey is not a member of multisig'
  *
  * @category Errors
  * @category generated
  */
-export class NotAMemberError extends Error {
+export class NotASignerError extends Error {
   readonly code: number = 0x1775
-  readonly name: string = 'NotAMember'
+  readonly name: string = 'NotASigner'
   constructor() {
     super('Provided pubkey is not a member of multisig')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, NotAMemberError)
+      Error.captureStackTrace(this, NotASignerError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1775, () => new NotAMemberError())
-createErrorFromNameLookup.set('NotAMember', () => new NotAMemberError())
+createErrorFromCodeLookup.set(0x1775, () => new NotASignerError())
+createErrorFromNameLookup.set('NotASigner', () => new NotASignerError())
 
 /**
  * InvalidTransactionMessage: 'TransactionMessage is malformed.'
@@ -777,24 +777,24 @@ createErrorFromNameLookup.set(
  * @category Errors
  * @category generated
  */
-export class ProposalForAnotherMultisigError extends Error {
+export class ProposalForAnotherSmartAccountError extends Error {
   readonly code: number = 0x1792
   readonly name: string = 'ProposalForAnotherMultisig'
   constructor() {
     super('Proposal is for another multisig')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, ProposalForAnotherMultisigError)
+      Error.captureStackTrace(this, ProposalForAnotherSmartAccountError)
     }
   }
 }
 
 createErrorFromCodeLookup.set(
   0x1792,
-  () => new ProposalForAnotherMultisigError()
+  () => new ProposalForAnotherSmartAccountError()
 )
 createErrorFromNameLookup.set(
   'ProposalForAnotherMultisig',
-  () => new ProposalForAnotherMultisigError()
+  () => new ProposalForAnotherSmartAccountError()
 )
 
 /**
@@ -803,24 +803,24 @@ createErrorFromNameLookup.set(
  * @category Errors
  * @category generated
  */
-export class TransactionForAnotherMultisigError extends Error {
+export class TransactionForAnotherSmartAccountError extends Error {
   readonly code: number = 0x1793
   readonly name: string = 'TransactionForAnotherMultisig'
   constructor() {
     super('Transaction is for another multisig')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, TransactionForAnotherMultisigError)
+      Error.captureStackTrace(this, TransactionForAnotherSmartAccountError)
     }
   }
 }
 
 createErrorFromCodeLookup.set(
   0x1793,
-  () => new TransactionForAnotherMultisigError()
+  () => new TransactionForAnotherSmartAccountError()
 )
 createErrorFromNameLookup.set(
   'TransactionForAnotherMultisig',
-  () => new TransactionForAnotherMultisigError()
+  () => new TransactionForAnotherSmartAccountError()
 )
 
 /**

@@ -9,19 +9,19 @@ use crate::id;
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 #[account]
-pub struct Multisig {
-    /// Key that is used to seed the multisig PDA.
-    pub create_key: Pubkey,
-    /// The authority that can change the multisig config.
-    /// This is a very important parameter as this authority can change the members and threshold.
+pub struct Settings {
+    /// Key that is used to seed the settings PDA.
+    pub seed: Pubkey,
+    /// The authority that can change the smart account settings.
+    /// This is a very important parameter as this authority can change the signers and threshold.
     ///
     /// The convention is to set this to `Pubkey::default()`.
-    /// In this case, the multisig becomes autonomous, so every config change goes through
-    /// the normal process of voting by the members.
+    /// In this case, the smart account becomes autonomous, so every settings change goes through
+    /// the normal process of voting by the signers.
     ///
-    /// However, if this parameter is set to any other key, all the config changes for this multisig
-    /// will need to be signed by the `config_authority`. We call such a multisig a "controlled multisig".
-    pub config_authority: Pubkey,
+    /// However, if this parameter is set to any other key, all the setting changes for this smart account settings
+    /// will need to be signed by the `settings_authority`. We call such a smart account a "controlled smart account".
+    pub settings_authority: Pubkey,
     /// Threshold for signatures.
     pub threshold: u16,
     /// How many seconds must pass between transaction voting settlement and execution.
@@ -29,22 +29,22 @@ pub struct Multisig {
     /// Last transaction index. 0 means no transactions have been created.
     pub transaction_index: u64,
     /// Last stale transaction index. All transactions up until this index are stale.
-    /// This index is updated when multisig config (members/threshold/time_lock) changes.
+    /// This index is updated when smart account settings (members/threshold/time_lock) change.
     pub stale_transaction_index: u64,
     /// The address where the rent for the accounts related to executed, rejected, or cancelled
     /// transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off.
     pub rent_collector: Option<Pubkey>,
-    /// Bump for the multisig PDA seed.
+    /// Bump for the smart account PDA seed.
     pub bump: u8,
-    /// Members of the multisig.
-    pub members: Vec<Member>,
+    /// Signers attached to the smart account
+    pub signers: Vec<SmartAccountSigner>,
 }
 
-impl Multisig {
-    pub fn size(members_length: usize) -> usize {
+impl Settings {
+    pub fn size(signers_length: usize) -> usize {
         8  + // anchor account discriminator
-        32 + // create_key
-        32 + // config_authority
+        32 + // seed
+        32 + // settings_authority
         2  + // threshold
         4  + // time_lock
         8  + // transaction_index
@@ -52,26 +52,26 @@ impl Multisig {
         1  + // rent_collector Option discriminator
         32 + // rent_collector (always 32 bytes, even if None, just to keep the realloc logic simpler)
         1  + // bump
-        4  + // members vector length
-        members_length * Member::INIT_SPACE // members
+        4  + // signers vector length
+        signers_length * SmartAccountSigner::INIT_SPACE // signers
     }
 
-    pub fn num_voters(members: &[Member]) -> usize {
-        members
+    pub fn num_voters(signers: &[SmartAccountSigner]) -> usize {
+        signers
             .iter()
             .filter(|m| m.permissions.has(Permission::Vote))
             .count()
     }
 
-    pub fn num_proposers(members: &[Member]) -> usize {
-        members
+    pub fn num_proposers(signers: &[SmartAccountSigner]) -> usize {
+        signers
             .iter()
             .filter(|m| m.permissions.has(Permission::Initiate))
             .count()
     }
 
-    pub fn num_executors(members: &[Member]) -> usize {
-        members
+    pub fn num_executors(signers: &[SmartAccountSigner]) -> usize {
+        signers
             .iter()
             .filter(|m| m.permissions.has(Permission::Execute))
             .count()
@@ -86,10 +86,14 @@ impl Multisig {
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
         // Sanity checks
-        require_keys_eq!(*multisig.owner, id(), MultisigError::IllegalAccountOwner);
+        require_keys_eq!(
+            *multisig.owner,
+            id(),
+            SmartAccountError::IllegalAccountOwner
+        );
 
         let current_account_size = multisig.data.borrow().len();
-        let account_size_to_fit_members = Multisig::size(members_length);
+        let account_size_to_fit_members = Settings::size(members_length);
 
         // Check if we need to reallocate space.
         if current_account_size >= account_size_to_fit_members {
@@ -97,7 +101,7 @@ impl Multisig {
         }
 
         let new_size = max(
-            current_account_size + (10 * Member::INIT_SPACE), // We need to allocate more space. To avoid doing this operation too often, we increment it by 10 members.
+            current_account_size + (10 * SmartAccountSigner::INIT_SPACE), // We need to allocate more space. To avoid doing this operation too often, we increment it by 10 members.
             account_size_to_fit_members,
         );
         // Reallocate more space.
@@ -109,14 +113,14 @@ impl Multisig {
             rent_exempt_lamports.saturating_sub(multisig.to_account_info().lamports());
 
         if top_up_lamports > 0 {
-            let system_program = system_program.ok_or(MultisigError::MissingAccount)?;
+            let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
             require_keys_eq!(
                 *system_program.key,
                 system_program::ID,
-                MultisigError::InvalidAccount
+                SmartAccountError::InvalidAccount
             );
 
-            let rent_payer = rent_payer.ok_or(MultisigError::MissingAccount)?;
+            let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
 
             system_program::transfer(
                 CpiContext::new(
@@ -138,58 +142,58 @@ impl Multisig {
     pub fn invariant(&self) -> Result<()> {
         let Self {
             threshold,
-            members,
+            signers,
             transaction_index,
             stale_transaction_index,
             ..
         } = self;
         // Max number of members is u16::MAX.
         require!(
-            members.len() <= usize::from(u16::MAX),
-            MultisigError::TooManyMembers
+            signers.len() <= usize::from(u16::MAX),
+            SmartAccountError::TooManySigners
         );
 
         // There must be no duplicate members.
-        let has_duplicates = members.windows(2).any(|win| win[0].key == win[1].key);
-        require!(!has_duplicates, MultisigError::DuplicateMember);
+        let has_duplicates = signers.windows(2).any(|win| win[0].key == win[1].key);
+        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 
         // Members must not have unknown permissions.
         require!(
-            members.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
-            MultisigError::UnknownPermission
+            signers.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
+            SmartAccountError::UnknownPermission
         );
 
         // There must be at least one member with Initiate permission.
-        let num_proposers = Self::num_proposers(members);
-        require!(num_proposers > 0, MultisigError::NoProposers);
+        let num_proposers = Self::num_proposers(signers);
+        require!(num_proposers > 0, SmartAccountError::NoProposers);
 
         // There must be at least one member with Execute permission.
-        let num_executors = Self::num_executors(members);
-        require!(num_executors > 0, MultisigError::NoExecutors);
+        let num_executors = Self::num_executors(signers);
+        require!(num_executors > 0, SmartAccountError::NoExecutors);
 
         // There must be at least one member with Vote permission.
-        let num_voters = Self::num_voters(members);
-        require!(num_voters > 0, MultisigError::NoVoters);
+        let num_voters = Self::num_voters(signers);
+        require!(num_voters > 0, SmartAccountError::NoVoters);
 
         // Threshold must be greater than 0.
-        require!(*threshold > 0, MultisigError::InvalidThreshold);
+        require!(*threshold > 0, SmartAccountError::InvalidThreshold);
 
         // Threshold must not exceed the number of voters.
         require!(
             usize::from(*threshold) <= num_voters,
-            MultisigError::InvalidThreshold
+            SmartAccountError::InvalidThreshold
         );
 
         // `state.stale_transaction_index` must be less than or equal to `state.transaction_index`.
         require!(
             stale_transaction_index <= transaction_index,
-            MultisigError::InvalidStaleTransactionIndex
+            SmartAccountError::InvalidStaleTransactionIndex
         );
 
         // Time Lock must not exceed the maximum allowed to prevent bricking the multisig.
         require!(
             self.time_lock <= MAX_TIME_LOCK,
-            MultisigError::TimeLockExceedsMaxAllowed
+            SmartAccountError::TimeLockExceedsMaxAllowed
         );
 
         Ok(())
@@ -203,15 +207,15 @@ impl Multisig {
 
     /// Returns `Some(index)` if `member_pubkey` is a member, with `index` into the `members` vec.
     /// `None` otherwise.
-    pub fn is_member(&self, member_pubkey: Pubkey) -> Option<usize> {
-        self.members
-            .binary_search_by_key(&member_pubkey, |m| m.key)
+    pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
+        self.signers
+            .binary_search_by_key(&signer_pubkey, |m| m.key)
             .ok()
     }
 
-    pub fn member_has_permission(&self, member_pubkey: Pubkey, permission: Permission) -> bool {
-        match self.is_member(member_pubkey) {
-            Some(index) => self.members[index].permissions.has(permission),
+    pub fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
+        match self.is_signer(signer_pubkey) {
+            Some(index) => self.signers[index].permissions.has(permission),
             _ => false,
         }
     }
@@ -220,7 +224,7 @@ impl Multisig {
     /// The cutoff must be such that it is impossible for the remaining voters to reach the approval threshold.
     /// For example: total voters = 7, threshold = 3, cutoff = 5.
     pub fn cutoff(&self) -> usize {
-        Self::num_voters(&self.members)
+        Self::num_voters(&self.signers)
             .checked_sub(usize::from(self.threshold))
             .unwrap()
             .checked_add(1)
@@ -228,29 +232,29 @@ impl Multisig {
     }
 
     /// Add `new_member` to the multisig `members` vec and sort the vec.
-    pub fn add_member(&mut self, new_member: Member) {
-        self.members.push(new_member);
-        self.members.sort_by_key(|m| m.key);
+    pub fn add_signer(&mut self, new_signer: SmartAccountSigner) {
+        self.signers.push(new_signer);
+        self.signers.sort_by_key(|m| m.key);
     }
 
     /// Remove `member_pubkey` from the multisig `members` vec.
     ///
     /// # Errors
-    /// - `MultisigError::NotAMember` if `member_pubkey` is not a member.
-    pub fn remove_member(&mut self, member_pubkey: Pubkey) -> Result<()> {
-        let old_member_index = match self.is_member(member_pubkey) {
-            Some(old_member_index) => old_member_index,
-            None => return err!(MultisigError::NotAMember),
+    /// - `SmartAccountError::NotASigner` if `member_pubkey` is not a member.
+    pub fn remove_signer(&mut self, signer_pubkey: Pubkey) -> Result<()> {
+        let old_signer_index = match self.is_signer(signer_pubkey) {
+            Some(old_signer_index) => old_signer_index,
+            None => return err!(SmartAccountError::NotASigner),
         };
 
-        self.members.remove(old_member_index);
+        self.signers.remove(old_signer_index);
 
         Ok(())
     }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone)]
-pub struct Member {
+pub struct SmartAccountSigner {
     pub key: Pubkey,
     pub permissions: Permissions,
 }

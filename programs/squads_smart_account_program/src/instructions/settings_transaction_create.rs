@@ -4,34 +4,34 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ConfigTransactionCreateArgs {
-    pub actions: Vec<ConfigAction>,
+pub struct CreateSettingsTransactionArgs {
+    pub actions: Vec<SettingsAction>,
     pub memo: Option<String>,
 }
 
 #[derive(Accounts)]
-#[instruction(args: ConfigTransactionCreateArgs)]
-pub struct ConfigTransactionCreate<'info> {
+#[instruction(args: CreateSettingsTransactionArgs)]
+pub struct CreateSettingsTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         init,
         payer = rent_payer,
-        space = ConfigTransaction::size(&args.actions),
+        space = SettingsTransaction::size(&args.actions),
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
-            &multisig.transaction_index.checked_add(1).unwrap().to_le_bytes(),
+            &settings.transaction_index.checked_add(1).unwrap().to_le_bytes(),
         ],
         bump
     )]
-    pub transaction: Account<'info, ConfigTransaction>,
+    pub transaction: Account<'info, SettingsTransaction>,
 
     /// The member of the multisig that is creating the transaction.
     pub creator: Signer<'info>,
@@ -43,37 +43,37 @@ pub struct ConfigTransactionCreate<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl ConfigTransactionCreate<'_> {
-    fn validate(&self, args: &ConfigTransactionCreateArgs) -> Result<()> {
-        // multisig
+impl CreateSettingsTransaction<'_> {
+    fn validate(&self, args: &CreateSettingsTransactionArgs) -> Result<()> {
+        // settings
         require_keys_eq!(
-            self.multisig.config_authority,
+            self.settings.settings_authority,
             Pubkey::default(),
-            MultisigError::NotSupportedForControlled
+            SmartAccountError::NotSupportedForControlled
         );
 
         // creator
         require!(
-            self.multisig.is_member(self.creator.key()).is_some(),
-            MultisigError::NotAMember
+            self.settings.is_signer(self.creator.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
-            self.multisig
-                .member_has_permission(self.creator.key(), Permission::Initiate),
-            MultisigError::Unauthorized
+            self.settings
+                .signer_has_permission(self.creator.key(), Permission::Initiate),
+            SmartAccountError::Unauthorized
         );
 
         // args
 
         // Config transaction must have at least one action
-        require!(!args.actions.is_empty(), MultisigError::NoActions);
+        require!(!args.actions.is_empty(), SmartAccountError::NoActions);
 
         // time_lock must not exceed the maximum allowed.
         for action in &args.actions {
-            if let ConfigAction::SetTimeLock { new_time_lock, .. } = action {
+            if let SettingsAction::SetTimeLock { new_time_lock, .. } = action {
                 require!(
                     *new_time_lock <= MAX_TIME_LOCK,
-                    MultisigError::TimeLockExceedsMaxAllowed
+                    SmartAccountError::TimeLockExceedsMaxAllowed
                 );
             }
         }
@@ -83,30 +83,30 @@ impl ConfigTransactionCreate<'_> {
 
     /// Create a new config transaction.
     #[access_control(ctx.accounts.validate(&args))]
-    pub fn config_transaction_create(
+    pub fn create_settings_transaction(
         ctx: Context<Self>,
-        args: ConfigTransactionCreateArgs,
+        args: CreateSettingsTransactionArgs,
     ) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+        let settings = &mut ctx.accounts.settings;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
 
-        let multisig_key = multisig.key();
+        let settings_key = settings.key();
 
         // Increment the transaction index.
-        let transaction_index = multisig.transaction_index.checked_add(1).unwrap();
+        let transaction_index = settings.transaction_index.checked_add(1).unwrap();
 
         // Initialize the transaction fields.
-        transaction.multisig = multisig_key;
+        transaction.settings = settings_key;
         transaction.creator = creator.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
         transaction.actions = args.actions;
 
         // Updated last transaction index in the multisig account.
-        multisig.transaction_index = transaction_index;
+        settings.transaction_index = transaction_index;
 
-        multisig.invariant()?;
+        settings.invariant()?;
 
         // Logs for indexing.
         msg!("transaction index: {}", transaction_index);
