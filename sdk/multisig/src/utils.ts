@@ -10,7 +10,7 @@ import {
 } from "@solana/web3.js";
 import { Buffer } from "buffer";
 import invariant from "invariant";
-import { VaultTransactionMessage } from "./generated";
+import { SmartAccountTransactionMessage } from "./generated";
 import { getEphemeralSignerPda } from "./pda";
 import { transactionMessageBeet } from "./types";
 import { compileToSynchronousMessageAndAccounts } from "./utils/compileToSynchronousMessage";
@@ -59,7 +59,7 @@ export function getAvailableMemoSize(
 }
 
 export function isStaticWritableIndex(
-  message: VaultTransactionMessage,
+  message: SmartAccountTransactionMessage,
   index: number
 ) {
   const numAccountKeys = message.accountKeys.length;
@@ -85,7 +85,10 @@ export function isStaticWritableIndex(
   return false;
 }
 
-export function isSignerIndex(message: VaultTransactionMessage, index: number) {
+export function isSignerIndex(
+  message: SmartAccountTransactionMessage,
+  index: number
+) {
   return index < message.numSigners;
 }
 
@@ -93,11 +96,11 @@ export function isSignerIndex(message: VaultTransactionMessage, index: number) {
 export function transactionMessageToMultisigTransactionMessageBytes({
   message,
   addressLookupTableAccounts,
-  vaultPda,
+  smartAccountPda,
 }: {
   message: TransactionMessage;
   addressLookupTableAccounts?: AddressLookupTableAccount[];
-  vaultPda: PublicKey;
+  smartAccountPda: PublicKey;
 }): Uint8Array {
   // // Make sure authority is marked as non-signer in all instructions,
   // // otherwise the message will be serialized in incorrect format.
@@ -173,15 +176,15 @@ export function instructionsToSynchronousTransactionDetails({
 export async function accountsForTransactionExecute({
   connection,
   transactionPda,
-  vaultPda,
+  smartAccountPda,
   message,
   ephemeralSignerBumps,
   programId,
 }: {
   connection: Connection;
-  message: VaultTransactionMessage;
+  message: SmartAccountTransactionMessage;
   ephemeralSignerBumps: number[];
-  vaultPda: PublicKey;
+  smartAccountPda: PublicKey;
   transactionPda: PublicKey;
   programId?: PublicKey;
 }): Promise<{
@@ -234,7 +237,7 @@ export async function accountsForTransactionExecute({
       // because they are PDAs and hence won't have their signatures on the transaction.
       isSigner:
         isSignerIndex(message, accountIndex) &&
-        !accountKey.equals(vaultPda) &&
+        !accountKey.equals(smartAccountPda) &&
         !ephemeralSignerPdas.find((k) => accountKey.equals(k)),
     });
   }

@@ -12,7 +12,7 @@ const createErrorFromCodeLookup: Map<number, () => ErrorWithCode> = new Map()
 const createErrorFromNameLookup: Map<string, () => ErrorWithCode> = new Map()
 
 /**
- * DuplicateSigner: 'Found multiple members with the same pubkey'
+ * DuplicateSigner: 'Found multiple signers with the same pubkey'
  *
  * @category Errors
  * @category generated
@@ -21,7 +21,7 @@ export class DuplicateSignerError extends Error {
   readonly code: number = 0x1770
   readonly name: string = 'DuplicateSigner'
   constructor() {
-    super('Found multiple members with the same pubkey')
+    super('Found multiple signers with the same pubkey')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, DuplicateSignerError)
     }
@@ -35,47 +35,47 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * EmptyMembers: 'Members array is empty'
+ * EmptySigners: 'Signers array is empty'
  *
  * @category Errors
  * @category generated
  */
-export class EmptyMembersError extends Error {
+export class EmptySignersError extends Error {
   readonly code: number = 0x1771
-  readonly name: string = 'EmptyMembers'
+  readonly name: string = 'EmptySigners'
   constructor() {
-    super('Members array is empty')
+    super('Signers array is empty')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, EmptyMembersError)
+      Error.captureStackTrace(this, EmptySignersError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1771, () => new EmptyMembersError())
-createErrorFromNameLookup.set('EmptyMembers', () => new EmptyMembersError())
+createErrorFromCodeLookup.set(0x1771, () => new EmptySignersError())
+createErrorFromNameLookup.set('EmptySigners', () => new EmptySignersError())
 
 /**
- * TooManyMembers: 'Too many members, can be up to 65535'
+ * TooManySigners: 'Too many signers, can be up to 65535'
  *
  * @category Errors
  * @category generated
  */
-export class TooManyMembersError extends Error {
+export class TooManySignersError extends Error {
   readonly code: number = 0x1772
-  readonly name: string = 'TooManyMembers'
+  readonly name: string = 'TooManySigners'
   constructor() {
-    super('Too many members, can be up to 65535')
+    super('Too many signers, can be up to 65535')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, TooManyMembersError)
+      Error.captureStackTrace(this, TooManySignersError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x1772, () => new TooManyMembersError())
-createErrorFromNameLookup.set('TooManyMembers', () => new TooManyMembersError())
+createErrorFromCodeLookup.set(0x1772, () => new TooManySignersError())
+createErrorFromNameLookup.set('TooManySigners', () => new TooManySignersError())
 
 /**
- * InvalidThreshold: 'Invalid threshold, must be between 1 and number of members with Vote permission'
+ * InvalidThreshold: 'Invalid threshold, must be between 1 and number of signers with vote permissions'
  *
  * @category Errors
  * @category generated
@@ -85,7 +85,7 @@ export class InvalidThresholdError extends Error {
   readonly name: string = 'InvalidThreshold'
   constructor() {
     super(
-      'Invalid threshold, must be between 1 and number of members with Vote permission'
+      'Invalid threshold, must be between 1 and number of signers with vote permissions'
     )
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, InvalidThresholdError)
@@ -120,7 +120,7 @@ createErrorFromCodeLookup.set(0x1774, () => new UnauthorizedError())
 createErrorFromNameLookup.set('Unauthorized', () => new UnauthorizedError())
 
 /**
- * NotASigner: 'Provided pubkey is not a member of multisig'
+ * NotASigner: 'Provided pubkey is not a signer of the smart account'
  *
  * @category Errors
  * @category generated
@@ -129,7 +129,7 @@ export class NotASignerError extends Error {
   readonly code: number = 0x1775
   readonly name: string = 'NotASigner'
   constructor() {
-    super('Provided pubkey is not a member of multisig')
+    super('Provided pubkey is not a signer of the smart account')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, NotASignerError)
     }
@@ -232,7 +232,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * AlreadyApproved: 'Member already approved the transaction'
+ * AlreadyApproved: 'Signer already approved the transaction'
  *
  * @category Errors
  * @category generated
@@ -241,7 +241,7 @@ export class AlreadyApprovedError extends Error {
   readonly code: number = 0x177a
   readonly name: string = 'AlreadyApproved'
   constructor() {
-    super('Member already approved the transaction')
+    super('Signer already approved the transaction')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, AlreadyApprovedError)
     }
@@ -255,7 +255,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * AlreadyRejected: 'Member already rejected the transaction'
+ * AlreadyRejected: 'Signer already rejected the transaction'
  *
  * @category Errors
  * @category generated
@@ -264,7 +264,7 @@ export class AlreadyRejectedError extends Error {
   readonly code: number = 0x177b
   readonly name: string = 'AlreadyRejected'
   constructor() {
-    super('Member already rejected the transaction')
+    super('Signer already rejected the transaction')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, AlreadyRejectedError)
     }
@@ -278,7 +278,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * AlreadyCancelled: 'Member already cancelled the transaction'
+ * AlreadyCancelled: 'Signer already cancelled the transaction'
  *
  * @category Errors
  * @category generated
@@ -287,7 +287,7 @@ export class AlreadyCancelledError extends Error {
   readonly code: number = 0x177c
   readonly name: string = 'AlreadyCancelled'
   constructor() {
-    super('Member already cancelled the transaction')
+    super('Signer already cancelled the transaction')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, AlreadyCancelledError)
     }
@@ -344,30 +344,30 @@ createErrorFromCodeLookup.set(0x177e, () => new InvalidAccountError())
 createErrorFromNameLookup.set('InvalidAccount', () => new InvalidAccountError())
 
 /**
- * RemoveLastMember: 'Cannot remove last member'
+ * RemoveLastSigner: 'Cannot remove last signer'
  *
  * @category Errors
  * @category generated
  */
-export class RemoveLastMemberError extends Error {
+export class RemoveLastSignerError extends Error {
   readonly code: number = 0x177f
-  readonly name: string = 'RemoveLastMember'
+  readonly name: string = 'RemoveLastSigner'
   constructor() {
-    super('Cannot remove last member')
+    super('Cannot remove last signer')
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, RemoveLastMemberError)
+      Error.captureStackTrace(this, RemoveLastSignerError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x177f, () => new RemoveLastMemberError())
+createErrorFromCodeLookup.set(0x177f, () => new RemoveLastSignerError())
 createErrorFromNameLookup.set(
-  'RemoveLastMember',
-  () => new RemoveLastMemberError()
+  'RemoveLastSigner',
+  () => new RemoveLastSignerError()
 )
 
 /**
- * NoVoters: 'Members don't include any voters'
+ * NoVoters: 'Signers don't include any voters'
  *
  * @category Errors
  * @category generated
@@ -376,7 +376,7 @@ export class NoVotersError extends Error {
   readonly code: number = 0x1780
   readonly name: string = 'NoVoters'
   constructor() {
-    super("Members don't include any voters")
+    super("Signers don't include any voters")
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, NoVotersError)
     }
@@ -387,7 +387,7 @@ createErrorFromCodeLookup.set(0x1780, () => new NoVotersError())
 createErrorFromNameLookup.set('NoVoters', () => new NoVotersError())
 
 /**
- * NoProposers: 'Members don't include any proposers'
+ * NoProposers: 'Signers don't include any proposers'
  *
  * @category Errors
  * @category generated
@@ -396,7 +396,7 @@ export class NoProposersError extends Error {
   readonly code: number = 0x1781
   readonly name: string = 'NoProposers'
   constructor() {
-    super("Members don't include any proposers")
+    super("Signers don't include any proposers")
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, NoProposersError)
     }
@@ -407,7 +407,7 @@ createErrorFromCodeLookup.set(0x1781, () => new NoProposersError())
 createErrorFromNameLookup.set('NoProposers', () => new NoProposersError())
 
 /**
- * NoExecutors: 'Members don't include any executors'
+ * NoExecutors: 'Signers don't include any executors'
  *
  * @category Errors
  * @category generated
@@ -416,7 +416,7 @@ export class NoExecutorsError extends Error {
   readonly code: number = 0x1782
   readonly name: string = 'NoExecutors'
   constructor() {
-    super("Members don't include any executors")
+    super("Signers don't include any executors")
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, NoExecutorsError)
     }
@@ -631,7 +631,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * UnknownPermission: 'Member has unknown permission'
+ * UnknownPermission: 'Signer has unknown permission'
  *
  * @category Errors
  * @category generated
@@ -640,7 +640,7 @@ export class UnknownPermissionError extends Error {
   readonly code: number = 0x178c
   readonly name: string = 'UnknownPermission'
   constructor() {
-    super('Member has unknown permission')
+    super('Signer has unknown permission')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, UnknownPermissionError)
     }
@@ -703,7 +703,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * IllegalAccountOwner: 'Account is not owned by Multisig program'
+ * IllegalAccountOwner: 'Account is not owned by Smart Account program'
  *
  * @category Errors
  * @category generated
@@ -712,7 +712,7 @@ export class IllegalAccountOwnerError extends Error {
   readonly code: number = 0x178f
   readonly name: string = 'IllegalAccountOwner'
   constructor() {
-    super('Account is not owned by Multisig program')
+    super('Account is not owned by Smart Account program')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, IllegalAccountOwnerError)
     }
@@ -726,7 +726,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * RentReclamationDisabled: 'Rent reclamation is disabled for this multisig'
+ * RentReclamationDisabled: 'Rent reclamation is disabled for this smart account'
  *
  * @category Errors
  * @category generated
@@ -735,7 +735,7 @@ export class RentReclamationDisabledError extends Error {
   readonly code: number = 0x1790
   readonly name: string = 'RentReclamationDisabled'
   constructor() {
-    super('Rent reclamation is disabled for this multisig')
+    super('Rent reclamation is disabled for this smart account')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, RentReclamationDisabledError)
     }
@@ -772,16 +772,16 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * ProposalForAnotherMultisig: 'Proposal is for another multisig'
+ * ProposalForAnotherSmartAccount: 'Proposal is for another smart account'
  *
  * @category Errors
  * @category generated
  */
 export class ProposalForAnotherSmartAccountError extends Error {
   readonly code: number = 0x1792
-  readonly name: string = 'ProposalForAnotherMultisig'
+  readonly name: string = 'ProposalForAnotherSmartAccount'
   constructor() {
-    super('Proposal is for another multisig')
+    super('Proposal is for another smart account')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, ProposalForAnotherSmartAccountError)
     }
@@ -793,21 +793,21 @@ createErrorFromCodeLookup.set(
   () => new ProposalForAnotherSmartAccountError()
 )
 createErrorFromNameLookup.set(
-  'ProposalForAnotherMultisig',
+  'ProposalForAnotherSmartAccount',
   () => new ProposalForAnotherSmartAccountError()
 )
 
 /**
- * TransactionForAnotherMultisig: 'Transaction is for another multisig'
+ * TransactionForAnotherSmartAccount: 'Transaction is for another smart account'
  *
  * @category Errors
  * @category generated
  */
 export class TransactionForAnotherSmartAccountError extends Error {
   readonly code: number = 0x1793
-  readonly name: string = 'TransactionForAnotherMultisig'
+  readonly name: string = 'TransactionForAnotherSmartAccount'
   constructor() {
-    super('Transaction is for another multisig')
+    super('Transaction is for another smart account')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, TransactionForAnotherSmartAccountError)
     }
@@ -819,7 +819,7 @@ createErrorFromCodeLookup.set(
   () => new TransactionForAnotherSmartAccountError()
 )
 createErrorFromNameLookup.set(
-  'TransactionForAnotherMultisig',
+  'TransactionForAnotherSmartAccount',
   () => new TransactionForAnotherSmartAccountError()
 )
 
@@ -1014,28 +1014,31 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * MultisigCreateDeprecated: 'multisig_create has been deprecated. Use multisig_create_v2 instead.'
+ * SmartAccountCreateDeprecated: 'smart_account_create has been deprecated. Use smart_account_create_v2 instead.'
  *
  * @category Errors
  * @category generated
  */
-export class MultisigCreateDeprecatedError extends Error {
+export class SmartAccountCreateDeprecatedError extends Error {
   readonly code: number = 0x179c
-  readonly name: string = 'MultisigCreateDeprecated'
+  readonly name: string = 'SmartAccountCreateDeprecated'
   constructor() {
     super(
-      'multisig_create has been deprecated. Use multisig_create_v2 instead.'
+      'smart_account_create has been deprecated. Use smart_account_create_v2 instead.'
     )
     if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, MultisigCreateDeprecatedError)
+      Error.captureStackTrace(this, SmartAccountCreateDeprecatedError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x179c, () => new MultisigCreateDeprecatedError())
+createErrorFromCodeLookup.set(
+  0x179c,
+  () => new SmartAccountCreateDeprecatedError()
+)
 createErrorFromNameLookup.set(
-  'MultisigCreateDeprecated',
-  () => new MultisigCreateDeprecatedError()
+  'SmartAccountCreateDeprecated',
+  () => new SmartAccountCreateDeprecatedError()
 )
 
 /**
@@ -1087,36 +1090,13 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * DuplicateSigner: 'Duplicate signers not allowed'
- *
- * @category Errors
- * @category generated
- */
-export class DuplicateSignerError extends Error {
-  readonly code: number = 0x179f
-  readonly name: string = 'DuplicateSigner'
-  constructor() {
-    super('Duplicate signers not allowed')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, DuplicateSignerError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x179f, () => new DuplicateSignerError())
-createErrorFromNameLookup.set(
-  'DuplicateSigner',
-  () => new DuplicateSignerError()
-)
-
-/**
  * MissingSignature: 'Missing signature'
  *
  * @category Errors
  * @category generated
  */
 export class MissingSignatureError extends Error {
-  readonly code: number = 0x17a0
+  readonly code: number = 0x179f
   readonly name: string = 'MissingSignature'
   constructor() {
     super('Missing signature')
@@ -1126,7 +1106,7 @@ export class MissingSignatureError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17a0, () => new MissingSignatureError())
+createErrorFromCodeLookup.set(0x179f, () => new MissingSignatureError())
 createErrorFromNameLookup.set(
   'MissingSignature',
   () => new MissingSignatureError()
@@ -1139,7 +1119,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InsufficientAggregatePermissionsError extends Error {
-  readonly code: number = 0x17a1
+  readonly code: number = 0x17a0
   readonly name: string = 'InsufficientAggregatePermissions'
   constructor() {
     super('Insufficient aggregate permissions across signing members')
@@ -1150,7 +1130,7 @@ export class InsufficientAggregatePermissionsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17a1,
+  0x17a0,
   () => new InsufficientAggregatePermissionsError()
 )
 createErrorFromNameLookup.set(
@@ -1165,7 +1145,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InsufficientVotePermissionsError extends Error {
-  readonly code: number = 0x17a2
+  readonly code: number = 0x17a1
   readonly name: string = 'InsufficientVotePermissions'
   constructor() {
     super('Insufficient vote permissions across signing members')
@@ -1176,7 +1156,7 @@ export class InsufficientVotePermissionsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17a2,
+  0x17a1,
   () => new InsufficientVotePermissionsError()
 )
 createErrorFromNameLookup.set(
@@ -1185,23 +1165,23 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * TimeLockNotZero: 'Multisig must not be time locked'
+ * TimeLockNotZero: 'Smart account must not be time locked'
  *
  * @category Errors
  * @category generated
  */
 export class TimeLockNotZeroError extends Error {
-  readonly code: number = 0x17a3
+  readonly code: number = 0x17a2
   readonly name: string = 'TimeLockNotZero'
   constructor() {
-    super('Multisig must not be time locked')
+    super('Smart account must not be time locked')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, TimeLockNotZeroError)
     }
   }
 }
 
-createErrorFromCodeLookup.set(0x17a3, () => new TimeLockNotZeroError())
+createErrorFromCodeLookup.set(0x17a2, () => new TimeLockNotZeroError())
 createErrorFromNameLookup.set(
   'TimeLockNotZero',
   () => new TimeLockNotZeroError()

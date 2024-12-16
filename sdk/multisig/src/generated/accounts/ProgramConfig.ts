@@ -16,7 +16,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  */
 export type ProgramConfigArgs = {
   authority: web3.PublicKey
-  multisigCreationFee: beet.bignum
+  smartAccountCreationFee: beet.bignum
   treasury: web3.PublicKey
   reserved: number[] /* size: 64 */
 }
@@ -32,7 +32,7 @@ export const programConfigDiscriminator = [196, 210, 90, 231, 144, 149, 140, 63]
 export class ProgramConfig implements ProgramConfigArgs {
   private constructor(
     readonly authority: web3.PublicKey,
-    readonly multisigCreationFee: beet.bignum,
+    readonly smartAccountCreationFee: beet.bignum,
     readonly treasury: web3.PublicKey,
     readonly reserved: number[] /* size: 64 */
   ) {}
@@ -43,7 +43,7 @@ export class ProgramConfig implements ProgramConfigArgs {
   static fromArgs(args: ProgramConfigArgs) {
     return new ProgramConfig(
       args.authority,
-      args.multisigCreationFee,
+      args.smartAccountCreationFee,
       args.treasury,
       args.reserved
     )
@@ -153,8 +153,8 @@ export class ProgramConfig implements ProgramConfigArgs {
   pretty() {
     return {
       authority: this.authority.toBase58(),
-      multisigCreationFee: (() => {
-        const x = <{ toNumber: () => number }>this.multisigCreationFee
+      smartAccountCreationFee: (() => {
+        const x = <{ toNumber: () => number }>this.smartAccountCreationFee
         if (typeof x.toNumber === 'function') {
           try {
             return x.toNumber()
@@ -183,7 +183,7 @@ export const programConfigBeet = new beet.BeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['authority', beetSolana.publicKey],
-    ['multisigCreationFee', beet.u64],
+    ['smartAccountCreationFee', beet.u64],
     ['treasury', beetSolana.publicKey],
     ['reserved', beet.uniformFixedSizeArray(beet.u8, 64)],
   ],

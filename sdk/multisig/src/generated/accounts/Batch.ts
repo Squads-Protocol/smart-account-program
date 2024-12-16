@@ -15,12 +15,12 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type BatchArgs = {
-  multisig: web3.PublicKey
+  settings: web3.PublicKey
   creator: web3.PublicKey
   index: beet.bignum
   bump: number
-  vaultIndex: number
-  vaultBump: number
+  accountIndex: number
+  accountBump: number
   size: number
   executedTransactionIndex: number
 }
@@ -35,12 +35,12 @@ export const batchDiscriminator = [156, 194, 70, 44, 22, 88, 137, 44]
  */
 export class Batch implements BatchArgs {
   private constructor(
-    readonly multisig: web3.PublicKey,
+    readonly settings: web3.PublicKey,
     readonly creator: web3.PublicKey,
     readonly index: beet.bignum,
     readonly bump: number,
-    readonly vaultIndex: number,
-    readonly vaultBump: number,
+    readonly accountIndex: number,
+    readonly accountBump: number,
     readonly size: number,
     readonly executedTransactionIndex: number
   ) {}
@@ -50,12 +50,12 @@ export class Batch implements BatchArgs {
    */
   static fromArgs(args: BatchArgs) {
     return new Batch(
-      args.multisig,
+      args.settings,
       args.creator,
       args.index,
       args.bump,
-      args.vaultIndex,
-      args.vaultBump,
+      args.accountIndex,
+      args.accountBump,
       args.size,
       args.executedTransactionIndex
     )
@@ -164,7 +164,7 @@ export class Batch implements BatchArgs {
    */
   pretty() {
     return {
-      multisig: this.multisig.toBase58(),
+      settings: this.settings.toBase58(),
       creator: this.creator.toBase58(),
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
@@ -178,8 +178,8 @@ export class Batch implements BatchArgs {
         return x
       })(),
       bump: this.bump,
-      vaultIndex: this.vaultIndex,
-      vaultBump: this.vaultBump,
+      accountIndex: this.accountIndex,
+      accountBump: this.accountBump,
       size: this.size,
       executedTransactionIndex: this.executedTransactionIndex,
     }
@@ -198,12 +198,12 @@ export const batchBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['multisig', beetSolana.publicKey],
+    ['settings', beetSolana.publicKey],
     ['creator', beetSolana.publicKey],
     ['index', beet.u64],
     ['bump', beet.u8],
-    ['vaultIndex', beet.u8],
-    ['vaultBump', beet.u8],
+    ['accountIndex', beet.u8],
+    ['accountBump', beet.u8],
     ['size', beet.u32],
     ['executedTransactionIndex', beet.u32],
   ],

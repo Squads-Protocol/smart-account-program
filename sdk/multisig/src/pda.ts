@@ -3,10 +3,10 @@ import invariant from "invariant";
 import { PROGRAM_ID } from "./generated";
 import { toU32Bytes, toU64Bytes, toU8Bytes, toUtfBytes } from "./utils";
 
-const SEED_PREFIX = toUtfBytes("multisig");
+const SEED_PREFIX = toUtfBytes("smart_account");
 const SEED_PROGRAM_CONFIG = toUtfBytes("program_config");
-const SEED_SETTINGS = toUtfBytes("multisig");
-const SEED_SMART_ACCOUNT = toUtfBytes("vault");
+const SEED_SETTINGS = toUtfBytes("settings");
+const SEED_SMART_ACCOUNT = toUtfBytes("smart_account");
 const SEED_TRANSACTION = toUtfBytes("transaction");
 const SEED_PROPOSAL = toUtfBytes("proposal");
 const SEED_BATCH_TRANSACTION = toUtfBytes("batch_transaction");
@@ -24,7 +24,7 @@ export function getProgramConfigPda({
   );
 }
 
-export function getMultisigPda({
+export function getSettingsPda({
   createKey,
   programId = PROGRAM_ID,
 }: {
@@ -37,20 +37,25 @@ export function getMultisigPda({
   );
 }
 
-export function getVaultPda({
-  multisigPda,
+export function getSmartAccountPda({
+  settingsPda,
   /** Authority index. */
-  index,
+  accountIndex,
   programId = PROGRAM_ID,
 }: {
-  multisigPda: PublicKey;
-  index: number;
+  settingsPda: PublicKey;
+  accountIndex: number;
   programId?: PublicKey;
 }): [PublicKey, number] {
-  invariant(index >= 0 && index < 256, "Invalid vault index");
+  invariant(accountIndex >= 0 && accountIndex < 256, "Invalid vault index");
 
   return PublicKey.findProgramAddressSync(
-    [SEED_PREFIX, multisigPda.toBytes(), SEED_SMART_ACCOUNT, toU8Bytes(index)],
+    [
+      SEED_PREFIX,
+      settingsPda.toBytes(),
+      SEED_SMART_ACCOUNT,
+      toU8Bytes(accountIndex),
+    ],
     programId
   );
 }
@@ -76,27 +81,11 @@ export function getEphemeralSignerPda({
 }
 
 export function getTransactionPda({
-  multisigPda,
-  index,
-  programId = PROGRAM_ID,
-}: {
-  multisigPda: PublicKey;
-  /** Transaction index. */
-  index: bigint;
-  programId?: PublicKey;
-}): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync(
-    [SEED_PREFIX, multisigPda.toBytes(), SEED_TRANSACTION, toU64Bytes(index)],
-    programId
-  );
-}
-
-export function getProposalPda({
-  multisigPda,
+  settingsPda,
   transactionIndex,
   programId = PROGRAM_ID,
 }: {
-  multisigPda: PublicKey;
+  settingsPda: PublicKey;
   /** Transaction index. */
   transactionIndex: bigint;
   programId?: PublicKey;
@@ -104,7 +93,28 @@ export function getProposalPda({
   return PublicKey.findProgramAddressSync(
     [
       SEED_PREFIX,
-      multisigPda.toBytes(),
+      settingsPda.toBytes(),
+      SEED_TRANSACTION,
+      toU64Bytes(transactionIndex),
+    ],
+    programId
+  );
+}
+
+export function getProposalPda({
+  settingsPda,
+  transactionIndex,
+  programId = PROGRAM_ID,
+}: {
+  settingsPda: PublicKey;
+  /** Transaction index. */
+  transactionIndex: bigint;
+  programId?: PublicKey;
+}): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      SEED_PREFIX,
+      settingsPda.toBytes(),
       SEED_TRANSACTION,
       toU64Bytes(transactionIndex),
       SEED_PROPOSAL,
@@ -114,12 +124,12 @@ export function getProposalPda({
 }
 
 export function getBatchTransactionPda({
-  multisigPda,
+  settingsPda,
   batchIndex,
   transactionIndex,
   programId = PROGRAM_ID,
 }: {
-  multisigPda: PublicKey;
+  settingsPda: PublicKey;
   batchIndex: bigint;
   transactionIndex: number;
   programId?: PublicKey;
@@ -127,7 +137,7 @@ export function getBatchTransactionPda({
   return PublicKey.findProgramAddressSync(
     [
       SEED_PREFIX,
-      multisigPda.toBytes(),
+      settingsPda.toBytes(),
       SEED_TRANSACTION,
       toU64Bytes(batchIndex),
       SEED_BATCH_TRANSACTION,
@@ -138,20 +148,20 @@ export function getBatchTransactionPda({
 }
 
 export function getSpendingLimitPda({
-  multisigPda,
-  createKey,
+  settingsPda,
+  seed,
   programId = PROGRAM_ID,
 }: {
-  multisigPda: PublicKey;
-  createKey: PublicKey;
+  settingsPda: PublicKey;
+  seed: PublicKey;
   programId?: PublicKey;
 }): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [
       SEED_PREFIX,
-      multisigPda.toBytes(),
+      settingsPda.toBytes(),
       SEED_SPENDING_LIMIT,
-      createKey.toBytes(),
+      seed.toBytes(),
     ],
     programId
   );

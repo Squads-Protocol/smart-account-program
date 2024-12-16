@@ -15,10 +15,10 @@ import * as beet from '@metaplex-foundation/beet'
  * @category generated
  */
 export type TransactionBufferArgs = {
-  multisig: web3.PublicKey
+  settings: web3.PublicKey
   creator: web3.PublicKey
   bufferIndex: number
-  vaultIndex: number
+  accountIndex: number
   finalBufferHash: number[] /* size: 32 */
   finalBufferSize: number
   buffer: Uint8Array
@@ -36,10 +36,10 @@ export const transactionBufferDiscriminator = [
  */
 export class TransactionBuffer implements TransactionBufferArgs {
   private constructor(
-    readonly multisig: web3.PublicKey,
+    readonly settings: web3.PublicKey,
     readonly creator: web3.PublicKey,
     readonly bufferIndex: number,
-    readonly vaultIndex: number,
+    readonly accountIndex: number,
     readonly finalBufferHash: number[] /* size: 32 */,
     readonly finalBufferSize: number,
     readonly buffer: Uint8Array
@@ -50,10 +50,10 @@ export class TransactionBuffer implements TransactionBufferArgs {
    */
   static fromArgs(args: TransactionBufferArgs) {
     return new TransactionBuffer(
-      args.multisig,
+      args.settings,
       args.creator,
       args.bufferIndex,
-      args.vaultIndex,
+      args.accountIndex,
       args.finalBufferHash,
       args.finalBufferSize,
       args.buffer
@@ -165,10 +165,10 @@ export class TransactionBuffer implements TransactionBufferArgs {
    */
   pretty() {
     return {
-      multisig: this.multisig.toBase58(),
+      settings: this.settings.toBase58(),
       creator: this.creator.toBase58(),
       bufferIndex: this.bufferIndex,
-      vaultIndex: this.vaultIndex,
+      accountIndex: this.accountIndex,
       finalBufferHash: this.finalBufferHash,
       finalBufferSize: this.finalBufferSize,
       buffer: this.buffer,
@@ -188,10 +188,10 @@ export const transactionBufferBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['multisig', beetSolana.publicKey],
+    ['settings', beetSolana.publicKey],
     ['creator', beetSolana.publicKey],
     ['bufferIndex', beet.u8],
-    ['vaultIndex', beet.u8],
+    ['accountIndex', beet.u8],
     ['finalBufferHash', beet.uniformFixedSizeArray(beet.u8, 32)],
     ['finalBufferSize', beet.u16],
     ['buffer', beet.bytes],

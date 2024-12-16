@@ -16,16 +16,16 @@ import { Period, periodBeet } from '../types/Period'
  * @category generated
  */
 export type SpendingLimitArgs = {
-  multisig: web3.PublicKey
-  createKey: web3.PublicKey
-  vaultIndex: number
+  settings: web3.PublicKey
+  seed: web3.PublicKey
+  accountIndex: number
   mint: web3.PublicKey
   amount: beet.bignum
   period: Period
   remainingAmount: beet.bignum
   lastReset: beet.bignum
   bump: number
-  members: web3.PublicKey[]
+  signers: web3.PublicKey[]
   destinations: web3.PublicKey[]
 }
 
@@ -39,16 +39,16 @@ export const spendingLimitDiscriminator = [10, 201, 27, 160, 218, 195, 222, 152]
  */
 export class SpendingLimit implements SpendingLimitArgs {
   private constructor(
-    readonly multisig: web3.PublicKey,
-    readonly createKey: web3.PublicKey,
-    readonly vaultIndex: number,
+    readonly settings: web3.PublicKey,
+    readonly seed: web3.PublicKey,
+    readonly accountIndex: number,
     readonly mint: web3.PublicKey,
     readonly amount: beet.bignum,
     readonly period: Period,
     readonly remainingAmount: beet.bignum,
     readonly lastReset: beet.bignum,
     readonly bump: number,
-    readonly members: web3.PublicKey[],
+    readonly signers: web3.PublicKey[],
     readonly destinations: web3.PublicKey[]
   ) {}
 
@@ -57,16 +57,16 @@ export class SpendingLimit implements SpendingLimitArgs {
    */
   static fromArgs(args: SpendingLimitArgs) {
     return new SpendingLimit(
-      args.multisig,
-      args.createKey,
-      args.vaultIndex,
+      args.settings,
+      args.seed,
+      args.accountIndex,
       args.mint,
       args.amount,
       args.period,
       args.remainingAmount,
       args.lastReset,
       args.bump,
-      args.members,
+      args.signers,
       args.destinations
     )
   }
@@ -176,9 +176,9 @@ export class SpendingLimit implements SpendingLimitArgs {
    */
   pretty() {
     return {
-      multisig: this.multisig.toBase58(),
-      createKey: this.createKey.toBase58(),
-      vaultIndex: this.vaultIndex,
+      settings: this.settings.toBase58(),
+      seed: this.seed.toBase58(),
+      accountIndex: this.accountIndex,
       mint: this.mint.toBase58(),
       amount: (() => {
         const x = <{ toNumber: () => number }>this.amount
@@ -215,7 +215,7 @@ export class SpendingLimit implements SpendingLimitArgs {
         return x
       })(),
       bump: this.bump,
-      members: this.members,
+      signers: this.signers,
       destinations: this.destinations,
     }
   }
@@ -233,16 +233,16 @@ export const spendingLimitBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['multisig', beetSolana.publicKey],
-    ['createKey', beetSolana.publicKey],
-    ['vaultIndex', beet.u8],
+    ['settings', beetSolana.publicKey],
+    ['seed', beetSolana.publicKey],
+    ['accountIndex', beet.u8],
     ['mint', beetSolana.publicKey],
     ['amount', beet.u64],
     ['period', periodBeet],
     ['remainingAmount', beet.u64],
     ['lastReset', beet.i64],
     ['bump', beet.u8],
-    ['members', beet.array(beetSolana.publicKey)],
+    ['signers', beet.array(beetSolana.publicKey)],
     ['destinations', beet.array(beetSolana.publicKey)],
   ],
   SpendingLimit.fromArgs,

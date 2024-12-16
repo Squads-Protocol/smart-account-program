@@ -16,7 +16,7 @@ import { ProposalStatus, proposalStatusBeet } from '../types/ProposalStatus'
  * @category generated
  */
 export type ProposalArgs = {
-  multisig: web3.PublicKey
+  settings: web3.PublicKey
   transactionIndex: beet.bignum
   status: ProposalStatus
   bump: number
@@ -35,7 +35,7 @@ export const proposalDiscriminator = [26, 94, 189, 187, 116, 136, 53, 33]
  */
 export class Proposal implements ProposalArgs {
   private constructor(
-    readonly multisig: web3.PublicKey,
+    readonly settings: web3.PublicKey,
     readonly transactionIndex: beet.bignum,
     readonly status: ProposalStatus,
     readonly bump: number,
@@ -49,7 +49,7 @@ export class Proposal implements ProposalArgs {
    */
   static fromArgs(args: ProposalArgs) {
     return new Proposal(
-      args.multisig,
+      args.settings,
       args.transactionIndex,
       args.status,
       args.bump,
@@ -164,7 +164,7 @@ export class Proposal implements ProposalArgs {
    */
   pretty() {
     return {
-      multisig: this.multisig.toBase58(),
+      settings: this.settings.toBase58(),
       transactionIndex: (() => {
         const x = <{ toNumber: () => number }>this.transactionIndex
         if (typeof x.toNumber === 'function') {
@@ -197,7 +197,7 @@ export const proposalBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['multisig', beetSolana.publicKey],
+    ['settings', beetSolana.publicKey],
     ['transactionIndex', beet.u64],
     ['status', proposalStatusBeet],
     ['bump', beet.u8],
