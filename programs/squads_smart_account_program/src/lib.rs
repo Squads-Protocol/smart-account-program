@@ -323,7 +323,7 @@ pub mod squads_smart_account_program {
     }
 
     /// Synchronously execute a transaction
-    pub fn vault_transaction_sync(
+    pub fn sync_transaction(
             ctx: Context<VaultTransactionSync>,
         args: VaultTransactionSyncArgs,
     ) -> Result<()> {
@@ -331,7 +331,7 @@ pub mod squads_smart_account_program {
     }
 
     /// Synchronously execute a config transaction
-    pub fn config_transaction_sync<'info>(
+    pub fn sync_settings_change<'info>(
         ctx: Context<'_, '_, 'info, 'info, ConfigTransactionSync<'info>>,
         args: ConfigTransactionSyncArgs,
     ) -> Result<()> {
