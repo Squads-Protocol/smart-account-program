@@ -3,8 +3,8 @@ import {
   createAssociatedTokenAccount,
   createAssociatedTokenAccountInstruction,
   createMint,
+  createMintToInstruction,
   getAssociatedTokenAddressSync,
-  mintToChecked,
   TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import assert from "assert";
+import { BN } from "bn.js";
 import {
   comparePubkeys,
   createAutonomousMultisig,
@@ -40,6 +41,7 @@ describe("Examples / Spending Limits", () => {
   let nonMember: Keypair;
   let solSpendingLimitParams: multisig.types.SettingsActionRecord["AddSpendingLimit"];
   let splSpendingLimitParams: multisig.types.SettingsActionRecord["AddSpendingLimit"];
+  let expiredSplSpendingLimitParams: multisig.types.SettingsActionRecord["AddSpendingLimit"];
   let splMint: PublicKey;
   before(async () => {
     members = await generateMultisigMembers(connection);
@@ -69,6 +71,7 @@ describe("Examples / Spending Limits", () => {
         Keypair.generate().publicKey,
         Keypair.generate().publicKey,
       ],
+      expiration: new BN("9223372036854775807"),
     };
 
     // Airdrop SOL to the vault.
@@ -108,6 +111,14 @@ describe("Examples / Spending Limits", () => {
         Keypair.generate().publicKey,
         Keypair.generate().publicKey,
       ],
+      expiration: new BN("9223372036854775807"),
+    };
+
+    // Set params for creating an expired SPL Spending Limit.
+    expiredSplSpendingLimitParams = {
+      ...splSpendingLimitParams,
+      seed: Keypair.generate().publicKey,
+      expiration: new BN(Date.now() / 1000 + 5),
     };
 
     // Initialize vault token account and mint tokens to it.
@@ -137,18 +148,27 @@ describe("Examples / Spending Limits", () => {
     signature = await connection.sendTransaction(tx);
     await connection.confirmTransaction(signature);
 
-    await mintToChecked(
-      connection,
-      mintAuthority,
-      splMint,
-      vaultTokenAccount,
-      mintAuthority.publicKey,
-      100 * 10 ** mintDecimals,
-      mintDecimals,
-      undefined,
-      { commitment: "confirmed" },
-      TOKEN_PROGRAM_ID,
+    // Mint 100 * 10 ** mintDecimals tokens to the vault token account.
+    const mintInstruction = createMintToInstruction(
+      splMint,                    // mint pubkey
+      vaultTokenAccount,          // destination
+      mintAuthority.publicKey,    // mint authority
+      100 * 10 ** mintDecimals,  // amount
+      [],                        // multisigners
+      TOKEN_PROGRAM_ID
     );
+
+    const mintMessage = new TransactionMessage({
+      payerKey: mintAuthority.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [mintInstruction],
+    }).compileToV0Message();
+
+    const mintTx = new VersionedTransaction(mintMessage);
+    mintTx.sign([mintAuthority]);
+    signature = await connection.sendTransaction(mintTx);
+    await connection.confirmTransaction(signature);
+
   });
 
   it("create SOL and SPL Spending Limits for autonomous multisig", async () => {
@@ -171,6 +191,10 @@ describe("Examples / Spending Limits", () => {
             {
               __kind: "AddSpendingLimit",
               ...splSpendingLimitParams,
+            },
+            {
+              __kind: "AddSpendingLimit",
+              ...expiredSplSpendingLimitParams,
             },
           ],
           programId,
@@ -217,6 +241,13 @@ describe("Examples / Spending Limits", () => {
         programId,
       });
 
+    const [expiredSplSpendingLimitPda, expiredSplSpendingLimitBump] =
+      multisig.getSpendingLimitPda({
+        settingsPda,
+        seed: expiredSplSpendingLimitParams.seed,
+        programId,
+      });
+
     // Execute the Config Transaction which will create the Spending Limit.
     signature = await multisig.rpc
       .executeSettingsTransaction({
@@ -226,7 +257,7 @@ describe("Examples / Spending Limits", () => {
         transactionIndex,
         signer: members.executor,
         rentPayer: members.executor,
-        spendingLimits: [solSpendingLimitPda, splSpendingLimitPda],
+        spendingLimits: [solSpendingLimitPda, splSpendingLimitPda, expiredSplSpendingLimitPda],
         programId,
       })
       .catch((err) => {
@@ -468,6 +499,50 @@ describe("Examples / Spending Limits", () => {
           programId,
         }),
       /Spending limit exceeded/
+    );
+
+    // Try using an expired SPL Spending Limit.
+    const [expiredSplSpendingLimitPda] = multisig.getSpendingLimitPda({
+      settingsPda,
+      seed: expiredSplSpendingLimitParams.seed,
+      programId,
+    });
+    // Wait for the Spending Limit to expire.
+    await assert.ok(
+      () =>
+        multisig.rpc.useSpendingLimit({
+          connection,
+          feePayer: members.almighty,
+          signer: members.almighty,
+          settingsPda,
+          spendingLimit: expiredSplSpendingLimitPda,
+          mint: splMint,
+          accountIndex: splSpendingLimitParams.accountIndex,
+          amount: 1,
+          decimals: 6,
+          destination,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          programId,
+        }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await assert.rejects(
+      () =>
+        multisig.rpc.useSpendingLimit({
+          connection,
+          feePayer: members.almighty,
+          signer: members.almighty,
+          settingsPda,
+          spendingLimit: expiredSplSpendingLimitPda,
+          mint: splMint,
+          accountIndex: splSpendingLimitParams.accountIndex,
+          amount: 1,
+          decimals: 6,
+          destination,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          programId,
+        }),
+      /Spending limit is expired/
     );
   });
 
