@@ -178,11 +178,10 @@ describe("Multisig SDK", () => {
         newOccupiedSize,
         initialOccupiedSize + multisig.generated.smartAccountSignerBeet.byteSize
       );
-      // Account allocated size increased by the size of 10 `Member`s
-      // to accommodate for future additions.
+      // Account allocated size increased by the size of 1 Member
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize + 10 * multisig.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize + 1 * multisig.generated.smartAccountSignerBeet.byteSize
       );
 
       // Adding one more member shouldn't increase the allocated size.
@@ -216,10 +215,10 @@ describe("Multisig SDK", () => {
         newOccupiedSize,
         initialOccupiedSize + 2 * multisig.generated.smartAccountSignerBeet.byteSize
       );
-      // Account allocated size remained unchanged since the previous addition.
+      // Account allocated size increased by the size of 1 Member again.
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize + 10 * multisig.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize + 2 * multisig.generated.smartAccountSignerBeet.byteSize
       );
     });
   });
