@@ -17,13 +17,13 @@ pub struct RemoveSpendingLimitAsAuthority<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    /// Multisig `config_authority` that must authorize the configuration change.
+    /// Settings `settings_authority` that must authorize the configuration change.
     pub settings_authority: Signer<'info>,
 
     #[account(mut, close = rent_collector)]
     pub spending_limit: Account<'info, SpendingLimit>,
 
-    /// This is usually the same as `config_authority`, but can be a different account if needed.
+    /// This is usually the same as `settings_authority`, but can be a different account if needed.
     /// CHECK: can be any account.
     #[account(mut)]
     pub rent_collector: AccountInfo<'info>,
@@ -31,7 +31,7 @@ pub struct RemoveSpendingLimitAsAuthority<'info> {
 
 impl RemoveSpendingLimitAsAuthority<'_> {
     fn validate(&self) -> Result<()> {
-        // config_authority
+        // settings_authority
         require_keys_eq!(
             self.settings_authority.key(),
             self.settings.settings_authority,
@@ -48,9 +48,9 @@ impl RemoveSpendingLimitAsAuthority<'_> {
         Ok(())
     }
 
-    /// Remove the spending limit from the controlled multisig.
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// Remove the spending limit from the controlled smart account.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn remove_spending_limit(
         ctx: Context<Self>,

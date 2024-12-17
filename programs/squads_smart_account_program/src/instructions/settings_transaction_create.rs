@@ -33,7 +33,7 @@ pub struct CreateSettingsTransaction<'info> {
     )]
     pub transaction: Account<'info, SettingsTransaction>,
 
-    /// The member of the multisig that is creating the transaction.
+    /// The signer on the smart account that is creating the transaction.
     pub creator: Signer<'info>,
 
     /// The payer for the transaction account rent.
@@ -89,7 +89,7 @@ impl CreateSettingsTransaction<'_> {
         Ok(())
     }
 
-    /// Create a new config transaction.
+    /// Create a new settings transaction.
     #[access_control(ctx.accounts.validate(&args))]
     pub fn create_settings_transaction(
         ctx: Context<Self>,
@@ -111,7 +111,7 @@ impl CreateSettingsTransaction<'_> {
         transaction.bump = ctx.bumps.transaction;
         transaction.actions = args.actions;
 
-        // Updated last transaction index in the multisig account.
+        // Updated last transaction index in the settings account.
         settings.transaction_index = transaction_index;
 
         settings.invariant()?;

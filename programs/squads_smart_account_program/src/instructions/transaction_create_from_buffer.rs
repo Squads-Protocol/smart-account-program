@@ -26,7 +26,7 @@ pub struct CreateTransactionFromBuffer<'info> {
     pub transaction_buffer: Box<Account<'info, TransactionBuffer>>,
 
     // Anchor doesn't allow us to use the creator inside of
-    // vault_transaction_create, so we just re-pass it here with the same constraint
+    // transaction_create, so we just re-pass it here with the same constraint
     #[account(
         mut,
         address = transaction_create.creator.key(),
@@ -51,7 +51,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         transaction_buffer_account.validate_size()?;
         Ok(())
     }
-    /// Create a new vault transaction from a completed transaction buffer account.
+    /// Create a new Transaction from a completed transaction buffer account.
     #[access_control(ctx.accounts.validate(&args))]
     pub fn create_transaction_from_buffer(
         ctx: Context<'_, '_, 'info, 'info, Self>,
@@ -78,7 +78,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         // Read-only accounts
         let transaction_buffer = &ctx.accounts.transaction_buffer;
 
-        // Calculate the new required length of the vault transaction account,
+        // Calculate the new required length of the transaction account,
         // since it was initialized with an empty transaction message
         let new_len =
             Transaction::size(args.ephemeral_signers, transaction_buffer.buffer.as_slice())?;
@@ -90,7 +90,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         let top_up_lamports =
             rent_exempt_lamports.saturating_sub(transaction_account_info.lamports());
 
-        // System Transfer the remaining difference to the vault transaction account
+        // System Transfer the remaining difference to the transaction account
         let transfer_context = CpiContext::new(
             system_program.to_account_info(),
             system_program::Transfer {
@@ -104,14 +104,14 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         // actual transaction message
         AccountInfo::realloc(&transaction_account_info, new_len, true)?;
 
-        // Create the args for the transaction create instruction
+        // Create the args for the `create_transaction` instruction
         let create_args = CreateTransactionArgs {
             account_index: args.account_index,
             ephemeral_signers: args.ephemeral_signers,
             transaction_message: transaction_buffer.buffer.clone(),
             memo: args.memo,
         };
-        // Create the context for the transaction create instruction
+        // Create the context for the `create_transaction` instruction
         let context = Context::new(
             ctx.program_id,
             &mut ctx.accounts.transaction_create,
@@ -119,7 +119,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             ctx.bumps.transaction_create,
         );
 
-        // Call the transaction create instruction
+        // Call the `create_transaction` instruction
         CreateTransaction::create_transaction(context, create_args)?;
 
         Ok(())

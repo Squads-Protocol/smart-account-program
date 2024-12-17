@@ -33,7 +33,7 @@ pub struct ExtendTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The member of the multisig that created the TransactionBuffer.
+    /// The signer on the smart account that created the TransactionBuffer.
     pub creator: Signer<'info>,
 }
 
@@ -46,7 +46,7 @@ impl ExtendTransactionBuffer<'_> {
             ..
         } = self;
 
-        // creator is still a member in the multisig
+        // creator is still a signer on the smart account
         require!(
             settings.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
@@ -76,7 +76,7 @@ impl ExtendTransactionBuffer<'_> {
         Ok(())
     }
 
-    /// Create a new vault transaction.
+    /// Extend the transaction buffer with the provided buffer.
     #[access_control(ctx.accounts.validate(&args))]
     pub fn extend_transaction_buffer(
         ctx: Context<Self>,
@@ -88,7 +88,7 @@ impl ExtendTransactionBuffer<'_> {
         // Required Data
         let buffer_slice_extension = args.buffer;
 
-        // Extend the Buffer inside the TransactionBuffer
+        // Extend the buffer inside the transaction buffer
         transaction_buffer
             .buffer
             .extend_from_slice(&buffer_slice_extension);

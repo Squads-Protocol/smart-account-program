@@ -37,7 +37,7 @@ impl ActivateProposal<'_> {
             ..
         } = self;
 
-        // `signer`
+        // Signer is part of the settings
         require!(
             settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
@@ -48,7 +48,7 @@ impl ActivateProposal<'_> {
             SmartAccountError::Unauthorized
         );
 
-        // `proposal`
+        // Proposal must be in draft status and not stale
         require!(
             matches!(proposal.status, ProposalStatus::Draft { .. }),
             SmartAccountError::InvalidProposalStatus

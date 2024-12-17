@@ -42,7 +42,7 @@ pub struct CreateTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The member of the multisig that is creating the transaction.
+    /// The signer on the smart account that is creating the transaction.
     pub creator: Signer<'info>,
 
     /// The payer for the transaction account rent.
@@ -58,7 +58,7 @@ impl CreateTransactionBuffer<'_> {
             settings, creator, ..
         } = self;
 
-        // creator is a signer in the smart account
+        // creator is a signer on the smart account
         require!(
             settings.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
@@ -83,14 +83,13 @@ impl CreateTransactionBuffer<'_> {
         ctx: Context<Self>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {
-        // Mutable Accounts
 
         // Readonly Accounts
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let settings = &ctx.accounts.settings;
         let creator = &mut ctx.accounts.creator;
 
-        // Get the buffer index.
+        // Get the buffer index.    
         let buffer_index = args.buffer_index;
 
         // Initialize the transaction fields.

@@ -46,8 +46,8 @@ impl<'info> SynchronousTransactionMessage<'info> {
             } else {
                 // For remaining accounts:
                 // - Set accou as signer
-                // - Remove signer privilege from any multisig members
-                // - Set multisig as non-writable
+                // - Remove signer privilege from any smart account signers
+                // - Set smart account as non-writable
                 if account.key == smart_account_pubkey {
                     account_info.is_signer = true;
                 } else if account.key == settings_key {
@@ -55,7 +55,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
                     account_info.is_writable = false;
                 } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer
                 {
-                    // We may want to remove this so that a member can be a rent
+                    // We may want to remove this so that a signer can be a rent
                     // or feepayer on any of the CPI instructions
                     account_info.is_signer = false;
                 }
@@ -71,7 +71,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
     }
 
     /// Executes all instructions in the message via CPI calls
-    pub fn execute(&self, vault_seeds: &[&[u8]]) -> Result<()> {
+    pub fn execute(&self, smart_account_seeds: &[&[u8]]) -> Result<()> {
         for instruction in &self.instructions {
             let program_id = self.accounts[instruction.program_id_index as usize].key;
 
@@ -102,7 +102,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
                 .map(|&idx| self.accounts[idx as usize].clone())
                 .collect();
 
-            invoke_signed(&ix, &accounts_slice, &[vault_seeds])?;
+            invoke_signed(&ix, &accounts_slice, &[smart_account_seeds])?;
         }
         Ok(())
     }

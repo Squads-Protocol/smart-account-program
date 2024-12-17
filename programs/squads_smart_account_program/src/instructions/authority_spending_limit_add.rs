@@ -18,8 +18,8 @@ pub struct AddSpendingLimitArgs {
     /// The reset period of the spending limit.
     /// When it passes, the remaining amount is reset, unless it's `Period::OneTime`.
     pub period: Period,
-    /// Members of the Spending Limit that can use it.
-    /// Don't have to be members of the multisig.
+    /// Signers of the Spending Limit that can use it.
+    /// Don't have to be signers of the settings.
     pub signers: Vec<Pubkey>,
     /// The destination addresses the spending limit is allowed to sent funds to.
     /// If empty, funds can be sent to any address.
@@ -40,7 +40,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    /// Multisig `config_authority` that must authorize the configuration change.
+    /// Settings `settings_authority` that must authorize the configuration change.
     pub settings_authority: Signer<'info>,
 
     #[account(
@@ -57,7 +57,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
     )]
     pub spending_limit: Account<'info, SpendingLimit>,
 
-    /// This is usually the same as `config_authority`, but can be a different account if needed.
+    /// This is usually the same as `settings_authority`, but can be a different account if needed.
     #[account(mut)]
     pub rent_payer: Signer<'info>,
 
@@ -66,7 +66,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
 
 impl AddSpendingLimitAsAuthority<'_> {
     fn validate(&self, expiration: i64) -> Result<()> {
-        // config_authority
+        // settings_authority
         require_keys_eq!(
             self.settings_authority.key(),
             self.settings.settings_authority,
@@ -86,9 +86,9 @@ impl AddSpendingLimitAsAuthority<'_> {
         Ok(())
     }
 
-    /// Create a new spending limit for the controlled multisig.
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// Create a new spending limit for the controlled smart account.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate(args.expiration))]
     pub fn add_spending_limit(ctx: Context<Self>, args: AddSpendingLimitArgs) -> Result<()> {
         let spending_limit = &mut ctx.accounts.spending_limit;

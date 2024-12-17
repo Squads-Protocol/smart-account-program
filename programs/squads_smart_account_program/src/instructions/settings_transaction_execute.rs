@@ -7,7 +7,7 @@ use crate::utils::*;
 
 #[derive(Accounts)]
 pub struct ExecuteSettingsTransaction<'info> {
-    /// The settings account that owns the transaction.
+    /// The settings account of the smart account that owns the transaction.
     #[account(
         mut,
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
@@ -15,7 +15,7 @@ pub struct ExecuteSettingsTransaction<'info> {
     )]
     pub settings: Box<Account<'info, Settings>>,
 
-    /// One of the multisig members with `Execute` permission.
+    /// The signer on the smart account that is executing the transaction.
     pub signer: Signer<'info>,
 
     /// The proposal account associated with the transaction.
@@ -44,9 +44,9 @@ pub struct ExecuteSettingsTransaction<'info> {
     )]
     pub transaction: Account<'info, SettingsTransaction>,
 
-    /// The account that will be charged/credited in case the config transaction causes space reallocation,
-    /// for example when adding a new member, adding or removing a spending limit.
-    /// This is usually the same as `member`, but can be a different account if needed.
+    /// The account that will be charged/credited in case the settings transaction causes space reallocation,
+    /// for example when adding a new signer, adding or removing a spending limit.
+    /// This is usually the same as `signer`, but can be a different account if needed.
     #[account(mut)]
     pub rent_payer: Option<Signer<'info>>,
 
@@ -66,7 +66,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             ..
         } = self;
 
-        // member
+        // signer
         require!(
             settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
@@ -86,7 +86,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             }
             _ => return err!(SmartAccountError::InvalidProposalStatus),
         }
-        // Stale config transaction proposals CANNOT be executed even if approved.
+        // Stale settings transaction proposals CANNOT be executed even if approved.
         require!(
             proposal.transaction_index > settings.stale_transaction_index,
             SmartAccountError::StaleProposal
@@ -108,7 +108,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
         Ok(())
     }
 
-    /// Execute the multisig transaction.
+    /// Execute the settings transaction.
     /// The transaction must be `Approved`.
     #[access_control(ctx.accounts.validate())]
     pub fn execute_settings_transaction(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
@@ -256,19 +256,19 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                     spending_limit.close(rent_payer.to_account_info())?;
 
                     // We don't need to invalidate prior transactions here because adding
-                    // a spending limit doesn't affect the consensus parameters of the multisig.
+                    // a spending limit doesn't affect the consensus parameters of the smart account.
                 }
 
                 SettingsAction::SetRentCollector { new_rent_collector } => {
                     settings.rent_collector = *new_rent_collector;
 
                     // We don't need to invalidate prior transactions here because changing
-                    // `rent_collector` doesn't affect the consensus parameters of the multisig.
+                    // `rent_collector` doesn't affect the consensus parameters of the smart account.
                 }
             }
         }
 
-        // Make sure the multisig account can fit the updated state: added members or newly set rent_collector.
+        // Make sure the smart account can fit the updated state: added signers or newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
             settings.signers.len(),
@@ -282,7 +282,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                 .map(ToAccountInfo::to_account_info),
         )?;
 
-        // Make sure the multisig state is valid after applying the actions.
+        // Make sure the settings state is valid after applying the actions.
         settings.invariant()?;
 
         // Mark the proposal as executed.

@@ -1037,7 +1037,7 @@ describe("Multisig SDK", () => {
             actions: [{ __kind: "ChangeThreshold", newThreshold: 3 }],
             programId,
           }),
-        /Instruction not supported for controlled multisig/
+        /Instruction not supported for controlled smart account/
       );
     });
 

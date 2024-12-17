@@ -117,7 +117,7 @@ impl<'info> CreateTransaction<'info> {
         transaction.ephemeral_signer_bumps = ephemeral_signer_bumps;
         transaction.message = transaction_message.try_into()?;
 
-        // Updated last transaction index in the multisig account.
+        // Updated last transaction index in the settings account.
         settings.transaction_index = transaction_index;
 
         settings.invariant()?;

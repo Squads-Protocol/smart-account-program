@@ -1,9 +1,9 @@
-//! Contains instructions for closing accounts related to ConfigTransactions,
-//! VaultTransactions and Batches.
+//! Contains instructions for closing accounts related to settings transactions,
+//! transaction buffers and batches.
 //!
 //! The differences between the 3 is minor but still exist. For example,
-//! a ConfigTransaction's accounts can always be closed if the proposal is stale,
-//! while for VaultTransactions and Batches it's not allowed if the proposal is stale but Approved,
+//! a settings transaction's accounts can always be closed if the proposal is stale,
+//! while for transaction buffers and batches it's not allowed if the proposal is stale but Approved,
 //! because they still can be executed in such a case.
 //!
 //! The other reason we have 3 different instructions is purely related to Anchor API which
@@ -25,7 +25,7 @@ pub struct CloseSettingsTransaction<'info> {
     pub settings: Account<'info, Settings>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
-    ///         the logic within `config_transaction_accounts_close` does the rest of the checks.
+    ///         the logic within `settings_transaction_close` does the rest of the checks.
     #[account(
         mut,
         seeds = [
@@ -39,7 +39,7 @@ pub struct CloseSettingsTransaction<'info> {
     )]
     pub proposal: AccountInfo<'info>,
 
-    /// ConfigTransaction corresponding to the `proposal`.
+    /// SettingsTransaction corresponding to the `proposal`.
     #[account(
         mut,
         has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
@@ -59,7 +59,7 @@ pub struct CloseSettingsTransaction<'info> {
 }
 
 impl CloseSettingsTransaction<'_> {
-    /// Closes a `ConfigTransaction` and the corresponding `Proposal`.
+    /// Closes a `SettingsTransaction` and the corresponding `Proposal`.
     /// `transaction` can be closed if either:
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale.
@@ -130,7 +130,7 @@ pub struct CloseTransaction<'info> {
     pub settings: Account<'info, Settings>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
-    ///         the logic within `vault_transaction_accounts_close` does the rest of the checks.
+    ///         the logic within `transaction_close` does the rest of the checks.
     #[account(
         mut,
         seeds = [
@@ -144,7 +144,7 @@ pub struct CloseTransaction<'info> {
     )]
     pub proposal: AccountInfo<'info>,
 
-    /// VaultTransaction corresponding to the `proposal`.
+    /// Transaction corresponding to the `proposal`.
     #[account(
         mut,
         has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
@@ -225,7 +225,7 @@ impl CloseTransaction<'_> {
     }
 }
 
-//region VaultBatchTransactionAccountClose
+//region CloseBatchTransaction
 #[derive(Accounts)]
 pub struct CloseBatchTransaction<'info> {
     #[account(
@@ -248,7 +248,7 @@ pub struct CloseBatchTransaction<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// `VaultBatchTransaction` account to close.
+    /// `BatchTransaction` account to close.
     /// The transaction must be the current last one in the batch.
     #[account(
         mut,
@@ -332,7 +332,7 @@ impl CloseBatchTransaction<'_> {
         Ok(())
     }
 
-    /// Closes a `VaultBatchTransaction` belonging to the `batch` and `proposal`.
+    /// Closes a `BatchTransaction` belonging to the `batch` and `proposal`.
     /// Closing a transaction reduces the `batch.size` by 1.
     /// `transaction` must be closed in the order from the last to the first,
     /// and the operation is only allowed if any of the following conditions is met:
@@ -351,7 +351,7 @@ impl CloseBatchTransaction<'_> {
 }
 //endregion
 
-//region BatchAccountsClose
+//region CloseBatch
 #[derive(Accounts)]
 pub struct CloseBatch<'info> {
     #[account(
@@ -363,7 +363,7 @@ pub struct CloseBatch<'info> {
 
     // pub proposal: Account<'info, Proposal>,
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
-    ///         the logic within `batch_accounts_close` does the rest of the checks.
+    ///         the logic within `close_batch` does the rest of the checks.
     #[account(
         mut,
         seeds = [

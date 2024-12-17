@@ -18,7 +18,7 @@ pub struct CloseTransactionBuffer<'info> {
         // Only the creator can close the buffer
         constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
         // Account can be closed anytime by the creator, regardless of the
-        // current multisig transaction index
+        // current settings transaction index
         seeds = [
             SEED_PREFIX,
             settings.key().as_ref(),
@@ -30,7 +30,7 @@ pub struct CloseTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The member of the multisig that created the TransactionBuffer.
+    /// The signer on the smart account that created the TransactionBuffer.
     pub creator: Signer<'info>,
 }
 

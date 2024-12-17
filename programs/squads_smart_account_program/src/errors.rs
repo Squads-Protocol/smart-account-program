@@ -42,7 +42,7 @@ pub enum SmartAccountError {
     NoExecutors,
     #[msg("`stale_transaction_index` must be <= `transaction_index`")]
     InvalidStaleTransactionIndex,
-    #[msg("Instruction not supported for controlled multisig")]
+    #[msg("Instruction not supported for controlled smart account")]
     NotSupportedForControlled,
     #[msg("Proposal time lock has not been released")]
     TimeLockNotReleased,

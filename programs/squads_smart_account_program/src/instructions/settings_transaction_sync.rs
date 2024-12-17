@@ -6,7 +6,7 @@ use crate::{errors::*, id, state::*, utils::*};
 pub struct SyncSettingsTransactionArgs {
     /// The number of signers to reach threshold and adequate permissions
     pub num_signers: u8,
-    /// The configuration actions to execute
+    /// The settings actions to execute
     pub actions: Vec<SettingsAction>,
     pub memo: Option<String>,
 }
@@ -20,16 +20,16 @@ pub struct SyncSettingsTransaction<'info> {
     )]
     pub settings: Box<Account<'info, Settings>>,
 
-    /// The account that will be charged/credited in case the config transaction causes space reallocation,
-    /// for example when adding a new member, adding or removing a spending limit.
-    /// This is usually the same as `member`, but can be a different account if needed.
+    /// The account that will be charged/credited in case the settings transaction causes space reallocation,
+    /// for example when adding a new signer, adding or removing a spending limit.
+    /// This is usually the same as `signer`, but can be a different account if needed.
     #[account(mut)]
     pub rent_payer: Option<Signer<'info>>,
 
     /// We might need it in case reallocation is needed.
     pub system_program: Option<Program<'info, System>>,
     // `remaining_accounts` must include the following accounts in the exact order:
-    // 1. The exact amount of signers required to reach the threshold
+    // 1. The amount of signers specified in `num_signers`
     // 2. Any SpendingLimit accounts that need to be initialized/closed based on actions
 }
 
@@ -51,7 +51,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Settings must not be time locked
         require_eq!(settings.time_lock, 0, SmartAccountError::TimeLockNotZero);
 
-        // Config transaction must have at least one action
+        // Settings transaction must have at least one action
         require!(!args.actions.is_empty(), SmartAccountError::NoActions);
 
         // new time_lock must not exceed the maximum allowed
@@ -75,11 +75,6 @@ impl<'info> SyncSettingsTransaction<'info> {
         let signers = remaining_accounts
             .get(..signer_count)
             .ok_or(SmartAccountError::InvalidSignerCount)?;
-
-        msg!("Signers contributing to Consensus:");
-        for (index, signer) in signers.iter().enumerate() {
-            msg!("#{:?}: {:?}", index, signer.key());
-        }
 
         // Setup the aggregated permissions and the vote permission count
         let mut aggregated_permissions = Permissions { mask: 0 };
@@ -113,10 +108,6 @@ impl<'info> SyncSettingsTransaction<'info> {
         }
 
         // Check if we have all required permissions (Initiate | Vote | Execute = 7)
-        msg!(
-            "Aggregate Permissions Mask: {:?}",
-            aggregated_permissions.mask
-        );
         require!(
             aggregated_permissions.mask == 7,
             SmartAccountError::InsufficientAggregatePermissions
@@ -277,19 +268,19 @@ impl<'info> SyncSettingsTransaction<'info> {
                     spending_limit.close(rent_payer.to_account_info())?;
 
                     // We don't need to invalidate prior transactions here because adding
-                    // a spending limit doesn't affect the consensus parameters of the multisig.
+                    // a spending limit doesn't affect the consensus parameters of the smart account.
                 }
 
                 SettingsAction::SetRentCollector { new_rent_collector } => {
                     settings.rent_collector = *new_rent_collector;
 
                     // We don't need to invalidate prior transactions here because changing
-                    // `rent_collector` doesn't affect the consensus parameters of the multisig.
+                    // `rent_collector` doesn't affect the consensus parameters of the smart account.
                 }
             }
         }
 
-        // Make sure the multisig account can fit the updated state: added members or newly set rent_collector.
+        // Make sure the smart account can fit the updated state: added signers or newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
             settings.signers.len(),
@@ -303,7 +294,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                 .map(ToAccountInfo::to_account_info),
         )?;
 
-        // Make sure the multisig state is valid after applying the actions
+        // Make sure the settings state is valid after applying the actions
         settings.invariant()?;
 
         Ok(())

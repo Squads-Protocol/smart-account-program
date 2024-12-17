@@ -142,7 +142,7 @@
           "isSigner": false
         },
         {
-          "name": "createKey",
+          "name": "seed",
           "isMut": false,
           "isSigner": true,
           "docs": [
@@ -155,7 +155,7 @@
           "isMut": true,
           "isSigner": true,
           "docs": [
-            "The creator of the multisig."
+            "The creator of the smart account."
           ]
         },
         {
@@ -198,9 +198,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -247,9 +247,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -296,9 +296,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -345,9 +345,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -394,9 +394,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -443,9 +443,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged or credited in case the multisig account needs to reallocate space,",
-            "for example when adding a new member or a spending limit.",
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -483,7 +483,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Multisig `config_authority` that must authorize the configuration change."
+            "Settings `settings_authority` that must authorize the configuration change."
           ]
         },
         {
@@ -496,7 +496,7 @@
           "isMut": true,
           "isSigner": true,
           "docs": [
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         },
         {
@@ -530,7 +530,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Multisig `config_authority` that must authorize the configuration change."
+            "Settings `settings_authority` that must authorize the configuration change."
           ]
         },
         {
@@ -543,7 +543,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "This is usually the same as `config_authority`, but can be a different account if needed."
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
         }
       ],
@@ -577,7 +577,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The member of the multisig that is creating the transaction."
+            "The signer on the smart account that is creating the transaction."
           ]
         },
         {
@@ -615,7 +615,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "The settings account that owns the transaction."
+            "The settings account of the smart account that owns the transaction."
           ]
         },
         {
@@ -623,7 +623,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "One of the multisig members with `Execute` permission."
+            "The signer on the smart account that is executing the transaction."
           ]
         },
         {
@@ -648,9 +648,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged/credited in case the config transaction causes space reallocation,",
-            "for example when adding a new member, adding or removing a spending limit.",
-            "This is usually the same as `member`, but can be a different account if needed."
+            "The account that will be charged/credited in case the settings transaction causes space reallocation,",
+            "for example when adding a new signer, adding or removing a spending limit.",
+            "This is usually the same as `signer`, but can be a different account if needed."
           ]
         },
         {
@@ -733,7 +733,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The member of the multisig that is creating the transaction."
+            "The signer on the smart account that is creating the transaction."
           ]
         },
         {
@@ -780,7 +780,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The member of the multisig that created the TransactionBuffer."
+            "The signer on the smart account that created the TransactionBuffer."
           ]
         }
       ],
@@ -807,7 +807,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The member of the multisig that created the TransactionBuffer."
+            "The signer on the smart account that created the TransactionBuffer."
           ]
         }
       ],
@@ -940,7 +940,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The member of the multisig that is creating the batch."
+            "The signer of the settings that is creating the batch."
           ]
         },
         {
@@ -977,7 +977,7 @@
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Multisig account this batch belongs to."
+            "Settings account this batch belongs to."
           ]
         },
         {
@@ -998,7 +998,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "`VaultBatchTransaction` account to initialize and add to the `batch`."
+            "`BatchTransaction` account to initialize and add to the `batch`."
           ]
         },
         {
@@ -1043,7 +1043,7 @@
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "Multisig account this batch belongs to."
+            "Settings account this batch belongs to."
           ]
         },
         {
@@ -1051,7 +1051,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "Signer of the smart account."
+            "Signer of the settings."
           ]
         },
         {
@@ -1100,7 +1100,7 @@
           "isMut": false,
           "isSigner": true,
           "docs": [
-            "The signer of the smart account that is creating the proposal."
+            "The signer on the smart account that is creating the proposal."
           ]
         },
         {
@@ -1275,7 +1275,7 @@
           "isMut": false,
           "isSigner": false,
           "docs": [
-            "The multisig account the `spending_limit` is for."
+            "The settings the `spending_limit` belongs to."
           ]
         },
         {
@@ -1296,7 +1296,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "Multisig vault account to transfer tokens from."
+            "Smart account to transfer tokens from."
           ]
         },
         {
@@ -1331,7 +1331,7 @@
           "isSigner": false,
           "isOptional": true,
           "docs": [
-            "Multisig vault token account to transfer tokens from in case `spending_limit.mint` is an SPL token."
+            "Smart account token account to transfer tokens from in case `spending_limit.mint` is an SPL token."
           ]
         },
         {
@@ -1381,7 +1381,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "the logic within `config_transaction_accounts_close` does the rest of the checks."
+            "the logic within `settings_transaction_close` does the rest of the checks."
           ]
         },
         {
@@ -1389,7 +1389,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "ConfigTransaction corresponding to the `proposal`."
+            "SettingsTransaction corresponding to the `proposal`."
           ]
         },
         {
@@ -1427,7 +1427,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "the logic within `vault_transaction_accounts_close` does the rest of the checks."
+            "the logic within `transaction_close` does the rest of the checks."
           ]
         },
         {
@@ -1435,7 +1435,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "VaultTransaction corresponding to the `proposal`."
+            "Transaction corresponding to the `proposal`."
           ]
         },
         {
@@ -1487,7 +1487,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "`VaultBatchTransaction` account to close.",
+            "`BatchTransaction` account to close.",
             "The transaction must be the current last one in the batch."
           ]
         },
@@ -1527,7 +1527,7 @@
           "isMut": true,
           "isSigner": false,
           "docs": [
-            "the logic within `batch_accounts_close` does the rest of the checks."
+            "the logic within `close_batch` does the rest of the checks."
           ]
         },
         {
@@ -1592,9 +1592,9 @@
           "isSigner": true,
           "isOptional": true,
           "docs": [
-            "The account that will be charged/credited in case the config transaction causes space reallocation,",
-            "for example when adding a new member, adding or removing a spending limit.",
-            "This is usually the same as `member`, but can be a different account if needed."
+            "The account that will be charged/credited in case the settings transaction causes space reallocation,",
+            "for example when adding a new signer, adding or removing a spending limit.",
+            "This is usually the same as `signer`, but can be a different account if needed."
           ]
         },
         {
@@ -2407,8 +2407,8 @@
           {
             "name": "signers",
             "docs": [
-              "Members of the Spending Limit that can use it.",
-              "Don't have to be members of the multisig."
+              "Signers of the Spending Limit that can use it.",
+              "Don't have to be signers of the settings."
             ],
             "type": {
               "vec": "publicKey"
@@ -2639,7 +2639,7 @@
           {
             "name": "actions",
             "docs": [
-              "The configuration actions to execute"
+              "The settings actions to execute"
             ],
             "type": {
               "vec": {
@@ -2681,7 +2681,7 @@
           {
             "name": "signers",
             "docs": [
-              "The signers of the smart account."
+              "The signers on the smart account."
             ],
             "type": {
               "vec": {
@@ -2817,6 +2817,9 @@
         "fields": [
           {
             "name": "accountIndex",
+            "docs": [
+              "The index of the smart account this transaction is for"
+            ],
             "type": "u8"
           },
           {
@@ -3387,7 +3390,7 @@
     {
       "code": 6020,
       "name": "NotSupportedForControlled",
-      "msg": "Instruction not supported for controlled multisig"
+      "msg": "Instruction not supported for controlled smart account"
     },
     {
       "code": 6021,

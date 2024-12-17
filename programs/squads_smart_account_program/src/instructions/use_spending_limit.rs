@@ -18,7 +18,7 @@ pub struct UseSpendingLimitArgs {
 
 #[derive(Accounts)]
 pub struct UseSpendingLimit<'info> {
-    /// The multisig account the `spending_limit` is for.
+    /// The settings the `spending_limit` belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
         bump = settings.bump,
@@ -40,7 +40,7 @@ pub struct UseSpendingLimit<'info> {
     )]
     pub spending_limit: Account<'info, SpendingLimit>,
 
-    /// Multisig vault account to transfer tokens from.
+    /// Smart account to transfer tokens from.
     /// CHECK: All the required checks are done by checking the seeds.
     #[account(
         mut,
@@ -63,10 +63,10 @@ pub struct UseSpendingLimit<'info> {
     pub system_program: Option<Program<'info, System>>,
 
     /// The mint of the tokens to transfer in case `spending_limit.mint` is an SPL token.
-    /// CHECK: We do the checks in `SpendingLimitUse::validate`.
+    /// CHECK: We do the checks in `UseSpendingLimit::validate`.
     pub mint: Option<InterfaceAccount<'info, Mint>>,
 
-    /// Multisig vault token account to transfer tokens from in case `spending_limit.mint` is an SPL token.
+    /// Smart account token account to transfer tokens from in case `spending_limit.mint` is an SPL token.
     #[account(
         mut,
         token::mint = mint,
@@ -95,7 +95,7 @@ impl UseSpendingLimit<'_> {
             ..
         } = self;
 
-        // member
+        // signer
         require!(
             spending_limit.signers.contains(&signer.key()),
             SmartAccountError::Unauthorized
@@ -115,9 +115,9 @@ impl UseSpendingLimit<'_> {
             );
         }
 
-        // vault - checked in the #[account] attribute.
+        // smart_account - checked in the #[account] attribute.
 
-        // vault_token_account - checked in the #[account] attribute.
+        // smart_account_token_account - checked in the #[account] attribute.
 
         // destination
         if !spending_limit.destinations.is_empty() {
@@ -142,7 +142,7 @@ impl UseSpendingLimit<'_> {
         Ok(())
     }
 
-    /// Use a spending limit to transfer tokens from a multisig vault to a destination account.
+    /// Use a spending limit to transfer tokens from a smart account to a destination account.
     #[access_control(ctx.accounts.validate())]
     pub fn use_spending_limit(ctx: Context<Self>, args: UseSpendingLimitArgs) -> Result<()> {
         let spending_limit = &mut ctx.accounts.spending_limit;
@@ -213,7 +213,7 @@ impl UseSpendingLimit<'_> {
                 .mint
                 .as_ref()
                 .ok_or(SmartAccountError::MissingAccount)?;
-            let vault_token_account = &ctx
+            let smart_account_token_account = &ctx
                 .accounts
                 .smart_account_token_account
                 .as_ref()
@@ -230,7 +230,7 @@ impl UseSpendingLimit<'_> {
                 .ok_or(SmartAccountError::MissingAccount)?;
 
             msg!(
-                "token_program {} mint {} vault {} destination {} amount {} decimals {}",
+                "token_program {} mint {} smart account {} destination {} amount {} decimals {}",
                 &token_program.key,
                 &mint.key(),
                 &smart_account.key,
@@ -243,7 +243,7 @@ impl UseSpendingLimit<'_> {
                 CpiContext::new_with_signer(
                     token_program.to_account_info(),
                     TransferChecked {
-                        from: vault_token_account.to_account_info(),
+                        from: smart_account_token_account.to_account_info(),
                         mint: mint.to_account_info(),
                         to: destination_token_account.to_account_info(),
                         authority: smart_account.clone(),

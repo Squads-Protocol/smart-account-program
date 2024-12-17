@@ -14,7 +14,7 @@ pub struct AddTransactionToBatchArgs {
 #[derive(Accounts)]
 #[instruction(args: AddTransactionToBatchArgs)]
 pub struct AddTransactionToBatch<'info> {
-    /// Multisig account this batch belongs to.
+    /// Settings account this batch belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
         bump = settings.bump,
@@ -46,7 +46,7 @@ pub struct AddTransactionToBatch<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// `VaultBatchTransaction` account to initialize and add to the `batch`.
+    /// `BatchTransaction` account to initialize and add to the `batch`.
     #[account(
         init,
         payer = rent_payer,

@@ -54,7 +54,7 @@ impl ExecuteTransaction<'_> {
             ..
         } = self;
 
-        // member
+        // signer
         require!(
             settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
@@ -82,14 +82,14 @@ impl ExecuteTransaction<'_> {
         Ok(())
     }
 
-    /// Execute the multisig transaction.
+    /// Execute the smart account transaction.
     /// The transaction must be `Approved`.
     #[access_control(ctx.accounts.validate())]
     pub fn execute_transaction(ctx: Context<Self>) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
 
-        // NOTE: After `take()` is called, the VaultTransaction is reduced to
+        // NOTE: After `take()` is called, the Transaction is reduced to
         // its default empty value, which means it should no longer be referenced or
         // used after this point to avoid faulty behavior.
         // Instead only make use of the returned `transaction` value.

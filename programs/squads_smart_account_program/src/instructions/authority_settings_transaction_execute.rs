@@ -57,9 +57,9 @@ pub struct ExecuteSettingsTransactionAsAuthority<'info> {
     /// Settings `settings_authority` that must authorize the configuration change.
     pub settings_authority: Signer<'info>,
 
-    /// The account that will be charged or credited in case the multisig account needs to reallocate space,
-    /// for example when adding a new member or a spending limit.
-    /// This is usually the same as `config_authority`, but can be a different account if needed.
+    /// The account that will be charged or credited in case the settings account needs to reallocate space,
+    /// for example when adding a new signer or a spending limit.
+    /// This is usually the same as `settings_authority`, but can be a different account if needed.
     #[account(mut)]
     pub rent_payer: Option<Signer<'info>>,
 
@@ -78,17 +78,17 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// Add a member/key to the multisig and reallocate space if necessary.
+    /// Add a signer to the settings and reallocate space if necessary.
     ///
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn add_signer(ctx: Context<Self>, args: AddSignerArgs) -> Result<()> {
         let AddSignerArgs { new_signer, .. } = args;
 
         let settings = &mut ctx.accounts.settings;
 
-        // Make sure that the new member is not already in the multisig.
+        // Make sure that the new signer is not already in the settings.
         require!(
             settings.is_signer(new_signer.key).is_none(),
             SmartAccountError::DuplicateSigner
@@ -96,7 +96,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.add_signer(new_signer);
 
-        // Make sure the multisig account can fit the newly set rent_collector.
+        // Make sure the settings account can fit the newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
             settings.signers.len(),
@@ -117,10 +117,10 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// Remove a member/key from the multisig.
+    /// Remove a signer from the settings.
     ///
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn remove_signer(ctx: Context<Self>, args: RemoveSignerArgs) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
@@ -139,8 +139,8 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn change_threshold(ctx: Context<Self>, args: ChangeThresholdArgs) -> Result<()> {
         let ChangeThresholdArgs { new_threshold, .. } = args;
@@ -158,8 +158,8 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
     /// Set the `time_lock` config parameter for the multisig.
     ///
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn set_time_lock(ctx: Context<Self>, args: SetTimeLockArgs) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
@@ -173,10 +173,10 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// Set the multisig `config_authority`.
+    /// Set a new settings `settings_authority`.
     ///
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn set_new_settings_authority(
         ctx: Context<Self>,
@@ -193,10 +193,10 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// Set the multisig `rent_collector` and reallocate space if necessary.
+    /// Set the settings `rent_collector` and reallocate space if necessary.
     ///
-    /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
-    ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
+    /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
+    ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
     pub fn set_rent_collector(
         ctx: Context<Self>,
@@ -206,7 +206,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.rent_collector = args.rent_collector;
 
-        // Make sure the multisig account can fit the newly set rent_collector.
+        // Make sure the settings account can fit the newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
             settings.signers.len(),
@@ -221,7 +221,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         )?;
 
         // We don't need to invalidate prior transactions here because changing
-        // `rent_collector` doesn't affect the consensus parameters of the multisig.
+        // `rent_collector` doesn't affect the consensus parameters of the settings.
 
         settings.invariant()?;
 

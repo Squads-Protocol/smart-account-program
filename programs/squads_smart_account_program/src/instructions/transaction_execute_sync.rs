@@ -6,6 +6,7 @@ use super::CompiledInstruction;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncTransactionArgs {
+    /// The index of the smart account this transaction is for
     pub account_index: u8,
     /// The number of signers to reach threshold and adequate permissions
     pub num_signers: u8,
@@ -101,7 +102,7 @@ impl SyncTransaction<'_> {
         let compiled_instructions =
             SmallVec::<u8, CompiledInstruction>::try_from_slice(&args.instructions)
                 .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
-        // Convert to MultisigCompiledInstruction
+        // Convert to SmartAccountCompiledInstruction
         let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
             Vec::from(compiled_instructions)
                 .into_iter()
@@ -118,8 +119,8 @@ impl SyncTransaction<'_> {
         let (smart_account_pubkey, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
-        // Get the signer seeds for the vault
-        let vault_signer_seeds = &[
+        // Get the signer seeds for the smart account
+        let smart_account_signer_seeds = &[
             smart_account_seeds[0],
             smart_account_seeds[1],
             smart_account_seeds[2],
@@ -141,7 +142,7 @@ impl SyncTransaction<'_> {
         // `self.message.instructions`, therefore after this point no more
         // references or usages of `self.message` should be made to avoid
         // faulty behavior.
-        executable_message.execute(vault_signer_seeds)?;
+        executable_message.execute(smart_account_signer_seeds)?;
 
         Ok(())
     }

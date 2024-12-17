@@ -6,14 +6,14 @@ use crate::utils::*;
 
 #[derive(Accounts)]
 pub struct ExecuteBatchTransaction<'info> {
-    /// Multisig account this batch belongs to.
+    /// Settings account this batch belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
         bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
 
-    /// Signer of the smart account.
+    /// Signer of the settings.
     pub signer: Signer<'info>,
 
     /// The proposal account associated with the batch.
@@ -72,7 +72,7 @@ impl ExecuteBatchTransaction<'_> {
             ..
         } = self;
 
-        // `member`
+        // `signer`
         require!(
             settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
@@ -109,7 +109,7 @@ impl ExecuteBatchTransaction<'_> {
         let proposal = &mut ctx.accounts.proposal;
         let batch = &mut ctx.accounts.batch;
 
-        // NOTE: After `take()` is called, the VaultTransaction is reduced to
+        // NOTE: After `take()` is called, the BatchTransaction is reduced to
         // its default empty value, which means it should no longer be referenced or
         // used after this point to avoid faulty behavior.
         // Instead only make use of the returned `transaction` value.

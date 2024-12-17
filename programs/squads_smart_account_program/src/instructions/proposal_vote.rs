@@ -80,7 +80,7 @@ impl VoteOnProposal<'_> {
         Ok(())
     }
 
-    /// Approve a multisig proposal on behalf of the `member`.
+    /// Approve a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(Vote::Approve))]
     pub fn approve_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
@@ -93,7 +93,7 @@ impl VoteOnProposal<'_> {
         Ok(())
     }
 
-    /// Reject a multisig proposal on behalf of the `member`.
+    /// Reject a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(Vote::Reject))]
     pub fn reject_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
@@ -108,7 +108,7 @@ impl VoteOnProposal<'_> {
         Ok(())
     }
 
-    /// Cancel a multisig proposal on behalf of the `member`.
+    /// Cancel a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Approved`.
     #[access_control(ctx.accounts.validate(Vote::Cancel))]
     pub fn cancel_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {

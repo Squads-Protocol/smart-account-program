@@ -35,7 +35,7 @@ pub struct CreateProposal<'info> {
     )]
     pub proposal: Account<'info, Proposal>,
 
-    /// The signer of the smart account that is creating the proposal.
+    /// The signer on the smart account that is creating the proposal.
     pub creator: Signer<'info>,
 
     /// The payer for the proposal account rent.
@@ -85,7 +85,7 @@ impl CreateProposal<'_> {
         Ok(())
     }
 
-    /// Create a new smart account proposal.
+    /// Create a new  proposal.
     #[access_control(ctx.accounts.validate(&args))]
     pub fn create_proposal(ctx: Context<Self>, args: CreateProposalArgs) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;

@@ -33,7 +33,7 @@ pub struct CreateBatch<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// The member of the multisig that is creating the batch.
+    /// The signer of the settings that is creating the batch.
     pub creator: Signer<'info>,
 
     /// The payer for the batch account rent.
@@ -94,7 +94,7 @@ impl CreateBatch<'_> {
 
         batch.invariant()?;
 
-        // Updated last transaction index in the multisig account.
+        // Updated last transaction index in the settings account.
         settings.transaction_index = index;
 
         settings.invariant()?;

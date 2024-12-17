@@ -38,7 +38,7 @@ export function createSmartAccount({
       programConfig: programConfigPda,
       treasury,
       creator,
-      createKey,
+      seed: createKey,
       settings: settings,
     },
     {

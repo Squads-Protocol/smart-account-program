@@ -32,7 +32,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         message: SmartAccountTransactionMessage,
         message_account_infos: &'a [AccountInfo<'info>],
         address_lookup_table_account_infos: &'a [AccountInfo<'info>],
-        vault_pubkey: &'a Pubkey,
+        smart_account_pubkey: &'a Pubkey,
         ephemeral_signer_pdas: &'a [Pubkey],
     ) -> Result<Self> {
         // CHECK: `address_lookup_table_account_infos` must be valid `AddressLookupTable`s
@@ -82,10 +82,10 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 SmartAccountError::InvalidAccount
             );
             // If the account is marked as signer in the message, it must be a signer in the account infos too.
-            // Unless it's a vault or an ephemeral signer PDA, as they cannot be passed as signers to `remaining_accounts`,
+            // Unless it's a smart account or an ephemeral signer PDA, as they cannot be passed as signers to `remaining_accounts`,
             // because they are PDA's and can't sign the transaction.
             if message.is_signer_index(i)
-                && account_info.key != vault_pubkey
+                && account_info.key != smart_account_pubkey
                 && !ephemeral_signer_pdas.contains(account_info.key)
             {
                 require!(account_info.is_signer, SmartAccountError::InvalidAccount);
@@ -174,12 +174,12 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
     /// Executes all instructions in the message via CPI calls.
     /// # Arguments
-    /// * `vault_seeds` - Seeds for the vault PDA.
+    /// * `smart_account_seeds` - Seeds for the smart account PDA.
     /// * `ephemeral_signer_seeds` - Seeds for the ephemeral signer PDAs.
     /// * `protected_accounts` - Accounts that must not be passed as writable to the CPI calls to prevent potential reentrancy attacks.
     pub fn execute_message(
         self,
-        vault_seeds: &[&[u8]],
+        smart_account_seeds: &[&[u8]],
         ephemeral_signer_seeds: &[Vec<Vec<u8>>],
         protected_accounts: &[Pubkey],
     ) -> Result<()> {
@@ -193,8 +193,8 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             .iter()
             .map(Vec::as_slice)
             .collect::<Vec<&[&[u8]]>>();
-        // Add the vault seeds.
-        signer_seeds.push(&vault_seeds);
+        // Add the smart account seeds.
+        signer_seeds.push(&smart_account_seeds);
 
         // NOTE: `self.to_instructions_and_accounts()` calls `take()` on
         // `self.message.instructions`, therefore after this point no more
@@ -255,8 +255,8 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 
-        for ms_compiled_instruction in core::mem::take(&mut self.message.instructions) {
-            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = ms_compiled_instruction
+        for sa_compiled_instruction in core::mem::take(&mut self.message.instructions) {
+            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = sa_compiled_instruction
                 .account_indexes
                 .iter()
                 .map(|account_index| {
@@ -278,7 +278,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .collect();
 
             let ix_program_account_info = self
-                .get_account_by_index(usize::from(ms_compiled_instruction.program_id_index))
+                .get_account_by_index(usize::from(sa_compiled_instruction.program_id_index))
                 .unwrap();
 
             let ix = Instruction {
@@ -287,7 +287,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     .iter()
                     .map(|(_, account_meta)| account_meta.clone())
                     .collect(),
-                data: ms_compiled_instruction.data,
+                data: sa_compiled_instruction.data,
             };
 
             let mut account_infos: Vec<AccountInfo> = ix_accounts

@@ -13,7 +13,7 @@ pub struct CreateSmartAccountArgs {
     pub settings_authority: Option<Pubkey>,
     /// The number of signatures required to execute a transaction.
     pub threshold: u16,
-    /// The signers of the smart account.
+    /// The signers on the smart account.
     pub signers: Vec<SmartAccountSigner>,
     /// How many seconds must pass between transaction voting, settlement, and execution.
     pub time_lock: u32,
@@ -40,16 +40,16 @@ pub struct CreateSmartAccount<'info> {
         init,
         payer = creator,
         space = Settings::size(args.signers.len()),
-        seeds = [SEED_PREFIX, SEED_SETTINGS, create_key.key().as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, seed.key().as_ref()],
         bump
     )]
     pub settings: Account<'info, Settings>,
 
     /// An ephemeral signer that is used as a seed for the Settings PDA.
     /// Must be a signer to prevent front-running attack by someone else but the original creator.
-    pub create_key: Signer<'info>,
+    pub seed: Signer<'info>,
 
-    /// The creator of the multisig.
+    /// The creator of the smart account.
     #[account(mut)]
     pub creator: Signer<'info>,
 
@@ -83,7 +83,7 @@ impl CreateSmartAccount<'_> {
         settings.time_lock = args.time_lock;
         settings.transaction_index = 0;
         settings.stale_transaction_index = 0;
-        settings.seed = ctx.accounts.create_key.key();
+        settings.seed = ctx.accounts.seed.key();
         settings.bump = ctx.bumps.settings;
         settings.signers = signers;
         settings.rent_collector = args.rent_collector;

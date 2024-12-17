@@ -453,7 +453,7 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * NotSupportedForControlled: 'Instruction not supported for controlled multisig'
+ * NotSupportedForControlled: 'Instruction not supported for controlled smart account'
  *
  * @category Errors
  * @category generated
@@ -462,7 +462,7 @@ export class NotSupportedForControlledError extends Error {
   readonly code: number = 0x1784
   readonly name: string = 'NotSupportedForControlled'
   constructor() {
-    super('Instruction not supported for controlled multisig')
+    super('Instruction not supported for controlled smart account')
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(this, NotSupportedForControlledError)
     }
