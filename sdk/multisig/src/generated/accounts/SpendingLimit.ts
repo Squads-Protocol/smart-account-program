@@ -27,6 +27,7 @@ export type SpendingLimitArgs = {
   bump: number
   signers: web3.PublicKey[]
   destinations: web3.PublicKey[]
+  expiration: beet.bignum
 }
 
 export const spendingLimitDiscriminator = [10, 201, 27, 160, 218, 195, 222, 152]
@@ -49,7 +50,8 @@ export class SpendingLimit implements SpendingLimitArgs {
     readonly lastReset: beet.bignum,
     readonly bump: number,
     readonly signers: web3.PublicKey[],
-    readonly destinations: web3.PublicKey[]
+    readonly destinations: web3.PublicKey[],
+    readonly expiration: beet.bignum
   ) {}
 
   /**
@@ -67,7 +69,8 @@ export class SpendingLimit implements SpendingLimitArgs {
       args.lastReset,
       args.bump,
       args.signers,
-      args.destinations
+      args.destinations,
+      args.expiration
     )
   }
 
@@ -217,6 +220,17 @@ export class SpendingLimit implements SpendingLimitArgs {
       bump: this.bump,
       signers: this.signers,
       destinations: this.destinations,
+      expiration: (() => {
+        const x = <{ toNumber: () => number }>this.expiration
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
     }
   }
 }
@@ -244,6 +258,7 @@ export const spendingLimitBeet = new beet.FixableBeetStruct<
     ['bump', beet.u8],
     ['signers', beet.array(beetSolana.publicKey)],
     ['destinations', beet.array(beetSolana.publicKey)],
+    ['expiration', beet.i64],
   ],
   SpendingLimit.fromArgs,
   'SpendingLimit'

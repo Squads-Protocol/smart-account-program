@@ -26,6 +26,7 @@ export function addSpendingLimitAsAuthority({
   destinations,
   memo,
   programId,
+  expiration,
 }: {
   blockhash: string;
   feePayer: PublicKey;
@@ -42,6 +43,7 @@ export function addSpendingLimitAsAuthority({
   destinations: PublicKey[];
   memo?: string;
   programId?: PublicKey;
+  expiration?: number;
 }): VersionedTransaction {
   const message = new TransactionMessage({
     payerKey: feePayer,
@@ -61,6 +63,7 @@ export function addSpendingLimitAsAuthority({
         destinations,
         memo,
         programId,
+        expiration,
       }),
     ],
   }).compileToV0Message();

@@ -17,6 +17,7 @@ export type AddSpendingLimitArgs = {
   period: Period
   signers: web3.PublicKey[]
   destinations: web3.PublicKey[]
+  expiration: beet.bignum
   memo: beet.COption<string>
 }
 
@@ -34,6 +35,7 @@ export const addSpendingLimitArgsBeet =
       ['period', periodBeet],
       ['signers', beet.array(beetSolana.publicKey)],
       ['destinations', beet.array(beetSolana.publicKey)],
+      ['expiration', beet.i64],
       ['memo', beet.coption(beet.utf8String)],
     ],
     'AddSpendingLimitArgs'

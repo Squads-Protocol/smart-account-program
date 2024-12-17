@@ -18,6 +18,7 @@ export function addSpendingLimitAsAuthority({
   period,
   signers,
   destinations,
+  expiration,
   memo,
   programId = PROGRAM_ID,
 }: {
@@ -32,6 +33,7 @@ export function addSpendingLimitAsAuthority({
   period: Period;
   signers: PublicKey[];
   destinations: PublicKey[];
+  expiration?: number;
   memo?: string;
   programId?: PublicKey;
 }) {
@@ -52,6 +54,9 @@ export function addSpendingLimitAsAuthority({
         period,
         signers,
         destinations,
+        expiration: expiration
+          ? new BN(expiration.toString())
+          : new BN("9223372036854775807"),
         memo: memo ?? null,
       },
     },

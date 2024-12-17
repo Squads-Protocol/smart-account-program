@@ -29,6 +29,7 @@ export async function addSpendingLimitAsAuthority({
   signers,
   sendOptions,
   programId,
+  expiration,
 }: {
   connection: Connection;
   feePayer: Signer;
@@ -46,6 +47,7 @@ export async function addSpendingLimitAsAuthority({
   memo?: string;
   sendOptions?: SendOptions;
   programId?: PublicKey;
+  expiration?: number;
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
@@ -65,6 +67,7 @@ export async function addSpendingLimitAsAuthority({
     destinations,
     memo,
     programId,
+    expiration,
   });
 
   tx.sign([feePayer, rentPayer, settingsAuthority,]);
