@@ -174,6 +174,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                     amount,
                     period,
                     destinations,
+                    expiration,
                 } => {
                     let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                         &[
@@ -238,6 +239,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                         last_reset: Clock::get()?.unix_timestamp,
                         bump: spending_limit_bump,
                         destinations: destinations.to_vec(),
+                        expiration: *expiration,
                     };
 
                     spending_limit.invariant()?;

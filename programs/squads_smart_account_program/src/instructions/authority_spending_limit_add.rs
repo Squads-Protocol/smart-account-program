@@ -24,6 +24,9 @@ pub struct AddSpendingLimitArgs {
     /// The destination addresses the spending limit is allowed to sent funds to.
     /// If empty, funds can be sent to any address.
     pub destinations: Vec<Pubkey>,
+    /// The expiration timestamp of the spending limit.
+    /// Non expiring spending limits are set to `i64::MAX`.
+    pub expiration: i64,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
@@ -62,7 +65,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
 }
 
 impl AddSpendingLimitAsAuthority<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, expiration: i64) -> Result<()> {
         // config_authority
         require_keys_eq!(
             self.settings_authority.key(),
@@ -72,17 +75,22 @@ impl AddSpendingLimitAsAuthority<'_> {
 
         // `spending_limit` is partially checked via its seeds.
 
+        // Expiration must be greater than the current timestamp.
+        if expiration != i64::MAX {
+            require!(
+                expiration > Clock::get()?.unix_timestamp,
+                SmartAccountError::SpendingLimitExpired
+            );
+        }
+
         Ok(())
     }
 
     /// Create a new spending limit for the controlled multisig.
     /// NOTE: This instruction must be called only by the `config_authority` if one is set (Controlled Multisig).
     ///       Uncontrolled Mustisigs should use `config_transaction_create` instead.
-    #[access_control(ctx.accounts.validate())]
-    pub fn add_spending_limit(
-        ctx: Context<Self>,
-        args: AddSpendingLimitArgs,
-    ) -> Result<()> {
+    #[access_control(ctx.accounts.validate(args.expiration))]
+    pub fn add_spending_limit(ctx: Context<Self>, args: AddSpendingLimitArgs) -> Result<()> {
         let spending_limit = &mut ctx.accounts.spending_limit;
 
         // Make sure there are no duplicate keys in this direct invocation by sorting so the invariant will catch

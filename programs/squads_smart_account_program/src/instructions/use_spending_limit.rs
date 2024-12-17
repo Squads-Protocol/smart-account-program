@@ -89,7 +89,6 @@ pub struct UseSpendingLimit<'info> {
 impl UseSpendingLimit<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            settings,
             signer,
             spending_limit,
             mint,
@@ -131,6 +130,14 @@ impl UseSpendingLimit<'_> {
         }
 
         // destination_token_account - checked in the #[account] attribute.
+
+        // Spending limit must not be expired.
+        if spending_limit.expiration != i64::MAX {
+            require!(
+                spending_limit.expiration > Clock::get()?.unix_timestamp,
+                SmartAccountError::SpendingLimitExpired
+            );
+        }
 
         Ok(())
     }

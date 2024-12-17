@@ -43,6 +43,9 @@ pub struct SpendingLimit {
     /// The destination addresses the spending limit is allowed to sent funds to.
     /// If empty, funds can be sent to any address.
     pub destinations: Vec<Pubkey>,
+
+    /// The expiration timestamp of the spending limit.
+    pub expiration: i64,
 }
 
 impl SpendingLimit {
@@ -60,7 +63,8 @@ impl SpendingLimit {
         4  + // signers vector length
         signers_length * 32 + // signers
         4  + // destinations vector length
-        destinations_length * 32 // destinations
+        destinations_length * 32 + // destinations
+        8    // expiration
     }
 
     pub fn invariant(&self) -> Result<()> {
@@ -70,7 +74,7 @@ impl SpendingLimit {
             0,
             SmartAccountError::SpendingLimitInvalidAmount
         );
-
+        
         require!(!self.signers.is_empty(), SmartAccountError::EmptySigners);
 
         // There must be no duplicate members, we make sure members are sorted when creating a SpendingLimit.

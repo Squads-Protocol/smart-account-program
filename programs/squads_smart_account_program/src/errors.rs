@@ -58,6 +58,8 @@ pub enum SmartAccountError {
     SpendingLimitExceeded,
     #[msg("Decimals don't match the mint")]
     DecimalsMismatch,
+    #[msg("Spending limit is expired")]
+    SpendingLimitExpired,
     #[msg("Signer has unknown permission")]
     UnknownPermission,
     #[msg("Account is protected, it cannot be passed into a CPI as writable")]

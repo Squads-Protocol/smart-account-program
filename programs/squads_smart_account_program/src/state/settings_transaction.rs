@@ -70,6 +70,9 @@ pub enum SettingsAction {
         /// The destination addresses the spending limit is allowed to sent funds to.
         /// If empty, funds can be sent to any address.
         destinations: Vec<Pubkey>,
+        /// The expiration timestamp of the spending limit.
+        /// Non expiring spending limits are set to `i64::MAX`.
+        expiration: i64,
     },
     /// Remove a spending limit from the multisig.
     RemoveSpendingLimit { spending_limit: Pubkey },

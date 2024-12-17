@@ -94,6 +94,17 @@ impl<'info> ExecuteSettingsTransaction<'info> {
 
         // `transaction` is validated by its seeds.
 
+        // Spending limit expiration must be greater than the current timestamp.
+        let current_timestamp = Clock::get()?.unix_timestamp;
+
+        for action in self.transaction.actions.iter() {
+            if let SettingsAction::AddSpendingLimit { expiration, .. } = action {
+                require!(
+                    *expiration > current_timestamp,
+                    SmartAccountError::SpendingLimitExpired
+                );
+            }
+        }
         Ok(())
     }
 
@@ -142,6 +153,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                     amount,
                     period,
                     destinations,
+                    expiration,
                 } => {
                     let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                         &[
@@ -206,6 +218,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                         last_reset: Clock::get()?.unix_timestamp,
                         bump: spending_limit_bump,
                         destinations: destinations.to_vec(),
+                        expiration: *expiration,
                     };
 
                     spending_limit.invariant()?;

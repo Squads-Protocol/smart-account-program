@@ -68,12 +68,20 @@ impl CreateSettingsTransaction<'_> {
         // Config transaction must have at least one action
         require!(!args.actions.is_empty(), SmartAccountError::NoActions);
 
+        let current_timestamp = Clock::get()?.unix_timestamp;
         // time_lock must not exceed the maximum allowed.
         for action in &args.actions {
             if let SettingsAction::SetTimeLock { new_time_lock, .. } = action {
                 require!(
                     *new_time_lock <= MAX_TIME_LOCK,
                     SmartAccountError::TimeLockExceedsMaxAllowed
+                );
+            }
+            // Expiration must be greater than the current timestamp.
+            if let SettingsAction::AddSpendingLimit { expiration, .. } = action {
+                require!(
+                    *expiration > current_timestamp,
+                    SmartAccountError::SpendingLimitExpired
                 );
             }
         }
