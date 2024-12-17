@@ -72,7 +72,7 @@ pub struct UseSpendingLimit<'info> {
         token::mint = mint,
         token::authority = smart_account,
     )]
-    pub vault_token_account: Option<InterfaceAccount<'info, TokenAccount>>,
+    pub smart_account_token_account: Option<InterfaceAccount<'info, TokenAccount>>,
 
     /// Destination token account in case `spending_limit.mint` is an SPL token.
     #[account(
@@ -208,7 +208,7 @@ impl UseSpendingLimit<'_> {
                 .ok_or(SmartAccountError::MissingAccount)?;
             let vault_token_account = &ctx
                 .accounts
-                .vault_token_account
+                .smart_account_token_account
                 .as_ref()
                 .ok_or(SmartAccountError::MissingAccount)?;
             let destination_token_account = &ctx

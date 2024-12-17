@@ -20,7 +20,7 @@ wallet = "~/.config/solana/id.json"
 url = "https://api.devnet.solana.com"
 
 [[test.validator.account]]
-address = "D3oQ6QxSYk6aKUsmBTa9BghFQvbRi7kxP6h95NSdjjXz"
+address = "8UuqDAqe9UQx9e9Sjj4Gs3msrWGfzb4CJHGK3U3tcCEX"
 filename = "tests/fixtures/pre-rent-collector/multisig-account.json"
 
 [scripts]

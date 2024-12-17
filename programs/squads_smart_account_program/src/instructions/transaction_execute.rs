@@ -38,7 +38,7 @@ pub struct ExecuteTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    pub member: Signer<'info>,
+    pub signer: Signer<'info>,
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. AddressLookupTable accounts in the order they appear in `message.address_table_lookups`.
     // 2. Accounts in the order they appear in `message.account_keys`.
@@ -50,17 +50,17 @@ impl ExecuteTransaction<'_> {
         let Self {
             settings,
             proposal,
-            member,
+            signer,
             ..
         } = self;
 
         // member
         require!(
-            settings.is_signer(member.key()).is_some(),
+            settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
         );
         require!(
-            settings.signer_has_permission(member.key(), Permission::Execute),
+            settings.signer_has_permission(signer.key(), Permission::Execute),
             SmartAccountError::Unauthorized
         );
 

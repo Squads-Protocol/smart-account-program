@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { createCancelProposalInstruction, PROGRAM_ID } from "../generated";
 import { getProposalPda } from "../pda";
 
@@ -22,7 +22,7 @@ export function cancelProposal({
   });
 
   return createCancelProposalInstruction(
-    { settings: settingsPda, proposal: proposalPda, signer },
+    { settings: settingsPda, proposal: proposalPda, signer, systemProgram: SystemProgram.programId },
     { args: { memo: memo ?? null } },
     programId
   );

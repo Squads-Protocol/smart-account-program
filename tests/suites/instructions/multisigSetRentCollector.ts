@@ -1,4 +1,6 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
+import * as multisig from "@sqds/multisig";
+import assert from "assert";
 import {
   createControlledMultisig,
   createLocalhostConnection,
@@ -7,17 +9,15 @@ import {
   getTestProgramId,
   TestMembers,
 } from "../../utils";
-import * as multisig from "@sqds/multisig";
-import assert from "assert";
 
-const { Multisig } = multisig.accounts;
+const { Settings } = multisig.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
 describe("Instructions / multisig_set_rent_collector", () => {
   let members: TestMembers;
-  let multisigPda: PublicKey;
+  let settingsPda: PublicKey;
   let configAuthority: Keypair;
 
   before(async () => {
@@ -26,7 +26,7 @@ describe("Instructions / multisig_set_rent_collector", () => {
     members = await generateMultisigMembers(connection);
 
     // Create new controlled multisig with no rent_collector.
-    multisigPda = (
+    settingsPda = (
       await createControlledMultisig({
         connection,
         createKey: Keypair.generate(),
@@ -41,20 +41,20 @@ describe("Instructions / multisig_set_rent_collector", () => {
 
   it("set `rent_collector` for the controlled multisig", async () => {
     const multisigAccountInfoPreExecution = await connection.getAccountInfo(
-      multisigPda
+      settingsPda
     )!;
 
-    const vaultPda = multisig.getVaultPda({
-      multisigPda,
-      index: 0,
+    const vaultPda = multisig.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
       programId,
     })[0];
 
-    const signature = await multisig.rpc.multisigSetRentCollector({
+    const signature = await multisig.rpc.setRentCollectorAsAuthority({
       connection,
-      multisigPda,
+      settingsPda,
       feePayer: configAuthority,
-      configAuthority: configAuthority.publicKey,
+      settingsAuthority: configAuthority.publicKey,
       newRentCollector: vaultPda,
       rentPayer: configAuthority.publicKey,
       programId,
@@ -64,9 +64,9 @@ describe("Instructions / multisig_set_rent_collector", () => {
 
     // Verify the multisig account.
     const multisigAccountInfoPostExecution = await connection.getAccountInfo(
-      multisigPda
+      settingsPda
     );
-    const [multisigAccountPostExecution] = Multisig.fromAccountInfo(
+    const [multisigAccountPostExecution] = Settings.fromAccountInfo(
       multisigAccountInfoPostExecution!
     );
     // The rentCollector should be updated.
@@ -82,16 +82,16 @@ describe("Instructions / multisig_set_rent_collector", () => {
     // multisig space should not be reallocated because we allocate 32 bytes for potential rent_collector when we create multisig.
     assert.ok(
       multisigAccountInfoPostExecution!.data.length ===
-        multisigAccountInfoPreExecution!.data.length
+      multisigAccountInfoPreExecution!.data.length
     );
   });
 
   it("unset `rent_collector` for the controlled multisig", async () => {
-    const signature = await multisig.rpc.multisigSetRentCollector({
+    const signature = await multisig.rpc.setRentCollectorAsAuthority({
       connection,
-      multisigPda,
+      settingsPda,
       feePayer: configAuthority,
-      configAuthority: configAuthority.publicKey,
+      settingsAuthority: configAuthority.publicKey,
       newRentCollector: null,
       rentPayer: configAuthority.publicKey,
       programId,
@@ -100,9 +100,9 @@ describe("Instructions / multisig_set_rent_collector", () => {
     await connection.confirmTransaction(signature, "confirmed");
 
     // Make sure the rent_collector was unset correctly.
-    const multisigAccount = await Multisig.fromAccountAddress(
+    const multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
     assert.strictEqual(multisigAccount.rentCollector, null);
   });

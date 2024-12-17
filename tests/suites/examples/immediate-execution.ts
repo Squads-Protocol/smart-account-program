@@ -1,5 +1,5 @@
-import * as multisig from "@sqds/multisig";
 import { TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import * as multisig from "@sqds/multisig";
 import assert from "assert";
 import {
   createAutonomousMultisig,
@@ -9,7 +9,7 @@ import {
   TestMembers,
 } from "../../utils";
 
-const { Multisig } = multisig.accounts;
+const { Settings } = multisig.accounts;
 
 const programId = getTestProgramId();
 
@@ -27,7 +27,7 @@ describe("Examples / Immediate Execution", () => {
   });
 
   it("create, approve and execute, all in 1 Solana transaction", async () => {
-    const [multisigPda] = await createAutonomousMultisig({
+    const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 1,
@@ -37,33 +37,33 @@ describe("Examples / Immediate Execution", () => {
 
     const transactionIndex = 1n;
 
-    const createTransactionIx = multisig.instructions.configTransactionCreate({
-      multisigPda,
+    const createTransactionIx = multisig.instructions.createSettingsTransaction({
+      settingsPda,
       transactionIndex,
       creator: members.almighty.publicKey,
       // Change threshold to 2.
       actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
       programId,
     });
-    const createProposalIx = multisig.instructions.proposalCreate({
-      multisigPda,
+    const createProposalIx = multisig.instructions.createProposal({
+      settingsPda,
       transactionIndex,
       creator: members.almighty.publicKey,
       programId,
     });
 
-    const approveProposalIx = multisig.instructions.proposalApprove({
-      multisigPda,
+    const approveProposalIx = multisig.instructions.approveProposal({
+      settingsPda,
       transactionIndex,
-      member: members.almighty.publicKey,
+      signer: members.almighty.publicKey,
       programId,
     });
 
-    const executeTransactionIx = multisig.instructions.configTransactionExecute(
+    const executeTransactionIx = multisig.instructions.executeSettingsTransaction(
       {
-        multisigPda,
+        settingsPda,
         transactionIndex,
-        member: members.almighty.publicKey,
+        signer: members.almighty.publicKey,
         rentPayer: members.almighty.publicKey,
         programId,
       }
@@ -90,9 +90,9 @@ describe("Examples / Immediate Execution", () => {
     await connection.confirmTransaction(signature);
 
     // Verify the multisig account.
-    const multisigAccount = await Multisig.fromAccountAddress(
+    const multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
 
     // The threshold should be updated.

@@ -36,7 +36,7 @@ describe("Initialize Global ProgramConfig", () => {
   it("error: invalid initializer", async () => {
     const fakeInitializer = await generateFundedKeypair(connection);
 
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
+    const initIx = multisig.generated.createInitializeProgramConfigInstruction(
       {
         programConfig: programConfigPda,
         initializer: fakeInitializer.publicKey,
@@ -45,7 +45,7 @@ describe("Initialize Global ProgramConfig", () => {
         args: {
           authority: programConfigAuthority.publicKey,
           treasury: programTreasury,
-          multisigCreationFee: 0,
+          smartAccountCreationFee: 0,
         },
       },
       programId
@@ -70,7 +70,7 @@ describe("Initialize Global ProgramConfig", () => {
   });
 
   it("error: `authority` is PublicKey.default", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
+    const initIx = multisig.generated.createInitializeProgramConfigInstruction(
       {
         programConfig: programConfigPda,
         initializer: programConfigInitializer.publicKey,
@@ -79,7 +79,7 @@ describe("Initialize Global ProgramConfig", () => {
         args: {
           authority: PublicKey.default,
           treasury: programTreasury,
-          multisigCreationFee: 0,
+          smartAccountCreationFee: 0,
         },
       },
       programId
@@ -104,7 +104,7 @@ describe("Initialize Global ProgramConfig", () => {
   });
 
   it("error: `treasury` is PublicKey.default", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
+    const initIx = multisig.generated.createInitializeProgramConfigInstruction(
       {
         programConfig: programConfigPda,
         initializer: programConfigInitializer.publicKey,
@@ -113,7 +113,7 @@ describe("Initialize Global ProgramConfig", () => {
         args: {
           authority: programConfigAuthority.publicKey,
           treasury: PublicKey.default,
-          multisigCreationFee: 0,
+          smartAccountCreationFee: 0,
         },
       },
       programId
@@ -138,7 +138,7 @@ describe("Initialize Global ProgramConfig", () => {
   });
 
   it("initialize program config", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
+    const initIx = multisig.generated.createInitializeProgramConfigInstruction(
       {
         programConfig: programConfigPda,
         initializer: programConfigInitializer.publicKey,
@@ -147,7 +147,7 @@ describe("Initialize Global ProgramConfig", () => {
         args: {
           authority: programConfigAuthority.publicKey,
           treasury: programTreasury,
-          multisigCreationFee: 0,
+          smartAccountCreationFee: 0,
         },
       },
       programId
@@ -174,7 +174,7 @@ describe("Initialize Global ProgramConfig", () => {
       programConfigData.authority.toBase58(),
       programConfigAuthority.publicKey.toBase58()
     );
-    assert.strictEqual(programConfigData.multisigCreationFee.toString(), "0");
+    assert.strictEqual(programConfigData.smartAccountCreationFee.toString(), "0");
     assert.strictEqual(
       programConfigData.treasury.toBase58(),
       programTreasury.toBase58()
@@ -182,7 +182,7 @@ describe("Initialize Global ProgramConfig", () => {
   });
 
   it("error: initialize program config twice", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
+    const initIx = multisig.generated.createInitializeProgramConfigInstruction(
       {
         programConfig: programConfigPda,
         initializer: programConfigInitializer.publicKey,
@@ -191,7 +191,7 @@ describe("Initialize Global ProgramConfig", () => {
         args: {
           authority: programConfigAuthority.publicKey,
           treasury: programTreasury,
-          multisigCreationFee: 0,
+          smartAccountCreationFee: 0,
         },
       },
       programId

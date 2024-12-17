@@ -160,7 +160,7 @@ export async function createAutonomousMultisig({
   programId: PublicKey;
 }) {
 
-  const [multisigPda, multisigBump] = multisig.getMultisigPda({
+  const [settingsPda, settingsBump] = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   });
@@ -175,7 +175,7 @@ export async function createAutonomousMultisig({
     programId,
   });
 
-  return [multisigPda, multisigBump] as const;
+  return [settingsPda, settingsBump] as const;
 }
 
 export async function createAutonomousMultisigV2({
@@ -208,20 +208,20 @@ export async function createAutonomousMultisigV2({
     );
   const programTreasury = programConfig.treasury;
 
-  const [multisigPda, multisigBump] = multisig.getMultisigPda({
+  const [settingsPda, settingsBump] = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   });
 
-  const signature = await multisig.rpc.multisigCreateV2({
+  const signature = await multisig.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
-    multisigPda,
-    configAuthority: null,
+    settings: settingsPda,
+    settingsAuthority: null,
     timeLock,
     threshold,
-    members: [
+    signers: [
       { key: members.almighty.publicKey, permissions: Permissions.all() },
       {
         key: members.proposer.publicKey,
@@ -244,7 +244,7 @@ export async function createAutonomousMultisigV2({
 
   await connection.confirmTransaction(signature);
 
-  return [multisigPda, multisigBump] as const;
+  return [settingsPda, settingsBump] as const;
 }
 
 export async function createControlledMultisig({
@@ -265,7 +265,7 @@ export async function createControlledMultisig({
   programId: PublicKey;
 }) {
 
-  const [multisigPda, multisigBump] = multisig.getMultisigPda({
+  const [settingsPda, settingsBump] = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   });
@@ -281,7 +281,7 @@ export async function createControlledMultisig({
     programId
   });
 
-  return [multisigPda, multisigBump] as const;
+  return [settingsPda, settingsBump] as const;
 }
 
 export async function createControlledMultisigV2({
@@ -305,7 +305,7 @@ export async function createControlledMultisigV2({
 }) {
   const creator = await generateFundedKeypair(connection);
 
-  const [multisigPda, multisigBump] = multisig.getMultisigPda({
+  const [settingsPda, settingsBump] = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   });
@@ -317,15 +317,15 @@ export async function createControlledMultisigV2({
     );
   const programTreasury = programConfig.treasury;
 
-  const signature = await multisig.rpc.multisigCreateV2({
+  const signature = await multisig.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
-    multisigPda,
-    configAuthority,
+    settings: settingsPda,
+    settingsAuthority: configAuthority,
     timeLock,
     threshold,
-    members: [
+    signers: [
       { key: members.almighty.publicKey, permissions: Permissions.all() },
       {
         key: members.proposer.publicKey,
@@ -348,11 +348,11 @@ export async function createControlledMultisigV2({
 
   await connection.confirmTransaction(signature);
 
-  return [multisigPda, multisigBump] as const;
+  return [settingsPda, settingsBump] as const;
 }
 
 export type MultisigWithRentReclamationAndVariousBatches = {
-  multisigPda: PublicKey;
+  settingsPda: PublicKey;
   /**
    * Index of a batch with a proposal in the Draft state.
    * The batch contains 1 transaction, which is not executed.
@@ -424,26 +424,26 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   const creator = await generateFundedKeypair(connection);
 
-  const [multisigPda, multisigBump] = multisig.getMultisigPda({
+  const [settingsPda, settingsBump] = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   });
-  const [vaultPda] = multisig.getVaultPda({
-    multisigPda,
-    index: 0,
+  const [vaultPda] = multisig.getSmartAccountPda({
+    settingsPda,
+    accountIndex: 0,
     programId,
   });
 
   //region Create a multisig
-  let signature = await multisig.rpc.multisigCreateV2({
+  let signature = await multisig.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
-    multisigPda,
-    configAuthority: null,
+    settings: settingsPda,
+    settingsAuthority: null,
     timeLock: 0,
     threshold,
-    members: [
+    signers: [
       { key: members.almighty.publicKey, permissions: Permissions.all() },
       {
         key: members.proposer.publicKey,
@@ -493,22 +493,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region Stale batch with proposal in Draft state
   // Create a batch (Stale and Non-Approved).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleDraftBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Stale and Non-Approved).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: staleDraftBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -517,15 +517,15 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Stale and Non-Approved).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleDraftBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
@@ -535,12 +535,12 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region Stale batch with No Proposal
   // Create a batch (Stale and Non-Approved).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleDraftBatchNoProposalIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
@@ -553,22 +553,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region Stale batch with Approved proposal
   // Create a batch (Stale and Approved).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleApprovedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Stale and Approved).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: staleApprovedBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -577,74 +577,74 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Stale and Approved).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleApprovedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Stale and Approved).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: staleApprovedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 2,
     transactionMessage: testMessage2,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Stale and Approved).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: staleApprovedBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Stale and Approved).
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: staleApprovedBatchIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.almighty,
-    multisigPda,
+    settingsPda,
     transactionIndex: staleApprovedBatchIndex,
-    member: members.almighty,
+    signer: members.almighty,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Execute the first batch transaction proposal (Stale and Approved).
-  signature = await multisig.rpc.batchExecuteTransaction({
+  signature = await multisig.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
-    multisigPda,
+    settingsPda,
     batchIndex: staleApprovedBatchIndex,
     transactionIndex: 1,
-    member: members.executor,
+    signer: members.executor,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -653,10 +653,10 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region Executed Config Transaction
   // Create a vault transaction (Executed).
-  signature = await multisig.rpc.configTransactionCreate({
+  signature = await multisig.rpc.createSettingsTransaction({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedConfigTransactionIndex,
     creator: members.proposer.publicKey,
     actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
@@ -665,10 +665,10 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a proposal for the transaction (Executed).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedConfigTransactionIndex,
     creator: members.proposer,
     programId,
@@ -676,34 +676,34 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal by the first member.
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedConfigTransactionIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Approve the proposal by the second member.
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.almighty,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedConfigTransactionIndex,
-    member: members.almighty,
+    signer: members.almighty,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Execute the transaction.
-  signature = await multisig.rpc.configTransactionExecute({
+  signature = await multisig.rpc.executeSettingsTransaction({
     connection,
     feePayer: members.almighty,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedConfigTransactionIndex,
-    member: members.almighty,
+    signer: members.almighty,
     rentPayer: members.almighty,
     programId,
   });
@@ -712,22 +712,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Executed proposal (all batch tx are executed)
   // Create a batch (Executed).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: executedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Executed).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -736,77 +736,77 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Executed).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: executedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Executed).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: executedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 2,
     transactionMessage: testMessage2,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Executed).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Executed).
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: executedBatchIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Execute the first batch transaction proposal (Executed).
-  signature = await multisig.rpc.batchExecuteTransaction({
+  signature = await multisig.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
-    multisigPda,
+    settingsPda,
     batchIndex: executedBatchIndex,
     transactionIndex: 1,
-    member: members.executor,
+    signer: members.executor,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Execute the second batch transaction proposal (Executed).
-  signature = await multisig.rpc.batchExecuteTransaction({
+  signature = await multisig.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
-    multisigPda,
+    settingsPda,
     batchIndex: executedBatchIndex,
     transactionIndex: 2,
-    member: members.executor,
+    signer: members.executor,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -815,7 +815,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   let proposalAccount = await Proposal.fromAccountAddress(
     connection,
     multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: executedBatchIndex,
       programId,
     })[0]
@@ -825,22 +825,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Active proposal
   // Create a batch (Active).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: activeBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Active).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: activeBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -849,27 +849,27 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Active).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: activeBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Active).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: activeBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -878,7 +878,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
     multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: activeBatchIndex,
       programId,
     })[0]
@@ -888,22 +888,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Approved proposal
   // Create a batch (Approved).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: approvedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Approved).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: approvedBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -912,53 +912,53 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Approved).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: approvedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Approved).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: approvedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 2,
     transactionMessage: testMessage2,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Approved).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: approvedBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Approved).
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: approvedBatchIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -967,7 +967,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
     multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: approvedBatchIndex,
       programId,
     })[0]
@@ -975,13 +975,13 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   assert.ok(multisig.types.isProposalStatusApproved(proposalAccount.status));
 
   // Execute first batch transaction (Approved).
-  signature = await multisig.rpc.batchExecuteTransaction({
+  signature = await multisig.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
-    multisigPda,
+    settingsPda,
     batchIndex: approvedBatchIndex,
     transactionIndex: 1,
-    member: members.executor,
+    signer: members.executor,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -989,22 +989,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Rejected proposal
   // Create a batch (Rejected).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: rejectedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Rejected).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: rejectedBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -1013,47 +1013,47 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Rejected).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: rejectedBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Rejected).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: rejectedBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Reject the proposal (Rejected).
-  signature = await multisig.rpc.proposalReject({
+  signature = await multisig.rpc.rejectProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: rejectedBatchIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
-  signature = await multisig.rpc.proposalReject({
+  signature = await multisig.rpc.rejectProposal({
     connection,
     feePayer: members.almighty,
-    multisigPda,
+    settingsPda,
     transactionIndex: rejectedBatchIndex,
-    member: members.almighty,
+    signer: members.almighty,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -1062,7 +1062,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
     multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: rejectedBatchIndex,
       programId,
     })[0]
@@ -1072,22 +1072,22 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Cancelled proposal
   // Create a batch (Cancelled).
-  signature = await multisig.rpc.batchCreate({
+  signature = await multisig.rpc.createBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: cancelledBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     creator: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Cancelled).
-  signature = await multisig.rpc.proposalCreate({
+  signature = await multisig.rpc.createProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: cancelledBatchIndex,
     creator: members.proposer,
     isDraft: true,
@@ -1096,49 +1096,49 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Cancelled).
-  signature = await multisig.rpc.batchAddTransaction({
+  signature = await multisig.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     batchIndex: cancelledBatchIndex,
-    vaultIndex: 0,
+    accountIndex: 0,
     transactionIndex: 1,
     transactionMessage: testMessage1,
-    member: members.proposer,
+    signer: members.proposer,
     ephemeralSigners: 0,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Cancelled).
-  signature = await multisig.rpc.proposalActivate({
+  signature = await multisig.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
-    multisigPda,
+    settingsPda,
     transactionIndex: cancelledBatchIndex,
-    member: members.proposer,
+    signer: members.proposer,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Cancelled).
-  signature = await multisig.rpc.proposalApprove({
+  signature = await multisig.rpc.approveProposal({
     connection,
     feePayer: members.voter,
-    multisigPda,
+    settingsPda,
     transactionIndex: cancelledBatchIndex,
-    member: members.voter,
+    signer: members.voter,
     programId,
   });
   await connection.confirmTransaction(signature);
 
   // Cancel the proposal (Cancelled).
-  signature = await multisig.rpc.proposalCancel({
+  signature = await multisig.rpc.cancelProposal({
     connection,
     feePayer: members.almighty,
-    multisigPda,
+    settingsPda,
     transactionIndex: cancelledBatchIndex,
-    member: members.almighty,
+    signer: members.almighty,
     programId,
   });
   await connection.confirmTransaction(signature);
@@ -1147,7 +1147,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
     multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: cancelledBatchIndex,
       programId,
     })[0]
@@ -1156,7 +1156,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   //endregion
 
   return {
-    multisigPda,
+    settingsPda,
     staleDraftBatchIndex,
     staleDraftBatchNoProposalIndex,
     staleApprovedBatchIndex,
@@ -1204,8 +1204,8 @@ export function comparePubkeys(a: PublicKey, b: PublicKey) {
 }
 
 export async function processBufferInChunks(
-  member: Keypair,
-  multisigPda: PublicKey,
+  signer: Keypair,
+  settingsPda: PublicKey,
   bufferAccount: PublicKey,
   buffer: Uint8Array,
   connection: Connection,
@@ -1220,11 +1220,11 @@ export async function processBufferInChunks(
 
     const chunk = buffer.slice(startIndex, startIndex + chunkSize);
 
-    const ix = multisig.generated.createTransactionBufferExtendInstruction(
+    const ix = multisig.generated.createExtendTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer: bufferAccount,
-        creator: member.publicKey,
+        creator: signer.publicKey,
       },
       {
         args: {
@@ -1235,14 +1235,14 @@ export async function processBufferInChunks(
     );
 
     const message = new TransactionMessage({
-      payerKey: member.publicKey,
+      payerKey: signer.publicKey,
       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
       instructions: [ix],
     }).compileToV0Message();
 
     const tx = new VersionedTransaction(message);
 
-    tx.sign([member]);
+    tx.sign([signer]);
 
     const signature = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: true,

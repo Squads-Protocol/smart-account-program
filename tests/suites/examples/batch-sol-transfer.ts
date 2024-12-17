@@ -1,4 +1,3 @@
-import * as multisig from "@sqds/multisig";
 import {
   AddressLookupTableAccount,
   AddressLookupTableProgram,
@@ -7,6 +6,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
+import * as multisig from "@sqds/multisig";
 import assert from "assert";
 import {
   createAutonomousMultisig,
@@ -19,7 +19,7 @@ import {
   TestMembers,
 } from "../../utils";
 
-const { Multisig, Proposal } = multisig.accounts;
+const { Settings, Proposal } = multisig.accounts;
 
 const programId = getTestProgramId();
 
@@ -35,7 +35,7 @@ describe("Examples / Batch SOL Transfer", () => {
     // Use a different fee payer for the batch execution to isolate member balance changes.
     const feePayer = await generateFundedKeypair(connection);
 
-    const [multisigPda] = await createAutonomousMultisig({
+    const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 2,
@@ -43,9 +43,9 @@ describe("Examples / Batch SOL Transfer", () => {
       programId,
     });
 
-    let multisigAccount = await Multisig.fromAccountAddress(
+    let multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
 
     const vaultIndex = 0;
@@ -53,15 +53,15 @@ describe("Examples / Batch SOL Transfer", () => {
       multisig.utils.toBigInt(multisigAccount.transactionIndex) + 1n;
 
     const [proposalPda] = multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: batchIndex,
       programId,
     });
 
     // Default vault, index 0.
-    const [vaultPda] = multisig.getVaultPda({
-      multisigPda,
-      index: 0,
+    const [vaultPda] = multisig.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
       programId,
     });
 
@@ -154,23 +154,23 @@ describe("Examples / Batch SOL Transfer", () => {
     });
 
     // Create a batch account.
-    signature = await multisig.rpc.batchCreate({
+    signature = await multisig.rpc.createBatch({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       creator: members.proposer,
       batchIndex,
-      vaultIndex,
+      accountIndex: vaultIndex,
       memo: "Distribute funds to members",
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Initialize the proposal for the batch.
-    signature = await multisig.rpc.proposalCreate({
+    signature = await multisig.rpc.createProposal({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex: batchIndex,
       creator: members.proposer,
       isDraft: true,
@@ -183,12 +183,12 @@ describe("Examples / Batch SOL Transfer", () => {
       index,
       { message, addressLookupTableAccounts },
     ] of testTransactionMessages.entries()) {
-      signature = await multisig.rpc.batchAddTransaction({
+      signature = await multisig.rpc.addTransactionToBatch({
         connection,
         feePayer: members.proposer,
-        multisigPda,
-        member: members.proposer,
-        vaultIndex: 0,
+        settingsPda,
+        signer: members.proposer,
+        accountIndex: vaultIndex,
         batchIndex,
         // Batch transaction indices start at 1.
         transactionIndex: index + 1,
@@ -201,22 +201,22 @@ describe("Examples / Batch SOL Transfer", () => {
     }
 
     // Activate the proposal (finalize the batch).
-    signature = await multisig.rpc.proposalActivate({
+    signature = await multisig.rpc.activateProposal({
       connection,
       feePayer: members.proposer,
-      multisigPda,
-      member: members.proposer,
+      settingsPda,
+      signer: members.proposer,
       transactionIndex: batchIndex,
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // First approval for the batch proposal.
-    signature = await multisig.rpc.proposalApprove({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.voter,
-      multisigPda,
-      member: members.voter,
+      settingsPda,
+      signer: members.voter,
       transactionIndex: batchIndex,
       memo: "LGTM",
       programId,
@@ -224,11 +224,11 @@ describe("Examples / Batch SOL Transfer", () => {
     await connection.confirmTransaction(signature);
 
     // Second approval for the batch proposal.
-    signature = await multisig.rpc.proposalApprove({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
-      member: members.almighty,
+      settingsPda,
+      signer: members.almighty,
       transactionIndex: batchIndex,
       memo: "LGTM too",
       programId,
@@ -245,11 +245,11 @@ describe("Examples / Batch SOL Transfer", () => {
 
     // Execute the transactions from the batch sequentially one-by-one.
     for (const transactionIndex of range(1, testTransactionMessages.length)) {
-      signature = await multisig.rpc.batchExecuteTransaction({
+      signature = await multisig.rpc.executeBatchTransaction({
         connection,
         feePayer: feePayer,
-        multisigPda,
-        member: members.executor,
+        settingsPda,
+        signer: members.executor,
         batchIndex,
         transactionIndex,
         programId,

@@ -37,7 +37,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("execute synchronous transfer from vault", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -48,9 +48,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -76,10 +76,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey, members.almighty.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -105,7 +105,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("execute synchronous transfer from vault with lookup table", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -116,9 +116,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -144,10 +144,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey, members.almighty.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -201,7 +201,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -212,9 +212,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -257,10 +257,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Create synchronous transaction instruction
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions: instruction_bytes,
             instruction_accounts,
             programId,
@@ -289,7 +289,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: insufficient signers", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -300,9 +300,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -328,10 +328,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.almighty.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 1,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -355,7 +355,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: insufficient aggregate vote permissions", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -366,9 +366,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -394,10 +394,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey, members.executor.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -421,7 +421,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: insufficient aggregate permissions", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -432,9 +432,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -460,10 +460,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 2,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -487,7 +487,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: not allowed with time lock", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -499,9 +499,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -527,10 +527,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             numSigners: 2,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -554,7 +554,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: missing a signature", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -566,9 +566,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -595,11 +595,11 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             // Adding a non existent 3rd signer
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -623,7 +623,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: not a member", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -635,9 +635,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -667,11 +667,11 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             // Adding the non member as a signer
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,
@@ -694,7 +694,7 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: duplicate signer", async () => {
         // Create multisig
         const createKey = Keypair.generate();
-        const [multisigPda] = await createAutonomousMultisigV2({
+        const [settingsPda] = await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -706,9 +706,9 @@ describe("Instructions / vault_transaction_synchronous", () => {
         });
 
         // Get vault PDA
-        const [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -737,11 +737,11 @@ describe("Instructions / vault_transaction_synchronous", () => {
                 members: [members.proposer.publicKey, members.voter.publicKey],
                 transaction_instructions: [transferInstruction],
             });
-        const synchronousTransactionInstruction = multisig.instructions.vaultTransactionSync({
-            multisigPda,
+        const synchronousTransactionInstruction = multisig.instructions.executeTransactionSync({
+            settingsPda,
             // Adding the non member as a signer
             numSigners: 3,
-            vaultIndex: 0,
+            accountIndex: 0,
             instructions,
             instruction_accounts,
             programId,

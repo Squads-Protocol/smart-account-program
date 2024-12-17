@@ -1,3 +1,4 @@
+import { Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionMessage } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import assert from "assert";
 import {
@@ -8,25 +9,24 @@ import {
   getTestProgramId,
   TestMembers,
 } from "../../utils";
-import { Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionMessage } from "@solana/web3.js";
 
-const { Multisig, Proposal } = multisig.accounts;
+const { Settings, Proposal } = multisig.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
 describe("Instructions / proposal_cancel_v2", () => {
   let members: TestMembers;
-  let multisigPda: PublicKey;
+  let settingsPda: PublicKey;
   let newVotingMember = new Keypair();
   let newVotingMember2 = new Keypair();
   let newVotingMember3 = new Keypair();
   let newVotingMember4 = new Keypair();
   let addMemberCollection = [
-    {key: newVotingMember.publicKey, permissions: multisig.types.Permissions.all()},
-    {key: newVotingMember2.publicKey, permissions: multisig.types.Permissions.all()},
-    {key: newVotingMember3.publicKey, permissions: multisig.types.Permissions.all()},
-    {key: newVotingMember4.publicKey, permissions: multisig.types.Permissions.all()},
+    { key: newVotingMember.publicKey, permissions: multisig.types.Permissions.all() },
+    { key: newVotingMember2.publicKey, permissions: multisig.types.Permissions.all() },
+    { key: newVotingMember3.publicKey, permissions: multisig.types.Permissions.all() },
+    { key: newVotingMember4.publicKey, permissions: multisig.types.Permissions.all() },
   ];
   let cancelVotesCollection = [
     newVotingMember,
@@ -39,16 +39,16 @@ describe("Instructions / proposal_cancel_v2", () => {
   before(async () => {
     members = await generateMultisigMembers(connection);
     // Create new autonomous multisig.
-    multisigPda = (
-        await createAutonomousMultisig({
-            connection,
-            members,
-            threshold: 2,
-            timeLock: 0,
-            programId,
-        })
-        )[0];
-    
+    settingsPda = (
+      await createAutonomousMultisig({
+        connection,
+        members,
+        threshold: 2,
+        timeLock: 0,
+        programId,
+      })
+    )[0];
+
   });
 
   // multisig current has a threhsold of 2 with two voting members.
@@ -58,27 +58,27 @@ describe("Instructions / proposal_cancel_v2", () => {
     // Create a config transaction.
     const transactionIndex = 1n;
     const [proposalPda] = multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex,
       programId,
     });
 
-    let signature = await multisig.rpc.configTransactionCreate({
+    let signature = await multisig.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "AddMember", newMember: {key: newVotingMember.publicKey, permissions: multisig.types.Permissions.all()} }],
+      actions: [{ __kind: "AddSigner", newSigner: { key: newVotingMember.publicKey, permissions: multisig.types.Permissions.all() } }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.proposalCreate({
+    signature = await multisig.rpc.createProposal({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer,
       programId,
@@ -92,44 +92,44 @@ describe("Instructions / proposal_cancel_v2", () => {
     );
 
     // Approve the proposal 1.
-    signature = await multisig.rpc.proposalApprove({
-        connection,
-        feePayer: members.voter,
-        multisigPda,
-        transactionIndex,
-        member: members.voter,
-        programId,
-      });
-      await connection.confirmTransaction(signature);
-  
-    // Approve the proposal 2.
-    signature = await multisig.rpc.proposalApprove({
-      connection,
-      feePayer: members.almighty,
-      multisigPda,
-      transactionIndex,
-      member: members.almighty,
-      programId,
-    });
-    await connection.confirmTransaction(signature);
-
-    // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-    signature = await multisig.rpc.proposalCancelV2({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.voter,
-      member: members.voter,
-      multisigPda,
+      settingsPda,
+      transactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Approve the proposal 2.
+    signature = await multisig.rpc.approveProposal({
+      connection,
+      feePayer: members.almighty,
+      settingsPda,
+      transactionIndex,
+      signer: members.almighty,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
+    signature = await multisig.rpc.cancelProposal({
+      connection,
+      feePayer: members.voter,
+      signer: members.voter,
+      settingsPda,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-    signature = await multisig.rpc.proposalCancelV2({
+    signature = await multisig.rpc.cancelProposal({
       connection,
       feePayer: members.almighty,
-      member: members.almighty,
-      multisigPda,
+      signer: members.almighty,
+      settingsPda,
       transactionIndex,
       programId,
     });
@@ -154,15 +154,15 @@ describe("Instructions / proposal_cancel_v2", () => {
     // Create a config transaction.
     let transactionIndex = 2n;
     const [proposalPda] = multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex,
       programId,
     });
 
     // Default vault.
-    const [vaultPda, vaultBump] = multisig.getVaultPda({
-      multisigPda,
-      index: 0,
+    const [vaultPda, vaultBump] = multisig.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
       programId,
     });
     const testPayee = Keypair.generate();
@@ -177,13 +177,13 @@ describe("Instructions / proposal_cancel_v2", () => {
       instructions: [testIx1],
     });
 
-    let signature = await multisig.rpc.vaultTransactionCreate({
+    let signature = await multisig.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      vaultIndex: 0,
+      accountIndex: 0,
       ephemeralSigners: 0,
       transactionMessage: testTransferMessage,
       memo: "Transfer 1 SOL to a test account",
@@ -192,10 +192,10 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.proposalCreate({
+    signature = await multisig.rpc.createProposal({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer,
       programId,
@@ -203,23 +203,23 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await multisig.rpc.proposalApprove({
-        connection,
-        feePayer: members.voter,
-        multisigPda,
-        transactionIndex,
-        member: members.voter,
-        programId,
-      });
-      await connection.confirmTransaction(signature);
-  
+    signature = await multisig.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
     // Approve the proposal 2.
-    signature = await multisig.rpc.proposalApprove({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.almighty,
+      signer: members.almighty,
       programId,
     });
     await connection.confirmTransaction(signature);
@@ -233,15 +233,15 @@ describe("Instructions / proposal_cancel_v2", () => {
     // check the account size
 
 
-    // TX/Proposal is now in an approved/ready state. 
+    // TX/Proposal is now in an approved/ready state.
     // Now cancel vec has enough room for 4 votes.
 
     // Cast the 1 cancel using the new functionality and the 'voter' member.
-    signature = await multisig.rpc.proposalCancelV2({
+    signature = await multisig.rpc.cancelProposal({
       connection,
       feePayer: members.voter,
-      member: members.voter,
-      multisigPda,
+      signer: members.voter,
+      settingsPda,
       transactionIndex,
       programId,
     });
@@ -256,136 +256,136 @@ describe("Instructions / proposal_cancel_v2", () => {
     for (let i = 0; i < addMemberCollection.length; i++) {
       const newMember = addMemberCollection[i];
       transactionIndex++;
-      signature = await multisig.rpc.configTransactionCreate({
+      signature = await multisig.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
-        multisigPda,
+        settingsPda,
         transactionIndex,
         creator: members.proposer.publicKey,
-        actions: [{ __kind: "AddMember", newMember }],
+        actions: [{ __kind: "AddSigner", newSigner: newMember }],
         programId,
       });
       await connection.confirmTransaction(signature);
-  
+
       // Create a proposal for the transaction.
-      signature = await multisig.rpc.proposalCreate({
+      signature = await multisig.rpc.createProposal({
         connection,
         feePayer: members.proposer,
-        multisigPda,
+        settingsPda,
         transactionIndex,
         creator: members.proposer,
         programId,
       });
       await connection.confirmTransaction(signature);
-  
+
       // Proposal status must be "Cancelled".
       proposalAccount = await Proposal.fromAccountAddress(
         connection,
         proposalPda
       );
-  
+
       // Approve the proposal 1.
-      signature = await multisig.rpc.proposalApprove({
-          connection,
-          feePayer: members.voter,
-          multisigPda,
-          transactionIndex,
-          member: members.voter,
-          programId,
-        });
-        await connection.confirmTransaction(signature);
-    
+      signature = await multisig.rpc.approveProposal({
+        connection,
+        feePayer: members.voter,
+        settingsPda,
+        transactionIndex,
+        signer: members.voter,
+        programId,
+      });
+      await connection.confirmTransaction(signature);
+
       // Approve the proposal 2.
-      signature = await multisig.rpc.proposalApprove({
+      signature = await multisig.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
-        multisigPda,
+        settingsPda,
         transactionIndex,
-        member: members.almighty,
+        signer: members.almighty,
         programId,
       });
       await connection.confirmTransaction(signature);
 
       // use the execute only member to execute
-      signature = await multisig.rpc.configTransactionExecute({
+      signature = await multisig.rpc.executeSettingsTransaction({
         connection,
         feePayer: members.executor,
-        multisigPda,
+        settingsPda,
         transactionIndex,
-        member: members.executor,
+        signer: members.executor,
         rentPayer: members.executor,
         programId,
       });
       await connection.confirmTransaction(signature);
-      
+
     }
 
     // assert that our member length is now 8
-    let multisigAccount = await Multisig.fromAccountAddress(
+    let multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
-    assert.strictEqual(multisigAccount.members.length, 8);
+    assert.strictEqual(multisigAccount.signers.length, 8);
 
     transactionIndex++;
     // now remove the original cancel voter
-    signature = await multisig.rpc.configTransactionCreate({
+    signature = await multisig.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "RemoveMember", oldMember: originalCancel.publicKey }, { __kind: "ChangeThreshold", newThreshold: 5 }],
+      actions: [{ __kind: "RemoveSigner", oldSigner: originalCancel.publicKey }, { __kind: "ChangeThreshold", newThreshold: 5 }],
       programId,
     });
     await connection.confirmTransaction(signature);
     // create the remove proposal
-    signature = await multisig.rpc.proposalCreate({
+    signature = await multisig.rpc.createProposal({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer,
       programId,
     });
     await connection.confirmTransaction(signature);
     // approve the proposal 1
-    signature = await multisig.rpc.proposalApprove({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.voter,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.voter,
+      signer: members.voter,
       programId,
     });
     await connection.confirmTransaction(signature);
     // approve the proposal 2
-    signature = await multisig.rpc.proposalApprove({
+    signature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.almighty,
+      signer: members.almighty,
       programId,
     });
     await connection.confirmTransaction(signature);
     // execute the proposal
-    signature = await multisig.rpc.configTransactionExecute({
+    signature = await multisig.rpc.executeSettingsTransaction({
       connection,
       feePayer: members.executor,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.executor,
+      signer: members.executor,
       rentPayer: members.executor,
       programId,
     });
     await connection.confirmTransaction(signature);
     // now assert we have 7 members
-    multisigAccount = await Multisig.fromAccountAddress(
+    multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
-    assert.strictEqual(multisigAccount.members.length, 7);
+    assert.strictEqual(multisigAccount.signers.length, 7);
     assert.strictEqual(multisigAccount.threshold, 5);
 
     // so now our threshold should be 5 for cancelling, which exceeds the original space allocated at the beginning
@@ -403,11 +403,11 @@ describe("Instructions / proposal_cancel_v2", () => {
     const rawProposalData = rawProposal?.data.length;
 
     // now cast a cancel against it with the first all perm key
-    signature = await multisig.rpc.proposalCancelV2({
+    signature = await multisig.rpc.cancelProposal({
       connection,
       feePayer: members.almighty,
-      member: members.almighty,
-      multisigPda,
+      signer: members.almighty,
+      settingsPda,
       transactionIndex: 2n,
       programId,
     });
@@ -426,11 +426,11 @@ describe("Instructions / proposal_cancel_v2", () => {
     assert.ok(newCancelVote.equals(members.almighty.publicKey));
     // now cast 4 more cancels with the new key
     for (let i = 0; i < cancelVotesCollection.length; i++) {
-      signature = await multisig.rpc.proposalCancelV2({
+      signature = await multisig.rpc.cancelProposal({
         connection,
         feePayer: members.executor,
-        member: cancelVotesCollection[i],
-        multisigPda,
+        signer: cancelVotesCollection[i],
+        settingsPda,
         transactionIndex: 2n,
         programId,
       });
@@ -447,4 +447,4 @@ describe("Instructions / proposal_cancel_v2", () => {
     assert.strictEqual(proposalAccount.cancelled.length, 5);
   });
 
- });
+});

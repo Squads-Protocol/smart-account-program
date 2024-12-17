@@ -9,8 +9,8 @@ pub struct ProgramConfigSetAuthorityArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ProgramConfigSetMultisigCreationFeeArgs {
-    pub new_multisig_creation_fee: u64,
+pub struct ProgramConfigSetSmartAccountCreationFeeArgs {
+    pub new_smart_account_creation_fee: u64,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -64,11 +64,11 @@ impl ProgramConfig<'_> {
     #[access_control(ctx.accounts.validate())]
     pub fn set_smart_account_creation_fee(
         ctx: Context<Self>,
-        args: ProgramConfigSetMultisigCreationFeeArgs,
+        args: ProgramConfigSetSmartAccountCreationFeeArgs,
     ) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
 
-        program_config.smart_account_creation_fee = args.new_multisig_creation_fee;
+        program_config.smart_account_creation_fee = args.new_smart_account_creation_fee;
 
         program_config.invariant()?;
 

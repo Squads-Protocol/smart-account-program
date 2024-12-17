@@ -10,15 +10,14 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import {
-  TransactionBufferCreateArgs,
-  TransactionBufferCreateInstructionArgs,
-  TransactionBufferExtendArgs,
-  TransactionBufferExtendInstructionArgs,
-  VaultTransactionCreateArgs,
-  VaultTransactionCreateFromBufferInstructionArgs
+  CreateTransactionArgs,
+  CreateTransactionBufferArgs,
+  CreateTransactionBufferInstructionArgs,
+  CreateTransactionInstructionArgs,
+  ExtendTransactionBufferArgs,
+  ExtendTransactionBufferInstructionArgs
 } from "@sqds/multisig/lib/generated";
 import assert from "assert";
-import { BN } from "bn.js";
 import * as crypto from "crypto";
 import {
   TestMembers,
@@ -38,14 +37,14 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
 
   const createKey = Keypair.generate();
 
-  let multisigPda = multisig.getMultisigPda({
+  let settingsPda = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   })[0];
 
-  const [vaultPda] = multisig.getVaultPda({
-    multisigPda,
-    index: 0,
+  const [vaultPda] = multisig.getSmartAccountPda({
+    settingsPda,
+    accountIndex: 0,
     programId,
   });
 
@@ -101,14 +100,14 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
       multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
         message: testTransferMessage,
         addressLookupTableAccounts: [],
-        vaultPda,
+        smartAccountPda: vaultPda,
       });
 
 
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
-        Buffer.from("multisig"),
-        multisigPda.toBuffer(),
+        Buffer.from("smart_account"),
+        settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         members.proposer.publicKey.toBuffer(),
         Uint8Array.from([bufferIndex]),
@@ -124,9 +123,9 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     // Slice the message buffer into two parts.
     const firstSlice = messageBuffer.slice(0, 700);
 
-    const ix = multisig.generated.createTransactionBufferCreateInstruction(
+    const ix = multisig.generated.createCreateTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -135,13 +134,13 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
       {
         args: {
           bufferIndex: bufferIndex,
-          vaultIndex: 0,
+          accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
           finalBufferSize: messageBuffer.length,
           buffer: firstSlice,
-        } as TransactionBufferCreateArgs,
-      } as TransactionBufferCreateInstructionArgs,
+        } as CreateTransactionBufferArgs,
+      } as CreateTransactionBufferInstructionArgs,
       programId
     );
 
@@ -185,17 +184,17 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
 
     // Extned the buffer.
     const secondIx =
-      multisig.generated.createTransactionBufferExtendInstruction(
+      multisig.generated.createExtendTransactionBufferInstruction(
         {
-          multisig: multisigPda,
+          settings: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
         {
           args: {
             buffer: secondSlice,
-          } as TransactionBufferExtendArgs,
-        } as TransactionBufferExtendInstructionArgs,
+          } as ExtendTransactionBufferArgs,
+        } as ExtendTransactionBufferInstructionArgs,
         programId
       );
 
@@ -231,8 +230,8 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
 
     // Derive vault transaction PDA.
     const [transactionPda] = multisig.getTransactionPda({
-      multisigPda,
-      index: transactionIndex,
+      settingsPda,
+      transactionIndex,
       programId,
     });
 
@@ -254,24 +253,24 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
 
     // Create final instruction.
     const thirdIx =
-      multisig.generated.createVaultTransactionCreateFromBufferInstruction(
+      multisig.generated.createCreateTransactionFromBufferInstruction(
         {
-          vaultTransactionCreateItemMultisig: multisigPda,
-          vaultTransactionCreateItemTransaction: transactionPda,
-          vaultTransactionCreateItemCreator: members.proposer.publicKey,
-          vaultTransactionCreateItemRentPayer: members.proposer.publicKey,
-          vaultTransactionCreateItemSystemProgram: SystemProgram.programId,
-          creator: members.proposer.publicKey,
+          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemTransaction: transactionPda,
+          transactionCreateItemCreator: members.proposer.publicKey,
+          transactionCreateItemRentPayer: members.proposer.publicKey,
+          transactionCreateItemSystemProgram: SystemProgram.programId,
           transactionBuffer: transactionBuffer,
+          creator: members.proposer.publicKey,
         },
         {
           args: {
-            vaultIndex: 0,
+            accountIndex: 0,
             ephemeralSigners: 0,
             transactionMessage: new Uint8Array(6).fill(0),
             memo: null,
-          } as VaultTransactionCreateArgs,
-        } as VaultTransactionCreateFromBufferInstructionArgs,
+          } as CreateTransactionArgs,
+        } as CreateTransactionInstructionArgs,
         programId
       );
 
@@ -300,7 +299,7 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     }, "confirmed");
 
     const transactionInfo =
-      await multisig.accounts.VaultTransaction.fromAccountAddress(
+      await multisig.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
@@ -330,14 +329,14 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
       multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
         message: testTransferMessage,
         addressLookupTableAccounts: [],
-        vaultPda,
+        smartAccountPda: vaultPda,
       });
 
 
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
-        Buffer.from("multisig"),
-        multisigPda.toBuffer(),
+        Buffer.from("smart_account"),
+        settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         members.proposer.publicKey.toBuffer(),
         Uint8Array.from([bufferIndex]),
@@ -349,9 +348,9 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     const dummyHash = new Uint8Array(32).fill(0);
 
     const createIx =
-      multisig.generated.createTransactionBufferCreateInstruction(
+      multisig.generated.createCreateTransactionBufferInstruction(
         {
-          multisig: multisigPda,
+          settings: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
           rentPayer: members.proposer.publicKey,
@@ -360,12 +359,12 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
         {
           args: {
             bufferIndex,
-            vaultIndex: 0,
+            accountIndex: 0,
             finalBufferHash: Array.from(dummyHash),
             finalBufferSize: messageBuffer.length,
             buffer: messageBuffer,
-          } as TransactionBufferCreateArgs,
-        } as TransactionBufferCreateInstructionArgs,
+          } as CreateTransactionBufferArgs,
+        } as CreateTransactionBufferInstructionArgs,
         programId
       );
 
@@ -385,8 +384,8 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     await connection.confirmTransaction(createBufferSig);
 
     const [transactionPda] = multisig.getTransactionPda({
-      multisigPda,
-      index: transactionIndex,
+      settingsPda,
+      transactionIndex,
       programId,
     });
     const transactionBufferMeta: AccountMeta = {
@@ -396,25 +395,25 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     }
 
     const createFromBufferIx =
-      multisig.generated.createVaultTransactionCreateFromBufferInstruction(
+      multisig.generated.createCreateTransactionFromBufferInstruction(
         {
-          vaultTransactionCreateItemMultisig: multisigPda,
-          vaultTransactionCreateItemTransaction: transactionPda,
-          vaultTransactionCreateItemCreator: members.proposer.publicKey,
-          vaultTransactionCreateItemRentPayer: members.proposer.publicKey,
-          vaultTransactionCreateItemSystemProgram: SystemProgram.programId,
+          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemTransaction: transactionPda,
+          transactionCreateItemCreator: members.proposer.publicKey,
+          transactionCreateItemRentPayer: members.proposer.publicKey,
+          transactionCreateItemSystemProgram: SystemProgram.programId,
           creator: members.proposer.publicKey,
           transactionBuffer: transactionBuffer,
         },
         {
           args: {
-            vaultIndex: 0,
+            accountIndex: 0,
             ephemeralSigners: 0,
             transactionMessage: new Uint8Array(6).fill(0),
             memo: null,
             anchorRemainingAccounts: [transactionBufferMeta]
-          } as VaultTransactionCreateArgs,
-        } as VaultTransactionCreateFromBufferInstructionArgs,
+          } as CreateTransactionArgs,
+        } as CreateTransactionInstructionArgs,
         programId
       );
 
@@ -442,13 +441,13 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
   // We expect the program to run out of memory in a base case, given 43 transfers.
   it("error: out of memory (no allocator)", async () => {
     const [transactionPda] = multisig.getTransactionPda({
-      multisigPda,
-      index: 1n,
+      settingsPda,
+      transactionIndex: 1n,
       programId,
     });
 
     const transactionInfo =
-      await multisig.accounts.VaultTransaction.fromAccountAddress(
+      await multisig.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
@@ -456,10 +455,10 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     // Check that we're dealing with the same account from first test.
     assert.equal(transactionInfo.message.instructions.length, 43);
 
-    const fourthSignature = await multisig.rpc.proposalCreate({
+    const fourthSignature = await multisig.rpc.createProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
       creator: members.almighty,
       isDraft: false,
@@ -467,21 +466,21 @@ describe("Instructions / vault_transaction_create_from_buffer", () => {
     });
     await connection.confirmTransaction(fourthSignature);
 
-    const fifthSignature = await multisig.rpc.proposalApprove({
+    const fifthSignature = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
-      member: members.almighty,
+      signer: members.almighty,
       programId,
     });
     await connection.confirmTransaction(fifthSignature);
 
-    const executeIx = await multisig.instructions.vaultTransactionExecute({
+    const executeIx = await multisig.instructions.executeTransaction({
       connection,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
-      member: members.almighty.publicKey,
+      signer: members.almighty.publicKey,
       programId,
     });
 

@@ -9,14 +9,14 @@ import * as transactions from "../transactions";
 import { translateAndThrowAnchorError } from "../errors";
 
 /** Create a new vault transactions batch. */
-export async function batchCreate({
+export async function createBatch({
   connection,
   feePayer,
-  multisigPda,
+  settingsPda,
   batchIndex,
   creator,
   rentPayer,
-  vaultIndex,
+  accountIndex,
   memo,
   signers,
   sendOptions,
@@ -24,13 +24,13 @@ export async function batchCreate({
 }: {
   connection: Connection;
   feePayer: Signer;
-  multisigPda: PublicKey;
+  settingsPda: PublicKey;
   batchIndex: bigint;
   /** Member of the multisig that is creating the batch. */
   creator: Signer;
   /** Payer for the batch account rent. If not provided, `creator` is used. */
   rentPayer?: Signer;
-  vaultIndex: number;
+  accountIndex: number;
   memo?: string;
   signers?: Signer[];
   sendOptions?: SendOptions;
@@ -38,14 +38,14 @@ export async function batchCreate({
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
-  const tx = transactions.batchCreate({
+  const tx = transactions.createBatch({
     blockhash,
     feePayer: feePayer.publicKey,
-    multisigPda,
+    settingsPda,
     batchIndex,
     creator: creator.publicKey,
     rentPayer: rentPayer?.publicKey ?? creator.publicKey,
-    vaultIndex,
+    accountIndex,
     memo,
     programId,
   });

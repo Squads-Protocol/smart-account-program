@@ -8,11 +8,10 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import {
-    TransactionBufferCreateArgs,
-    TransactionBufferCreateInstructionArgs,
+    CreateTransactionBufferArgs,
+    CreateTransactionBufferInstructionArgs,
 } from "@sqds/multisig/lib/generated";
 import assert from "assert";
-import { BN } from "bn.js";
 import * as crypto from "crypto";
 import {
     TestMembers,
@@ -28,7 +27,7 @@ const connection = createLocalhostConnection();
 
 describe("Instructions / transaction_buffer_close", () => {
     let members: TestMembers;
-    let multisigPda: PublicKey;
+    let settingsPda: PublicKey;
     let vaultPda: PublicKey;
     let transactionBuffer: PublicKey;
 
@@ -37,7 +36,7 @@ describe("Instructions / transaction_buffer_close", () => {
         members = await generateMultisigMembers(connection);
 
         const createKey = Keypair.generate();
-        multisigPda = (await createAutonomousMultisigV2({
+        settingsPda = (await createAutonomousMultisigV2({
             connection,
             createKey,
             members,
@@ -47,9 +46,9 @@ describe("Instructions / transaction_buffer_close", () => {
             programId,
         }))[0];
 
-        [vaultPda] = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        [vaultPda] = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         });
 
@@ -75,13 +74,13 @@ describe("Instructions / transaction_buffer_close", () => {
         const messageBuffer = multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
             message: testTransferMessage,
             addressLookupTableAccounts: [],
-            vaultPda,
+            smartAccountPda: vaultPda,
         });
 
         [transactionBuffer] = PublicKey.findProgramAddressSync(
             [
-                Buffer.from("multisig"),
-                multisigPda.toBuffer(),
+                Buffer.from("smart_account"),
+                settingsPda.toBuffer(),
                 Buffer.from("transaction_buffer"),
                 members.proposer.publicKey.toBuffer(),
                 Uint8Array.from([bufferIndex])
@@ -93,9 +92,9 @@ describe("Instructions / transaction_buffer_close", () => {
             .update(messageBuffer)
             .digest();
 
-        const createIx = multisig.generated.createTransactionBufferCreateInstruction(
+        const createIx = multisig.generated.createCreateTransactionBufferInstruction(
             {
-                multisig: multisigPda,
+                settings: settingsPda,
                 transactionBuffer,
                 creator: members.proposer.publicKey,
                 rentPayer: members.proposer.publicKey,
@@ -103,13 +102,13 @@ describe("Instructions / transaction_buffer_close", () => {
             },
             {
                 args: {
+                    accountIndex: 0,
                     bufferIndex: Number(bufferIndex),
-                    vaultIndex: 0,
                     finalBufferHash: Array.from(messageHash),
                     finalBufferSize: messageBuffer.length,
                     buffer: messageBuffer,
-                } as TransactionBufferCreateArgs,
-            } as TransactionBufferCreateInstructionArgs,
+                } as CreateTransactionBufferArgs,
+            } as CreateTransactionBufferInstructionArgs,
             programId
         );
 
@@ -127,9 +126,9 @@ describe("Instructions / transaction_buffer_close", () => {
     });
 
     it("error: close buffer with non-creator signature", async () => {
-        const closeIx = multisig.generated.createTransactionBufferCloseInstruction(
+        const closeIx = multisig.generated.createCloseTransactionBufferInstruction(
             {
-                multisig: multisigPda,
+                settings: settingsPda,
                 transactionBuffer,
                 creator: members.voter.publicKey,
             },
@@ -155,9 +154,9 @@ describe("Instructions / transaction_buffer_close", () => {
     });
 
     it("close buffer with creator signature", async () => {
-        const closeIx = multisig.generated.createTransactionBufferCloseInstruction(
+        const closeIx = multisig.generated.createCloseTransactionBufferInstruction(
             {
-                multisig: multisigPda,
+                settings: settingsPda,
                 transactionBuffer,
                 creator: members.proposer.publicKey,
             },

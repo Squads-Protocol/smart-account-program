@@ -8,10 +8,10 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import {
-  TransactionBufferCreateArgs,
-  TransactionBufferCreateInstructionArgs,
-  TransactionBufferExtendArgs,
-  TransactionBufferExtendInstructionArgs,
+  CreateTransactionBufferArgs,
+  CreateTransactionBufferInstructionArgs,
+  ExtendTransactionBufferArgs,
+  ExtendTransactionBufferInstructionArgs,
 } from "@sqds/multisig/lib/generated";
 import assert from "assert";
 import * as crypto from "crypto";
@@ -33,14 +33,14 @@ describe("Instructions / transaction_buffer_extend", () => {
 
   const createKey = Keypair.generate();
 
-  let multisigPda = multisig.getMultisigPda({
+  let settingsPda = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   })[0];
 
-  const [vaultPda] = multisig.getVaultPda({
-    multisigPda,
-    index: 0,
+  const [vaultPda] = multisig.getSmartAccountPda({
+    settingsPda,
+    accountIndex: 0,
     programId,
   });
 
@@ -71,8 +71,8 @@ describe("Instructions / transaction_buffer_extend", () => {
   async function createTransactionBuffer(creator: Keypair, transactionIndex: bigint) {
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
-        Buffer.from("multisig"),
-        multisigPda.toBuffer(),
+        Buffer.from("smart_account"),
+        settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         creator.publicKey.toBuffer(),
         Buffer.from([Number(transactionIndex)])
@@ -95,14 +95,14 @@ describe("Instructions / transaction_buffer_extend", () => {
     const messageBuffer = multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
       message: testTransferMessage,
       addressLookupTableAccounts: [],
-      vaultPda,
+      smartAccountPda: vaultPda,
     });
 
     const messageHash = crypto.createHash("sha256").update(messageBuffer).digest();
 
-    const createIx = multisig.generated.createTransactionBufferCreateInstruction(
+    const createIx = multisig.generated.createCreateTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: creator.publicKey,
         rentPayer: creator.publicKey,
@@ -111,12 +111,12 @@ describe("Instructions / transaction_buffer_extend", () => {
       {
         args: {
           bufferIndex: Number(transactionIndex),
-          vaultIndex: 0,
+          accountIndex: 0,
           finalBufferHash: Array.from(messageHash),
           finalBufferSize: messageBuffer.length,
           buffer: messageBuffer.slice(0, 750),
-        } as TransactionBufferCreateArgs,
-      } as TransactionBufferCreateInstructionArgs,
+        } as CreateTransactionBufferArgs,
+      } as CreateTransactionBufferInstructionArgs,
       programId
     );
 
@@ -137,9 +137,9 @@ describe("Instructions / transaction_buffer_extend", () => {
 
   // Helper function to close a transaction buffer
   async function closeTransactionBuffer(creator: Keypair, transactionBuffer: PublicKey) {
-    const closeIx = multisig.generated.createTransactionBufferCloseInstruction(
+    const closeIx = multisig.generated.createCloseTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: creator.publicKey,
       },
@@ -187,13 +187,13 @@ describe("Instructions / transaction_buffer_extend", () => {
     const messageBuffer = multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
       message: testTransferMessage,
       addressLookupTableAccounts: [],
-      vaultPda,
+      smartAccountPda: vaultPda,
     });
 
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
-        Buffer.from("multisig"),
-        multisigPda.toBuffer(),
+        Buffer.from("smart_account"),
+        settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         members.proposer.publicKey.toBuffer(),
         Buffer.from([Number(transactionIndex)])
@@ -209,9 +209,9 @@ describe("Instructions / transaction_buffer_extend", () => {
     // Slice the first 750 bytes of the message buffer.
     const firstHalf = messageBuffer.slice(0, 750);
 
-    const ix = multisig.generated.createTransactionBufferCreateInstruction(
+    const ix = multisig.generated.createCreateTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -220,13 +220,13 @@ describe("Instructions / transaction_buffer_extend", () => {
       {
         args: {
           bufferIndex: Number(transactionIndex),
-          vaultIndex: 0,
+          accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
           finalBufferSize: messageBuffer.length,
           buffer: firstHalf,
-        } as TransactionBufferCreateArgs,
-      } as TransactionBufferCreateInstructionArgs,
+        } as CreateTransactionBufferArgs,
+      } as CreateTransactionBufferInstructionArgs,
       programId
     );
 
@@ -271,17 +271,17 @@ describe("Instructions / transaction_buffer_extend", () => {
     );
 
     const secondIx =
-      multisig.generated.createTransactionBufferExtendInstruction(
+      multisig.generated.createExtendTransactionBufferInstruction(
         {
-          multisig: multisigPda,
+          settings: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
         {
           args: {
             buffer: secondHalf,
-          } as TransactionBufferExtendArgs,
-        } as TransactionBufferExtendInstructionArgs,
+          } as ExtendTransactionBufferArgs,
+        } as ExtendTransactionBufferInstructionArgs,
         programId
       );
 
@@ -330,17 +330,17 @@ describe("Instructions / transaction_buffer_extend", () => {
     const transactionBuffer = await createTransactionBuffer(members.almighty, transactionIndex);
 
     const dummyData = Buffer.alloc(100, 1);
-    const ix = multisig.generated.createTransactionBufferExtendInstruction(
+    const ix = multisig.generated.createExtendTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: nonMember.publicKey,
       },
       {
         args: {
           buffer: dummyData,
-        } as TransactionBufferExtendArgs,
-      } as TransactionBufferExtendInstructionArgs,
+        } as ExtendTransactionBufferArgs,
+      } as ExtendTransactionBufferInstructionArgs,
       programId
     );
 
@@ -368,17 +368,17 @@ describe("Instructions / transaction_buffer_extend", () => {
     const transactionBuffer = await createTransactionBuffer(members.almighty, transactionIndex);
 
     const largeData = Buffer.alloc(500, 1);
-    const ix = multisig.generated.createTransactionBufferExtendInstruction(
+    const ix = multisig.generated.createExtendTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: members.almighty.publicKey,
       },
       {
         args: {
           buffer: largeData,
-        } as TransactionBufferExtendArgs,
-      } as TransactionBufferExtendInstructionArgs,
+        } as ExtendTransactionBufferArgs,
+      } as ExtendTransactionBufferInstructionArgs,
       programId
     );
 
@@ -406,17 +406,17 @@ describe("Instructions / transaction_buffer_extend", () => {
     const transactionBuffer = await createTransactionBuffer(members.proposer, transactionIndex);
 
     const dummyData = Buffer.alloc(100, 1);
-    const extendIx = multisig.generated.createTransactionBufferExtendInstruction(
+    const extendIx = multisig.generated.createExtendTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: members.almighty.publicKey,
       },
       {
         args: {
           buffer: dummyData,
-        } as TransactionBufferExtendArgs,
-      } as TransactionBufferExtendInstructionArgs,
+        } as ExtendTransactionBufferArgs,
+      } as ExtendTransactionBufferInstructionArgs,
       programId
     );
 

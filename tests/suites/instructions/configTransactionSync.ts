@@ -8,7 +8,7 @@ import {
     TestMembers,
 } from "../../utils";
 
-const { Multisig, Proposal } = multisig.accounts;
+const { Settings, Proposal } = multisig.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
@@ -22,7 +22,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("error: insufficient vote permissions", async () => {
         // Create new autonomous multisig.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -35,12 +35,12 @@ describe("Instructions / config_transaction_execute", () => {
         // Create a config transaction.
         await assert.rejects(
             async () => {
-                let signature = await multisig.rpc.configTransactionSync({
+                let signature = await multisig.rpc.executeSettingsTransactionSync({
                     connection,
                     feePayer: members.proposer,
-                    multisigPda,
+                    settingsPda,
                     signers: [members.proposer, members.voter, members.executor],
-                    configActions: [{ __kind: "ChangeThreshold", newThreshold: 3 }],
+                    actions: [{ __kind: "ChangeThreshold", newThreshold: 3 }],
                     programId,
                 });
 
@@ -52,7 +52,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("error: not enough signers", async () => {
         // Create new autonomous multisig.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -65,12 +65,12 @@ describe("Instructions / config_transaction_execute", () => {
         // Create a config transaction.
         await assert.rejects(
             async () => {
-                let signature = await multisig.rpc.configTransactionSync({
+                let signature = await multisig.rpc.executeSettingsTransactionSync({
                     connection,
                     feePayer: members.almighty,
-                    multisigPda,
+                    settingsPda,
                     signers: [members.almighty],
-                    configActions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
+                    actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
                     programId,
                 });
 
@@ -82,7 +82,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("error: removing a member causes threshold to be unreachable", async () => {
         // Create new autonomous multisig.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -96,14 +96,14 @@ describe("Instructions / config_transaction_execute", () => {
         await assert.rejects(
             async () => {
 
-                let signature = await multisig.rpc.configTransactionSync({
+                let signature = await multisig.rpc.executeSettingsTransactionSync({
                     connection,
                     feePayer: members.voter,
-                    multisigPda,
+                    settingsPda,
                     signers: [members.voter, members.almighty],
-                    configActions: [
+                    actions: [
                         // Try to remove 1 out of 2 voting members.
-                        { __kind: "RemoveMember", oldMember: members.voter.publicKey },
+                        { __kind: "RemoveSigner", oldSigner: members.voter.publicKey },
                     ],
                     programId,
                 });
@@ -115,7 +115,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("execute config transaction with RemoveMember and ChangeThreshold actions", async () => {
         // Create new autonomous multisig.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -128,14 +128,14 @@ describe("Instructions / config_transaction_execute", () => {
         // Create random config transaction
         // This is so we can check that the stale transaction index is updated
         // after the synchronous change
-        let _signature = await multisig.rpc.configTransactionCreate({
+        let _signature = await multisig.rpc.createSettingsTransaction({
             connection,
             creator: members.proposer.publicKey,
             transactionIndex: 1n,
             feePayer: members.proposer,
-            multisigPda,
+            settingsPda,
             actions: [
-                { __kind: "RemoveMember", oldMember: members.voter.publicKey },
+                { __kind: "RemoveSigner", oldSigner: members.voter.publicKey },
                 { __kind: "ChangeThreshold", newThreshold: 1 },
             ],
             programId,
@@ -143,14 +143,14 @@ describe("Instructions / config_transaction_execute", () => {
         await connection.confirmTransaction(_signature);
 
         // Create a config transaction.
-        let signature = await multisig.rpc.configTransactionSync({
+        let signature = await multisig.rpc.executeSettingsTransactionSync({
             connection,
             feePayer: members.voter,
-            multisigPda,
+            settingsPda,
             signers: [members.voter, members.almighty],
-            configActions: [
+            actions: [
                 // Remove 1 out of 2 voting members.
-                { __kind: "RemoveMember", oldMember: members.voter.publicKey },
+                { __kind: "RemoveSigner", oldSigner: members.voter.publicKey },
                 // and simultaneously change the threshold to 1/1.
                 { __kind: "ChangeThreshold", newThreshold: 1 },
             ],
@@ -159,15 +159,15 @@ describe("Instructions / config_transaction_execute", () => {
         await connection.confirmTransaction(signature);
 
         // Verify the multisig account.
-        const multisigAccount = await Multisig.fromAccountAddress(
+        const multisigAccount = await Settings.fromAccountAddress(
             connection,
-            multisigPda
+            settingsPda
         );
         // The threshold should have been updated.
         assert.strictEqual(multisigAccount.threshold, 1);
         // Voter should have been removed.
         assert(
-            !multisigAccount.members.some((m) =>
+            !multisigAccount.signers.some((m) =>
                 m.key.equals(members.voter.publicKey)
             )
         );
@@ -177,7 +177,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("execute config transaction with ChangeThreshold action", async () => {
         // Create new autonomous multisig.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -189,14 +189,14 @@ describe("Instructions / config_transaction_execute", () => {
         // Create random config transaction
         // This is so we can check that the stale transaction index is updated
         // after the synchronous change
-        let _signature = await multisig.rpc.configTransactionCreate({
+        let _signature = await multisig.rpc.createSettingsTransaction({
             connection,
             creator: members.proposer.publicKey,
             transactionIndex: 1n,
             feePayer: members.proposer,
-            multisigPda,
+            settingsPda,
             actions: [
-                { __kind: "RemoveMember", oldMember: members.voter.publicKey },
+                { __kind: "RemoveSigner", oldSigner: members.voter.publicKey },
                 { __kind: "ChangeThreshold", newThreshold: 1 },
             ],
             programId,
@@ -204,20 +204,20 @@ describe("Instructions / config_transaction_execute", () => {
         await connection.confirmTransaction(_signature);
 
         // Execute a synchronous config transaction.
-        let signature = await multisig.rpc.configTransactionSync({
+        let signature = await multisig.rpc.executeSettingsTransactionSync({
             connection,
             feePayer: members.almighty,
-            multisigPda,
+            settingsPda,
             signers: [members.almighty],
-            configActions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
+            actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
             programId,
         });
         await connection.confirmTransaction(signature);
 
         // Verify the multisig account.
-        const multisigAccount = await Multisig.fromAccountAddress(
+        const multisigAccount = await Settings.fromAccountAddress(
             connection,
-            multisigPda
+            settingsPda
         );
         // The threshold should have been updated.
         assert.strictEqual(multisigAccount.threshold, 2);
@@ -227,7 +227,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     it("execute config transaction with SetRentCollector action", async () => {
         // Create new autonomous multisig without rent_collector.
-        const multisigPda = (
+        const settingsPda = (
             await createAutonomousMultisig({
                 connection,
                 members,
@@ -238,26 +238,26 @@ describe("Instructions / config_transaction_execute", () => {
         )[0];
 
         const multisigAccountInfoPreExecution = await connection.getAccountInfo(
-            multisigPda
+            settingsPda
         )!;
 
-        const vaultPda = multisig.getVaultPda({
-            multisigPda,
-            index: 0,
+        const vaultPda = multisig.getSmartAccountPda({
+            settingsPda,
+            accountIndex: 0,
             programId,
         })[0];
 
         // Create random config transaction
         // This is so we can check that the stale transaction index is not
         // after the synchronous change
-        let _signature = await multisig.rpc.configTransactionCreate({
+        let _signature = await multisig.rpc.createSettingsTransaction({
             connection,
             creator: members.proposer.publicKey,
             transactionIndex: 1n,
             feePayer: members.proposer,
-            multisigPda,
+            settingsPda,
             actions: [
-                { __kind: "RemoveMember", oldMember: members.voter.publicKey },
+                { __kind: "RemoveSigner", oldSigner: members.voter.publicKey },
                 { __kind: "ChangeThreshold", newThreshold: 1 },
             ],
             programId,
@@ -265,20 +265,20 @@ describe("Instructions / config_transaction_execute", () => {
         await connection.confirmTransaction(_signature);
 
         // Create a config transaction.
-        let signature = await multisig.rpc.configTransactionSync({
+        let signature = await multisig.rpc.executeSettingsTransactionSync({
             connection,
             feePayer: members.almighty,
-            multisigPda,
+            settingsPda,
             signers: [members.almighty],
-            configActions: [{ __kind: "SetRentCollector", newRentCollector: vaultPda }],
+            actions: [{ __kind: "SetRentCollector", newRentCollector: vaultPda }],
             programId,
         });
         await connection.confirmTransaction(signature);
         // Verify the multisig account.
         const multisigAccountInfoPostExecution = await connection.getAccountInfo(
-            multisigPda
+            settingsPda
         );
-        const [multisigAccountPostExecution] = Multisig.fromAccountInfo(
+        const [multisigAccountPostExecution] = Settings.fromAccountInfo(
             multisigAccountInfoPostExecution!
         );
         // The rentCollector should be updated.

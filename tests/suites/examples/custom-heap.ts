@@ -1,19 +1,19 @@
 import {
+  ComputeBudgetProgram,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
+  Transaction,
   TransactionMessage,
   VersionedTransaction,
-  Transaction,
-  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import {
-  TransactionBufferCreateArgs,
-  TransactionBufferCreateInstructionArgs,
-  VaultTransactionCreateFromBufferArgs,
-  VaultTransactionCreateFromBufferInstructionArgs,
+  CreateTransactionArgs,
+  CreateTransactionBufferArgs,
+  CreateTransactionBufferInstructionArgs,
+  CreateTransactionFromBufferInstructionArgs,
 } from "@sqds/multisig/lib/generated";
 import assert from "assert";
 import { BN } from "bn.js";
@@ -36,14 +36,14 @@ describe("Examples / Custom Heap Usage", () => {
 
   const createKey = Keypair.generate();
 
-  let multisigPda = multisig.getMultisigPda({
+  let settingsPda = multisig.getSettingsPda({
     createKey: createKey.publicKey,
     programId,
   })[0];
 
-  const [vaultPda] = multisig.getVaultPda({
-    multisigPda,
-    index: 0,
+  const [vaultPda] = multisig.getSmartAccountPda({
+    settingsPda,
+    accountIndex: 0,
     programId,
   });
 
@@ -95,13 +95,13 @@ describe("Examples / Custom Heap Usage", () => {
       multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
         message: testTransferMessage,
         addressLookupTableAccounts: [],
-        vaultPda,
+        smartAccountPda: vaultPda,
       });
 
     const [transactionBuffer, _] = PublicKey.findProgramAddressSync(
       [
-        Buffer.from("multisig"),
-        multisigPda.toBuffer(),
+        Buffer.from("smart_account"),
+        settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         new BN(Number(transactionIndex)).toBuffer("le", 8),
       ],
@@ -117,9 +117,9 @@ describe("Examples / Custom Heap Usage", () => {
     const firstSlice = messageBuffer.slice(0, 700);
     const bufferLength = messageBuffer.length;
 
-    const ix = multisig.generated.createTransactionBufferCreateInstruction(
+    const ix = multisig.generated.createCreateTransactionBufferInstruction(
       {
-        multisig: multisigPda,
+        settings: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -127,13 +127,13 @@ describe("Examples / Custom Heap Usage", () => {
       },
       {
         args: {
-          vaultIndex: 0,
+          accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
           finalBufferSize: bufferLength,
           buffer: firstSlice,
-        } as TransactionBufferCreateArgs,
-      } as TransactionBufferCreateInstructionArgs,
+        } as CreateTransactionBufferArgs,
+      } as CreateTransactionBufferInstructionArgs,
       programId
     );
 
@@ -171,7 +171,7 @@ describe("Examples / Custom Heap Usage", () => {
     // Process the buffer in <=700 byte chunks.
     await processBufferInChunks(
       members.proposer as Keypair,
-      multisigPda,
+      settingsPda,
       transactionBuffer,
       messageBuffer,
       connection,
@@ -194,8 +194,8 @@ describe("Examples / Custom Heap Usage", () => {
 
     // Derive vault transaction PDA.
     const [transactionPda] = multisig.getTransactionPda({
-      multisigPda,
-      index: transactionIndex,
+      settingsPda,
+      transactionIndex: transactionIndex,
       programId,
     });
     //endregion
@@ -203,21 +203,22 @@ describe("Examples / Custom Heap Usage", () => {
     //region Create Transaction From Buffer
     // Create final instruction.
     const thirdIx =
-      multisig.generated.createVaultTransactionCreateFromBufferInstruction(
+      multisig.generated.createCreateTransactionFromBufferInstruction(
         {
-          multisig: multisigPda,
+          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemTransaction: transactionPda,
+          transactionCreateItemCreator: members.proposer.publicKey,
+          transactionCreateItemRentPayer: members.proposer.publicKey,
+          transactionCreateItemSystemProgram: SystemProgram.programId,
           transactionBuffer,
-          transaction: transactionPda,
           creator: members.proposer.publicKey,
-          rentPayer: members.proposer.publicKey,
-          systemProgram: SystemProgram.programId,
         },
         {
           args: {
             ephemeralSigners: 0,
             memo: null,
-          } as VaultTransactionCreateFromBufferArgs,
-        } as VaultTransactionCreateFromBufferInstructionArgs,
+          } as CreateTransactionArgs,
+        } as CreateTransactionFromBufferInstructionArgs,
         programId
       );
 
@@ -250,7 +251,7 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature3);
 
     const transactionInfo =
-      await multisig.accounts.VaultTransaction.fromAccountAddress(
+      await multisig.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
@@ -261,10 +262,10 @@ describe("Examples / Custom Heap Usage", () => {
 
     //region Create, Vote, and Execute
     // Create a proposal for the newly uploaded transaction.
-    const signature4 = await multisig.rpc.proposalCreate({
+    const signature4 = await multisig.rpc.createProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
       creator: members.almighty,
       isDraft: false,
@@ -273,22 +274,22 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature4);
 
     // Approve the proposal.
-    const signature5 = await multisig.rpc.proposalApprove({
+    const signature5 = await multisig.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
-      member: members.almighty,
+      signer: members.almighty,
       programId,
     });
     await connection.confirmTransaction(signature5);
 
     // Execute the transaction.
-    const executeIx = await multisig.instructions.vaultTransactionExecute({
+    const executeIx = await multisig.instructions.executeTransaction({
       connection,
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
-      member: members.almighty.publicKey,
+      signer: members.almighty.publicKey,
       programId,
     });
 
@@ -315,7 +316,7 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature6);
 
     const proposal = await multisig.getProposalPda({
-      multisigPda,
+      settingsPda,
       transactionIndex: 1n,
       programId,
     })[0];

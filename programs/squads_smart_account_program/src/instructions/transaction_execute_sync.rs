@@ -6,7 +6,7 @@ use super::CompiledInstruction;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncTransactionArgs {
-    pub vault_index: u8,
+    pub account_index: u8,
     /// The number of signers to reach threshold and adequate permissions
     pub num_signers: u8,
     /// Expected to be serialized as a SmallVec<u8, CompiledInstruction>
@@ -112,7 +112,7 @@ impl SyncTransaction<'_> {
             SEED_PREFIX,
             settings_key.as_ref(),
             SEED_SMART_ACCOUNT,
-            &args.vault_index.to_le_bytes(),
+            &args.account_index.to_le_bytes(),
         ];
 
         let (smart_account_pubkey, smart_account_bump) =

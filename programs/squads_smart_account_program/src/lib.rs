@@ -41,9 +41,6 @@ declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
 #[program]
 pub mod squads_smart_account_program {
 
-
-    use instruction::{AddSignerAsAuthority, RemoveSignerAsAuthority, SetTimeLockAsAuthority};
-
     use super::*;
 
     /// Initialize the program config.
@@ -63,9 +60,9 @@ pub mod squads_smart_account_program {
     }
 
     /// Set the `multisig_creation_fee` parameter of the program config.
-    pub fn set_program_config_multisig_creation_fee(
+    pub fn set_program_config_smart_account_creation_fee(
         ctx: Context<ProgramConfig>,
-        args: ProgramConfigSetMultisigCreationFeeArgs,
+        args: ProgramConfigSetSmartAccountCreationFeeArgs,
     ) -> Result<()> {
         ProgramConfig::set_smart_account_creation_fee(ctx, args)
     }
