@@ -100,10 +100,8 @@ impl Settings {
             return Ok(false);
         }
 
-        let new_size = max(
-            current_account_size + (10 * SmartAccountSigner::INIT_SPACE), // We need to allocate more space. To avoid doing this operation too often, we increment it by 10 members.
-            account_size_to_fit_members,
-        );
+        let new_size = account_size_to_fit_members;
+
         // Reallocate more space.
         AccountInfo::realloc(&multisig, new_size, false)?;
 
