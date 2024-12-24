@@ -3,9 +3,7 @@ use std::cmp::max;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-use crate::errors::*;
-use crate::id;
-
+use crate::{errors::*, id, state::*, utils::*, SettingsAction};
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 #[account]
@@ -246,6 +244,133 @@ impl Settings {
         };
 
         self.signers.remove(old_signer_index);
+
+        Ok(())
+    }
+    // Modify the settings with a given action.
+    pub fn modify_with_action<'info>(
+        &mut self,
+        self_key: &Pubkey,
+        action: &SettingsAction,
+        rent: &Rent,
+        rent_payer: &Option<Signer<'info>>,
+        system_program: &Option<Program<'info, System>>,
+        remaining_accounts: &'info [AccountInfo<'info>],
+        program_id: &Pubkey,
+    ) -> Result<()> {
+        match action {
+            SettingsAction::AddSigner { new_signer } => {
+                self.add_signer(new_signer.to_owned());
+                self.invalidate_prior_transactions();
+            }
+
+            SettingsAction::RemoveSigner { old_signer } => {
+                self.remove_signer(old_signer.to_owned())?;
+                self.invalidate_prior_transactions();
+            }
+
+            SettingsAction::ChangeThreshold { new_threshold } => {
+                self.threshold = *new_threshold;
+                self.invalidate_prior_transactions();
+            }
+
+            SettingsAction::SetTimeLock { new_time_lock } => {
+                self.time_lock = *new_time_lock;
+                self.invalidate_prior_transactions();
+            }
+
+            SettingsAction::AddSpendingLimit {
+                seed,
+                account_index,
+                signers,
+                mint,
+                amount,
+                period,
+                destinations,
+                expiration,
+            } => {
+                let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
+                    &[
+                        SEED_PREFIX,
+                        self_key.as_ref(),
+                        SEED_SPENDING_LIMIT,
+                        seed.as_ref(),
+                    ],
+                    program_id,
+                );
+
+                let spending_limit_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == &spending_limit_key)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                let rent_payer = rent_payer.as_ref().ok_or(SmartAccountError::MissingAccount)?;
+                let system_program = system_program.as_ref().ok_or(SmartAccountError::MissingAccount)?;
+
+                create_account(
+                    &rent_payer.to_account_info(),
+                    &spending_limit_info,
+                    &system_program.to_account_info(),
+                    &id(),
+                    rent,
+                    SpendingLimit::size(signers.len(), destinations.len()),
+                    vec![
+                        SEED_PREFIX.to_vec(),
+                        self_key.as_ref().to_vec(),
+                        SEED_SPENDING_LIMIT.to_vec(),
+                        seed.as_ref().to_vec(),
+                        vec![spending_limit_bump],
+                    ],
+                )?;
+
+                let mut signers = signers.to_vec();
+                signers.sort();
+
+                let spending_limit = SpendingLimit {
+                    settings: self_key.to_owned(),
+                    seed: seed.to_owned(),
+                    account_index: *account_index,
+                    signers,
+                    amount: *amount,
+                    mint: *mint,
+                    period: *period,
+                    remaining_amount: *amount,
+                    last_reset: Clock::get()?.unix_timestamp,
+                    bump: spending_limit_bump,
+                    destinations: destinations.to_vec(),
+                    expiration: *expiration,
+                };
+
+                spending_limit.invariant()?;
+                spending_limit
+                    .try_serialize(&mut &mut spending_limit_info.data.borrow_mut()[..])?;
+            }
+
+            SettingsAction::RemoveSpendingLimit {
+                spending_limit: spending_limit_key,
+            } => {
+                let spending_limit_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == spending_limit_key)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                let rent_payer = rent_payer.as_ref().ok_or(SmartAccountError::MissingAccount)?;
+
+                let spending_limit = Account::<SpendingLimit>::try_from(spending_limit_info)?;
+
+                require_keys_eq!(
+                    spending_limit.settings,
+                    self_key.to_owned(),
+                    SmartAccountError::InvalidAccount
+                );
+
+                spending_limit.close(rent_payer.to_account_info())?;
+            }
+
+            SettingsAction::SetRentCollector { new_rent_collector } => {
+                self.rent_collector = *new_rent_collector;
+            }
+        }
 
         Ok(())
     }
