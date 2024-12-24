@@ -6,7 +6,6 @@ pub fn validate_synchronous_consensus(
     num_signers: u8,
     remaining_accounts: &[AccountInfo],
 ) -> Result<()> {
-
     // Settings must not be time locked
     require_eq!(settings.time_lock, 0, SmartAccountError::TimeLockNotZero);
 
@@ -64,6 +63,33 @@ pub fn validate_synchronous_consensus(
         vote_permission_count >= settings.threshold as usize,
         SmartAccountError::InsufficientVotePermissions
     );
+
+    Ok(())
+}
+
+pub fn validate_settings_actions(actions: &Vec<SettingsAction>) -> Result<()> {
+    // Config transaction must have at least one action
+    require!(!actions.is_empty(), SmartAccountError::NoActions);
+
+    let current_timestamp = Clock::get()?.unix_timestamp;
+    // time_lock must not exceed the maximum allowed.
+    for action in actions {
+        if let SettingsAction::SetTimeLock { new_time_lock, .. } = action {
+            require!(
+                *new_time_lock <= MAX_TIME_LOCK,
+                SmartAccountError::TimeLockExceedsMaxAllowed
+            );
+        }
+        // Expiration must be greater than the current timestamp.
+        if let SettingsAction::AddSpendingLimit { expiration, .. } = action {
+            if *expiration != i64::MAX {
+                require!(
+                    *expiration > current_timestamp,
+                    SmartAccountError::SpendingLimitExpired
+                );
+            }
+        }
+    }
 
     Ok(())
 }

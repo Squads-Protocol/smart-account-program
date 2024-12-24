@@ -47,18 +47,10 @@ impl<'info> SyncSettingsTransaction<'info> {
             Pubkey::default(),
             SmartAccountError::NotSupportedForControlled
         );
-        // Settings transaction must have at least one action
-        require!(!args.actions.is_empty(), SmartAccountError::NoActions);
 
-        // new time_lock must not exceed the maximum allowed
-        for action in &args.actions {
-            if let SettingsAction::SetTimeLock { new_time_lock } = action {
-                require!(
-                    *new_time_lock <= MAX_TIME_LOCK,
-                    SmartAccountError::TimeLockExceedsMaxAllowed
-                );
-            }
-        }
+        // Validates the proposed settings changes
+        validate_settings_actions(&args.actions)?;
+
         // Validates synchronous consensus across the signers
         validate_synchronous_consensus(settings, args.num_signers, remaining_accounts)?;
 
