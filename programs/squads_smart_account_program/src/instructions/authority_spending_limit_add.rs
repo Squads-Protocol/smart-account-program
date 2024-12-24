@@ -108,6 +108,7 @@ impl AddSpendingLimitAsAuthority<'_> {
         spending_limit.bump = ctx.bumps.spending_limit;
         spending_limit.signers = sorted_signers;
         spending_limit.destinations = args.destinations;
+        spending_limit.expiration = args.expiration;
 
         spending_limit.invariant()?;
 
