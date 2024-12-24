@@ -18,9 +18,10 @@ import {
   isCloseToNow,
   TestMembers,
 } from "../utils";
+import BN from "bn.js";
 
 const { toBigInt } = multisig.utils;
-const { Settings, Transaction, SettingsTransaction, Proposal } =
+const { Settings, Transaction, SettingsTransaction, Proposal, SpendingLimit } =
   multisig.accounts;
 const { Permission, Permissions } = multisig.types;
 
@@ -837,7 +838,7 @@ describe("Multisig SDK", () => {
 
     it("create a new Spending Limit for the controlled multisig with member of the ms and non-member", async () => {
       const nonMember = await generateFundedKeypair(connection);
-
+      const expiration = Date.now() / 1000 + 5
       const signature = await multisig.rpc.addSpendingLimitAsAuthority({
         connection,
         feePayer: feePayer,
@@ -852,12 +853,17 @@ describe("Multisig SDK", () => {
         destinations: [Keypair.generate().publicKey],
         signers: [members.almighty.publicKey, nonMember.publicKey],
         accountIndex: 1,
+        expiration: expiration,
         sendOptions: { skipPreflight: true },
         programId,
       });
 
       await connection.confirmTransaction(signature);
+
+      const spendingLimitAccount = await SpendingLimit.fromAccountAddress(connection, spendingLimitPda);
+      assert.strictEqual(spendingLimitAccount.expiration.toString(), new BN(expiration).toString());
     });
+
   });
 
   describe("multisig_remove_spending_limit", () => {

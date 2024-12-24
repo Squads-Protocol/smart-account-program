@@ -55,7 +55,7 @@ export function addSpendingLimitAsAuthority({
         signers,
         destinations,
         expiration: expiration
-          ? new BN(expiration.toString())
+          ? new BN(expiration)
           : new BN("9223372036854775807"),
         memo: memo ?? null,
       },

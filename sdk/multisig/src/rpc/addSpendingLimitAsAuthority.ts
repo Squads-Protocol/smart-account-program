@@ -65,9 +65,9 @@ export async function addSpendingLimitAsAuthority({
     signers,
     period,
     destinations,
+    expiration,
     memo,
     programId,
-    expiration,
   });
 
   tx.sign([feePayer, rentPayer, settingsAuthority,]);
