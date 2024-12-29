@@ -122,12 +122,12 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::set_new_settings_authority(ctx, args)
     }
 
-    /// Set the multisig `rent_collector`.
-    pub fn set_rent_collector_as_authority(
+    /// Set the multisig `archival_authority`.
+    pub fn set_archival_authority_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
-        args: SetRentCollectorArgs,
+        args: SetArchivalAuthorityArgs,
     ) -> Result<()> {
-        ExecuteSettingsTransactionAsAuthority::set_rent_collector(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::set_archival_authority(ctx, args)
     }
 
     /// Create a new spending limit for the controlled multisig.

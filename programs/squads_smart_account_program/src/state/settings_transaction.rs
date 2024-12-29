@@ -76,6 +76,6 @@ pub enum SettingsAction {
     },
     /// Remove a spending limit from the multisig.
     RemoveSpendingLimit { spending_limit: Pubkey },
-    /// Set the `rent_collector` config parameter of the multisig.
-    SetRentCollector { new_rent_collector: Option<Pubkey> },
+    /// Set the `archival_authority` config parameter of the multisig.
+    SetArchivalAuthority { new_archival_authority: Option<Pubkey> },
 }

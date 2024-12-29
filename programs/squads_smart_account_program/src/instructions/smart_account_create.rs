@@ -102,7 +102,8 @@ impl CreateSmartAccount<'_> {
         settings.seed = program_config.smart_account_index.checked_add(1).unwrap();
         settings.bump = ctx.bumps.settings;
         settings.signers = signers;
-        settings.rent_collector = args.rent_collector;
+        // Preset to Pubkey::default() until archival feature is implemented.
+        settings.archival_authority = Some(Pubkey::default());
 
         settings.invariant()?;
 

@@ -34,9 +34,10 @@ pub struct Settings {
     /// Last stale transaction index. All transactions up until this index are stale.
     /// This index is updated when smart account settings (members/threshold/time_lock) change.
     pub stale_transaction_index: u64,
-    /// The address where the rent for the accounts related to executed, rejected, or cancelled
-    /// transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off.
-    pub rent_collector: Option<Pubkey>,
+    /// Field reserved for when archival/compression is implemented.
+    /// Will be set to Pubkey::default() to mark accounts that should
+    /// be eligible for archival before the feature is implemented.
+    pub archival_authority: Option<Pubkey>,
     /// Bump for the smart account PDA seed.
     pub bump: u8,
     /// Signers attached to the smart account
@@ -52,8 +53,8 @@ impl Settings {
         4  + // time_lock
         8  + // transaction_index
         8  + // stale_transaction_index
-        1  + // rent_collector Option discriminator
-        32 + // rent_collector (always 32 bytes, even if None, just to keep the realloc logic simpler)
+        1  + // archival_authority Option discriminator
+        32 + // archival_authority (always 32 bytes, even if None, just to keep the realloc logic simpler)
         1  + // bump
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE // signers
@@ -378,8 +379,11 @@ impl Settings {
                 spending_limit.close(rent_payer.to_account_info())?;
             }
 
-            SettingsAction::SetRentCollector { new_rent_collector } => {
-                self.rent_collector = *new_rent_collector;
+            SettingsAction::SetArchivalAuthority {
+                new_archival_authority,
+            } => {
+                // Marked as NotImplemented until archival feature is implemented.
+                return err!(SmartAccountError::NotImplemented);
             }
         }
 

@@ -39,8 +39,8 @@ pub struct SetNewSettingsAuthorityArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct SetRentCollectorArgs {
-    pub rent_collector: Option<Pubkey>,
+pub struct SetArchivalAuthorityArgs {
+    pub new_archival_authority: Option<Pubkey>,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
@@ -193,38 +193,40 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
-    /// Set the settings `rent_collector` and reallocate space if necessary.
+    /// Set the settings `archival_authority` and reallocate space if necessary.
     ///
     /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
     ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn set_rent_collector(
+    pub fn set_archival_authority(
         ctx: Context<Self>,
-        args: SetRentCollectorArgs,
+        args: SetArchivalAuthorityArgs,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        // Marked as NotImplemented until archival feature is implemented.
+        return err!(SmartAccountError::NotImplemented);
+        // let settings = &mut ctx.accounts.settings;
 
-        settings.rent_collector = args.rent_collector;
+        // settings.archival_authority = args.new_archival_authority;
 
-        // Make sure the settings account can fit the newly set rent_collector.
-        Settings::realloc_if_needed(
-            settings.to_account_info(),
-            settings.signers.len(),
-            ctx.accounts
-                .rent_payer
-                .as_ref()
-                .map(ToAccountInfo::to_account_info),
-            ctx.accounts
-                .system_program
-                .as_ref()
-                .map(ToAccountInfo::to_account_info),
-        )?;
+        // // Make sure the settings account can fit the newly set rent_collector.
+        // Settings::realloc_if_needed(
+        //     settings.to_account_info(),
+        //     settings.signers.len(),
+        //     ctx.accounts
+        //         .rent_payer
+        //         .as_ref()
+        //         .map(ToAccountInfo::to_account_info),
+        //     ctx.accounts
+        //         .system_program
+        //         .as_ref()
+        //         .map(ToAccountInfo::to_account_info),
+        // )?;
 
-        // We don't need to invalidate prior transactions here because changing
-        // `rent_collector` doesn't affect the consensus parameters of the settings.
+        // // We don't need to invalidate prior transactions here because changing
+        // // `rent_collector` doesn't affect the consensus parameters of the settings.
 
-        settings.invariant()?;
+        // settings.invariant()?;
 
-        Ok(())
+        // Ok(())
     }
 }

@@ -79,7 +79,7 @@ impl<'info> SyncSettingsTransaction<'info> {
             )?;
         }
 
-        // Make sure the smart account can fit the updated state: added signers or newly set rent_collector.
+        // Make sure the smart account can fit the updated state: added signers or newly set archival_authority.
         Settings::realloc_if_needed(
             settings.to_account_info(),
             settings.signers.len(),

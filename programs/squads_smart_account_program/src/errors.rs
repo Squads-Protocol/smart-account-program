@@ -106,4 +106,6 @@ pub enum SmartAccountError {
     InsufficientVotePermissions,
     #[msg("Smart account must not be time locked")]
     TimeLockNotZero,
+    #[msg("Feature not implemented")]
+    NotImplemented,
 }
