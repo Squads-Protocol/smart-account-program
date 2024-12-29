@@ -20,7 +20,6 @@ pub struct CloseSettingsTransaction<'info> {
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
-        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -43,17 +42,21 @@ pub struct CloseSettingsTransaction<'info> {
     #[account(
         mut,
         has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
-        close = rent_collector
+        close = transaction_rent_collector
     )]
     pub transaction: Account<'info, SettingsTransaction>,
+
+    /// The rent payer for the proposal account.
+    /// CHECK: validated later inside of `close_settings_transaction`.
+    pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
+        address = transaction.rent_collector @ SmartAccountError::InvalidRentCollector,
     )]
-    pub rent_collector: AccountInfo<'info>,
+    pub transaction_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -67,7 +70,7 @@ impl CloseSettingsTransaction<'_> {
         let settings = &ctx.accounts.settings;
         let transaction = &ctx.accounts.transaction;
         let proposal = &mut ctx.accounts.proposal;
-        let rent_collector = &ctx.accounts.rent_collector;
+        let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;
 
         let is_stale = transaction.index <= settings.stale_transaction_index;
 
@@ -108,10 +111,11 @@ impl CloseSettingsTransaction<'_> {
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
-        if proposal_account.is_some() {
+        if let Some(proposal) = proposal_account {
+            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
-                rent_collector.to_account_info(),
+                proposal_rent_collector.to_account_info(),
             )?;
         }
 
@@ -125,7 +129,6 @@ pub struct CloseTransaction<'info> {
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
-        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -148,17 +151,21 @@ pub struct CloseTransaction<'info> {
     #[account(
         mut,
         has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
-        close = rent_collector
+        close = transaction_rent_collector
     )]
     pub transaction: Account<'info, Transaction>,
+
+    /// The rent collector for the proposal account.
+    /// CHECK: validated later inside of `close_transaction`.
+    pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
+        address = transaction.rent_collector @ SmartAccountError::InvalidRentCollector,
     )]
-    pub rent_collector: AccountInfo<'info>,
+    pub transaction_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -172,7 +179,7 @@ impl CloseTransaction<'_> {
         let settings = &ctx.accounts.settings;
         let transaction = &ctx.accounts.transaction;
         let proposal = &mut ctx.accounts.proposal;
-        let rent_collector = &ctx.accounts.rent_collector;
+        let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;
 
         let is_stale = transaction.index <= settings.stale_transaction_index;
 
@@ -213,10 +220,11 @@ impl CloseTransaction<'_> {
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
-        if proposal_account.is_some() {
+        if let Some(proposal) = proposal_account {
+            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
-                rent_collector.to_account_info(),
+                proposal_rent_collector.to_account_info(),
             )?;
         }
 
@@ -231,7 +239,6 @@ pub struct CloseBatchTransaction<'info> {
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
-        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -252,7 +259,7 @@ pub struct CloseBatchTransaction<'info> {
     /// The transaction must be the current last one in the batch.
     #[account(
         mut,
-        close = rent_collector,
+        close = transaction_rent_collector,
     )]
     pub transaction: Account<'info, BatchTransaction>,
 
@@ -260,9 +267,9 @@ pub struct CloseBatchTransaction<'info> {
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
+        address = transaction.rent_collector @ SmartAccountError::InvalidRentCollector,
     )]
-    pub rent_collector: AccountInfo<'info>,
+    pub transaction_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -357,7 +364,6 @@ pub struct CloseBatch<'info> {
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
-        constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
     pub settings: Account<'info, Settings>,
 
@@ -381,17 +387,21 @@ pub struct CloseBatch<'info> {
     #[account(
         mut,
         has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
-        close = rent_collector
+        close = batch_rent_collector
     )]
     pub batch: Account<'info, Batch>,
+
+    /// The rent collector for the proposal account.
+    /// CHECK: validated later inside of `close_batch`.
+    pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
     /// CHECK: We only need to validate the address.
     #[account(
         mut,
-        address = settings.rent_collector.unwrap().key() @ SmartAccountError::InvalidRentCollector,
+        address = batch.rent_collector.key() @ SmartAccountError::InvalidRentCollector,
     )]
-    pub rent_collector: AccountInfo<'info>,
+    pub batch_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -406,7 +416,7 @@ impl CloseBatch<'_> {
         let settings = &ctx.accounts.settings;
         let batch = &ctx.accounts.batch;
         let proposal = &mut ctx.accounts.proposal;
-        let rent_collector = &ctx.accounts.rent_collector;
+        let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;
 
         let is_stale = batch.index <= settings.stale_transaction_index;
 
@@ -450,10 +460,11 @@ impl CloseBatch<'_> {
         require_eq!(batch.size, 0, SmartAccountError::BatchNotEmpty);
 
         // Close the `proposal` account if exists.
-        if proposal_account.is_some() {
+        if let Some(proposal) = proposal_account {
+            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
-                rent_collector.to_account_info(),
+                proposal_rent_collector.to_account_info(),
             )?;
         }
 

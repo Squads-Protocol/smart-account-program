@@ -15,6 +15,8 @@ pub struct Proposal {
     pub settings: Pubkey,
     /// Index of the multisig transaction this proposal is associated with.
     pub transaction_index: u64,
+    /// The rent collector for the proposal account.
+    pub rent_collector: Pubkey,
     /// The status of the transaction.
     pub status: ProposalStatus,
     /// PDA bump.
@@ -32,6 +34,7 @@ impl Proposal {
         8 +   // anchor account discriminator
         32 +  // multisig
         8 +   // index
+        32 +  // rent_collector
         1 +   // status enum variant
         8 +   // status enum wrapped timestamp (i64)
         1 +   // bump
@@ -136,7 +139,11 @@ impl Proposal {
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
         // Sanity checks
-        require_keys_eq!(*proposal.owner, id(), SmartAccountError::IllegalAccountOwner);
+        require_keys_eq!(
+            *proposal.owner,
+            id(),
+            SmartAccountError::IllegalAccountOwner
+        );
 
         let current_account_size = proposal.data.borrow().len();
         let account_size_to_fit_members = Proposal::size(members_length);

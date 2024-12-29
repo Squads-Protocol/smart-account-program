@@ -14,6 +14,8 @@ pub struct Transaction {
     pub settings: Pubkey,
     /// Member of the Multisig who submitted the transaction.
     pub creator: Pubkey,
+    /// The rent collector for the transaction account.
+    pub rent_collector: Pubkey,
     /// Index of this transaction within the multisig.
     pub index: u64,
     /// bump for the transaction seeds.
@@ -44,6 +46,7 @@ impl Transaction {
             8 +   // anchor account discriminator
             32 +  // multisig
             32 +  // creator
+            32 +  // rent_collector
             8 +   // index
             1 +   // bump
             1 +   // vault_index

@@ -73,6 +73,7 @@ impl<'info> CreateTransaction<'info> {
         let settings = &mut ctx.accounts.settings;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
+        let rent_payer = &mut ctx.accounts.rent_payer;
 
         let transaction_message =
             TransactionMessage::deserialize(&mut args.transaction_message.as_slice())?;
@@ -110,6 +111,7 @@ impl<'info> CreateTransaction<'info> {
         // Initialize the transaction fields.
         transaction.settings = settings_key;
         transaction.creator = creator.key();
+        transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
         transaction.account_index = args.account_index;

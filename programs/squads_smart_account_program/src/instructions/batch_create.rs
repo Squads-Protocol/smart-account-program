@@ -68,7 +68,7 @@ impl CreateBatch<'_> {
         let settings = &mut ctx.accounts.settings;
         let creator = &mut ctx.accounts.creator;
         let batch = &mut ctx.accounts.batch;
-
+        let rent_payer = &mut ctx.accounts.rent_payer;
         let settings_key = settings.key();
 
         // Increment the transaction index.
@@ -85,6 +85,7 @@ impl CreateBatch<'_> {
 
         batch.settings = settings_key;
         batch.creator = creator.key();
+        batch.rent_collector = rent_payer.key();
         batch.index = index;
         batch.bump = ctx.bumps.batch;
         batch.account_index = args.account_index;

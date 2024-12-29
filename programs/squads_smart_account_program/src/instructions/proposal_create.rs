@@ -90,9 +90,11 @@ impl CreateProposal<'_> {
     pub fn create_proposal(ctx: Context<Self>, args: CreateProposalArgs) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
         let settings = &ctx.accounts.settings;
+        let rent_payer = &mut ctx.accounts.rent_payer;
 
         proposal.settings = settings.key();
         proposal.transaction_index = args.transaction_index;
+        proposal.rent_collector = rent_payer.key();
         proposal.status = if args.draft {
             ProposalStatus::Draft {
                 timestamp: Clock::get()?.unix_timestamp,

@@ -79,7 +79,7 @@ impl CreateSettingsTransaction<'_> {
         let settings = &mut ctx.accounts.settings;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
-
+        let rent_payer = &mut ctx.accounts.rent_payer;
         let settings_key = settings.key();
 
         // Increment the transaction index.
@@ -88,6 +88,7 @@ impl CreateSettingsTransaction<'_> {
         // Initialize the transaction fields.
         transaction.settings = settings_key;
         transaction.creator = creator.key();
+        transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
         transaction.actions = args.actions;

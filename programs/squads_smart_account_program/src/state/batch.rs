@@ -14,6 +14,8 @@ pub struct Batch {
     pub settings: Pubkey,
     /// Signer of the smart account who submitted the batch.
     pub creator: Pubkey,
+    /// The rent collector for the batch account.
+    pub rent_collector: Pubkey,
     /// Index of this batch within the smart account transactions.
     pub index: u64,
     /// PDA bump.
@@ -44,6 +46,8 @@ impl Batch {
 pub struct BatchTransaction {
     /// PDA bump.
     pub bump: u8,
+    /// The rent collector for the batch transaction account.
+    pub rent_collector: Pubkey,
     /// Derivation bumps for additional signers.
     /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
     /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
@@ -66,6 +70,7 @@ impl BatchTransaction {
         Ok(
             8 +   // anchor account discriminator
             1 +   // bump
+            32 +  // rent_collector
             (4 + usize::from(ephemeral_signers_length)) +   // ephemeral_signers_bumps vec
             message_size, // message
         )

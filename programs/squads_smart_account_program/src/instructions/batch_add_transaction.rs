@@ -114,7 +114,7 @@ impl AddTransactionToBatch<'_> {
     pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
         let transaction = &mut ctx.accounts.transaction;
-
+        let rent_payer = &mut ctx.accounts.rent_payer;
         let batch_key = batch.key();
 
         let transaction_message =
@@ -137,6 +137,7 @@ impl AddTransactionToBatch<'_> {
             .collect();
 
         transaction.bump = ctx.bumps.transaction;
+        transaction.rent_collector = rent_payer.key();
         transaction.ephemeral_signer_bumps = ephemeral_signer_bumps;
         transaction.message = transaction_message.try_into()?;
 
