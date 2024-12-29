@@ -6,6 +6,8 @@ use crate::errors::SmartAccountError;
 #[account]
 #[derive(InitSpace)]
 pub struct ProgramConfig {
+    /// Counter for the number of smart accounts created.
+    pub smart_account_index: u128,
     /// The authority which can update the config.
     pub authority: Pubkey,
     /// The lamports amount charged for creating a new smart account.
@@ -33,6 +35,11 @@ impl ProgramConfig {
             SmartAccountError::InvalidAccount
         );
 
+        Ok(())
+    }
+
+    pub fn increment_smart_account_index(&mut self) -> Result<()>   {
+        self.smart_account_index = self.smart_account_index.checked_add(1).unwrap();
         Ok(())
     }
 }

@@ -15,7 +15,7 @@ pub struct CreateProposalArgs {
 #[instruction(args: CreateProposalArgs)]
 pub struct CreateProposal<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,

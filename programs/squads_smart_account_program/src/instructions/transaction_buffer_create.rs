@@ -22,7 +22,7 @@ pub struct CreateTransactionBufferArgs {
 #[instruction(args: CreateTransactionBufferArgs)]
 pub struct CreateTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
@@ -89,7 +89,7 @@ impl CreateTransactionBuffer<'_> {
         let settings = &ctx.accounts.settings;
         let creator = &mut ctx.accounts.creator;
 
-        // Get the buffer index.    
+        // Get the buffer index.
         let buffer_index = args.buffer_index;
 
         // Initialize the transaction fields.

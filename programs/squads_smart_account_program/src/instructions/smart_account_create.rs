@@ -6,6 +6,24 @@ use solana_program::native_token::LAMPORTS_PER_SOL;
 use crate::errors::SmartAccountError;
 use crate::state::*;
 
+
+
+/// These are only used to prevent the DOS vector of front running txns that
+/// incrememnt the smart account index.
+/// They will be removed once compression/archival is implemented.
+#[cfg(feature = "testing")]
+const ACCOUNT_CREATION_AUTHORITY: [u8; 32] = [
+    152, 165, 37, 245, 229, 240, 130, 196, 233, 36, 234, 92, 142, 236, 214, 104, 221, 210, 13, 223,
+    131, 100, 240, 8, 247, 125, 70, 118, 31, 150, 70, 126,
+];
+
+#[cfg(not(feature = "testing"))]
+const ACCOUNT_CREATION_AUTHORITY: [u8; 32] = [
+    92, 31, 87, 5, 157, 232, 219, 156, 230, 146, 81, 200, 219, 20, 50, 127, 26, 18, 84, 147, 206,
+    244, 197, 115, 68, 27, 220, 156, 253, 92, 79, 64,
+];
+
+
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSmartAccountArgs {
     /// The authority that can configure the smart account: add/remove signers, change the threshold, etc.
@@ -40,17 +58,14 @@ pub struct CreateSmartAccount<'info> {
         init,
         payer = creator,
         space = Settings::size(args.signers.len()),
-        seeds = [SEED_PREFIX, SEED_SETTINGS, seed.key().as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, program_config.smart_account_index.checked_add(1).unwrap().to_le_bytes().as_ref()],
         bump
     )]
     pub settings: Account<'info, Settings>,
 
-    /// An ephemeral signer that is used as a seed for the Settings PDA.
-    /// Must be a signer to prevent front-running attack by someone else but the original creator.
-    pub seed: Signer<'info>,
-
     /// The creator of the smart account.
-    #[account(mut)]
+    #[account(mut,
+    address = Pubkey::from(ACCOUNT_CREATION_AUTHORITY))]
     pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
@@ -72,6 +87,7 @@ impl CreateSmartAccount<'_> {
     /// Creates a multisig.
     #[access_control(ctx.accounts.validate())]
     pub fn create_smart_account(ctx: Context<Self>, args: CreateSmartAccountArgs) -> Result<()> {
+        let program_config = &mut ctx.accounts.program_config;
         // Sort the members by pubkey.
         let mut signers = args.signers;
         signers.sort_by_key(|m| m.key);
@@ -83,14 +99,15 @@ impl CreateSmartAccount<'_> {
         settings.time_lock = args.time_lock;
         settings.transaction_index = 0;
         settings.stale_transaction_index = 0;
-        settings.seed = ctx.accounts.seed.key();
+        settings.seed = program_config.smart_account_index.checked_add(1).unwrap();
         settings.bump = ctx.bumps.settings;
         settings.signers = signers;
         settings.rent_collector = args.rent_collector;
 
         settings.invariant()?;
 
-        let creation_fee = ctx.accounts.program_config.smart_account_creation_fee;
+        // Check if the creation fee is set and transfer the fee to the treasury if necessary.
+        let creation_fee = program_config.smart_account_creation_fee;
 
         if creation_fee > 0 {
             system_program::transfer(
@@ -105,6 +122,9 @@ impl CreateSmartAccount<'_> {
             )?;
             msg!("Creation fee: {}", creation_fee / LAMPORTS_PER_SOL);
         }
+
+        // Increment the smart account index.
+        program_config.increment_smart_account_index()?;
 
         Ok(())
     }

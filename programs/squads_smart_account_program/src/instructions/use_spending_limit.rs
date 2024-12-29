@@ -20,7 +20,7 @@ pub struct UseSpendingLimitArgs {
 pub struct UseSpendingLimit<'info> {
     /// The settings the `spending_limit` belongs to.
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Box<Account<'info, Settings>>,

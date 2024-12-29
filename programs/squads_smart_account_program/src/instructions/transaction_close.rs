@@ -18,7 +18,7 @@ use crate::utils;
 #[derive(Accounts)]
 pub struct CloseSettingsTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
         constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
@@ -123,7 +123,7 @@ impl CloseSettingsTransaction<'_> {
 #[derive(Accounts)]
 pub struct CloseTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
         constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
@@ -229,7 +229,7 @@ impl CloseTransaction<'_> {
 #[derive(Accounts)]
 pub struct CloseBatchTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
         constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]
@@ -355,7 +355,7 @@ impl CloseBatchTransaction<'_> {
 #[derive(Accounts)]
 pub struct CloseBatch<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
         constraint = settings.rent_collector.is_some() @ SmartAccountError::RentReclamationDisabled,
     )]

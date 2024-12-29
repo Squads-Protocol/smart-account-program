@@ -51,6 +51,7 @@ impl InitProgramConfig<'_> {
         program_config.authority = args.authority;
         program_config.smart_account_creation_fee = args.smart_account_creation_fee;
         program_config.treasury = args.treasury;
+        program_config.smart_account_index = 0;
 
         program_config.invariant()?;
 

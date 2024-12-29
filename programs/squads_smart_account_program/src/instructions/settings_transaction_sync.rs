@@ -15,7 +15,7 @@ pub struct SyncSettingsTransactionArgs {
 pub struct SyncSettingsTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Box<Account<'info, Settings>>,

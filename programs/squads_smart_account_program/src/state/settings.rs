@@ -8,8 +8,13 @@ pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 #[account]
 pub struct Settings {
-    /// Key that is used to seed the settings PDA.
-    pub seed: Pubkey,
+    /// An integer that is used seed the settings PDA. Its incremented by 1
+    /// inside the program conifg by 1 for each smart account created. This is
+    /// to ensure uniqueness of each settings PDA without relying on user input.
+    ///
+    /// Note: As this represents a DOS vector in the current creation architecture,
+    /// account creation will be permissioned until compression is implemented.
+    pub seed: u128,
     /// The authority that can change the smart account settings.
     /// This is a very important parameter as this authority can change the signers and threshold.
     ///
@@ -304,8 +309,12 @@ impl Settings {
                     .find(|acc| acc.key == &spending_limit_key)
                     .ok_or(SmartAccountError::MissingAccount)?;
 
-                let rent_payer = rent_payer.as_ref().ok_or(SmartAccountError::MissingAccount)?;
-                let system_program = system_program.as_ref().ok_or(SmartAccountError::MissingAccount)?;
+                let rent_payer = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+                let system_program = system_program
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
 
                 create_account(
                     &rent_payer.to_account_info(),
@@ -354,7 +363,9 @@ impl Settings {
                     .find(|acc| acc.key == spending_limit_key)
                     .ok_or(SmartAccountError::MissingAccount)?;
 
-                let rent_payer = rent_payer.as_ref().ok_or(SmartAccountError::MissingAccount)?;
+                let rent_payer = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
 
                 let spending_limit = Account::<SpendingLimit>::try_from(spending_limit_info)?;
 

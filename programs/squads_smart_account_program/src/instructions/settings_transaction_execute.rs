@@ -10,7 +10,7 @@ pub struct ExecuteSettingsTransaction<'info> {
     /// The settings account of the smart account that owns the transaction.
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.as_ref()],
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Box<Account<'info, Settings>>,
