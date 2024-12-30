@@ -200,7 +200,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
     #[access_control(ctx.accounts.validate())]
     pub fn set_archival_authority(
         ctx: Context<Self>,
-        args: SetArchivalAuthorityArgs,
+        _args: SetArchivalAuthorityArgs,
     ) -> Result<()> {
         // Marked as NotImplemented until archival feature is implemented.
         return err!(SmartAccountError::NotImplemented);

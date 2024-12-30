@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
-use crate::id;
 use crate::state::*;
-use crate::utils::*;
 
 #[derive(Accounts)]
 pub struct ExecuteSettingsTransaction<'info> {

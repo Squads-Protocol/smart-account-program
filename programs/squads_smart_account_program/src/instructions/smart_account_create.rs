@@ -6,8 +6,6 @@ use solana_program::native_token::LAMPORTS_PER_SOL;
 use crate::errors::SmartAccountError;
 use crate::state::*;
 
-
-
 /// These are only used to prevent the DOS vector of front running txns that
 /// incrememnt the smart account index.
 /// They will be removed once compression/archival is implemented.
@@ -22,7 +20,6 @@ const ACCOUNT_CREATION_AUTHORITY: [u8; 32] = [
     92, 31, 87, 5, 157, 232, 219, 156, 230, 146, 81, 200, 219, 20, 50, 127, 26, 18, 84, 147, 206,
     244, 197, 115, 68, 27, 220, 156, 253, 92, 79, 64,
 ];
-
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSmartAccountArgs {
@@ -46,7 +43,7 @@ pub struct CreateSmartAccountArgs {
 #[instruction(args: CreateSmartAccountArgs)]
 pub struct CreateSmartAccount<'info> {
     /// Global program config account.
-    #[account(seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
+    #[account(mut, seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
     pub program_config: Account<'info, ProgramConfig>,
 
     /// The treasury where the creation fee is transferred to.
@@ -65,7 +62,7 @@ pub struct CreateSmartAccount<'info> {
 
     /// The creator of the smart account.
     #[account(mut,
-    address = Pubkey::from(ACCOUNT_CREATION_AUTHORITY))]
+    address = Pubkey::from(ACCOUNT_CREATION_AUTHORITY) @ SmartAccountError::Unauthorized)]
     pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,

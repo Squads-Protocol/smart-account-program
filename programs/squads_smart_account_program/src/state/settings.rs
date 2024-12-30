@@ -52,7 +52,7 @@ pub struct Settings {
 impl Settings {
     pub fn size(signers_length: usize) -> usize {
         8  + // anchor account discriminator
-        32 + // seed
+        16 + // seed
         32 + // settings_authority
         2  + // threshold
         4  + // time_lock

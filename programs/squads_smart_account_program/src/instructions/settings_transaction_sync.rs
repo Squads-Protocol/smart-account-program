@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::*, id, state::*, utils::*};
+use crate::{errors::*, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {

@@ -34,7 +34,7 @@ impl Proposal {
         8 +   // anchor account discriminator
         32 +  // multisig
         8 +   // index
-        32 +  // rent_collector
+        32 +  // rent_payer
         1 +   // status enum variant
         8 +   // status enum wrapped timestamp (i64)
         1 +   // bump

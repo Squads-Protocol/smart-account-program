@@ -48,6 +48,7 @@ pub struct CloseSettingsTransaction<'info> {
 
     /// The rent payer for the proposal account.
     /// CHECK: validated later inside of `close_settings_transaction`.
+    #[account(mut)]
     pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
@@ -112,7 +113,10 @@ impl CloseSettingsTransaction<'_> {
 
         // Close the `proposal` account if exists.
         if let Some(proposal) = proposal_account {
-            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
+            require!(
+                proposal_rent_collector.key() == proposal.rent_collector,
+                SmartAccountError::InvalidRentCollector
+            );
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
                 proposal_rent_collector.to_account_info(),
@@ -157,6 +161,7 @@ pub struct CloseTransaction<'info> {
 
     /// The rent collector for the proposal account.
     /// CHECK: validated later inside of `close_transaction`.
+    #[account(mut)]
     pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
@@ -221,7 +226,10 @@ impl CloseTransaction<'_> {
 
         // Close the `proposal` account if exists.
         if let Some(proposal) = proposal_account {
-            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
+            require!(
+                proposal_rent_collector.key() == proposal.rent_collector,
+                SmartAccountError::InvalidRentCollector
+            );
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
                 proposal_rent_collector.to_account_info(),
@@ -393,6 +401,7 @@ pub struct CloseBatch<'info> {
 
     /// The rent collector for the proposal account.
     /// CHECK: validated later inside of `close_batch`.
+    #[account(mut)]
     pub proposal_rent_collector: AccountInfo<'info>,
 
     /// The rent collector.
@@ -461,7 +470,10 @@ impl CloseBatch<'_> {
 
         // Close the `proposal` account if exists.
         if let Some(proposal) = proposal_account {
-            assert_eq!(proposal_rent_collector.key(), proposal.rent_collector);
+            require!(
+                proposal_rent_collector.key() == proposal.rent_collector,
+                SmartAccountError::InvalidRentCollector
+            );
             utils::close(
                 ctx.accounts.proposal.to_account_info(),
                 proposal_rent_collector.to_account_info(),
