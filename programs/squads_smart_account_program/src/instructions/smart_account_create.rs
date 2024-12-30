@@ -104,6 +104,8 @@ impl CreateSmartAccount<'_> {
         settings.signers = signers;
         // Preset to Pubkey::default() until archival feature is implemented.
         settings.archival_authority = Some(Pubkey::default());
+        // Preset to 0 until archival feature is implemented.
+        settings.archivable_after = 0;
 
         settings.invariant()?;
 

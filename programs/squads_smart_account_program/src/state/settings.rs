@@ -38,6 +38,11 @@ pub struct Settings {
     /// Will be set to Pubkey::default() to mark accounts that should
     /// be eligible for archival before the feature is implemented.
     pub archival_authority: Option<Pubkey>,
+    /// Field that will prevent a smart account from being archived immediately after unarchival.
+    /// This is to prevent a DOS vector where the archival authority could
+    /// constantly unarchive and archive the smart account to prevent it from
+    /// being used.
+    pub archivable_after: u64,
     /// Bump for the smart account PDA seed.
     pub bump: u8,
     /// Signers attached to the smart account
@@ -55,6 +60,7 @@ impl Settings {
         8  + // stale_transaction_index
         1  + // archival_authority Option discriminator
         32 + // archival_authority (always 32 bytes, even if None, just to keep the realloc logic simpler)
+        8  + // archivable_after
         1  + // bump
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE // signers
