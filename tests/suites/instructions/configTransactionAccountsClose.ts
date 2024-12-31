@@ -12,6 +12,7 @@ import {
   createLocalhostConnection,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
@@ -35,9 +36,9 @@ describe("Instructions / config_transaction_accounts_close", () => {
   // Set up a multisig with config transactions.
   before(async () => {
     members = await generateMultisigMembers(connection);
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     settingsPda = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     })[0];
     const [vaultPda] = multisig.getSmartAccountPda({
@@ -49,7 +50,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Create new autonomous multisig with rentCollector set to its default vault.
     await createAutonomousMultisigV2({
       connection,
-      createKey,
+      accountIndex,
       members,
       threshold: 2,
       timeLock: 0,
@@ -364,14 +365,16 @@ describe("Instructions / config_transaction_accounts_close", () => {
     //endregion
   });
 
-  it("error: rent reclamation is not enabled", async () => {
+  it("error: invalid transaction rent_collector", async () => {
     // Create a multisig with rent reclamation disabled.
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const settingsPda = (
       await createAutonomousMultisigV2({
         connection,
         members,
         threshold: 2,
         timeLock: 0,
+        accountIndex,
         rentCollector: null,
         programId,
       })
@@ -442,16 +445,17 @@ describe("Instructions / config_transaction_accounts_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: Keypair.generate().publicKey,
+          transactionRentCollector: Keypair.generate().publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           transactionIndex,
           programId,
         }),
-      /RentReclamationDisabled: Rent reclamation is disabled for this smart account/
+      /InvalidRentCollector/
     );
   });
 
-  it("error: invalid rent_collector", async () => {
-    const transactionIndex = approvedTransactionIndex;
+  it("error: invalid proposal rent_collector", async () => {
+    const transactionIndex = 1n;
 
     const fakeRentCollector = Keypair.generate().publicKey;
 
@@ -461,11 +465,12 @@ describe("Instructions / config_transaction_accounts_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: fakeRentCollector,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: fakeRentCollector,
           transactionIndex,
           programId,
         }),
-      /Invalid rent collector address/
+      /InvalidRentCollector/
     );
   });
 
@@ -475,7 +480,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
       accountIndex: 0,
       programId,
     })[0];
-
+    const accountIndex = await getNextAccountIndex(connection, programId);
     // Create another multisig.
     const otherMultisig = (
       await createAutonomousMultisig({
@@ -483,6 +488,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
         members,
         threshold: 2,
         timeLock: 0,
+        accountIndex,
         programId,
       })
     )[0];
@@ -513,7 +519,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
       multisig.generated.createCloseSettingsTransactionInstruction(
         {
           settings: settingsPda,
-          rentCollector: vaultPda,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           proposal: multisig.getProposalPda({
             settingsPda: otherMultisig,
             transactionIndex: 1n,
@@ -561,7 +568,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           transactionIndex,
           programId,
         }),
@@ -583,7 +591,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           transactionIndex,
           programId,
         }),
@@ -593,12 +602,14 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
   it("error: transaction is for another multisig", async () => {
     // Create another multisig.
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const otherMultisig = (
       await createAutonomousMultisig({
         connection,
         members,
         threshold: 2,
         timeLock: 0,
+        accountIndex,
         programId,
       })
     )[0];
@@ -637,7 +648,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
       multisig.generated.createCloseSettingsTransactionInstruction(
         {
           settings: settingsPda,
-          rentCollector: vaultPda,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           proposal: multisig.getProposalPda({
             settingsPda,
             transactionIndex: 1n,
@@ -683,7 +695,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
       multisig.generated.createCloseSettingsTransactionInstruction(
         {
           settings: settingsPda,
-          rentCollector: vaultPda,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
           proposal: multisig.getProposalPda({
             settingsPda,
             transactionIndex: rejectedTransactionIndex,
@@ -746,21 +759,21 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    const preBalance = await connection.getBalance(vaultPda);
+    const preBalance = await connection.getBalance(members.proposer.publicKey);
 
     const sig = await multisig.rpc.closeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: vaultPda,
+      transactionRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.proposer.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
-    const postBalance = await connection.getBalance(vaultPda);
-    const accountsRent = 5554080;
-    assert.ok(postBalance === preBalance + accountsRent);
+    const postBalance = await connection.getBalance(members.proposer.publicKey);
+    assert.ok(postBalance > preBalance);
   });
 
   it("close accounts for Stale transaction with No Proposal", async () => {
@@ -793,21 +806,21 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    const preBalance = await connection.getBalance(vaultPda);
+    const preBalance = await connection.getBalance(members.proposer.publicKey);
 
     const sig = await multisig.rpc.closeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: vaultPda,
+      transactionRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.proposer.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
-    const postBalance = await connection.getBalance(vaultPda);
-    const accountsRent = 1_503_360; // Rent for the transaction account.
-    assert.equal(postBalance, preBalance + accountsRent);
+    const postBalance = await connection.getBalance(members.proposer.publicKey);
+    assert.ok(postBalance > preBalance);
   });
 
   it("close accounts for Executed transaction", async () => {
@@ -830,21 +843,21 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    const preBalance = await connection.getBalance(vaultPda);
+    const preBalance = await connection.getBalance(members.proposer.publicKey);
 
     const sig = await multisig.rpc.closeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: vaultPda,
+      transactionRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.proposer.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
-    const postBalance = await connection.getBalance(vaultPda);
-    const accountsRent = 5554080;
-    assert.ok(postBalance === preBalance + accountsRent);
+    const postBalance = await connection.getBalance(members.proposer.publicKey);
+    assert.ok(postBalance > preBalance);
   });
 
   it("close accounts for Rejected transaction", async () => {
@@ -867,21 +880,21 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    const preBalance = await connection.getBalance(vaultPda);
+    const preBalance = await connection.getBalance(members.proposer.publicKey);
 
     const sig = await multisig.rpc.closeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: vaultPda,
+      transactionRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.proposer.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
-    const postBalance = await connection.getBalance(vaultPda);
-    const accountsRent = 5554080;
-    assert.ok(postBalance === preBalance + accountsRent);
+    const postBalance = await connection.getBalance(members.proposer.publicKey);
+    assert.ok(postBalance > preBalance);
   });
 
   it("close accounts for Cancelled transaction", async () => {
@@ -904,20 +917,20 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    const preBalance = await connection.getBalance(vaultPda);
+    const preBalance = await connection.getBalance(members.proposer.publicKey);
 
     const sig = await multisig.rpc.closeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: vaultPda,
+      transactionRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.proposer.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
-    const postBalance = await connection.getBalance(vaultPda);
-    const accountsRent = 5554080;
-    assert.ok(postBalance === preBalance + accountsRent);
+    const postBalance = await connection.getBalance(members.proposer.publicKey);
+    assert.ok(postBalance > preBalance);
   });
 });

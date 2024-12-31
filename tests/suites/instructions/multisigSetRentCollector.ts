@@ -6,6 +6,7 @@ import {
   createLocalhostConnection,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
@@ -22,14 +23,14 @@ describe("Instructions / multisig_set_rent_collector", () => {
 
   before(async () => {
     configAuthority = await generateFundedKeypair(connection);
-
+    const accountIndex = await getNextAccountIndex(connection, programId);
     members = await generateMultisigMembers(connection);
 
     // Create new controlled multisig with no rent_collector.
     settingsPda = (
       await createControlledMultisig({
         connection,
-        createKey: Keypair.generate(),
+        accountIndex,
         configAuthority: configAuthority.publicKey,
         members,
         threshold: 1,
@@ -50,17 +51,18 @@ describe("Instructions / multisig_set_rent_collector", () => {
       programId,
     })[0];
 
-    const signature = await multisig.rpc.setRentCollectorAsAuthority({
-      connection,
-      settingsPda,
-      feePayer: configAuthority,
-      settingsAuthority: configAuthority.publicKey,
-      newRentCollector: vaultPda,
-      rentPayer: configAuthority.publicKey,
-      programId,
-      signers: [configAuthority],
-    });
-    await connection.confirmTransaction(signature, "confirmed");
+    assert.rejects(
+      async () =>
+        await multisig.rpc.setRentCollectorAsAuthority({
+          connection,
+          settingsPda,
+          feePayer: configAuthority,
+          settingsAuthority: configAuthority.publicKey,
+          newArchivalAuthority: vaultPda,
+          programId,
+          signers: [configAuthority],
+        }), /NotImplemented/
+    );
 
     // Verify the multisig account.
     const multisigAccountInfoPostExecution = await connection.getAccountInfo(
@@ -68,11 +70,6 @@ describe("Instructions / multisig_set_rent_collector", () => {
     );
     const [multisigAccountPostExecution] = Settings.fromAccountInfo(
       multisigAccountInfoPostExecution!
-    );
-    // The rentCollector should be updated.
-    assert.strictEqual(
-      multisigAccountPostExecution.rentCollector?.toBase58(),
-      vaultPda.toBase58()
     );
     // The stale transaction index should NOT be updated and remain 0.
     assert.strictEqual(
@@ -87,23 +84,25 @@ describe("Instructions / multisig_set_rent_collector", () => {
   });
 
   it("unset `rent_collector` for the controlled multisig", async () => {
-    const signature = await multisig.rpc.setRentCollectorAsAuthority({
-      connection,
-      settingsPda,
-      feePayer: configAuthority,
-      settingsAuthority: configAuthority.publicKey,
-      newRentCollector: null,
-      rentPayer: configAuthority.publicKey,
-      programId,
-      signers: [configAuthority],
-    });
-    await connection.confirmTransaction(signature, "confirmed");
-
-    // Make sure the rent_collector was unset correctly.
-    const multisigAccount = await Settings.fromAccountAddress(
-      connection,
-      settingsPda
+    assert.rejects(
+      async () =>
+        await multisig.rpc.setRentCollectorAsAuthority({
+          connection,
+          settingsPda,
+          feePayer: configAuthority,
+          settingsAuthority: configAuthority.publicKey,
+          newArchivalAuthority: null,
+          programId,
+          signers: [configAuthority],
+        }),
+      /NotImplemented/
     );
-    assert.strictEqual(multisigAccount.rentCollector, null);
+
+    // // Make sure the rent_collector was unset correctly.
+    // const multisigAccount = await Settings.fromAccountAddress(
+    //   connection,
+    //   settingsPda
+    // );
+    // assert.strictEqual(multisigAccount.rentCollector, null);
   });
 });

@@ -19,6 +19,7 @@ import {
     createLocalhostConnection,
     createTestTransferInstruction,
     generateMultisigMembers,
+    getNextAccountIndex,
     getTestProgramId,
 } from "../../utils";
 
@@ -34,11 +35,10 @@ describe("Instructions / transaction_buffer_close", () => {
 
     before(async () => {
         members = await generateMultisigMembers(connection);
-
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         settingsPda = (await createAutonomousMultisigV2({
+            accountIndex,
             connection,
-            createKey,
             members,
             threshold: 2,
             timeLock: 0,

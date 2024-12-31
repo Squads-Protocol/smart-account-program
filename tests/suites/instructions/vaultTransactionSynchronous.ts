@@ -18,6 +18,7 @@ import {
     createAutonomousMultisigV2,
     createLocalhostConnection,
     generateMultisigMembers,
+    getNextAccountIndex,
     getTestProgramId,
     TestMembers
 } from "../../utils";
@@ -36,10 +37,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("execute synchronous transfer from vault", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -104,10 +105,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("execute synchronous transfer from vault with lookup table", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -200,10 +201,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("can create a token mint", async () => {
 
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -288,10 +289,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: insufficient signers", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -354,10 +355,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: insufficient aggregate vote permissions", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -420,10 +421,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: insufficient aggregate permissions", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             timeLock: 0,
@@ -486,10 +487,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: not allowed with time lock", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             // Adding a 20s time lock
@@ -554,9 +555,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
     it("error: missing a signature", async () => {
         // Create multisig
         const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             // Adding a 20s time lock
@@ -622,10 +624,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: not a member", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             // Adding a 20s time lock
@@ -693,10 +695,10 @@ describe("Instructions / vault_transaction_synchronous", () => {
 
     it("error: duplicate signer", async () => {
         // Create multisig
-        const createKey = Keypair.generate();
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = await createAutonomousMultisigV2({
             connection,
-            createKey,
+            accountIndex,
             members,
             threshold: 2,
             // Adding a 20s time lock

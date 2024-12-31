@@ -6,19 +6,22 @@ import {
 } from "@solana/web3.js";
 import * as multisig from "@sqds/multisig";
 import * as assert from "assert";
+import BN from "bn.js";
 import {
   comparePubkeys,
   createAutonomousMultisig,
   createControlledMultisig,
   createLocalhostConnection,
   createTestTransferInstruction,
+  fundKeypair,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
+  getTestAccountCreationAuthority,
   getTestProgramId,
   isCloseToNow,
   TestMembers,
 } from "../utils";
-import BN from "bn.js";
 
 const { toBigInt } = multisig.utils;
 const { Settings, Transaction, SettingsTransaction, Proposal, SpendingLimit } =
@@ -51,12 +54,12 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           configAuthority: configAuthority.publicKey,
           members,
           threshold: 2,
@@ -142,9 +145,8 @@ describe("Multisig SDK", () => {
         }).byteSize;
       const initialAllocatedSize = multisigAccountInfo.data.length;
 
-      // Right after the creation of the multisig, the allocated account space is almost fully utilized,
-      // with only 32 bytes left for the potential rent collector.
-      assert.equal(initialOccupiedSize, initialAllocatedSize - 32);
+      // Right after the creation of the multisig, the allocated account space is fully utilized,
+      assert.equal(initialOccupiedSize, initialAllocatedSize);
 
       let signature = await multisig.rpc.addSignerAsAuthority({
         connection,
@@ -239,12 +241,12 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           configAuthority: configAuthority.publicKey,
           members,
           threshold: 2,
@@ -275,12 +277,12 @@ describe("Multisig SDK", () => {
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           timeLock: 0,
@@ -325,12 +327,12 @@ describe("Multisig SDK", () => {
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       wrongConfigAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           configAuthority: configAuthority.publicKey,
@@ -376,12 +378,12 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           timeLock: 0,
@@ -428,12 +430,12 @@ describe("Multisig SDK", () => {
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       wrongConfigAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           configAuthority: configAuthority.publicKey,
@@ -479,12 +481,12 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           timeLock: 0,
@@ -578,12 +580,12 @@ describe("Multisig SDK", () => {
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -631,12 +633,12 @@ describe("Multisig SDK", () => {
     const newSigner = Keypair.generate();
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           members,
           threshold: 1,
           timeLock: 0,
@@ -732,12 +734,12 @@ describe("Multisig SDK", () => {
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       settingsPda = (
         await createControlledMultisig({
           connection,
-          createKey: Keypair.generate(),
+          accountIndex,
           configAuthority: configAuthority.publicKey,
           members,
           threshold: 1,
@@ -748,13 +750,14 @@ describe("Multisig SDK", () => {
     });
 
     it("set `config_authority` for the controlled multisig", async () => {
+      const accountIndex = await getNextAccountIndex(connection, programId);
       await createControlledMultisig({
+        accountIndex,
         configAuthority: members.almighty.publicKey,
         members,
         connection,
         threshold: 2,
         timeLock: 0,
-        createKey: Keypair.generate(),
         programId,
       });
     });
@@ -767,13 +770,15 @@ describe("Multisig SDK", () => {
     let spendingLimitCreateKey: PublicKey;
 
     before(async () => {
+      const accountIndex = await getNextAccountIndex(connection, programId);
       controlledsettingsPda = (
         await createControlledMultisig({
-          connection,
+          accountIndex,
           configAuthority: members.almighty.publicKey,
           members,
           threshold: 2,
           timeLock: 0,
+          connection,
           programId,
         })
       )[0];
@@ -873,8 +878,10 @@ describe("Multisig SDK", () => {
     let spendingLimitCreateKey: PublicKey;
 
     before(async () => {
+      const accountIndex = await getNextAccountIndex(connection, programId);
       controlledsettingsPda = (
         await createControlledMultisig({
+          accountIndex,
           connection,
           configAuthority: members.almighty.publicKey,
           members,
@@ -933,8 +940,10 @@ describe("Multisig SDK", () => {
     });
 
     it("error: Spending Limit doesn't belong to the multisig", async () => {
+      const accountIndex = await getNextAccountIndex(connection, programId);
       const wrongControlledsettingsPda = (
         await createControlledMultisig({
+          accountIndex,
           connection,
           configAuthority: members.almighty.publicKey,
           members,
@@ -1017,10 +1026,11 @@ describe("Multisig SDK", () => {
           programId,
         })
       )[0];
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new controlled multisig.
       controlledsettingsPda = (
         await createControlledMultisig({
+          accountIndex,
           connection,
           configAuthority: Keypair.generate().publicKey,
           members,
@@ -1158,13 +1168,12 @@ describe("Multisig SDK", () => {
     let settingsPda: PublicKey;
 
     before(async () => {
-      const msCreateKey = Keypair.generate();
-
+      const accountIndex = await getNextAccountIndex(connection, programId);
       // Create new autonomous multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: msCreateKey,
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -1336,13 +1345,13 @@ describe("Multisig SDK", () => {
     let settingsPda: PublicKey;
 
     before(async () => {
-      const msCreateKey = Keypair.generate();
+      const accountIndex = await getNextAccountIndex(connection, programId);
 
       // Create new autonomous multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: msCreateKey,
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -1535,13 +1544,13 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const msCreateKey = Keypair.generate();
+      const accountIndex = await getNextAccountIndex(connection, programId);
 
       // Create new autonomous multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: msCreateKey,
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -1716,13 +1725,13 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const msCreateKey = Keypair.generate();
+      const accountIndex = await getNextAccountIndex(connection, programId);
 
       // Create new autonomous multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: msCreateKey,
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -1951,13 +1960,13 @@ describe("Multisig SDK", () => {
 
     before(async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const msCreateKey = Keypair.generate();
+      const accountIndex = await getNextAccountIndex(connection, programId);
 
       // Create new autonomous multisig.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
-          createKey: msCreateKey,
+          accountIndex,
           members,
           threshold: 2,
           timeLock: 0,
@@ -2334,10 +2343,12 @@ describe("Multisig SDK", () => {
   describe("utils", () => {
     describe("getAvailableMemoSize", () => {
       it("provides estimates for available size to use for memo", async () => {
-        const multisigCreator = await generateFundedKeypair(connection);
-        const createKey = Keypair.generate();
+        const multisigCreator = getTestAccountCreationAuthority();
+        await fundKeypair(connection, multisigCreator);
+
+        const accountIndex = await getNextAccountIndex(connection, programId);
         const [settingsPda] = multisig.getSettingsPda({
-          createKey: createKey.publicKey,
+          accountIndex,
           programId,
         });
         const [configAuthority] = multisig.getSmartAccountPda({
@@ -2355,7 +2366,6 @@ describe("Multisig SDK", () => {
           typeof multisig.transactions.createSmartAccount
         >[0] = {
           blockhash: (await connection.getLatestBlockhash()).blockhash,
-          createKey: createKey.publicKey,
           creator: multisigCreator.publicKey,
           treasury: treasury,
           rentCollector: null,
@@ -2388,7 +2398,7 @@ describe("Multisig SDK", () => {
         // The transaction with memo should have the maximum allowed size.
         assert.strictEqual(createMultisigTxWithMemo.serialize().length, 1232);
         // The transaction should work.
-        createMultisigTxWithMemo.sign([multisigCreator, createKey]);
+        createMultisigTxWithMemo.sign([multisigCreator]);
         const signature = await connection.sendTransaction(
           createMultisigTxWithMemo
         );

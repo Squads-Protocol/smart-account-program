@@ -5,6 +5,7 @@ import {
   createAutonomousMultisig,
   createLocalhostConnection,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
@@ -27,12 +28,15 @@ describe("Examples / Immediate Execution", () => {
   });
 
   it("create, approve and execute, all in 1 Solana transaction", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
+
     const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 1,
       timeLock: 0,
       programId,
+      accountIndex,
     });
 
     const transactionIndex = 1n;

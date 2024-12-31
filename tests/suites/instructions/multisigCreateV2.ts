@@ -12,8 +12,11 @@ import {
   createAutonomousMultisigV2,
   createControlledMultisigV2,
   createLocalhostConnection,
+  fundKeypair,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
+  getTestAccountCreationAuthority,
   getTestProgramConfigAuthority,
   getTestProgramId,
   getTestProgramTreasury,
@@ -47,11 +50,13 @@ describe("Instructions / multisig_create_v2", () => {
   });
 
   it("error: duplicate member", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
+
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     });
 
@@ -75,7 +80,6 @@ describe("Instructions / multisig_create_v2", () => {
               permissions: Permissions.all(),
             },
           ],
-          createKey,
           rentCollector: null,
           programId,
         }),
@@ -84,18 +88,19 @@ describe("Instructions / multisig_create_v2", () => {
   });
 
   it("error: missing signature from `createKey`", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      // Pass wrong account index
+      accountIndex: accountIndex + 1n,
       programId,
     });
 
     const tx = multisig.transactions.createSmartAccount({
       blockhash: (await connection.getLatestBlockhash()).blockhash,
       treasury: programTreasury,
-      createKey: createKey.publicKey,
       creator: creator.publicKey,
       settings: settingsPda,
       settingsAuthority: null,
@@ -115,21 +120,22 @@ describe("Instructions / multisig_create_v2", () => {
       programId,
     });
 
-    // Missing signature from `createKey`.
     tx.sign([creator]);
 
+    // 0x7d6 is ConstraintSeeds
     await assert.rejects(
-      () => connection.sendTransaction(tx),
-      /Transaction signature verification failure/
+      async () => await connection.sendTransaction(tx),
+      /0x7d6/
     );
   });
 
   it("error: empty members", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     });
 
@@ -138,7 +144,6 @@ describe("Instructions / multisig_create_v2", () => {
         multisig.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
-          createKey,
           creator,
           settings: settingsPda,
           settingsAuthority: null,
@@ -153,12 +158,14 @@ describe("Instructions / multisig_create_v2", () => {
   });
 
   it("error: member has unknown permission", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
+
     const member = Keypair.generate();
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     });
 
@@ -167,7 +174,6 @@ describe("Instructions / multisig_create_v2", () => {
         multisig.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
-          createKey,
           creator,
           settings: settingsPda,
           settingsAuthority: null,
@@ -192,11 +198,12 @@ describe("Instructions / multisig_create_v2", () => {
   it("error: too many members");
 
   it("error: invalid threshold (< 1)", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     });
 
@@ -205,7 +212,6 @@ describe("Instructions / multisig_create_v2", () => {
         multisig.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
-          createKey,
           creator,
           settings: settingsPda,
           settingsAuthority: null,
@@ -223,11 +229,12 @@ describe("Instructions / multisig_create_v2", () => {
   });
 
   it("error: invalid threshold (> members with permission to Vote)", async () => {
-    const creator = await generateFundedKeypair(connection);
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     });
 
@@ -236,7 +243,6 @@ describe("Instructions / multisig_create_v2", () => {
         multisig.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
-          createKey,
           creator,
           settings: settingsPda,
           settingsAuthority: null,
@@ -272,11 +278,11 @@ describe("Instructions / multisig_create_v2", () => {
   });
 
   it("create a new autonomous multisig", async () => {
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
 
     const [settingsPda, settingsBump] = await createAutonomousMultisigV2({
       connection,
-      createKey,
+      accountIndex,
       members,
       threshold: 2,
       timeLock: 0,
@@ -322,48 +328,57 @@ describe("Instructions / multisig_create_v2", () => {
         },
       ].sort((a, b) => comparePubkeys(a.key, b.key))
     );
-    assert.strictEqual(multisigAccount.rentCollector, null);
+    assert.strictEqual(
+      multisigAccount.archivalAuthority?.toBase58(),
+      PublicKey.default.toBase58()
+    );
+    assert.strictEqual(multisigAccount.archivableAfter.toString(), "0");
     assert.strictEqual(multisigAccount.transactionIndex.toString(), "0");
     assert.strictEqual(multisigAccount.staleTransactionIndex.toString(), "0");
     assert.strictEqual(
-      multisigAccount.seed.toBase58(),
-      createKey.publicKey.toBase58()
+      multisigAccount.seed.toString(),
+      accountIndex.toString()
     );
     assert.strictEqual(multisigAccount.bump, settingsBump);
   });
 
-  it("create a new autonomous multisig with rent reclamation enabled", async () => {
-    const createKey = Keypair.generate();
+  it("error: create a new autonomous multisig with wrong account creation authority", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const rentCollector = Keypair.generate().publicKey;
+    const settingsPda = multisig.getSettingsPda({
+      accountIndex,
+      programId,
+    })[0];
 
-    const [settingsPda, settingsBump] = await createAutonomousMultisigV2({
-      connection,
-      createKey,
-      members,
-      threshold: 2,
+    const createTransaction = multisig.transactions.createSmartAccount({
+      blockhash: (await connection.getLatestBlockhash()).blockhash,
+      treasury: programTreasury,
+      // This needs to be the account creation authority
+      creator: members.proposer.publicKey,
+      settings: settingsPda,
+      settingsAuthority: null,
       timeLock: 0,
-      rentCollector,
+      threshold: 2,
+      rentCollector: null,
+      signers: [
+        { key: members.almighty.publicKey, permissions: Permissions.all() },
+      ],
       programId,
     });
 
-    const multisigAccount = await Settings.fromAccountAddress(
-      connection,
-      settingsPda
-    );
-
-    assert.strictEqual(
-      multisigAccount.rentCollector?.toBase58(),
-      rentCollector.toBase58()
+    assert.rejects(
+      () => connection.sendTransaction(createTransaction),
+      /Unauthorized/
     );
   });
 
   it("create a new controlled multisig", async () => {
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const configAuthority = await generateFundedKeypair(connection);
 
     const [settingsPda] = await createControlledMultisigV2({
       connection,
-      createKey,
+      accountIndex,
       configAuthority: configAuthority.publicKey,
       members,
       threshold: 2,
@@ -429,20 +444,21 @@ describe("Instructions / multisig_create_v2", () => {
     //endregion
 
     //region Create a new multisig
-    const creator = await generateFundedKeypair(connection);
-    const createKey = Keypair.generate();
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
+
+    const accountIndex = await getNextAccountIndex(connection, programId);
 
     const creatorBalancePre = await connection.getBalance(creator.publicKey);
 
     const settingsPda = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     })[0];
 
     signature = await multisig.rpc.createSmartAccount({
       connection,
       treasury: programTreasury,
-      createKey,
       creator,
       settings: settingsPda,
       settingsAuthority: null,
@@ -470,7 +486,7 @@ describe("Instructions / multisig_create_v2", () => {
     await connection.confirmTransaction(signature);
 
     const creatorBalancePost = await connection.getBalance(creator.publicKey);
-    const rentAndNetworkFee = 2738320;
+    const rentAndNetworkFee = 2677640;
 
     assert.strictEqual(
       creatorBalancePost,

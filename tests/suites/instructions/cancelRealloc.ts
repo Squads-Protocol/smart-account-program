@@ -6,6 +6,7 @@ import {
   createLocalhostConnection,
   createTestTransferInstruction,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
@@ -38,6 +39,7 @@ describe("Instructions / proposal_cancel_v2", () => {
 
   before(async () => {
     members = await generateMultisigMembers(connection);
+    const accountIndex = await getNextAccountIndex(connection, programId);
     // Create new autonomous multisig.
     settingsPda = (
       await createAutonomousMultisig({
@@ -46,6 +48,7 @@ describe("Instructions / proposal_cancel_v2", () => {
         threshold: 2,
         timeLock: 0,
         programId,
+        accountIndex,
       })
     )[0];
 

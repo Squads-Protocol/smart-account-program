@@ -4,6 +4,7 @@ import {
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
+  SendOptions,
   SystemProgram,
   TransactionMessage,
   VersionedTransaction,
@@ -82,7 +83,21 @@ export function getTestProgramTreasury() {
     ])
   ).publicKey;
 }
-
+export function getTestAccountCreationAuthority() {
+  return Keypair.fromSecretKey(
+    Buffer.from(
+      JSON.parse(
+        readFileSync(
+          path.join(
+            __dirname,
+            "../test-account-creation-authority.json"
+          ),
+          "utf-8"
+        )
+      )
+    )
+  );
+}
 export type TestMembers = {
   almighty: Keypair;
   proposer: Keypair;
@@ -100,6 +115,14 @@ export async function generateFundedKeypair(connection: Connection) {
   await connection.confirmTransaction(tx);
 
   return keypair;
+}
+
+export async function fundKeypair(connection: Connection, keypair: Keypair) {
+  const tx = await connection.requestAirdrop(
+    keypair.publicKey,
+    1 * LAMPORTS_PER_SOL
+  );
+  await connection.confirmTransaction(tx);
 }
 
 export async function generateMultisigMembers(
@@ -146,28 +169,30 @@ export const getLogs = async (connection: Connection, signature: string): Promis
 
 export async function createAutonomousMultisig({
   connection,
-  createKey = Keypair.generate(),
+  accountIndex,
   members,
   threshold,
   timeLock,
   programId,
 }: {
-  createKey?: Keypair;
+  accountIndex?: bigint;
   members: TestMembers;
   threshold: number;
   timeLock: number;
   connection: Connection;
   programId: PublicKey;
 }) {
-
+  if (!accountIndex) {
+    accountIndex = await getNextAccountIndex(connection, programId);
+  }
   const [settingsPda, settingsBump] = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
+    accountIndex,
     programId,
   });
 
   await createAutonomousMultisigV2({
     connection,
-    createKey,
+    accountIndex,
     members,
     threshold,
     timeLock,
@@ -180,15 +205,16 @@ export async function createAutonomousMultisig({
 
 export async function createAutonomousMultisigV2({
   connection,
-  createKey = Keypair.generate(),
+  accountIndex,
   members,
   threshold,
   timeLock,
   rentCollector,
   programId,
-  creator
+  creator,
+  sendOptions
 }: {
-  createKey?: Keypair;
+  accountIndex: bigint;
   members: TestMembers;
   threshold: number;
   timeLock: number;
@@ -196,9 +222,11 @@ export async function createAutonomousMultisigV2({
   connection: Connection;
   programId: PublicKey;
   creator?: Keypair;
+  sendOptions?: SendOptions;
 }) {
   if (!creator) {
-    creator = await generateFundedKeypair(connection);
+    creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
   }
 
   const programConfig =
@@ -207,12 +235,10 @@ export async function createAutonomousMultisigV2({
       multisig.getProgramConfigPda({ programId })[0]
     );
   const programTreasury = programConfig.treasury;
-
   const [settingsPda, settingsBump] = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
+    accountIndex,
     programId,
   });
-
   const signature = await multisig.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
@@ -236,7 +262,6 @@ export async function createAutonomousMultisigV2({
         permissions: Permissions.fromPermissions([Permission.Execute]),
       },
     ],
-    createKey: createKey,
     rentCollector,
     sendOptions: { skipPreflight: true },
     programId,
@@ -249,14 +274,14 @@ export async function createAutonomousMultisigV2({
 
 export async function createControlledMultisig({
   connection,
-  createKey = Keypair.generate(),
+  accountIndex,
   configAuthority,
   members,
   threshold,
   timeLock,
   programId,
 }: {
-  createKey?: Keypair;
+  accountIndex: bigint;
   configAuthority: PublicKey;
   members: TestMembers;
   threshold: number;
@@ -266,13 +291,13 @@ export async function createControlledMultisig({
 }) {
 
   const [settingsPda, settingsBump] = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
+    accountIndex,
     programId,
   });
 
   await createControlledMultisigV2({
     connection,
-    createKey,
+    accountIndex,
     members,
     rentCollector: null,
     threshold,
@@ -286,7 +311,7 @@ export async function createControlledMultisig({
 
 export async function createControlledMultisigV2({
   connection,
-  createKey = Keypair.generate(),
+  accountIndex,
   configAuthority,
   members,
   threshold,
@@ -294,7 +319,7 @@ export async function createControlledMultisigV2({
   rentCollector,
   programId,
 }: {
-  createKey?: Keypair;
+  accountIndex: bigint;
   configAuthority: PublicKey;
   members: TestMembers;
   threshold: number;
@@ -303,13 +328,13 @@ export async function createControlledMultisigV2({
   connection: Connection;
   programId: PublicKey;
 }) {
-  const creator = await generateFundedKeypair(connection);
+  const creator = getTestAccountCreationAuthority();
+  await fundKeypair(connection, creator);
 
   const [settingsPda, settingsBump] = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
+    accountIndex,
     programId,
   });
-
   const programConfig =
     await multisig.accounts.ProgramConfig.fromAccountAddress(
       connection,
@@ -340,7 +365,6 @@ export async function createControlledMultisigV2({
         permissions: Permissions.fromPermissions([Permission.Execute]),
       },
     ],
-    createKey: createKey,
     rentCollector,
     sendOptions: { skipPreflight: true },
     programId,
@@ -402,14 +426,12 @@ export type MultisigWithRentReclamationAndVariousBatches = {
 
 export async function createAutonomousMultisigWithRentReclamationAndVariousBatches({
   connection,
-  createKey = Keypair.generate(),
   members,
   threshold,
   rentCollector,
   programId,
 }: {
   connection: Connection;
-  createKey?: Keypair;
   members: TestMembers;
   threshold: number;
   rentCollector: PublicKey | null;
@@ -421,11 +443,14 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
       multisig.getProgramConfigPda({ programId })[0]
     );
   const programTreasury = programConfig.treasury;
+  const accountIndex = BigInt(programConfig.smartAccountIndex.toString())
+  const nextAccountIndex = accountIndex + 1n
 
-  const creator = await generateFundedKeypair(connection);
+  const creator = getTestAccountCreationAuthority();
+  await fundKeypair(connection, creator);
 
   const [settingsPda, settingsBump] = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
+    accountIndex: nextAccountIndex,
     programId,
   });
   const [vaultPda] = multisig.getSmartAccountPda({
@@ -458,7 +483,6 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
         permissions: Permissions.fromPermissions([Permission.Execute]),
       },
     ],
-    createKey: createKey,
     rentCollector,
     sendOptions: { skipPreflight: true },
     programId,
@@ -1255,4 +1279,12 @@ export async function processBufferInChunks(
   };
 
   await processChunk(startIndex);
+}
+
+export async function getNextAccountIndex(connection: Connection, programId: PublicKey): Promise<bigint> {
+  const [programConfigPda] = multisig.getProgramConfigPda({ programId });
+  const programConfig = await multisig.accounts.ProgramConfig.fromAccountAddress(connection, programConfigPda, "processed");
+  const accountIndex = BigInt(programConfig.smartAccountIndex.toString())
+  const nextAccountIndex = accountIndex + 1n
+  return nextAccountIndex
 }

@@ -26,6 +26,7 @@ import {
   createTestTransferInstruction,
   generateMultisigMembers,
   getLogs,
+  getNextAccountIndex,
   getTestProgramId,
 } from "../../utils";
 
@@ -35,34 +36,30 @@ const connection = createLocalhostConnection();
 describe("Instructions / vault_transaction_create_from_buffer", () => {
   let members: TestMembers;
 
-  const createKey = Keypair.generate();
+  let settingsPda: PublicKey;
+  let vaultPda: PublicKey;
 
-  let settingsPda = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
-    programId,
-  })[0];
-
-  const [vaultPda] = multisig.getSmartAccountPda({
-    settingsPda,
-    accountIndex: 0,
-    programId,
-  });
 
   // Set up a multisig with some transactions.
   before(async () => {
     members = await generateMultisigMembers(connection);
+    const accountIndex = await getNextAccountIndex(connection, programId);
 
     // Create new autonomous multisig with rentCollector set to its default vault.
-    await createAutonomousMultisigV2({
+    [ settingsPda ] = await createAutonomousMultisigV2({
       connection,
-      createKey,
+      accountIndex,
       members,
       threshold: 1,
       timeLock: 0,
-      rentCollector: vaultPda,
+      rentCollector: null,
       programId,
     });
-
+    vaultPda = multisig.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
+      programId,
+    })[0];
     // Airdrop some SOL to the vault
     let signature = await connection.requestAirdrop(
       vaultPda,

@@ -14,6 +14,7 @@ import {
   createTestTransferInstruction,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   range,
   TestMembers,
@@ -35,12 +36,15 @@ describe("Examples / Batch SOL Transfer", () => {
     // Use a different fee payer for the batch execution to isolate member balance changes.
     const feePayer = await generateFundedKeypair(connection);
 
+    const accountIndex = await getNextAccountIndex(connection, programId);
+
     const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 2,
       timeLock: 0,
       programId,
+      accountIndex,
     });
 
     let multisigAccount = await Settings.fromAccountAddress(

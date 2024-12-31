@@ -23,6 +23,7 @@ import {
   createLocalhostConnection,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   isCloseToNow,
   TestMembers,
@@ -46,6 +47,8 @@ describe("Examples / Spending Limits", () => {
   before(async () => {
     members = await generateMultisigMembers(connection);
 
+    const accountIndex = await getNextAccountIndex(connection, programId);
+
     settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -53,6 +56,7 @@ describe("Examples / Spending Limits", () => {
         threshold: 1,
         timeLock: 0,
         programId,
+        accountIndex,
       })
     )[0];
 

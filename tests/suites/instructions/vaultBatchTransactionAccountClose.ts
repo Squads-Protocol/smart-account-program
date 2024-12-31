@@ -14,6 +14,7 @@ import {
   createLocalhostConnection,
   generateFundedKeypair,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   MultisigWithRentReclamationAndVariousBatches,
   TestMembers,
@@ -33,9 +34,9 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
   before(async () => {
     members = await generateMultisigMembers(connection);
 
-    const createKey = Keypair.generate();
+    const accountIndex = await getNextAccountIndex(connection, programId);
     settingsPda = multisig.getSettingsPda({
-      createKey: createKey.publicKey,
+      accountIndex,
       programId,
     })[0];
     const [vaultPda] = multisig.getSmartAccountPda({
@@ -48,7 +49,6 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     testMultisig =
       await createAutonomousMultisigWithRentReclamationAndVariousBatches({
         connection,
-        createKey,
         members,
         threshold: 2,
         rentCollector: vaultPda,
@@ -56,8 +56,9 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       });
   });
 
-  it("error: rent reclamation is not enabled", async () => {
+  it("error: wrong rent collector", async () => {
     // Create a multisig with rent reclamation disabled.
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const settingsPda = (
       await createAutonomousMultisigV2({
         connection,
@@ -66,6 +67,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
         timeLock: 0,
         rentCollector: null,
         programId,
+        accountIndex,
       })
     )[0];
 
@@ -161,34 +163,15 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: Keypair.generate().publicKey,
+          transactionRentCollector: Keypair.generate().publicKey,
           batchIndex,
           transactionIndex: 1,
           programId,
         }),
-      /RentReclamationDisabled: Rent reclamation is disabled for this smart account/
+      /InvalidRentCollector/
     );
   });
 
-  it("error: invalid rent_collector", async () => {
-    const batchIndex = testMultisig.rejectedBatchIndex;
-
-    const fakeRentCollector = Keypair.generate().publicKey;
-
-    await assert.rejects(
-      () =>
-        multisig.rpc.closeBatchTransaction({
-          connection,
-          feePayer: members.almighty,
-          settingsPda,
-          rentCollector: fakeRentCollector,
-          batchIndex,
-          transactionIndex: 1,
-          programId,
-        }),
-      /Invalid rent collector address/
-    );
-  });
 
   it("error: accounts are for another multisig", async () => {
     const vaultPda = multisig.getSmartAccountPda({
@@ -272,7 +255,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       multisig.generated.createCloseBatchTransactionInstruction(
         {
           settings: settingsPda,
-          rentCollector: vaultPda,
+          transactionRentCollector: members.proposer.publicKey,
           proposal: multisig.getProposalPda({
             settingsPda: otherMultisig,
             transactionIndex: 1n,
@@ -326,7 +309,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
           batchIndex,
           // The first out of two transactions.
           transactionIndex: 1,
@@ -350,7 +333,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
           batchIndex,
           transactionIndex: 1,
           programId,
@@ -373,7 +356,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
           batchIndex,
           // Second tx is not yet executed.
           transactionIndex: 2,
@@ -397,7 +380,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
           connection,
           feePayer: members.almighty,
           settingsPda,
-          rentCollector: multisigAccount.rentCollector!,
+          transactionRentCollector: members.proposer.publicKey,
           batchIndex,
           // Second tx is not yet executed.
           transactionIndex: 2,
@@ -419,7 +402,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: multisigAccount.rentCollector!,
+      transactionRentCollector: members.proposer.publicKey,
       batchIndex,
       // Close one and only transaction in the batch.
       transactionIndex: 1,
@@ -472,7 +455,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: multisigAccount.rentCollector!,
+      transactionRentCollector: members.proposer.publicKey,
       batchIndex,
       transactionIndex: 2,
       programId,
@@ -486,7 +469,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: multisigAccount.rentCollector!,
+      transactionRentCollector: members.proposer.publicKey,
       batchIndex,
       transactionIndex: 1,
       programId,
@@ -509,7 +492,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: multisigAccount.rentCollector!,
+      transactionRentCollector: members.proposer.publicKey,
       batchIndex,
       transactionIndex: 1,
       programId,
@@ -529,7 +512,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       connection,
       feePayer: members.almighty,
       settingsPda,
-      rentCollector: multisigAccount.rentCollector!,
+      transactionRentCollector: members.proposer.publicKey,
       batchIndex,
       transactionIndex: 1,
       programId,

@@ -265,36 +265,18 @@ describe("Instructions / config_transaction_execute", () => {
         await connection.confirmTransaction(_signature);
 
         // Create a config transaction.
-        let signature = await multisig.rpc.executeSettingsTransactionSync({
-            connection,
-            feePayer: members.almighty,
-            settingsPda,
-            signers: [members.almighty],
-            actions: [{ __kind: "SetRentCollector", newRentCollector: vaultPda }],
-            programId,
-        });
-        await connection.confirmTransaction(signature);
-        // Verify the multisig account.
-        const multisigAccountInfoPostExecution = await connection.getAccountInfo(
-            settingsPda
-        );
-        const [multisigAccountPostExecution] = Settings.fromAccountInfo(
-            multisigAccountInfoPostExecution!
-        );
-        // The rentCollector should be updated.
-        assert.strictEqual(
-            multisigAccountPostExecution.rentCollector?.toBase58(),
-            vaultPda.toBase58()
-        );
-        // The stale transaction index should NOT be updated and remain 0.
-        assert.strictEqual(
-            multisigAccountPostExecution.staleTransactionIndex.toString(),
-            "0"
-        );
-        // multisig space should not be reallocated because we allocate 32 bytes for potential rent_collector when we create multisig.
-        assert.ok(
-            multisigAccountInfoPostExecution!.data.length ===
-            multisigAccountInfoPreExecution!.data.length
+        await assert.rejects(
+            async () => {
+                let signature = await multisig.rpc.executeSettingsTransactionSync({
+                    connection,
+                    feePayer: members.almighty,
+                    settingsPda,
+                    signers: [members.almighty],
+                    actions: [{ __kind: "SetArchivalAuthority", newArchivalAuthority: vaultPda }],
+                    programId,
+                });
+            },
+            /NotImplemented/
         );
     });
 });

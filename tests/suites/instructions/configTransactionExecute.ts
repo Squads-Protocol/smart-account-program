@@ -363,7 +363,7 @@ describe("Instructions / config_transaction_execute", () => {
       settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "SetRentCollector", newRentCollector: vaultPda }],
+      actions: [{ __kind: "SetArchivalAuthority", newArchivalAuthority: vaultPda }],
       programId,
     });
     await connection.confirmTransaction(signature);
@@ -391,13 +391,27 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the approved config transaction.
-    signature = await multisig.rpc.executeSettingsTransaction({
+    await assert.rejects(
+      () =>
+        multisig.rpc.executeSettingsTransaction({
+          connection,
+          feePayer: members.almighty,
+          settingsPda,
+          transactionIndex,
+          signer: members.almighty,
+          rentPayer: members.almighty,
+          programId,
+        }),
+      /NotImplemented/
+    );
+    await connection.confirmTransaction(signature);
+    // Reject the proposal.
+    signature = await multisig.rpc.cancelProposal({
       connection,
-      feePayer: members.almighty,
+      feePayer: members.voter,
       settingsPda,
       transactionIndex,
-      signer: members.almighty,
-      rentPayer: members.almighty,
+      signer: members.voter,
       programId,
     });
     await connection.confirmTransaction(signature);
@@ -412,29 +426,7 @@ describe("Instructions / config_transaction_execute", () => {
       connection,
       proposalPda
     );
-    assert.ok(multisig.types.isProposalStatusExecuted(proposalAccount.status));
+    assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
 
-    // Verify the multisig account.
-    const multisigAccountInfoPostExecution = await connection.getAccountInfo(
-      settingsPda
-    );
-    const [multisigAccountPostExecution] = Settings.fromAccountInfo(
-      multisigAccountInfoPostExecution!
-    );
-    // The rentCollector should be updated.
-    assert.strictEqual(
-      multisigAccountPostExecution.rentCollector?.toBase58(),
-      vaultPda.toBase58()
-    );
-    // The stale transaction index should NOT be updated and remain 0.
-    assert.strictEqual(
-      multisigAccountPostExecution.staleTransactionIndex.toString(),
-      "0"
-    );
-    // multisig space should not be reallocated because we allocate 32 bytes for potential rent_collector when we create multisig.
-    assert.ok(
-      multisigAccountInfoPostExecution!.data.length ===
-      multisigAccountInfoPreExecution!.data.length
-    );
   });
 });

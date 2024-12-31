@@ -12,6 +12,7 @@ import {
   createAutonomousMultisig,
   createLocalhostConnection,
   generateMultisigMembers,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
@@ -29,12 +30,14 @@ describe("Examples / Create Mint", () => {
   });
 
   it("should create a mint", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
     const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 2,
       timeLock: 0,
       programId,
+      accountIndex,
     });
 
     let multisigAccount = await Settings.fromAccountAddress(
