@@ -9,16 +9,18 @@ export function closeSettingsTransaction({
   blockhash,
   feePayer,
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   transactionIndex,
   programId,
+  proposalRentCollector = transactionRentCollector,
 }: {
   blockhash: string;
   feePayer: PublicKey;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   transactionIndex: bigint;
   programId?: PublicKey;
+  proposalRentCollector?: PublicKey;
 }): VersionedTransaction {
   const message = new TransactionMessage({
     payerKey: feePayer,
@@ -26,9 +28,10 @@ export function closeSettingsTransaction({
     instructions: [
       instructions.closeSettingsTransaction({
         settingsPda,
-        rentCollector,
+        transactionRentCollector,
         transactionIndex,
         programId,
+        proposalRentCollector,
       }),
     ],
   }).compileToV0Message();

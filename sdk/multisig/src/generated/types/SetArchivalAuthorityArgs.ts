@@ -8,8 +8,8 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
-export type SetRentCollectorArgs = {
-  rentCollector: beet.COption<web3.PublicKey>
+export type SetArchivalAuthorityArgs = {
+  newArchivalAuthority: beet.COption<web3.PublicKey>
   memo: beet.COption<string>
 }
 
@@ -17,11 +17,11 @@ export type SetRentCollectorArgs = {
  * @category userTypes
  * @category generated
  */
-export const setRentCollectorArgsBeet =
-  new beet.FixableBeetArgsStruct<SetRentCollectorArgs>(
+export const setArchivalAuthorityArgsBeet =
+  new beet.FixableBeetArgsStruct<SetArchivalAuthorityArgs>(
     [
-      ['rentCollector', beet.coption(beetSolana.publicKey)],
+      ['newArchivalAuthority', beet.coption(beetSolana.publicKey)],
       ['memo', beet.coption(beet.utf8String)],
     ],
-    'SetRentCollectorArgs'
+    'SetArchivalAuthorityArgs'
   )

@@ -13,7 +13,6 @@ export function createSmartAccount({
   blockhash,
   treasury,
   settingsAuthority,
-  createKey,
   creator,
   settings,
   threshold,
@@ -25,7 +24,6 @@ export function createSmartAccount({
 }: {
   blockhash: string;
   treasury: PublicKey;
-  createKey: PublicKey;
   creator: PublicKey;
   settings: PublicKey;
   settingsAuthority: PublicKey | null;
@@ -44,7 +42,6 @@ export function createSmartAccount({
     threshold,
     signers,
     timeLock,
-    createKey,
     rentCollector,
     memo,
     programId,

@@ -5,8 +5,8 @@ import {
   Signer,
   TransactionSignature,
 } from "@solana/web3.js";
-import * as transactions from "../transactions";
 import { translateAndThrowAnchorError } from "../errors";
+import * as transactions from "../transactions";
 
 export async function createProposal({
   connection,
@@ -36,6 +36,7 @@ export async function createProposal({
   const tx = transactions.createProposal({
     blockhash,
     feePayer: feePayer.publicKey,
+    rentPayer: rentPayer?.publicKey,
     settingsPda,
     transactionIndex,
     creator: creator.publicKey,

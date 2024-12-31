@@ -5,15 +5,14 @@ import {
   Signer,
   TransactionSignature,
 } from "@solana/web3.js";
+import { translateAndThrowAnchorError } from "../errors";
 import { SmartAccountSigner } from "../generated";
 import * as transactions from "../transactions";
-import { translateAndThrowAnchorError } from "../errors";
 
 /** Creates a new multisig. */
 export async function createSmartAccount({
   connection,
   treasury,
-  createKey,
   creator,
   settings,
   settingsAuthority,
@@ -27,7 +26,6 @@ export async function createSmartAccount({
 }: {
   connection: Connection;
   treasury: PublicKey;
-  createKey: Signer;
   creator: Signer;
   settings: PublicKey;
   settingsAuthority: PublicKey | null;
@@ -44,7 +42,6 @@ export async function createSmartAccount({
   const tx = transactions.createSmartAccount({
     blockhash,
     treasury,
-    createKey: createKey.publicKey,
     creator: creator.publicKey,
     settings,
     settingsAuthority,
@@ -56,10 +53,14 @@ export async function createSmartAccount({
     programId,
   });
 
-  tx.sign([creator, createKey]);
+  tx.sign([creator]);
 
   try {
-    return await connection.sendTransaction(tx, sendOptions);
+    if (sendOptions?.skipPreflight) {
+      return await connection.sendRawTransaction(tx.serialize(), sendOptions);
+    } else {
+      return await connection.sendTransaction(tx, sendOptions);
+    }
   } catch (err) {
     translateAndThrowAnchorError(err);
   }

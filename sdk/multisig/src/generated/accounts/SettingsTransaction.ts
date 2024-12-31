@@ -18,6 +18,7 @@ import { SettingsAction, settingsActionBeet } from '../types/SettingsAction'
 export type SettingsTransactionArgs = {
   settings: web3.PublicKey
   creator: web3.PublicKey
+  rentCollector: web3.PublicKey
   index: beet.bignum
   bump: number
   actions: SettingsAction[]
@@ -37,6 +38,7 @@ export class SettingsTransaction implements SettingsTransactionArgs {
   private constructor(
     readonly settings: web3.PublicKey,
     readonly creator: web3.PublicKey,
+    readonly rentCollector: web3.PublicKey,
     readonly index: beet.bignum,
     readonly bump: number,
     readonly actions: SettingsAction[]
@@ -49,6 +51,7 @@ export class SettingsTransaction implements SettingsTransactionArgs {
     return new SettingsTransaction(
       args.settings,
       args.creator,
+      args.rentCollector,
       args.index,
       args.bump,
       args.actions
@@ -164,6 +167,7 @@ export class SettingsTransaction implements SettingsTransactionArgs {
     return {
       settings: this.settings.toBase58(),
       creator: this.creator.toBase58(),
+      rentCollector: this.rentCollector.toBase58(),
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
         if (typeof x.toNumber === 'function') {
@@ -195,6 +199,7 @@ export const settingsTransactionBeet = new beet.FixableBeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['settings', beetSolana.publicKey],
     ['creator', beetSolana.publicKey],
+    ['rentCollector', beetSolana.publicKey],
     ['index', beet.u64],
     ['bump', beet.u8],
     ['actions', beet.array(settingsActionBeet)],

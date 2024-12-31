@@ -14,7 +14,6 @@ export function createSmartAccount({
   threshold,
   signers,
   timeLock,
-  createKey,
   rentCollector,
   memo,
   programId = PROGRAM_ID,
@@ -26,7 +25,6 @@ export function createSmartAccount({
   threshold: number;
   signers: SmartAccountSigner[];
   timeLock: number;
-  createKey: PublicKey;
   rentCollector: PublicKey | null;
   memo?: string;
   programId?: PublicKey;
@@ -38,7 +36,6 @@ export function createSmartAccount({
       programConfig: programConfigPda,
       treasury,
       creator,
-      seed: createKey,
       settings: settings,
     },
     {

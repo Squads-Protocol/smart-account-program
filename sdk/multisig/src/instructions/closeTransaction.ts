@@ -7,14 +7,16 @@ import { getProposalPda, getTransactionPda } from "../pda";
 
 export function closeTransaction({
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   transactionIndex,
   programId = PROGRAM_ID,
+  proposalRentCollector = transactionRentCollector,
 }: {
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   transactionIndex: bigint;
   programId?: PublicKey;
+  proposalRentCollector?: PublicKey;
 }) {
   const [proposalPda] = getProposalPda({
     settingsPda,
@@ -30,9 +32,11 @@ export function closeTransaction({
   return createCloseTransactionInstruction(
     {
       settings: settingsPda,
-      rentCollector,
+
       proposal: proposalPda,
+      proposalRentCollector,
       transaction: transactionPda,
+      transactionRentCollector,
     },
     programId
   );

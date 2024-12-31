@@ -12,7 +12,7 @@ export * from "./removeSpendingLimitAsAuthority.js";
 export * from "./changeThresholdAsAuthority.js";
 export * from "./createSmartAccount.js";
 export * from "./setNewSettingsAuthorityAsAuthority.js";
-export * from "./setRentCollectorAsAuthority.js";
+export * from "./setArchivalAuthorityAsAuthority.js";
 export * from "./setTimeLockAsAuthority.js";
 export * from "./activateProposal.js";
 export * from "./approveProposal.js";

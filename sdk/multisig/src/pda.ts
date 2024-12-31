@@ -1,7 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import invariant from "invariant";
 import { PROGRAM_ID } from "./generated";
-import { toU32Bytes, toU64Bytes, toU8Bytes, toUtfBytes } from "./utils";
+import { toU128Bytes, toU32Bytes, toU64Bytes, toU8Bytes, toUtfBytes } from "./utils";
 
 const SEED_PREFIX = toUtfBytes("smart_account");
 const SEED_PROGRAM_CONFIG = toUtfBytes("program_config");
@@ -25,14 +25,14 @@ export function getProgramConfigPda({
 }
 
 export function getSettingsPda({
-  createKey,
+  accountIndex,
   programId = PROGRAM_ID,
 }: {
-  createKey: PublicKey;
+  accountIndex: bigint;
   programId?: PublicKey;
 }): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [SEED_PREFIX, SEED_SETTINGS, createKey.toBytes()],
+    [SEED_PREFIX, SEED_SETTINGS, toU128Bytes(accountIndex)],
     programId
   );
 }

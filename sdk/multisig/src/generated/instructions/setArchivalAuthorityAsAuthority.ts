@@ -8,45 +8,46 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  SetRentCollectorArgs,
-  setRentCollectorArgsBeet,
-} from '../types/SetRentCollectorArgs'
+  SetArchivalAuthorityArgs,
+  setArchivalAuthorityArgsBeet,
+} from '../types/SetArchivalAuthorityArgs'
 
 /**
  * @category Instructions
- * @category SetRentCollectorAsAuthority
+ * @category SetArchivalAuthorityAsAuthority
  * @category generated
  */
-export type SetRentCollectorAsAuthorityInstructionArgs = {
-  args: SetRentCollectorArgs
+export type SetArchivalAuthorityAsAuthorityInstructionArgs = {
+  args: SetArchivalAuthorityArgs
 }
 /**
  * @category Instructions
- * @category SetRentCollectorAsAuthority
+ * @category SetArchivalAuthorityAsAuthority
  * @category generated
  */
-export const setRentCollectorAsAuthorityStruct = new beet.FixableBeetArgsStruct<
-  SetRentCollectorAsAuthorityInstructionArgs & {
-    instructionDiscriminator: number[] /* size: 8 */
-  }
->(
-  [
-    ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', setRentCollectorArgsBeet],
-  ],
-  'SetRentCollectorAsAuthorityInstructionArgs'
-)
+export const setArchivalAuthorityAsAuthorityStruct =
+  new beet.FixableBeetArgsStruct<
+    SetArchivalAuthorityAsAuthorityInstructionArgs & {
+      instructionDiscriminator: number[] /* size: 8 */
+    }
+  >(
+    [
+      ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+      ['args', setArchivalAuthorityArgsBeet],
+    ],
+    'SetArchivalAuthorityAsAuthorityInstructionArgs'
+  )
 /**
- * Accounts required by the _setRentCollectorAsAuthority_ instruction
+ * Accounts required by the _setArchivalAuthorityAsAuthority_ instruction
  *
  * @property [_writable_] settings
  * @property [**signer**] settingsAuthority
  * @property [_writable_, **signer**] rentPayer (optional)
  * @category Instructions
- * @category SetRentCollectorAsAuthority
+ * @category SetArchivalAuthorityAsAuthority
  * @category generated
  */
-export type SetRentCollectorAsAuthorityInstructionAccounts = {
+export type SetArchivalAuthorityAsAuthorityInstructionAccounts = {
   settings: web3.PublicKey
   settingsAuthority: web3.PublicKey
   rentPayer?: web3.PublicKey
@@ -54,12 +55,12 @@ export type SetRentCollectorAsAuthorityInstructionAccounts = {
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const setRentCollectorAsAuthorityInstructionDiscriminator = [
-  58, 37, 73, 151, 249, 52, 252, 128,
+export const setArchivalAuthorityAsAuthorityInstructionDiscriminator = [
+  178, 199, 4, 13, 237, 234, 152, 202,
 ]
 
 /**
- * Creates a _SetRentCollectorAsAuthority_ instruction.
+ * Creates a _SetArchivalAuthorityAsAuthority_ instruction.
  *
  * Optional accounts that are not provided default to the program ID since
  * this was indicated in the IDL from which this instruction was generated.
@@ -68,17 +69,17 @@ export const setRentCollectorAsAuthorityInstructionDiscriminator = [
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category SetRentCollectorAsAuthority
+ * @category SetArchivalAuthorityAsAuthority
  * @category generated
  */
-export function createSetRentCollectorAsAuthorityInstruction(
-  accounts: SetRentCollectorAsAuthorityInstructionAccounts,
-  args: SetRentCollectorAsAuthorityInstructionArgs,
+export function createSetArchivalAuthorityAsAuthorityInstruction(
+  accounts: SetArchivalAuthorityAsAuthorityInstructionAccounts,
+  args: SetArchivalAuthorityAsAuthorityInstructionArgs,
   programId = new web3.PublicKey('SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk')
 ) {
-  const [data] = setRentCollectorAsAuthorityStruct.serialize({
+  const [data] = setArchivalAuthorityAsAuthorityStruct.serialize({
     instructionDiscriminator:
-      setRentCollectorAsAuthorityInstructionDiscriminator,
+      setArchivalAuthorityAsAuthorityInstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [

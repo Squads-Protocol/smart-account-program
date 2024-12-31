@@ -9,13 +9,12 @@ import * as instructions from "../instructions";
  * Returns unsigned `VersionedTransaction` that needs to be
  * signed by `configAuthority` and `feePayer` before sending it.
  */
-export function setRentCollectorAsAuthority({
+export function setArchivalAuthorityAsAuthority({
   blockhash,
   feePayer,
   settingsPda,
   settingsAuthority,
-  newRentCollector,
-  rentPayer,
+  newArchivalAuthority,
   memo,
   programId,
 }: {
@@ -23,8 +22,7 @@ export function setRentCollectorAsAuthority({
   feePayer: PublicKey;
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
-  newRentCollector: PublicKey | null;
-  rentPayer: PublicKey;
+  newArchivalAuthority: PublicKey | null;
   memo?: string;
   programId?: PublicKey;
 }): VersionedTransaction {
@@ -32,11 +30,10 @@ export function setRentCollectorAsAuthority({
     payerKey: feePayer,
     recentBlockhash: blockhash,
     instructions: [
-      instructions.setRentCollectorAsAuthority({
+      instructions.setArchivalAuthorityAsAuthority({
         settingsPda,
         settingsAuthority,
-        newRentCollector,
-        rentPayer,
+        newArchivalAuthority,
         memo,
         programId,
       }),

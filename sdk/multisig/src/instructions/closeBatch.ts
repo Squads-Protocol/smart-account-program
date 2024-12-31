@@ -11,14 +11,16 @@ import { getProposalPda, getTransactionPda } from "../pda";
  */
 export function closeBatch({
   settingsPda,
-  rentCollector,
+  batchRentCollector,
   batchIndex,
   programId = PROGRAM_ID,
+  proposalRentCollector = batchRentCollector,
 }: {
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  batchRentCollector: PublicKey;
   batchIndex: bigint;
   programId?: PublicKey;
+  proposalRentCollector?: PublicKey;
 }) {
   const [proposalPda] = getProposalPda({
     settingsPda,
@@ -34,7 +36,8 @@ export function closeBatch({
   return createCloseBatchInstruction(
     {
       settings: settingsPda,
-      rentCollector,
+      batchRentCollector,
+      proposalRentCollector,
       proposal: proposalPda,
       batch: batchPda,
     },

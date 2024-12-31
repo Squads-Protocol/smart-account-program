@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
   SmartAccountSigner,
@@ -19,13 +19,14 @@ import {
  * @category generated
  */
 export type SettingsArgs = {
-  seed: web3.PublicKey
+  seed: beet.bignum
   settingsAuthority: web3.PublicKey
   threshold: number
   timeLock: number
   transactionIndex: beet.bignum
   staleTransactionIndex: beet.bignum
-  rentCollector: beet.COption<web3.PublicKey>
+  archivalAuthority: beet.COption<web3.PublicKey>
+  archivableAfter: beet.bignum
   bump: number
   signers: SmartAccountSigner[]
 }
@@ -40,13 +41,14 @@ export const settingsDiscriminator = [223, 179, 163, 190, 177, 224, 67, 173]
  */
 export class Settings implements SettingsArgs {
   private constructor(
-    readonly seed: web3.PublicKey,
+    readonly seed: beet.bignum,
     readonly settingsAuthority: web3.PublicKey,
     readonly threshold: number,
     readonly timeLock: number,
     readonly transactionIndex: beet.bignum,
     readonly staleTransactionIndex: beet.bignum,
-    readonly rentCollector: beet.COption<web3.PublicKey>,
+    readonly archivalAuthority: beet.COption<web3.PublicKey>,
+    readonly archivableAfter: beet.bignum,
     readonly bump: number,
     readonly signers: SmartAccountSigner[]
   ) {}
@@ -62,7 +64,8 @@ export class Settings implements SettingsArgs {
       args.timeLock,
       args.transactionIndex,
       args.staleTransactionIndex,
-      args.rentCollector,
+      args.archivalAuthority,
+      args.archivableAfter,
       args.bump,
       args.signers
     )
@@ -173,7 +176,17 @@ export class Settings implements SettingsArgs {
    */
   pretty() {
     return {
-      seed: this.seed.toBase58(),
+      seed: (() => {
+        const x = <{ toNumber: () => number }>this.seed
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       settingsAuthority: this.settingsAuthority.toBase58(),
       threshold: this.threshold,
       timeLock: this.timeLock,
@@ -199,7 +212,18 @@ export class Settings implements SettingsArgs {
         }
         return x
       })(),
-      rentCollector: this.rentCollector,
+      archivalAuthority: this.archivalAuthority,
+      archivableAfter: (() => {
+        const x = <{ toNumber: () => number }>this.archivableAfter
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       bump: this.bump,
       signers: this.signers,
     }
@@ -218,13 +242,14 @@ export const settingsBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['seed', beetSolana.publicKey],
+    ['seed', beet.u128],
     ['settingsAuthority', beetSolana.publicKey],
     ['threshold', beet.u16],
     ['timeLock', beet.u32],
     ['transactionIndex', beet.u64],
     ['staleTransactionIndex', beet.u64],
-    ['rentCollector', beet.coption(beetSolana.publicKey)],
+    ['archivalAuthority', beet.coption(beetSolana.publicKey)],
+    ['archivableAfter', beet.u64],
     ['bump', beet.u8],
     ['signers', beet.array(smartAccountSignerBeet)],
   ],

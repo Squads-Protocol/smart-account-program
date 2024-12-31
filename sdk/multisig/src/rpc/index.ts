@@ -20,7 +20,7 @@ export * from "./rejectProposal.js";
 export * from "./removeSignerAsAuthority.js";
 export * from "./removeSpendingLimitAsAuthority.js";
 export * from "./setNewSettingsAuthorityAsAuthority.js";
-export * from "./setRentCollectorAsAuthority.js";
+export * from "./setArchivalAuthorityAsAuthority.js";
 export * from "./setTimeLockAsAuthority.js";
 export * from "./useSpendingLimit.js";
 export * from "./activateProposal.js";

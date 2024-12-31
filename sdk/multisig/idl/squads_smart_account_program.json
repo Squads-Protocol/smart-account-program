@@ -122,7 +122,7 @@
       "accounts": [
         {
           "name": "programConfig",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "Global program config account."
@@ -140,15 +140,6 @@
           "name": "settings",
           "isMut": true,
           "isSigner": false
-        },
-        {
-          "name": "seed",
-          "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "An ephemeral signer that is used as a seed for the Settings PDA.",
-            "Must be a signer to prevent front-running attack by someone else but the original creator."
-          ]
         },
         {
           "name": "creator",
@@ -419,9 +410,9 @@
       ]
     },
     {
-      "name": "setRentCollectorAsAuthority",
+      "name": "setArchivalAuthorityAsAuthority",
       "docs": [
-        "Set the multisig `rent_collector`."
+        "Set the multisig `archival_authority`."
       ],
       "accounts": [
         {
@@ -462,7 +453,7 @@
         {
           "name": "args",
           "type": {
-            "defined": "SetRentCollectorArgs"
+            "defined": "SetArchivalAuthorityArgs"
           }
         }
       ]
@@ -1393,7 +1384,15 @@
           ]
         },
         {
-          "name": "rentCollector",
+          "name": "proposalRentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent payer for the proposal account."
+          ]
+        },
+        {
+          "name": "transactionRentCollector",
           "isMut": true,
           "isSigner": false,
           "docs": [
@@ -1439,7 +1438,15 @@
           ]
         },
         {
-          "name": "rentCollector",
+          "name": "proposalRentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector for the proposal account."
+          ]
+        },
+        {
+          "name": "transactionRentCollector",
           "isMut": true,
           "isSigner": false,
           "docs": [
@@ -1492,7 +1499,7 @@
           ]
         },
         {
-          "name": "rentCollector",
+          "name": "transactionRentCollector",
           "isMut": true,
           "isSigner": false,
           "docs": [
@@ -1539,7 +1546,15 @@
           ]
         },
         {
-          "name": "rentCollector",
+          "name": "proposalRentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector for the proposal account."
+          ]
+        },
+        {
+          "name": "batchRentCollector",
           "isMut": true,
           "isSigner": false,
           "docs": [
@@ -1644,6 +1659,13 @@
             "type": "publicKey"
           },
           {
+            "name": "rentCollector",
+            "docs": [
+              "The rent collector for the batch account."
+            ],
+            "type": "publicKey"
+          },
+          {
             "name": "index",
             "docs": [
               "Index of this batch within the smart account transactions."
@@ -1705,6 +1727,13 @@
             "type": "u8"
           },
           {
+            "name": "rentCollector",
+            "docs": [
+              "The rent collector for the batch transaction account."
+            ],
+            "type": "publicKey"
+          },
+          {
             "name": "ephemeralSignerBumps",
             "docs": [
               "Derivation bumps for additional signers.",
@@ -1737,6 +1766,13 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "smartAccountIndex",
+            "docs": [
+              "Counter for the number of smart accounts created."
+            ],
+            "type": "u128"
+          },
           {
             "name": "authority",
             "docs": [
@@ -1797,6 +1833,13 @@
               "Index of the multisig transaction this proposal is associated with."
             ],
             "type": "u64"
+          },
+          {
+            "name": "rentCollector",
+            "docs": [
+              "The rent collector for the proposal account."
+            ],
+            "type": "publicKey"
           },
           {
             "name": "status",
@@ -1869,6 +1912,13 @@
             "type": "publicKey"
           },
           {
+            "name": "rentCollector",
+            "docs": [
+              "The rent collector for the settings transaction account."
+            ],
+            "type": "publicKey"
+          },
+          {
             "name": "index",
             "docs": [
               "Index of this transaction within the multisig."
@@ -1904,9 +1954,14 @@
           {
             "name": "seed",
             "docs": [
-              "Key that is used to seed the settings PDA."
+              "An integer that is used seed the settings PDA. Its incremented by 1",
+              "inside the program conifg by 1 for each smart account created. This is",
+              "to ensure uniqueness of each settings PDA without relying on user input.",
+              "",
+              "Note: As this represents a DOS vector in the current creation architecture,",
+              "account creation will be permissioned until compression is implemented."
             ],
-            "type": "publicKey"
+            "type": "u128"
           },
           {
             "name": "settingsAuthority",
@@ -1953,14 +2008,25 @@
             "type": "u64"
           },
           {
-            "name": "rentCollector",
+            "name": "archivalAuthority",
             "docs": [
-              "The address where the rent for the accounts related to executed, rejected, or cancelled",
-              "transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off."
+              "Field reserved for when archival/compression is implemented.",
+              "Will be set to Pubkey::default() to mark accounts that should",
+              "be eligible for archival before the feature is implemented."
             ],
             "type": {
               "option": "publicKey"
             }
+          },
+          {
+            "name": "archivableAfter",
+            "docs": [
+              "Field that will prevent a smart account from being archived immediately after unarchival.",
+              "This is to prevent a DOS vector where the archival authority could",
+              "constantly unarchive and archive the smart account to prevent it from",
+              "being used."
+            ],
+            "type": "u64"
           },
           {
             "name": "bump",
@@ -2175,6 +2241,13 @@
             "type": "publicKey"
           },
           {
+            "name": "rentCollector",
+            "docs": [
+              "The rent collector for the transaction account."
+            ],
+            "type": "publicKey"
+          },
+          {
             "name": "index",
             "docs": [
               "Index of this transaction within the multisig."
@@ -2337,12 +2410,12 @@
       }
     },
     {
-      "name": "SetRentCollectorArgs",
+      "name": "SetArchivalAuthorityArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "rentCollector",
+            "name": "newArchivalAuthority",
             "type": {
               "option": "publicKey"
             }
@@ -3249,10 +3322,10 @@
             ]
           },
           {
-            "name": "SetRentCollector",
+            "name": "SetArchivalAuthority",
             "fields": [
               {
-                "name": "newRentCollector",
+                "name": "newArchivalAuthority",
                 "type": {
                   "option": "publicKey"
                 }
@@ -3546,6 +3619,11 @@
       "code": 6051,
       "name": "TimeLockNotZero",
       "msg": "Smart account must not be time locked"
+    },
+    {
+      "code": 6052,
+      "name": "NotImplemented",
+      "msg": "Feature not implemented"
     }
   ],
   "metadata": {

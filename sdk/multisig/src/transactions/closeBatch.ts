@@ -16,15 +16,17 @@ export function closeBatch({
   blockhash,
   feePayer,
   settingsPda,
-  rentCollector,
+  batchRentCollector,
   batchIndex,
   programId,
+  proposalRentCollector = batchRentCollector,
 }: {
   blockhash: string;
   feePayer: PublicKey;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  batchRentCollector: PublicKey;
   batchIndex: bigint;
+  proposalRentCollector?: PublicKey;
   programId?: PublicKey;
 }): VersionedTransaction {
   const message = new TransactionMessage({
@@ -33,9 +35,10 @@ export function closeBatch({
     instructions: [
       instructions.closeBatch({
         settingsPda,
-        rentCollector,
+        batchRentCollector,
         batchIndex,
         programId,
+        proposalRentCollector
       }),
     ],
   }).compileToV0Message();

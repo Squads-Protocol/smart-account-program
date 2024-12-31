@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 
 /**
@@ -15,6 +15,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
  * @category generated
  */
 export type ProgramConfigArgs = {
+  smartAccountIndex: beet.bignum
   authority: web3.PublicKey
   smartAccountCreationFee: beet.bignum
   treasury: web3.PublicKey
@@ -31,6 +32,7 @@ export const programConfigDiscriminator = [196, 210, 90, 231, 144, 149, 140, 63]
  */
 export class ProgramConfig implements ProgramConfigArgs {
   private constructor(
+    readonly smartAccountIndex: beet.bignum,
     readonly authority: web3.PublicKey,
     readonly smartAccountCreationFee: beet.bignum,
     readonly treasury: web3.PublicKey,
@@ -42,6 +44,7 @@ export class ProgramConfig implements ProgramConfigArgs {
    */
   static fromArgs(args: ProgramConfigArgs) {
     return new ProgramConfig(
+      args.smartAccountIndex,
       args.authority,
       args.smartAccountCreationFee,
       args.treasury,
@@ -152,6 +155,17 @@ export class ProgramConfig implements ProgramConfigArgs {
    */
   pretty() {
     return {
+      smartAccountIndex: (() => {
+        const x = <{ toNumber: () => number }>this.smartAccountIndex
+        if (typeof x.toNumber === 'function') {
+          try {
+            return x.toNumber()
+          } catch (_) {
+            return x
+          }
+        }
+        return x
+      })(),
       authority: this.authority.toBase58(),
       smartAccountCreationFee: (() => {
         const x = <{ toNumber: () => number }>this.smartAccountCreationFee
@@ -182,6 +196,7 @@ export const programConfigBeet = new beet.BeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
+    ['smartAccountIndex', beet.u128],
     ['authority', beetSolana.publicKey],
     ['smartAccountCreationFee', beet.u64],
     ['treasury', beetSolana.publicKey],

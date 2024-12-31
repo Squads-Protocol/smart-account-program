@@ -1,31 +1,28 @@
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { createSetRentCollectorAsAuthorityInstruction } from "../generated";
+import { createSetArchivalAuthorityAsAuthorityInstruction } from "../generated";
 
-export function setRentCollectorAsAuthority({
+export function setArchivalAuthorityAsAuthority({
   settingsPda,
   settingsAuthority,
-  newRentCollector,
-  rentPayer,
+  newArchivalAuthority,
   memo,
   programId,
 }: {
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
-  newRentCollector: PublicKey | null;
-  rentPayer: PublicKey;
+  newArchivalAuthority: PublicKey | null;
   memo?: string;
   programId?: PublicKey;
 }) {
-  return createSetRentCollectorAsAuthorityInstruction(
+  return createSetArchivalAuthorityAsAuthorityInstruction(
     {
       settings: settingsPda,
       settingsAuthority,
-      rentPayer,
       systemProgram: SystemProgram.programId,
     },
     {
       args: {
-        rentCollector: newRentCollector,
+        newArchivalAuthority: newArchivalAuthority,
         memo: memo ?? null,
       },
     },

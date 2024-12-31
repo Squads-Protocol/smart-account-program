@@ -14,8 +14,7 @@ export async function setRentCollectorAsAuthority({
   feePayer,
   settingsPda,
   settingsAuthority,
-  newRentCollector,
-  rentPayer,
+  newArchivalAuthority,
   memo,
   signers,
   sendOptions,
@@ -25,8 +24,7 @@ export async function setRentCollectorAsAuthority({
   feePayer: Signer;
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
-  newRentCollector: PublicKey | null;
-  rentPayer: PublicKey;
+  newArchivalAuthority: PublicKey | null;
   memo?: string;
   signers?: Signer[];
   sendOptions?: SendOptions;
@@ -34,13 +32,12 @@ export async function setRentCollectorAsAuthority({
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
-  const tx = transactions.setRentCollectorAsAuthority({
+  const tx = transactions.setArchivalAuthorityAsAuthority({
     blockhash,
     feePayer: feePayer.publicKey,
     settingsPda,
     settingsAuthority,
-    newRentCollector,
-    rentPayer,
+    newArchivalAuthority,
     memo,
     programId,
   });

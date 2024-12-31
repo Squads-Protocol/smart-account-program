@@ -19,7 +19,7 @@ export async function closeBatchTransaction({
   connection,
   feePayer,
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   batchIndex,
   transactionIndex,
   sendOptions,
@@ -28,7 +28,7 @@ export async function closeBatchTransaction({
   connection: Connection;
   feePayer: Signer;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   batchIndex: bigint;
   transactionIndex: number;
   sendOptions?: SendOptions;
@@ -39,7 +39,7 @@ export async function closeBatchTransaction({
   const tx = transactions.closeBatchTransaction({
     blockhash,
     feePayer: feePayer.publicKey,
-    rentCollector,
+    transactionRentCollector,
     batchIndex,
     transactionIndex,
     settingsPda,

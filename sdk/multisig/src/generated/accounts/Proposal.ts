@@ -18,6 +18,7 @@ import { ProposalStatus, proposalStatusBeet } from '../types/ProposalStatus'
 export type ProposalArgs = {
   settings: web3.PublicKey
   transactionIndex: beet.bignum
+  rentCollector: web3.PublicKey
   status: ProposalStatus
   bump: number
   approved: web3.PublicKey[]
@@ -37,6 +38,7 @@ export class Proposal implements ProposalArgs {
   private constructor(
     readonly settings: web3.PublicKey,
     readonly transactionIndex: beet.bignum,
+    readonly rentCollector: web3.PublicKey,
     readonly status: ProposalStatus,
     readonly bump: number,
     readonly approved: web3.PublicKey[],
@@ -51,6 +53,7 @@ export class Proposal implements ProposalArgs {
     return new Proposal(
       args.settings,
       args.transactionIndex,
+      args.rentCollector,
       args.status,
       args.bump,
       args.approved,
@@ -176,6 +179,7 @@ export class Proposal implements ProposalArgs {
         }
         return x
       })(),
+      rentCollector: this.rentCollector.toBase58(),
       status: this.status.__kind,
       bump: this.bump,
       approved: this.approved,
@@ -199,6 +203,7 @@ export const proposalBeet = new beet.FixableBeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['settings', beetSolana.publicKey],
     ['transactionIndex', beet.u64],
+    ['rentCollector', beetSolana.publicKey],
     ['status', proposalStatusBeet],
     ['bump', beet.u8],
     ['approved', beet.array(beetSolana.publicKey)],

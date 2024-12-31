@@ -5,8 +5,8 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
   SmartAccountTransactionMessage,
@@ -20,6 +20,7 @@ import {
  */
 export type BatchTransactionArgs = {
   bump: number
+  rentCollector: web3.PublicKey
   ephemeralSignerBumps: Uint8Array
   message: SmartAccountTransactionMessage
 }
@@ -35,6 +36,7 @@ export const batchTransactionDiscriminator = [92, 20, 61, 146, 155, 62, 112, 72]
 export class BatchTransaction implements BatchTransactionArgs {
   private constructor(
     readonly bump: number,
+    readonly rentCollector: web3.PublicKey,
     readonly ephemeralSignerBumps: Uint8Array,
     readonly message: SmartAccountTransactionMessage
   ) {}
@@ -45,6 +47,7 @@ export class BatchTransaction implements BatchTransactionArgs {
   static fromArgs(args: BatchTransactionArgs) {
     return new BatchTransaction(
       args.bump,
+      args.rentCollector,
       args.ephemeralSignerBumps,
       args.message
     )
@@ -156,6 +159,7 @@ export class BatchTransaction implements BatchTransactionArgs {
   pretty() {
     return {
       bump: this.bump,
+      rentCollector: this.rentCollector.toBase58(),
       ephemeralSignerBumps: this.ephemeralSignerBumps,
       message: this.message,
     }
@@ -175,6 +179,7 @@ export const batchTransactionBeet = new beet.FixableBeetStruct<
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['bump', beet.u8],
+    ['rentCollector', beetSolana.publicKey],
     ['ephemeralSignerBumps', beet.bytes],
     ['message', smartAccountTransactionMessageBeet],
   ],

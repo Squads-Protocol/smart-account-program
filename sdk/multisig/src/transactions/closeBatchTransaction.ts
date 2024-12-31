@@ -16,7 +16,7 @@ export function closeBatchTransaction({
   blockhash,
   feePayer,
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   batchIndex,
   transactionIndex,
   programId,
@@ -24,7 +24,7 @@ export function closeBatchTransaction({
   blockhash: string;
   feePayer: PublicKey;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   batchIndex: bigint;
   transactionIndex: number;
   programId?: PublicKey;
@@ -35,7 +35,7 @@ export function closeBatchTransaction({
     instructions: [
       instructions.closeBatchTransaction({
         settingsPda,
-        rentCollector,
+        transactionRentCollector,
         batchIndex,
         transactionIndex,
         programId,

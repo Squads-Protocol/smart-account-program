@@ -38,7 +38,7 @@ export type SettingsActionRecord = {
     expiration: beet.bignum
   }
   RemoveSpendingLimit: { spendingLimit: web3.PublicKey }
-  SetRentCollector: { newRentCollector: beet.COption<web3.PublicKey> }
+  SetArchivalAuthority: { newArchivalAuthority: beet.COption<web3.PublicKey> }
 }
 
 /**
@@ -76,10 +76,10 @@ export const isSettingsActionRemoveSpendingLimit = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'RemoveSpendingLimit' } =>
   x.__kind === 'RemoveSpendingLimit'
-export const isSettingsActionSetRentCollector = (
+export const isSettingsActionSetArchivalAuthority = (
   x: SettingsAction
-): x is SettingsAction & { __kind: 'SetRentCollector' } =>
-  x.__kind === 'SetRentCollector'
+): x is SettingsAction & { __kind: 'SetArchivalAuthority' } =>
+  x.__kind === 'SetArchivalAuthority'
 
 /**
  * @category userTypes
@@ -144,10 +144,12 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
   ],
 
   [
-    'SetRentCollector',
-    new beet.FixableBeetArgsStruct<SettingsActionRecord['SetRentCollector']>(
-      [['newRentCollector', beet.coption(beetSolana.publicKey)]],
-      'SettingsActionRecord["SetRentCollector"]'
+    'SetArchivalAuthority',
+    new beet.FixableBeetArgsStruct<
+      SettingsActionRecord['SetArchivalAuthority']
+    >(
+      [['newArchivalAuthority', beet.coption(beetSolana.publicKey)]],
+      'SettingsActionRecord["SetArchivalAuthority"]'
     ),
   ],
 ]) as beet.FixableBeet<SettingsAction, SettingsAction>

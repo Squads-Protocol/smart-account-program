@@ -18,13 +18,13 @@ import {
  */
 export function closeBatchTransaction({
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   batchIndex,
   transactionIndex,
   programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   batchIndex: bigint;
   transactionIndex: number;
   programId?: PublicKey;
@@ -49,7 +49,7 @@ export function closeBatchTransaction({
   return createCloseBatchTransactionInstruction(
     {
       settings: settingsPda,
-      rentCollector,
+      transactionRentCollector,
       proposal: proposalPda,
       batch: batchPda,
       transaction: batchTransactionPda,

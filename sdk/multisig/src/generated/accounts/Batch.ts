@@ -17,6 +17,7 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
 export type BatchArgs = {
   settings: web3.PublicKey
   creator: web3.PublicKey
+  rentCollector: web3.PublicKey
   index: beet.bignum
   bump: number
   accountIndex: number
@@ -37,6 +38,7 @@ export class Batch implements BatchArgs {
   private constructor(
     readonly settings: web3.PublicKey,
     readonly creator: web3.PublicKey,
+    readonly rentCollector: web3.PublicKey,
     readonly index: beet.bignum,
     readonly bump: number,
     readonly accountIndex: number,
@@ -52,6 +54,7 @@ export class Batch implements BatchArgs {
     return new Batch(
       args.settings,
       args.creator,
+      args.rentCollector,
       args.index,
       args.bump,
       args.accountIndex,
@@ -166,6 +169,7 @@ export class Batch implements BatchArgs {
     return {
       settings: this.settings.toBase58(),
       creator: this.creator.toBase58(),
+      rentCollector: this.rentCollector.toBase58(),
       index: (() => {
         const x = <{ toNumber: () => number }>this.index
         if (typeof x.toNumber === 'function') {
@@ -200,6 +204,7 @@ export const batchBeet = new beet.BeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['settings', beetSolana.publicKey],
     ['creator', beetSolana.publicKey],
+    ['rentCollector', beetSolana.publicKey],
     ['index', beet.u64],
     ['bump', beet.u8],
     ['accountIndex', beet.u8],

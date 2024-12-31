@@ -15,28 +15,31 @@ export async function closeTransaction({
   connection,
   feePayer,
   settingsPda,
-  rentCollector,
+  transactionRentCollector,
   transactionIndex,
   sendOptions,
   programId,
+  proposalRentCollector,
 }: {
   connection: Connection;
   feePayer: Signer;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  transactionRentCollector: PublicKey;
   transactionIndex: bigint;
   sendOptions?: SendOptions;
   programId?: PublicKey;
+  proposalRentCollector?: PublicKey;
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
   const tx = transactions.closeTransaction({
     blockhash,
     feePayer: feePayer.publicKey,
-    rentCollector,
+    transactionRentCollector,
     transactionIndex,
     settingsPda,
     programId,
+    proposalRentCollector,
   });
 
   tx.sign([feePayer]);

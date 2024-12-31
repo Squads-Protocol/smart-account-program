@@ -1211,6 +1211,26 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * NotImplemented: 'Feature not implemented'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class NotImplementedError extends Error {
+  readonly code: number = 0x17a4
+  readonly name: string = 'NotImplemented'
+  constructor() {
+    super('Feature not implemented')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotImplementedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a4, () => new NotImplementedError())
+createErrorFromNameLookup.set('NotImplemented', () => new NotImplementedError())
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

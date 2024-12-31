@@ -1,4 +1,4 @@
-import { bignum, u32, u64, u8 } from "@metaplex-foundation/beet";
+import { bignum, u32, u64, u8, u128 } from "@metaplex-foundation/beet";
 import {
   AccountMeta,
   AddressLookupTableAccount,
@@ -35,6 +35,12 @@ export function toU32Bytes(num: number): Uint8Array {
 export function toU64Bytes(num: bigint): Uint8Array {
   const bytes = Buffer.alloc(8);
   u64.write(bytes, 0, num);
+  return bytes;
+}
+
+export function toU128Bytes(num: bigint): Uint8Array {
+  const bytes = Buffer.alloc(16);
+  u128.write(bytes, 0, num);
   return bytes;
 }
 

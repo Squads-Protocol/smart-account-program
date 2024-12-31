@@ -19,16 +19,18 @@ export async function closeBatch({
   connection,
   feePayer,
   settingsPda,
-  rentCollector,
+  batchRentCollector,
   batchIndex,
+  proposalRentCollector,
   sendOptions,
   programId,
 }: {
   connection: Connection;
   feePayer: Signer;
   settingsPda: PublicKey;
-  rentCollector: PublicKey;
+  batchRentCollector: PublicKey;
   batchIndex: bigint;
+  proposalRentCollector?: PublicKey;
   sendOptions?: SendOptions;
   programId?: PublicKey;
 }): Promise<TransactionSignature> {
@@ -37,8 +39,9 @@ export async function closeBatch({
   const tx = transactions.closeBatch({
     blockhash,
     feePayer: feePayer.publicKey,
-    rentCollector,
+    batchRentCollector,
     batchIndex,
+    proposalRentCollector,
     settingsPda,
     programId,
   });

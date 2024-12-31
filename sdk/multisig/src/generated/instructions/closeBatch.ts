@@ -25,7 +25,8 @@ export const closeBatchStruct = new beet.BeetArgsStruct<{
  * @property [] settings
  * @property [_writable_] proposal
  * @property [_writable_] batch
- * @property [_writable_] rentCollector
+ * @property [_writable_] proposalRentCollector
+ * @property [_writable_] batchRentCollector
  * @category Instructions
  * @category CloseBatch
  * @category generated
@@ -34,7 +35,8 @@ export type CloseBatchInstructionAccounts = {
   settings: web3.PublicKey
   proposal: web3.PublicKey
   batch: web3.PublicKey
-  rentCollector: web3.PublicKey
+  proposalRentCollector: web3.PublicKey
+  batchRentCollector: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -75,7 +77,12 @@ export function createCloseBatchInstruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.rentCollector,
+      pubkey: accounts.proposalRentCollector,
+      isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.batchRentCollector,
       isWritable: true,
       isSigner: false,
     },
