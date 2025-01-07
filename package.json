@@ -18,9 +18,7 @@
 		"@types/node-fetch": "2.6.2",
 		"mocha": "10.2.0",
 		"prettier": "2.6.2",
-		"ts-node": "10.9.1",
-		"turbo": "1.6.3",
-		"typescript": "*"
+		"turbo": "1.6.3"
 	},
 	"resolutions": {
 		"@solana/web3.js": "1.70.3",
