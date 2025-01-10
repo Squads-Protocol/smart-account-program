@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
@@ -21,11 +22,12 @@ export function createSmartAccount({
   rentCollector,
   memo,
   programId,
+  remainingAccounts,
 }: {
   blockhash: string;
   treasury: PublicKey;
   creator: PublicKey;
-  settings: PublicKey;
+  settings?: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
   signers: SmartAccountSigner[];
@@ -33,6 +35,7 @@ export function createSmartAccount({
   rentCollector: PublicKey | null;
   memo?: string;
   programId?: PublicKey;
+  remainingAccounts?: AccountMeta[];
 }): VersionedTransaction {
   const ix = instructions.createSmartAccount({
     treasury,
@@ -45,6 +48,7 @@ export function createSmartAccount({
     rentCollector,
     memo,
     programId,
+    remainingAccounts,
   });
 
   const message = new TransactionMessage({

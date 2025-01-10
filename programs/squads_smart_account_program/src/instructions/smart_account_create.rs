@@ -1,4 +1,6 @@
 #![allow(deprecated)]
+use std::borrow::Borrow;
+
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use solana_program::native_token::LAMPORTS_PER_SOL;
@@ -51,15 +53,6 @@ pub struct CreateSmartAccount<'info> {
     #[account(mut)]
     pub treasury: AccountInfo<'info>,
 
-    #[account(
-        init,
-        payer = creator,
-        space = Settings::size(args.signers.len()),
-        seeds = [SEED_PREFIX, SEED_SETTINGS, program_config.smart_account_index.checked_add(1).unwrap().to_le_bytes().as_ref()],
-        bump
-    )]
-    pub settings: Account<'info, Settings>,
-
     /// The creator of the smart account.
     #[account(mut,
     address = Pubkey::from(ACCOUNT_CREATION_AUTHORITY) @ SmartAccountError::Unauthorized)]
@@ -68,7 +61,7 @@ pub struct CreateSmartAccount<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl CreateSmartAccount<'_> {
+impl<'info> CreateSmartAccount<'info> {
     fn validate(&self) -> Result<()> {
         //region treasury
         require_keys_eq!(
@@ -83,28 +76,52 @@ impl CreateSmartAccount<'_> {
 
     /// Creates a multisig.
     #[access_control(ctx.accounts.validate())]
-    pub fn create_smart_account(ctx: Context<Self>, args: CreateSmartAccountArgs) -> Result<()> {
+    pub fn create_smart_account(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: CreateSmartAccountArgs,
+    ) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
         // Sort the members by pubkey.
         let mut signers = args.signers;
         signers.sort_by_key(|m| m.key);
 
-        // Initialize the smart account.
-        let settings = &mut ctx.accounts.settings;
-        settings.settings_authority = args.settings_authority.unwrap_or_default();
-        settings.threshold = args.threshold;
-        settings.time_lock = args.time_lock;
-        settings.transaction_index = 0;
-        settings.stale_transaction_index = 0;
-        settings.seed = program_config.smart_account_index.checked_add(1).unwrap();
-        settings.bump = ctx.bumps.settings;
-        settings.signers = signers;
-        // Preset to Pubkey::default() until archival feature is implemented.
-        settings.archival_authority = Some(Pubkey::default());
-        // Preset to 0 until archival feature is implemented.
-        settings.archivable_after = 0;
+        let settings_seed = program_config.smart_account_index.checked_add(1).unwrap();
+        let (settings_pubkey, settings_bump) = Pubkey::find_program_address(
+            &[
+                SEED_PREFIX,
+                SEED_SETTINGS,
+                settings_seed.to_le_bytes().as_ref(),
+            ],
+            &crate::ID,
+        );
+        // Initialize the settings
+        let settings_configuration = Settings {
+            seed: settings_seed,
+            settings_authority: args.settings_authority.unwrap_or_default(),
+            threshold: args.threshold,
+            time_lock: args.time_lock,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            // Preset to Pubkey::default() until archival feature is implemented.
+            archival_authority: Some(Pubkey::default()),
+            // Preset to 0 until archival feature is implemented.
+            archivable_after: 0,
+            bump: settings_bump,
+            signers,
+        };
 
-        settings.invariant()?;
+        // Initialize the settings account with the configuration.
+        let settings_account_info = settings_configuration.find_and_initialize_settings_account(
+            settings_pubkey,
+            &ctx.accounts.creator.to_account_info(),
+            &ctx.remaining_accounts,
+            &ctx.accounts.system_program,
+        )?;
+        // Serialize the settings account.
+        settings_configuration
+            .try_serialize(&mut &mut settings_account_info.data.borrow_mut()[..])?;
+
+        settings_configuration.invariant()?;
 
         // Check if the creation fee is set and transfer the fee to the treasury if necessary.
         let creation_fee = program_config.smart_account_creation_fee;

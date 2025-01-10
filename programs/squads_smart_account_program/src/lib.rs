@@ -75,8 +75,8 @@ pub mod squads_smart_account_program {
         ProgramConfig::set_treasury(ctx, args)
     }
     /// Create a smart account.
-    pub fn create_smart_account(
-        ctx: Context<CreateSmartAccount>,
+    pub fn create_smart_account<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateSmartAccount<'info>>,
         args: CreateSmartAccountArgs,
     ) -> Result<()> {
         CreateSmartAccount::create_smart_account(ctx, args)

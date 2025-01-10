@@ -137,11 +137,6 @@
           ]
         },
         {
-          "name": "settings",
-          "isMut": true,
-          "isSigner": false
-        },
-        {
           "name": "creator",
           "isMut": true,
           "isSigner": true,
@@ -3362,266 +3357,271 @@
   "errors": [
     {
       "code": 6000,
+      "name": "AccountNotEmpty",
+      "msg": "Account is not empty"
+    },
+    {
+      "code": 6001,
       "name": "DuplicateSigner",
       "msg": "Found multiple signers with the same pubkey"
     },
     {
-      "code": 6001,
+      "code": 6002,
       "name": "EmptySigners",
       "msg": "Signers array is empty"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "TooManySigners",
       "msg": "Too many signers, can be up to 65535"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold, must be between 1 and number of signers with vote permissions"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "Unauthorized",
       "msg": "Attempted to perform an unauthorized action"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "NotASigner",
       "msg": "Provided pubkey is not a signer of the smart account"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "InvalidTransactionMessage",
       "msg": "TransactionMessage is malformed."
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "StaleProposal",
       "msg": "Proposal is stale"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "InvalidProposalStatus",
       "msg": "Invalid proposal status"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "InvalidTransactionIndex",
       "msg": "Invalid transaction index"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "AlreadyApproved",
       "msg": "Signer already approved the transaction"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "AlreadyRejected",
       "msg": "Signer already rejected the transaction"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "AlreadyCancelled",
       "msg": "Signer already cancelled the transaction"
     },
     {
-      "code": 6013,
+      "code": 6014,
       "name": "InvalidNumberOfAccounts",
       "msg": "Wrong number of accounts provided"
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "InvalidAccount",
       "msg": "Invalid account provided"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "RemoveLastSigner",
       "msg": "Cannot remove last signer"
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "NoVoters",
       "msg": "Signers don't include any voters"
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "NoProposers",
       "msg": "Signers don't include any proposers"
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "NoExecutors",
       "msg": "Signers don't include any executors"
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "InvalidStaleTransactionIndex",
       "msg": "`stale_transaction_index` must be <= `transaction_index`"
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "NotSupportedForControlled",
       "msg": "Instruction not supported for controlled smart account"
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "TimeLockNotReleased",
       "msg": "Proposal time lock has not been released"
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "NoActions",
       "msg": "Config transaction must have at least one action"
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "MissingAccount",
       "msg": "Missing account"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "InvalidMint",
       "msg": "Invalid mint"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "InvalidDestination",
       "msg": "Invalid destination"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "SpendingLimitExceeded",
       "msg": "Spending limit exceeded"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "DecimalsMismatch",
       "msg": "Decimals don't match the mint"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "SpendingLimitExpired",
       "msg": "Spending limit is expired"
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "UnknownPermission",
       "msg": "Signer has unknown permission"
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "ProtectedAccount",
       "msg": "Account is protected, it cannot be passed into a CPI as writable"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "TimeLockExceedsMaxAllowed",
       "msg": "Time lock exceeds the maximum allowed (90 days)"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "IllegalAccountOwner",
       "msg": "Account is not owned by Smart Account program"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "RentReclamationDisabled",
       "msg": "Rent reclamation is disabled for this smart account"
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "InvalidRentCollector",
       "msg": "Invalid rent collector address"
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "ProposalForAnotherSmartAccount",
       "msg": "Proposal is for another smart account"
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "TransactionForAnotherSmartAccount",
       "msg": "Transaction is for another smart account"
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "TransactionNotMatchingProposal",
       "msg": "Transaction doesn't match proposal"
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "TransactionNotLastInBatch",
       "msg": "Transaction is not last in batch"
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "BatchNotEmpty",
       "msg": "Batch is not empty"
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "SpendingLimitInvalidAmount",
       "msg": "Invalid SpendingLimit amount"
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "InvalidInstructionArgs",
       "msg": "Invalid Instruction Arguments"
     },
     {
-      "code": 6042,
+      "code": 6043,
       "name": "FinalBufferHashMismatch",
       "msg": "Final message buffer hash doesnt match the expected hash"
     },
     {
-      "code": 6043,
+      "code": 6044,
       "name": "FinalBufferSizeExceeded",
       "msg": "Final buffer size cannot exceed 4000 bytes"
     },
     {
-      "code": 6044,
+      "code": 6045,
       "name": "FinalBufferSizeMismatch",
       "msg": "Final buffer size mismatch"
     },
     {
-      "code": 6045,
+      "code": 6046,
       "name": "SmartAccountCreateDeprecated",
       "msg": "smart_account_create has been deprecated. Use smart_account_create_v2 instead."
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "ThresholdNotReached",
       "msg": "Signers do not reach consensus threshold"
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "InvalidSignerCount",
       "msg": "Invalid number of signer accounts. Must be greater or equal to the threshold"
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "MissingSignature",
       "msg": "Missing signature"
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "InsufficientAggregatePermissions",
       "msg": "Insufficient aggregate permissions across signing members"
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "InsufficientVotePermissions",
       "msg": "Insufficient vote permissions across signing members"
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "TimeLockNotZero",
       "msg": "Smart account must not be time locked"
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "NotImplemented",
       "msg": "Feature not implemented"
     }
