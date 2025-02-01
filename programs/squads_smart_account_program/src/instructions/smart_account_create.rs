@@ -108,6 +108,9 @@ impl<'info> CreateSmartAccount<'info> {
             archivable_after: 0,
             bump: settings_bump,
             signers,
+            account_utilization: 0,
+            _reserved1: 0,
+            _reserved2: 0,
         };
 
         // Initialize the settings account with the configuration.
