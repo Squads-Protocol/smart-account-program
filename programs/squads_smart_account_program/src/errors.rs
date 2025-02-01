@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum SmartAccountError {
+    #[msg("Account is not empty")]
+    AccountNotEmpty,
     #[msg("Found multiple signers with the same pubkey")]
     DuplicateSigner,
     #[msg("Signers array is empty")]

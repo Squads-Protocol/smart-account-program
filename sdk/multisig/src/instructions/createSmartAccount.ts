@@ -1,8 +1,8 @@
-import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+import { AccountMeta, PublicKey, TransactionInstruction } from "@solana/web3.js";
 import {
   createCreateSmartAccountInstruction,
-  SmartAccountSigner,
   PROGRAM_ID,
+  SmartAccountSigner,
 } from "../generated";
 import { getProgramConfigPda } from "../pda";
 
@@ -17,10 +17,11 @@ export function createSmartAccount({
   rentCollector,
   memo,
   programId = PROGRAM_ID,
+  remainingAccounts
 }: {
   treasury: PublicKey;
   creator: PublicKey;
-  settings: PublicKey;
+  settings?: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
   signers: SmartAccountSigner[];
@@ -28,15 +29,20 @@ export function createSmartAccount({
   rentCollector: PublicKey | null;
   memo?: string;
   programId?: PublicKey;
+  remainingAccounts?: AccountMeta[];
 }): TransactionInstruction {
   const programConfigPda = getProgramConfigPda({ programId })[0];
-
+  const settingsAccountMeta: AccountMeta = {
+    pubkey: settings ?? PublicKey.default,
+    isSigner: false,
+    isWritable: true,
+  };
   return createCreateSmartAccountInstruction(
     {
       programConfig: programConfigPda,
       treasury,
       creator,
-      settings: settings,
+      anchorRemainingAccounts: [settingsAccountMeta, ...remainingAccounts ?? []]
     },
     {
       args: {
@@ -48,6 +54,6 @@ export function createSmartAccount({
         memo: memo ?? null,
       },
     },
-    programId
+    programId,
   );
 }

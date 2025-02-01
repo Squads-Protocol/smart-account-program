@@ -1,5 +1,3 @@
-use std::cmp::max;
-
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
@@ -50,6 +48,45 @@ pub struct Settings {
 }
 
 impl Settings {
+    pub fn find_and_initialize_settings_account<'info>(
+        &self,
+        settings_account_key: Pubkey,
+        rent_payer: &AccountInfo<'info>,
+        remaining_accounts: &'info [AccountInfo<'info>],
+        system_program: &Program<'info, System>,
+    ) -> Result<&AccountInfo<'info>> {
+
+        let settings_account_info = remaining_accounts
+            .iter()
+            .find(|acc| acc.key == &settings_account_key)
+            .ok_or(SmartAccountError::MissingAccount)?;
+
+        // Assert that the account is uninitialized and marked as writable
+        require!(settings_account_info.owner == &system_program::ID, ErrorCode::AccountNotSystemOwned);
+        require!(settings_account_info.data_is_empty(), SmartAccountError::AccountNotEmpty);
+        require!(settings_account_info.is_writable, ErrorCode::AccountNotMutable);
+
+
+        let rent = Rent::get()?;
+
+        create_account(
+            rent_payer,
+            settings_account_info,
+            system_program,
+            &crate::ID,
+            &rent,
+            Settings::size(self.signers.len()),
+            vec![
+                SEED_PREFIX.to_vec(),
+                SEED_SETTINGS.to_vec(),
+                self.seed.to_le_bytes().to_vec(),
+                vec![self.bump],
+            ],
+        )?;
+
+        Ok(settings_account_info)
+    }
+
     pub fn size(signers_length: usize) -> usize {
         8  + // anchor account discriminator
         16 + // seed

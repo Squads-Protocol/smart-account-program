@@ -41,7 +41,6 @@ export const createSmartAccountStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] programConfig
  * @property [_writable_] treasury
- * @property [_writable_] settings
  * @property [_writable_, **signer**] creator
  * @category Instructions
  * @category CreateSmartAccount
@@ -50,7 +49,6 @@ export const createSmartAccountStruct = new beet.FixableBeetArgsStruct<
 export type CreateSmartAccountInstructionAccounts = {
   programConfig: web3.PublicKey
   treasury: web3.PublicKey
-  settings: web3.PublicKey
   creator: web3.PublicKey
   systemProgram?: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -87,11 +85,6 @@ export function createCreateSmartAccountInstruction(
     },
     {
       pubkey: accounts.treasury,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.settings,
       isWritable: true,
       isSigner: false,
     },

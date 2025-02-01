@@ -87,7 +87,7 @@ describe("Instructions / multisig_create_v2", () => {
     );
   });
 
-  it("error: missing signature from `createKey`", async () => {
+  it("error: invalid settings account address", async () => {
     const creator = getTestAccountCreationAuthority();
     await fundKeypair(connection, creator);
 
@@ -125,7 +125,55 @@ describe("Instructions / multisig_create_v2", () => {
     // 0x7d6 is ConstraintSeeds
     await assert.rejects(
       async () => await connection.sendTransaction(tx),
-      /0x7d6/
+      /0x1788/
+    );
+  });
+  it("error: settings address not passed as writable", async () => {
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
+
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [settingsPda] = multisig.getSettingsPda({
+      accountIndex: accountIndex,
+      programId,
+    });
+
+    const tx = multisig.transactions.createSmartAccount({
+      blockhash: (await connection.getLatestBlockhash()).blockhash,
+      treasury: programTreasury,
+      creator: creator.publicKey,
+      settings: undefined,
+      settingsAuthority: null,
+      timeLock: 0,
+      threshold: 1,
+      rentCollector: null,
+      signers: [
+        {
+          key: members.almighty.publicKey,
+          permissions: Permissions.all(),
+        },
+        {
+          key: members.almighty.publicKey,
+          permissions: Permissions.all(),
+        },
+      ],
+      programId,
+      remainingAccounts: [
+        {
+          pubkey: settingsPda,
+          isSigner: false,
+          // Passed as non-writable
+          isWritable: false,
+        },
+      ],
+    });
+
+    tx.sign([creator]);
+
+    // 3006 is AccountNotMutable
+    await assert.rejects(
+      async () => await connection.sendTransaction(tx),
+      /3006/
     );
   });
 
@@ -521,5 +569,57 @@ describe("Instructions / multisig_create_v2", () => {
     );
     assert.strictEqual(programConfig.smartAccountCreationFee.toString(), "0");
     //endregion
+  });
+
+  it("passing both an incorrect and correct settings account", async () => {
+    const creator = getTestAccountCreationAuthority();
+    await fundKeypair(connection, creator);
+
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [wrongSettingsPda] = multisig.getSettingsPda({
+      // Pass wrong account index
+      accountIndex: accountIndex + 1n,
+      programId,
+    });
+    const [settingsPda] = multisig.getSettingsPda({
+      accountIndex,
+      programId,
+    });
+
+    const tx = multisig.transactions.createSmartAccount({
+      blockhash: (await connection.getLatestBlockhash()).blockhash,
+      treasury: programTreasury,
+      creator: creator.publicKey,
+      settings: wrongSettingsPda,
+      settingsAuthority: null,
+      timeLock: 0,
+      threshold: 1,
+      rentCollector: null,
+      signers: [
+        {
+          key: members.almighty.publicKey,
+          permissions: Permissions.all(),
+        },
+        {
+          key: members.almighty.publicKey,
+          permissions: Permissions.all(),
+        },
+      ],
+      programId,
+      remainingAccounts: [
+        {
+          pubkey: settingsPda,
+          isSigner: false,
+          isWritable: true,
+        },
+      ],
+    });
+
+    tx.sign([creator]);
+
+    // Should still pass since the program looks through the remaining accounts
+    await assert.ok(
+      async () => await connection.sendTransaction(tx)
+    );
   });
 });
