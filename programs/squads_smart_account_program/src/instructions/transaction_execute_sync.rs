@@ -1,10 +1,13 @@
+use account_events::SynchronousTransactionEvent;
 use anchor_lang::prelude::*;
 
 use crate::{
     errors::*,
     state::*,
+    events::*,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
+    program::SquadsSmartAccountProgram
 };
 
 use super::CompiledInstruction;
@@ -26,6 +29,7 @@ pub struct SyncTransaction<'info> {
         bump = settings.bump,
     )]
     pub settings: Box<Account<'info, Settings>>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. The exact amount of signers required to reach the threshold
     // 2. Any remaining accounts associated with the instructions
@@ -84,6 +88,21 @@ impl SyncTransaction<'_> {
         // faulty behavior.
         executable_message.execute(smart_account_signer_seeds)?;
 
+        // Log the event
+        let event = SynchronousTransactionEvent {
+            settings_pubkey: settings.key(),
+            account_index: args.account_index,
+            instructions: executable_message.instructions,
+            instruction_accounts: executable_message.accounts.iter().map(|a| a.key.clone()).collect(),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::SynchronousTransactionEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 }
+

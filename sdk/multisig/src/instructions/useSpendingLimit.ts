@@ -71,6 +71,7 @@ export function useSpendingLimit({
       smartAccountTokenAccount,
       destinationTokenAccount,
       tokenProgram: mint ? tokenProgram : undefined,
+      program: programId,
     },
     { args: { amount, decimals, memo: memo ?? null } },
     programId

@@ -22,6 +22,7 @@ pub use transaction_buffer_create::*;
 pub use transaction_buffer_extend::*;
 pub use transaction_create_from_buffer::*;
 pub use transaction_execute_sync::*;
+pub use log_event::*;
 
 mod activate_proposal;
 mod batch_add_transaction;
@@ -47,3 +48,4 @@ mod transaction_buffer_create;
 mod transaction_buffer_extend;
 mod transaction_create_from_buffer;
 mod transaction_execute_sync;
+mod log_event;

@@ -14,12 +14,14 @@ pub use instructions::ProgramConfig;
 pub use instructions::*;
 pub use state::*;
 pub use utils::SmallVec;
+pub use events::*;
 
 pub mod allocator;
 pub mod errors;
 pub mod instructions;
 pub mod state;
 mod utils;
+pub mod events;
 
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {
@@ -308,5 +310,9 @@ pub mod squads_smart_account_program {
         args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
         SyncSettingsTransaction::sync_settings_transaction(ctx, args)
+    }
+    /// Log an event 
+    pub fn log_event<'info>(ctx: Context<'_, '_, 'info, 'info, LogEvent<'info>>, args: LogEventArgs) -> Result<()> {
+        LogEvent::log_event(ctx, args)
     }
 }

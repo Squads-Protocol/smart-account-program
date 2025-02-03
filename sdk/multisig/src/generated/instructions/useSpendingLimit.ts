@@ -48,6 +48,7 @@ export const useSpendingLimitStruct = new beet.FixableBeetArgsStruct<
  * @property [] mint (optional)
  * @property [_writable_] smartAccountTokenAccount (optional)
  * @property [_writable_] destinationTokenAccount (optional)
+ * @property [] program
  * @category Instructions
  * @category UseSpendingLimit
  * @category generated
@@ -63,6 +64,7 @@ export type UseSpendingLimitInstructionAccounts = {
   smartAccountTokenAccount?: web3.PublicKey
   destinationTokenAccount?: web3.PublicKey
   tokenProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -140,6 +142,11 @@ export function createUseSpendingLimitInstruction(
     },
     {
       pubkey: accounts.tokenProgram ?? programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },
