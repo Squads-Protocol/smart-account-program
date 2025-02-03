@@ -12,10 +12,10 @@ use crate::state::*;
 /// incrememnt the smart account index.
 /// They will be removed once compression/archival is implemented.
 #[cfg(feature = "testing")]
-const ACCOUNT_CREATION_AUTHORITIES: &[Pubkey] = &[
+const ACCOUNT_CREATION_AUTHORITIES: &[Pubkey] = &[Pubkey::new_from_array([
     152, 165, 37, 245, 229, 240, 130, 196, 233, 36, 234, 92, 142, 236, 214, 104, 221, 210, 13, 223,
-    131, 100, 240, 8, 247, 125, 70, 118, 31, 150, 70, 126,
-];
+    131, 100, 240, 8, 247, 125, 70, 118, 31, 150, 70, 126
+])];
 
 #[cfg(not(feature = "testing"))]
 const ACCOUNT_CREATION_AUTHORITIES: &[Pubkey] = &[
