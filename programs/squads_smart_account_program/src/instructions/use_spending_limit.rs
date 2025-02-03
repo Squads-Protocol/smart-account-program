@@ -4,6 +4,8 @@ use anchor_spl::token_interface;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::errors::*;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -84,6 +86,8 @@ pub struct UseSpendingLimit<'info> {
 
     /// In case `spending_limit.mint` is an SPL token.
     pub token_program: Option<Interface<'info, TokenInterface>>,
+
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl UseSpendingLimit<'_> {
@@ -151,7 +155,7 @@ impl UseSpendingLimit<'_> {
 
         let settings_key = ctx.accounts.settings.key();
         let smart_account_bump = ctx.bumps.smart_account;
-        let now = Clock::get()?.unix_timestamp;
+        let now: i64 = Clock::get()?.unix_timestamp;
 
         // Reset `spending_limit.remaining_amount` if the `spending_limit.period` has passed.
         if let Some(reset_period) = spending_limit.period.to_seconds() {
@@ -260,7 +264,20 @@ impl UseSpendingLimit<'_> {
                 args.decimals,
             )?;
         }
-
+        // Log the event
+        let event = UseSpendingLimitEvent {
+            settings_pubkey: settings_key,
+            spending_limit_pubkey: spending_limit.key(),
+            spending_limit: SpendingLimit::try_from_slice(&spending_limit.try_to_vec()?)?,
+        };
+        let settings = &ctx.accounts.settings;
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::UseSpendingLimitEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 }

@@ -8,7 +8,7 @@ import "./suites/examples/transaction-buffer";
 import "./suites/instructions/batchAccountsClose";
 import "./suites/instructions/cancelRealloc";
 import "./suites/instructions/configTransactionAccountsClose";
- import "./suites/instructions/configTransactionExecute";
+import "./suites/instructions/configTransactionExecute";
 import "./suites/instructions/configTransactionSync";
 import "./suites/instructions/multisigCreateV2";
 import "./suites/instructions/multisigSetRentCollector";
@@ -23,4 +23,3 @@ import "./suites/multisig-sdk";
 // // // Uncomment to enable the heapTest instruction testing
 // // //import "./suites/instructions/heapTest";
 // // import "./suites/examples/custom-heap";
-
