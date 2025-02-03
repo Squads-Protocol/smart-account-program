@@ -1,6 +1,7 @@
+use account_events::{AddSpendingLimitEvent, RemoveSpendingLimitEvent};
 use anchor_lang::prelude::*;
 
-use crate::{errors::*, state::*, utils::*};
+use crate::{errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
@@ -31,6 +32,7 @@ pub struct SyncSettingsTransaction<'info> {
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. The amount of signers specified in `num_signers`
     // 2. Any SpendingLimit accounts that need to be initialized/closed based on actions
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl<'info> SyncSettingsTransaction<'info> {
@@ -96,6 +98,64 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Make sure the settings state is valid after applying the actions
         settings.invariant()?;
 
+        // Log the events
+        let event = SynchronousSettingsTransactionEvent {
+            settings_pubkey: settings_key,
+            signers: ctx.remaining_accounts[..args.num_signers as usize]
+                .iter()
+                .map(|acc| acc.key.clone())
+                .collect::<Vec<_>>(),
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            changes: args.actions.clone(),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::SynchronousSettingsTransactionEvent(event).log(&log_authority_info)?;
+
+        for action in args.actions.iter() {
+            match action {
+                SettingsAction::AddSpendingLimit { seed, .. } => {
+                    let spending_limit_pubkey = Pubkey::find_program_address(
+                        &[
+                            SEED_PREFIX,
+                            settings_key.as_ref(),
+                            SEED_SPENDING_LIMIT,
+                            seed.as_ref(),
+                        ],
+                        &ctx.accounts.program.key(),
+                    )
+                    .0;
+
+                    let spending_limit_data = ctx
+                        .remaining_accounts
+                        .iter()
+                        .find(|acc| acc.key == &spending_limit_pubkey)
+                        .ok_or(SmartAccountError::MissingAccount)?
+                        .try_borrow_data()?;
+
+                    let event = AddSpendingLimitEvent {
+                        settings_pubkey: settings_key,
+                        spending_limit_pubkey: spending_limit_pubkey,
+                        spending_limit: SpendingLimit::try_from_slice(**&spending_limit_data)?,
+                    };
+                    SmartAccountEvent::AddSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
+                SettingsAction::RemoveSpendingLimit { spending_limit, .. } => {
+                    let event = RemoveSpendingLimitEvent {
+                        settings_pubkey: settings_key,
+                        spending_limit_pubkey: spending_limit.key(),
+                    };
+                    SmartAccountEvent::RemoveSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
+                _ => {
+                    continue;
+                }
+            }
+        }
         Ok(())
     }
 }

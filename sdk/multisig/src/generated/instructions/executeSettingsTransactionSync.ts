@@ -42,6 +42,7 @@ export const executeSettingsTransactionSyncStruct =
  *
  * @property [_writable_] settings
  * @property [_writable_, **signer**] rentPayer (optional)
+ * @property [] program
  * @category Instructions
  * @category ExecuteSettingsTransactionSync
  * @category generated
@@ -50,6 +51,7 @@ export type ExecuteSettingsTransactionSyncInstructionAccounts = {
   settings: web3.PublicKey
   rentPayer?: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -93,6 +95,11 @@ export function createExecuteSettingsTransactionSyncInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

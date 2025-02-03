@@ -1,4 +1,8 @@
-import { AccountMeta, PublicKey, TransactionInstruction } from "@solana/web3.js";
+import {
+  AccountMeta,
+  PublicKey,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import {
   createCreateSmartAccountInstruction,
   PROGRAM_ID,
@@ -17,7 +21,7 @@ export function createSmartAccount({
   rentCollector,
   memo,
   programId = PROGRAM_ID,
-  remainingAccounts
+  remainingAccounts,
 }: {
   treasury: PublicKey;
   creator: PublicKey;
@@ -42,7 +46,11 @@ export function createSmartAccount({
       programConfig: programConfigPda,
       treasury,
       creator,
-      anchorRemainingAccounts: [settingsAccountMeta, ...remainingAccounts ?? []]
+      program: programId,
+      anchorRemainingAccounts: [
+        settingsAccountMeta,
+        ...(remainingAccounts ?? []),
+      ],
     },
     {
       args: {
@@ -54,6 +62,6 @@ export function createSmartAccount({
         memo: memo ?? null,
       },
     },
-    programId,
+    programId
   );
 }
