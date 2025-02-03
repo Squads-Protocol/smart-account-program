@@ -40,12 +40,14 @@ export const executeTransactionSyncStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _executeTransactionSync_ instruction
  *
  * @property [] settings
+ * @property [] program
  * @category Instructions
  * @category ExecuteTransactionSync
  * @category generated
  */
 export type ExecuteTransactionSyncInstructionAccounts = {
   settings: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -75,6 +77,11 @@ export function createExecuteTransactionSyncInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.settings,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },
