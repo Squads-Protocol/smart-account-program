@@ -7,6 +7,8 @@ import {
     getTestProgramId,
     TestMembers,
 } from "../../utils";
+import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 
 const { Settings, Proposal } = multisig.accounts;
 
@@ -278,5 +280,58 @@ describe("Instructions / config_transaction_execute", () => {
             },
             /NotImplemented/
         );
+    });
+    it("should add a spending limit", async () => {
+        // Create new autonomous multisig
+        const settingsPda = (
+            await createAutonomousMultisig({
+                connection,
+                members,
+                threshold: 1,
+                timeLock: 0,
+                programId,
+            })
+        )[0];
+
+        const spendingLimitSeed = members.almighty.publicKey;
+        const [spendingLimitPda] = multisig.getSpendingLimitPda({
+            settingsPda,
+            seed: spendingLimitSeed,
+            programId,
+        });
+
+        // Create and execute spending limit in one transaction
+        const signature = await multisig.rpc.executeSettingsTransactionSync({
+          connection,
+          feePayer: members.almighty,
+          settingsPda,
+          signers: [members.almighty],
+          actions: [
+            {
+            __kind: "AddSpendingLimit",
+              seed: spendingLimitSeed,
+              accountIndex: 0,
+              mint: PublicKey.default, // SOL
+              amount: 1_000_000_000, // 1 SOL
+              period: 0,
+              destinations: [members.almighty.publicKey],
+              signers: [members.almighty.publicKey],
+              expiration: new BN("9223372036854775807"), // i64 max (no expiration)
+            },
+          ],
+          programId,
+          remainingAccounts: [
+            {pubkey: spendingLimitPda, isSigner: false, isWritable: true}
+          ],
+          sendOptions: {
+            skipPreflight: true,
+          },
+        });
+
+        await connection.confirmTransaction(signature);
+
+        // Verify spending limit was created
+        const spendingLimitAccount = await connection.getAccountInfo(spendingLimitPda);
+        assert(spendingLimitAccount !== null, "Spending limit account should exist");
     });
 });

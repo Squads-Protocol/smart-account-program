@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   Connection,
   PublicKey,
   SendOptions,
@@ -21,6 +22,7 @@ export async function executeSettingsTransactionSync({
   signers,
   sendOptions,
   programId,
+  remainingAccounts,
 }: {
   connection: Connection;
   feePayer: Signer;
@@ -30,6 +32,7 @@ export async function executeSettingsTransactionSync({
   memo?: string;
   sendOptions?: SendOptions;
   programId?: PublicKey;
+  remainingAccounts?: AccountMeta[];
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
 
@@ -37,13 +40,14 @@ export async function executeSettingsTransactionSync({
     blockhash,
     feePayer: feePayer.publicKey,
     settingsPda,
-    signers: signers.map(signer => signer.publicKey),
+    signers: signers.map((signer) => signer.publicKey),
     settingsActions: actions,
     memo,
     programId,
+    remainingAccounts,
   });
 
-  tx.sign([feePayer, ...(signers)]);
+  tx.sign([feePayer, ...signers]);
 
   try {
     return await connection.sendTransaction(tx, sendOptions);

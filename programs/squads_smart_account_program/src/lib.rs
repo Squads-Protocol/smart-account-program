@@ -35,7 +35,7 @@ security_txt! {
 }
 
 #[cfg(not(feature = "testing"))]
-declare_id!("SMRTjqhGQ29cvyp44FWPTMPdQ722qCcWWcU2fWzgjzm");
+declare_id!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG");
 
 #[cfg(feature = "testing")]
 declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
@@ -311,7 +311,7 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         SyncSettingsTransaction::sync_settings_transaction(ctx, args)
     }
-    /// Log an event 
+    /// Log an event
     pub fn log_event<'info>(ctx: Context<'_, '_, 'info, 'info, LogEvent<'info>>, args: LogEventArgs) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }

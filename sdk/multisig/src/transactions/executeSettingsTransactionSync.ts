@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
@@ -18,6 +19,7 @@ export function executeSettingsTransactionSync({
   settingsActions,
   memo,
   programId,
+  remainingAccounts,
 }: {
   blockhash: string;
   feePayer: PublicKey;
@@ -26,6 +28,7 @@ export function executeSettingsTransactionSync({
   settingsActions: SettingsAction[];
   memo?: string;
   programId?: PublicKey;
+  remainingAccounts?: AccountMeta[];
 }): VersionedTransaction {
   const message = new TransactionMessage({
     payerKey: feePayer,
@@ -38,6 +41,7 @@ export function executeSettingsTransactionSync({
         actions: settingsActions,
         memo,
         programId,
+        remainingAccounts
       }),
     ],
   }).compileToV0Message();
