@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{state::SettingsAction, Settings, SmartAccountCompiledInstruction, SpendingLimit};
+use crate::{state::SettingsAction, Settings, SmartAccountCompiledInstruction, SmartAccountSigner, SpendingLimit};
 
 
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -14,6 +14,7 @@ pub struct CreateSmartAccountEvent {
 pub struct SynchronousTransactionEvent {
     pub settings_pubkey: Pubkey,
     pub account_index: u8,
+    pub signers: Vec<Pubkey>,
     pub instructions: Vec<SmartAccountCompiledInstruction>,
     pub instruction_accounts: Vec<Pubkey>,
 }
@@ -22,6 +23,7 @@ pub struct SynchronousTransactionEvent {
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct SynchronousSettingsTransactionEvent {
     pub settings_pubkey: Pubkey,
+    pub signers: Vec<Pubkey>,
     pub settings: Settings,
     pub changes: Vec<SettingsAction>
 }

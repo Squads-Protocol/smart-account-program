@@ -101,6 +101,10 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Log the events
         let event = SynchronousSettingsTransactionEvent {
             settings_pubkey: settings_key,
+            signers: ctx.remaining_accounts[..args.num_signers as usize]
+                .iter()
+                .map(|acc| acc.key.clone())
+                .collect::<Vec<_>>(),
             settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
             changes: args.actions.clone(),
         };
