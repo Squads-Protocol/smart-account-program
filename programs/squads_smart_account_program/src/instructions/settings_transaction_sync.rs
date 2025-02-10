@@ -137,6 +137,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                         .ok_or(SmartAccountError::MissingAccount)?
                         .try_borrow_data()?;
 
+
                     let event = AddSpendingLimitEvent {
                         settings_pubkey: settings_key,
                         spending_limit_pubkey: spending_limit_pubkey,

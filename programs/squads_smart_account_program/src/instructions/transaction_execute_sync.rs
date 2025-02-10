@@ -3,11 +3,11 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::*,
-    state::*,
     events::*,
+    program::SquadsSmartAccountProgram,
+    state::*,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
-    program::SquadsSmartAccountProgram
 };
 
 use super::CompiledInstruction;
@@ -97,7 +97,11 @@ impl SyncTransaction<'_> {
                 .collect(),
             account_index: args.account_index,
             instructions: executable_message.instructions,
-            instruction_accounts: executable_message.accounts.iter().map(|a| a.key.clone()).collect(),
+            instruction_accounts: executable_message
+                .accounts
+                .iter()
+                .map(|a| a.key.clone())
+                .collect(),
         };
         let log_authority_info = LogAuthorityInfo {
             authority: settings.to_account_info(),
@@ -109,4 +113,3 @@ impl SyncTransaction<'_> {
         Ok(())
     }
 }
-
