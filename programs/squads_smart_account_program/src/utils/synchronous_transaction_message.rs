@@ -33,32 +33,25 @@ impl<'info> SynchronousTransactionMessage<'info> {
             }
         }
 
-        let threshold = settings.threshold as usize;
         let mut accounts = Vec::with_capacity(remaining_accounts.len());
 
         // Process accounts and modify signer states
         for (i, account) in remaining_accounts.iter().enumerate() {
             let mut account_info = account.clone();
 
-            if i < threshold {
-                // First N accounts (threshold) should not get passed along as signers
+            // For remaining accounts:
+            // - Set account as signer
+            // - Remove signer privilege from any smart account signers
+            // - Set smart account as non-writable
+            if account.key == smart_account_pubkey {
+                account_info.is_signer = true;
+            } else if account.key == settings_key {
+                // This prevents dangerous re-entrancy
+                account_info.is_writable = false;
+            } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer {
+                // We may want to remove this so that a signer can be a rent
+                // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;
-            } else {
-                // For remaining accounts:
-                // - Set accou as signer
-                // - Remove signer privilege from any smart account signers
-                // - Set smart account as non-writable
-                if account.key == smart_account_pubkey {
-                    account_info.is_signer = true;
-                } else if account.key == settings_key {
-                    // This prevents dangerous re-entrancy
-                    account_info.is_writable = false;
-                } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer
-                {
-                    // We may want to remove this so that a signer can be a rent
-                    // or feepayer on any of the CPI instructions
-                    account_info.is_signer = false;
-                }
             }
 
             accounts.push(account_info);

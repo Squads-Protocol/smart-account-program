@@ -74,7 +74,7 @@ impl ExecuteTransaction<'_> {
             }
             _ => return err!(SmartAccountError::InvalidProposalStatus),
         }
-        // Stale vault transaction proposals CAN be executed if they were approved
+        // Stale transaction proposals CAN be executed if they were approved
         // before becoming stale, hence no check for staleness here.
 
         // `transaction` is validated by its seeds.

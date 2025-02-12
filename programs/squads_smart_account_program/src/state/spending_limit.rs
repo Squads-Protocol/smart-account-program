@@ -51,9 +51,9 @@ pub struct SpendingLimit {
 impl SpendingLimit {
     pub fn size(signers_length: usize, destinations_length: usize) -> usize {
         8  + // anchor discriminator
-        32 + // multisig
-        32 + // create_key
-        1  + // vault_index
+        32 + // settings
+        32 + // seed
+        1  + // account_index
         32 + // mint
         8  + // amount
         1  + // period
@@ -74,10 +74,10 @@ impl SpendingLimit {
             0,
             SmartAccountError::SpendingLimitInvalidAmount
         );
-        
+
         require!(!self.signers.is_empty(), SmartAccountError::EmptySigners);
 
-        // There must be no duplicate members, we make sure members are sorted when creating a SpendingLimit.
+        // There must be no duplicate signers, we make sure signers are sorted when creating a SpendingLimit.
         let has_duplicates = self.signers.windows(2).any(|win| win[0] == win[1]);
         require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 

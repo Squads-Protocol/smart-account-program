@@ -30,7 +30,7 @@ pub struct Settings {
     /// Last transaction index. 0 means no transactions have been created.
     pub transaction_index: u64,
     /// Last stale transaction index. All transactions up until this index are stale.
-    /// This index is updated when smart account settings (members/threshold/time_lock) change.
+    /// This index is updated when smart account settings (signers/threshold/time_lock) change.
     pub stale_transaction_index: u64,
     /// Field reserved for when archival/compression is implemented.
     /// Will be set to Pubkey::default() to mark accounts that should
@@ -124,38 +124,38 @@ impl Settings {
             .count()
     }
 
-    /// Check if the multisig account space needs to be reallocated to accommodate `members_length`.
+    /// Check if the settings account space needs to be reallocated to accommodate `signers_length`.
     /// Returns `true` if the account was reallocated.
     pub fn realloc_if_needed<'a>(
-        multisig: AccountInfo<'a>,
-        members_length: usize,
+        settings: AccountInfo<'a>,
+        signers_length: usize,
         rent_payer: Option<AccountInfo<'a>>,
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
         // Sanity checks
         require_keys_eq!(
-            *multisig.owner,
+            *settings.owner,
             id(),
             SmartAccountError::IllegalAccountOwner
         );
 
-        let current_account_size = multisig.data.borrow().len();
-        let account_size_to_fit_members = Settings::size(members_length);
+        let current_account_size = settings.data.borrow().len();
+        let account_size_to_fit_signers = Settings::size(signers_length);
 
         // Check if we need to reallocate space.
-        if current_account_size >= account_size_to_fit_members {
+        if current_account_size >= account_size_to_fit_signers {
             return Ok(false);
         }
 
-        let new_size = account_size_to_fit_members;
+        let new_size = account_size_to_fit_signers;
 
         // Reallocate more space.
-        AccountInfo::realloc(&multisig, new_size, false)?;
+        AccountInfo::realloc(&settings, new_size, false)?;
 
         // If more lamports are needed, transfer them to the account.
         let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_size).max(1);
         let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(multisig.to_account_info().lamports());
+            rent_exempt_lamports.saturating_sub(settings.to_account_info().lamports());
 
         if top_up_lamports > 0 {
             let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
@@ -172,7 +172,7 @@ impl Settings {
                     system_program,
                     system_program::Transfer {
                         from: rent_payer,
-                        to: multisig,
+                        to: settings,
                     },
                 ),
                 top_up_lamports,
@@ -182,8 +182,8 @@ impl Settings {
         Ok(true)
     }
 
-    // Makes sure the multisig state is valid.
-    // This must be called at the end of every instruction that modifies a Multisig account.
+    // Makes sure the settings state is valid.
+    // This must be called at the end of every instruction that modifies a Settings account.
     pub fn invariant(&self) -> Result<()> {
         let Self {
             threshold,
@@ -192,31 +192,31 @@ impl Settings {
             stale_transaction_index,
             ..
         } = self;
-        // Max number of members is u16::MAX.
+        // Max number of signers is u16::MAX.
         require!(
             signers.len() <= usize::from(u16::MAX),
             SmartAccountError::TooManySigners
         );
 
-        // There must be no duplicate members.
+        // There must be no duplicate signers.
         let has_duplicates = signers.windows(2).any(|win| win[0].key == win[1].key);
         require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 
-        // Members must not have unknown permissions.
+        // signers must not have unknown permissions.
         require!(
-            signers.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
+            signers.iter().all(|m| m.permissions.mask < 8), // 7 = Initiate | Vote | Execute
             SmartAccountError::UnknownPermission
         );
 
-        // There must be at least one member with Initiate permission.
+        // There must be at least one signer with Initiate permission.
         let num_proposers = Self::num_proposers(signers);
         require!(num_proposers > 0, SmartAccountError::NoProposers);
 
-        // There must be at least one member with Execute permission.
+        // There must be at least one signer with Execute permission.
         let num_executors = Self::num_executors(signers);
         require!(num_executors > 0, SmartAccountError::NoExecutors);
 
-        // There must be at least one member with Vote permission.
+        // There must be at least one signer with Vote permission.
         let num_voters = Self::num_voters(signers);
         require!(num_voters > 0, SmartAccountError::NoVoters);
 
@@ -235,7 +235,7 @@ impl Settings {
             SmartAccountError::InvalidStaleTransactionIndex
         );
 
-        // Time Lock must not exceed the maximum allowed to prevent bricking the multisig.
+        // Time Lock must not exceed the maximum allowed to prevent bricking the settings.
         require!(
             self.time_lock <= MAX_TIME_LOCK,
             SmartAccountError::TimeLockExceedsMaxAllowed
@@ -245,12 +245,12 @@ impl Settings {
     }
 
     /// Makes the transactions created up until this moment stale.
-    /// Should be called whenever any multisig parameter related to the voting consensus is changed.
+    /// Should be called whenever any settings parameter related to the voting consensus is changed.
     pub fn invalidate_prior_transactions(&mut self) {
         self.stale_transaction_index = self.transaction_index;
     }
 
-    /// Returns `Some(index)` if `member_pubkey` is a member, with `index` into the `members` vec.
+    /// Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
     /// `None` otherwise.
     pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
         self.signers
@@ -276,16 +276,16 @@ impl Settings {
             .unwrap()
     }
 
-    /// Add `new_member` to the multisig `members` vec and sort the vec.
+    /// Add `new_signer` to the settings `signers` vec and sort the vec.
     pub fn add_signer(&mut self, new_signer: SmartAccountSigner) {
         self.signers.push(new_signer);
         self.signers.sort_by_key(|m| m.key);
     }
 
-    /// Remove `member_pubkey` from the multisig `members` vec.
+    /// Remove `signer_pubkey` from the settings `signers` vec.
     ///
     /// # Errors
-    /// - `SmartAccountError::NotASigner` if `member_pubkey` is not a member.
+    /// - `SmartAccountError::NotASigner` if `signer_pubkey` is not a signer.
     pub fn remove_signer(&mut self, signer_pubkey: Pubkey) -> Result<()> {
         let old_signer_index = match self.is_signer(signer_pubkey) {
             Some(old_signer_index) => old_signer_index,

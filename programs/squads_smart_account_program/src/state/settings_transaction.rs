@@ -3,22 +3,22 @@ use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 
 use super::*;
 
-/// Stores data required for execution of a multisig configuration transaction.
-/// Config transaction can perform a predefined set of actions on the Multisig PDA, such as adding/removing members,
+/// Stores data required for execution of a settings configuration transaction.
+/// Settings transactions can perform a predefined set of actions on the Settings PDA, such as adding/removing members,
 /// changing the threshold, etc.
 #[account]
 pub struct SettingsTransaction {
     /// The settings this belongs to.
     pub settings: Pubkey,
-    /// Member of the Multisig who submitted the transaction.
+    /// Signer on the settings who submitted the transaction.
     pub creator: Pubkey,
     /// The rent collector for the settings transaction account.
     pub rent_collector: Pubkey,
-    /// Index of this transaction within the multisig.
+    /// Index of this transaction within the settings.
     pub index: u64,
     /// bump for the transaction seeds.
     pub bump: u8,
-    /// Action to be performed on the multisig.
+    /// Action to be performed on the settings.
     pub actions: Vec<SettingsAction>,
 }
 
@@ -30,7 +30,7 @@ impl SettingsTransaction {
             .sum();
 
         8 +   // anchor account discriminator
-        32 +  // multisig
+        32 +  // settings
         32 +  // creator
         32 +  // rent_collector
         8 +   // index
@@ -43,15 +43,15 @@ impl SettingsTransaction {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum SettingsAction {
-    /// Add a new member to the multisig.
+    /// Add a new member to the settings.
     AddSigner { new_signer: SmartAccountSigner },
-    /// Remove a member from the multisig.
+    /// Remove a member from the settings.
     RemoveSigner { old_signer: Pubkey },
-    /// Change the `threshold` of the multisig.
+    /// Change the `threshold` of the settings.
     ChangeThreshold { new_threshold: u16 },
-    /// Change the `time_lock` of the multisig.
+    /// Change the `time_lock` of the settings.
     SetTimeLock { new_time_lock: u32 },
-    /// Change the `time_lock` of the multisig.
+    /// Change the `time_lock` of the settings.
     AddSpendingLimit {
         /// Key that is used to seed the SpendingLimit PDA.
         seed: Pubkey,
@@ -66,8 +66,8 @@ pub enum SettingsAction {
         /// The reset period of the spending limit.
         /// When it passes, the remaining amount is reset, unless it's `Period::OneTime`.
         period: Period,
-        /// Members of the multisig that can use the spending limit.
-        /// In case a member is removed from the multisig, the spending limit will remain existent
+        /// Members of the settings that can use the spending limit.
+        /// In case a member is removed from the settings, the spending limit will remain existent
         /// (until explicitly deleted), but the removed member will not be able to use it anymore.
         signers: Vec<Pubkey>,
         /// The destination addresses the spending limit is allowed to sent funds to.
@@ -77,8 +77,8 @@ pub enum SettingsAction {
         /// Non expiring spending limits are set to `i64::MAX`.
         expiration: i64,
     },
-    /// Remove a spending limit from the multisig.
+    /// Remove a spending limit from the settings.
     RemoveSpendingLimit { spending_limit: Pubkey },
-    /// Set the `archival_authority` config parameter of the multisig.
+    /// Set the `archival_authority` config parameter of the settings.
     SetArchivalAuthority { new_archival_authority: Option<Pubkey> },
 }
