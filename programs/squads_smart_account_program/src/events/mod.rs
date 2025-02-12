@@ -15,6 +15,8 @@ pub enum SmartAccountEvent {
     AddSpendingLimitEvent(AddSpendingLimitEvent),
     RemoveSpendingLimitEvent(RemoveSpendingLimitEvent),
     UseSpendingLimitEvent(UseSpendingLimitEvent),
+    AuthoritySettingsEvent(AuthoritySettingsEvent),
+    AuthorityChangeEvent(AuthorityChangeEvent)
 }
 pub struct LogAuthorityInfo<'info> {
     pub authority: AccountInfo<'info>,
