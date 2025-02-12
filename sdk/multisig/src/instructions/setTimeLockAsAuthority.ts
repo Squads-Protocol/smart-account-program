@@ -1,12 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
-import { createSetTimeLockAsAuthorityInstruction } from "../generated";
+import { createSetTimeLockAsAuthorityInstruction, PROGRAM_ID } from "../generated";
 
 export function setTimeLockAsAuthority({
   settingsPda,
   settingsAuthority,
   timeLock,
   memo,
-  programId,
+  programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
@@ -18,6 +18,7 @@ export function setTimeLockAsAuthority({
     {
       settings: settingsPda,
       settingsAuthority,
+      program: programId,
     },
     {
       args: {

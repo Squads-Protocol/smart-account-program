@@ -44,6 +44,7 @@ export function addSpendingLimitAsAuthority({
       rentPayer,
       systemProgram: SystemProgram.programId,
       spendingLimit,
+      program: programId,
     },
     {
       args: {

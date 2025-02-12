@@ -43,6 +43,7 @@ export const addSpendingLimitAsAuthorityStruct = new beet.FixableBeetArgsStruct<
  * @property [**signer**] settingsAuthority
  * @property [_writable_] spendingLimit
  * @property [_writable_, **signer**] rentPayer
+ * @property [] program
  * @category Instructions
  * @category AddSpendingLimitAsAuthority
  * @category generated
@@ -53,6 +54,7 @@ export type AddSpendingLimitAsAuthorityInstructionAccounts = {
   spendingLimit: web3.PublicKey
   rentPayer: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -103,6 +105,11 @@ export function createAddSpendingLimitAsAuthorityInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

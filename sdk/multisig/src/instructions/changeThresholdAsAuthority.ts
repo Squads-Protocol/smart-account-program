@@ -24,6 +24,7 @@ export function changeThresholdAsAuthority({
       settings: settingsPda,
       settingsAuthority,
       rentPayer,
+      program: programId,
     },
     {
       args: {
