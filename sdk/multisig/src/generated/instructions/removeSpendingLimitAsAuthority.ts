@@ -44,6 +44,7 @@ export const removeSpendingLimitAsAuthorityStruct =
  * @property [**signer**] settingsAuthority
  * @property [_writable_] spendingLimit
  * @property [_writable_] rentCollector
+ * @property [] program
  * @category Instructions
  * @category RemoveSpendingLimitAsAuthority
  * @category generated
@@ -53,6 +54,7 @@ export type RemoveSpendingLimitAsAuthorityInstructionAccounts = {
   settingsAuthority: web3.PublicKey
   spendingLimit: web3.PublicKey
   rentCollector: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -99,6 +101,11 @@ export function createRemoveSpendingLimitAsAuthorityInstruction(
     {
       pubkey: accounts.rentCollector,
       isWritable: true,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
+      isWritable: false,
       isSigner: false,
     },
   ]

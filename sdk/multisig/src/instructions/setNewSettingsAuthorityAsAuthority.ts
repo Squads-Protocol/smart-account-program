@@ -1,12 +1,12 @@
 import { PublicKey } from "@solana/web3.js";
-import { createSetNewSettingsAuthorityAsAuthorityInstruction } from "../generated";
+import { createSetNewSettingsAuthorityAsAuthorityInstruction, PROGRAM_ID } from "../generated";
 
 export function setNewSettingsAuthorityAsAuthority({
   settingsPda,
   settingsAuthority,
   newSettingsAuthority,
   memo,
-  programId,
+  programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
@@ -18,6 +18,7 @@ export function setNewSettingsAuthorityAsAuthority({
     {
       settings: settingsPda,
       settingsAuthority,
+      program: programId,
     },
     {
       args: {

@@ -26,6 +26,7 @@ export function addSignerAsAuthority({
       settingsAuthority,
       rentPayer,
       systemProgram: SystemProgram.programId,
+      program: programId,
     },
     { args: { newSigner, memo: memo ?? null } },
     programId
