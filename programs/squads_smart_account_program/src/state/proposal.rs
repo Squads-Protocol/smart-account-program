@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::*;
 use crate::id;
+use crate::utils;
 use crate::utils::realloc;
 
 use anchor_lang::system_program;
@@ -157,6 +158,25 @@ impl Proposal {
         realloc(&proposal, account_size_to_fit_signers, rent_payer, system_program)?;
 
         Ok(true)
+    }
+
+    /// Close the proposal account if it exists, transferring rent to the rent collector
+    pub fn close_if_exists<'info>(
+        proposal_account: Option<Proposal>,
+        proposal_info: AccountInfo<'info>,
+        proposal_rent_collector: AccountInfo<'info>,
+    ) -> Result<()> {
+        if let Some(proposal) = proposal_account {
+            require!(
+                proposal_rent_collector.key() == proposal.rent_collector,
+                SmartAccountError::InvalidRentCollector
+            );
+            utils::close(
+                proposal_info,
+                proposal_rent_collector,
+            )?;
+        }
+        Ok(())
     }
 }
 
