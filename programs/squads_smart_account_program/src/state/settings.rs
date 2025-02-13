@@ -150,34 +150,7 @@ impl Settings {
         let new_size = account_size_to_fit_signers;
 
         // Reallocate more space.
-        AccountInfo::realloc(&settings, new_size, false)?;
-
-        // If more lamports are needed, transfer them to the account.
-        let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_size).max(1);
-        let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(settings.to_account_info().lamports());
-
-        if top_up_lamports > 0 {
-            let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
-            require_keys_eq!(
-                *system_program.key,
-                system_program::ID,
-                SmartAccountError::InvalidAccount
-            );
-
-            let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
-
-            system_program::transfer(
-                CpiContext::new(
-                    system_program,
-                    system_program::Transfer {
-                        from: rent_payer,
-                        to: settings,
-                    },
-                ),
-                top_up_lamports,
-            )?;
-        }
+        realloc(&settings, new_size, rent_payer, system_program)?;
 
         Ok(true)
     }
@@ -204,7 +177,7 @@ impl Settings {
 
         // signers must not have unknown permissions.
         require!(
-            signers.iter().all(|m| m.permissions.mask < 8), // 7 = Initiate | Vote | Execute
+            signers.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
             SmartAccountError::UnknownPermission
         );
 

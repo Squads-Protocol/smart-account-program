@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::*;
 use crate::id;
+use crate::utils::realloc;
 
 use anchor_lang::system_program;
 
@@ -152,39 +153,8 @@ impl Proposal {
         if current_account_size >= account_size_to_fit_signers {
             return Ok(false);
         }
-
         // Reallocate more space.
-        AccountInfo::realloc(&proposal, account_size_to_fit_signers, false)?;
-
-        // If more lamports are needed, transfer them to the account.
-        let rent_exempt_lamports = Rent::get()
-            .unwrap()
-            .minimum_balance(account_size_to_fit_signers)
-            .max(1);
-        let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(proposal.to_account_info().lamports());
-
-        if top_up_lamports > 0 {
-            let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
-            require_keys_eq!(
-                *system_program.key,
-                system_program::ID,
-                SmartAccountError::InvalidAccount
-            );
-
-            let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
-
-            system_program::transfer(
-                CpiContext::new(
-                    system_program,
-                    system_program::Transfer {
-                        from: rent_payer,
-                        to: proposal,
-                    },
-                ),
-                top_up_lamports,
-            )?;
-        }
+        realloc(&proposal, account_size_to_fit_signers, rent_payer, system_program)?;
 
         Ok(true)
     }
