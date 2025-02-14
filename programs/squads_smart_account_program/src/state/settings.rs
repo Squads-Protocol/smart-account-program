@@ -114,8 +114,8 @@ impl Settings {
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE + // signers
         1  + // sub_account_utilization
-        8  + // _reserved_1
-        8 // _reserved_2
+        1  + // _reserved_1
+        1 // _reserved_2
     }
 
     pub fn num_voters(signers: &[SmartAccountSigner]) -> usize {
