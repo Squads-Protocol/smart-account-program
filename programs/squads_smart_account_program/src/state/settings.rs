@@ -45,6 +45,11 @@ pub struct Settings {
     pub bump: u8,
     /// Signers attached to the smart account
     pub signers: Vec<SmartAccountSigner>,
+    /// Counter for how many sub accounts are in use (improves off-chain indexing)
+    pub account_utilization: u8,
+    // Reserved for future use
+    pub _reserved1: u8,
+    pub _reserved2: u8,
 }
 
 impl Settings {
@@ -55,17 +60,24 @@ impl Settings {
         remaining_accounts: &'info [AccountInfo<'info>],
         system_program: &Program<'info, System>,
     ) -> Result<&AccountInfo<'info>> {
-
         let settings_account_info = remaining_accounts
             .iter()
             .find(|acc| acc.key == &settings_account_key)
             .ok_or(SmartAccountError::MissingAccount)?;
 
         // Assert that the account is uninitialized and marked as writable
-        require!(settings_account_info.owner == &system_program::ID, ErrorCode::AccountNotSystemOwned);
-        require!(settings_account_info.data_is_empty(), SmartAccountError::AccountNotEmpty);
-        require!(settings_account_info.is_writable, ErrorCode::AccountNotMutable);
-
+        require!(
+            settings_account_info.owner == &system_program::ID,
+            ErrorCode::AccountNotSystemOwned
+        );
+        require!(
+            settings_account_info.data_is_empty(),
+            SmartAccountError::AccountNotEmpty
+        );
+        require!(
+            settings_account_info.is_writable,
+            ErrorCode::AccountNotMutable
+        );
 
         let rent = Rent::get()?;
 
@@ -100,7 +112,10 @@ impl Settings {
         8  + // archivable_after
         1  + // bump
         4  + // signers vector length
-        signers_length * SmartAccountSigner::INIT_SPACE // signers
+        signers_length * SmartAccountSigner::INIT_SPACE + // signers
+        1  + // sub_account_utilization
+        1  + // _reserved_1
+        1 // _reserved_2
     }
 
     pub fn num_voters(signers: &[SmartAccountSigner]) -> usize {
@@ -404,6 +419,10 @@ impl Settings {
         }
 
         Ok(())
+    }
+
+    pub fn increment_account_utilization(&mut self) {
+        self.account_utilization = self.account_utilization.checked_add(1).unwrap();
     }
 }
 
