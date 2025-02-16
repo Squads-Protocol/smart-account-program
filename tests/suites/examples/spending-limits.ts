@@ -5,7 +5,7 @@ import {
   createMint,
   createMintToInstruction,
   getAssociatedTokenAddressSync,
-  TOKEN_PROGRAM_ID
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
   Keypair,
@@ -154,11 +154,11 @@ describe("Examples / Spending Limits", () => {
 
     // Mint 100 * 10 ** mintDecimals tokens to the vault token account.
     const mintInstruction = createMintToInstruction(
-      splMint,                    // mint pubkey
-      vaultTokenAccount,          // destination
-      mintAuthority.publicKey,    // mint authority
-      100 * 10 ** mintDecimals,  // amount
-      [],                        // multisigners
+      splMint, // mint pubkey
+      vaultTokenAccount, // destination
+      mintAuthority.publicKey, // mint authority
+      100 * 10 ** mintDecimals, // amount
+      [], // multisigners
       TOKEN_PROGRAM_ID
     );
 
@@ -172,7 +172,6 @@ describe("Examples / Spending Limits", () => {
     mintTx.sign([mintAuthority]);
     signature = await connection.sendTransaction(mintTx);
     await connection.confirmTransaction(signature);
-
   });
 
   it("create SOL and SPL Spending Limits for autonomous multisig", async () => {
@@ -261,7 +260,11 @@ describe("Examples / Spending Limits", () => {
         transactionIndex,
         signer: members.executor,
         rentPayer: members.executor,
-        spendingLimits: [solSpendingLimitPda, splSpendingLimitPda, expiredSplSpendingLimitPda],
+        spendingLimits: [
+          solSpendingLimitPda,
+          splSpendingLimitPda,
+          expiredSplSpendingLimitPda,
+        ],
         programId,
       })
       .catch((err) => {
@@ -401,7 +404,6 @@ describe("Examples / Spending Limits", () => {
         throw err;
       });
     await connection.confirmTransaction(signature);
-
     solSpendingLimitAccount = await SpendingLimit.fromAccountAddress(
       connection,
       solSpendingLimitPda
@@ -469,12 +471,16 @@ describe("Examples / Spending Limits", () => {
         // You can optionally add a memo.
         memo: "Using my allowance!",
         programId,
+        sendOptions: {
+          skipPreflight: true,
+        },
       })
       .catch((err) => {
         console.log(err.logs);
         throw err;
       });
     await connection.confirmTransaction(signature);
+    console.log("signature", signature);
 
     // Fetch the Spending Limit account.
     const splSpendingLimitAccount = await SpendingLimit.fromAccountAddress(
@@ -512,22 +518,21 @@ describe("Examples / Spending Limits", () => {
       programId,
     });
     // Wait for the Spending Limit to expire.
-    await assert.ok(
-      () =>
-        multisig.rpc.useSpendingLimit({
-          connection,
-          feePayer: members.almighty,
-          signer: members.almighty,
-          settingsPda,
-          spendingLimit: expiredSplSpendingLimitPda,
-          mint: splMint,
-          accountIndex: splSpendingLimitParams.accountIndex,
-          amount: 1,
-          decimals: 6,
-          destination,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          programId,
-        }),
+    await assert.ok(() =>
+      multisig.rpc.useSpendingLimit({
+        connection,
+        feePayer: members.almighty,
+        signer: members.almighty,
+        settingsPda,
+        spendingLimit: expiredSplSpendingLimitPda,
+        mint: splMint,
+        accountIndex: splSpendingLimitParams.accountIndex,
+        amount: 1,
+        decimals: 6,
+        destination,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        programId,
+      })
     );
     await new Promise((resolve) => setTimeout(resolve, 5000));
     await assert.rejects(

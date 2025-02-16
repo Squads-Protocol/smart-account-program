@@ -43,6 +43,7 @@ export const setArchivalAuthorityAsAuthorityStruct =
  * @property [_writable_] settings
  * @property [**signer**] settingsAuthority
  * @property [_writable_, **signer**] rentPayer (optional)
+ * @property [] program
  * @category Instructions
  * @category SetArchivalAuthorityAsAuthority
  * @category generated
@@ -52,6 +53,7 @@ export type SetArchivalAuthorityAsAuthorityInstructionAccounts = {
   settingsAuthority: web3.PublicKey
   rentPayer?: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -100,6 +102,11 @@ export function createSetArchivalAuthorityAsAuthorityInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

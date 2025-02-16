@@ -1,12 +1,12 @@
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { createSetArchivalAuthorityAsAuthorityInstruction } from "../generated";
+import { createSetArchivalAuthorityAsAuthorityInstruction, PROGRAM_ID } from "../generated";
 
 export function setArchivalAuthorityAsAuthority({
   settingsPda,
   settingsAuthority,
   newArchivalAuthority,
   memo,
-  programId,
+  programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
@@ -19,6 +19,7 @@ export function setArchivalAuthorityAsAuthority({
       settings: settingsPda,
       settingsAuthority,
       systemProgram: SystemProgram.programId,
+      program: programId,
     },
     {
       args: {

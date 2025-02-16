@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::*;
-use crate::state::*;
+use crate::program::SquadsSmartAccountProgram;
+use crate::{state::*, LogAuthorityInfo, SmartAccountEvent};
+use crate::{errors::*, AuthoritySettingsEvent};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddSpendingLimitArgs {
@@ -62,6 +63,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
     pub rent_payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl AddSpendingLimitAsAuthority<'_> {
@@ -91,10 +93,11 @@ impl AddSpendingLimitAsAuthority<'_> {
     ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate(args.expiration))]
     pub fn add_spending_limit(ctx: Context<Self>, args: AddSpendingLimitArgs) -> Result<()> {
+        let settings = &ctx.accounts.settings;
         let spending_limit = &mut ctx.accounts.spending_limit;
 
         // Make sure there are no duplicate keys in this direct invocation by sorting so the invariant will catch
-        let mut sorted_signers = args.signers;
+        let mut sorted_signers = args.signers.clone();
         sorted_signers.sort();
 
         spending_limit.settings = ctx.accounts.settings.key();
@@ -107,10 +110,34 @@ impl AddSpendingLimitAsAuthority<'_> {
         spending_limit.last_reset = Clock::get()?.unix_timestamp;
         spending_limit.bump = ctx.bumps.spending_limit;
         spending_limit.signers = sorted_signers;
-        spending_limit.destinations = args.destinations;
+        spending_limit.destinations = args.destinations.clone();
         spending_limit.expiration = args.expiration;
 
         spending_limit.invariant()?;
+
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: ctx.accounts.settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::AddSpendingLimit {
+                seed: args.seed,
+                account_index: args.account_index,
+                mint: args.mint,
+                amount: args.amount,
+                period: args.period,
+                signers: args.signers,
+                destinations: args.destinations,
+                expiration: args.expiration,
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: ctx.accounts.settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
 
         Ok(())
     }

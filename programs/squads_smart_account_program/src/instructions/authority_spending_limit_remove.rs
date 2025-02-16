@@ -1,7 +1,11 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::AuthoritySettingsEvent;
+use crate::LogAuthorityInfo;
+use crate::SmartAccountEvent;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct RemoveSpendingLimitArgs {
@@ -27,6 +31,8 @@ pub struct RemoveSpendingLimitAsAuthority<'info> {
     /// CHECK: can be any account.
     #[account(mut)]
     pub rent_collector: AccountInfo<'info>,
+
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl RemoveSpendingLimitAsAuthority<'_> {
@@ -52,10 +58,25 @@ impl RemoveSpendingLimitAsAuthority<'_> {
     /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
     ///       Uncontrolled Smart Accounts should use `create_settings_transaction` instead.
     #[access_control(ctx.accounts.validate())]
-    pub fn remove_spending_limit(
-        ctx: Context<Self>,
-        _args: RemoveSpendingLimitArgs,
-    ) -> Result<()> {
+    pub fn remove_spending_limit(ctx: Context<Self>, _args: RemoveSpendingLimitArgs) -> Result<()> {
+        let settings = &ctx.accounts.settings;
+        let spending_limit = &ctx.accounts.spending_limit;
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: ctx.accounts.settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::RemoveSpendingLimit {
+                spending_limit: spending_limit.key(),
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: ctx.accounts.settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 }

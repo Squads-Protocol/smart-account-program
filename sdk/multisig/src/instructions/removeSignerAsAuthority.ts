@@ -22,6 +22,7 @@ export function removeSignerAsAuthority({
       settings: settingsPda,
       settingsAuthority,
       systemProgram: SystemProgram.programId,
+      program: programId,
     },
     { args: { oldSigner, memo: memo ?? null } },
     programId

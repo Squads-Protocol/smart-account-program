@@ -7,8 +7,8 @@ use crate::state::*;
 
 /// Sanitized and validated combination of transaction instructions and accounts
 pub struct SynchronousTransactionMessage<'info> {
-    instructions: Vec<SmartAccountCompiledInstruction>,
-    accounts: Vec<AccountInfo<'info>>,
+    pub instructions: Vec<SmartAccountCompiledInstruction>,
+    pub accounts: Vec<AccountInfo<'info>>,
 }
 
 impl<'info> SynchronousTransactionMessage<'info> {

@@ -1,7 +1,9 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::*;
-use crate::state::*;
+use crate::{
+    errors::*, program::SquadsSmartAccountProgram, state::*, AuthorityChangeEvent,
+    AuthoritySettingsEvent, LogAuthorityInfo, SmartAccountEvent,
+};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddSignerArgs {
@@ -65,6 +67,7 @@ pub struct ExecuteSettingsTransactionAsAuthority<'info> {
 
     /// We might need it in case reallocation is needed.
     pub system_program: Option<Program<'info, System>>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl ExecuteSettingsTransactionAsAuthority<'_> {
@@ -94,7 +97,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
             SmartAccountError::DuplicateSigner
         );
 
-        settings.add_signer(new_signer);
+        settings.add_signer(new_signer.clone());
 
         // Make sure the settings account can fit the newly set rent_collector.
         Settings::realloc_if_needed(
@@ -114,6 +117,22 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.invariant()?;
 
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::AddSigner {
+                new_signer: new_signer,
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 
@@ -136,6 +155,22 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.invariant()?;
 
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::RemoveSigner {
+                old_signer: args.old_signer,
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 
@@ -153,6 +188,22 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.invariant()?;
 
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::ChangeThreshold {
+                new_threshold: new_threshold,
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 
@@ -170,6 +221,22 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.invariant()?;
 
+        // Log the event
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::SetTimeLock {
+                new_time_lock: args.time_lock,
+            },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 
@@ -190,6 +257,20 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.invariant()?;
 
+        // Log the event
+        let event = AuthorityChangeEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            new_authority: Some(args.new_settings_authority),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthorityChangeEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 

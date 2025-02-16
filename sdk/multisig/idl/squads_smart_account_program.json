@@ -148,6 +148,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -197,6 +202,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -246,6 +256,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -295,6 +310,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -344,6 +364,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -393,6 +418,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -442,6 +472,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -489,6 +524,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -531,6 +571,11 @@
           "docs": [
             "This is usually the same as `settings_authority`, but can be a different account if needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1337,6 +1382,11 @@
           "docs": [
             "In case `spending_limit.mint` is an SPL token."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1574,6 +1624,11 @@
           "name": "settings",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1615,6 +1670,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1622,6 +1682,27 @@
           "name": "args",
           "type": {
             "defined": "SyncSettingsTransactionArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "logEvent",
+      "docs": [
+        "Log an event"
+      ],
+      "accounts": [
+        {
+          "name": "logAuthority",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "LogEventArgs"
           }
         }
       ]
@@ -2565,6 +2646,28 @@
             "type": {
               "option": "string"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "LogEventArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountSeeds",
+            "type": {
+              "vec": "bytes"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "event",
+            "type": "bytes"
           }
         ]
       }

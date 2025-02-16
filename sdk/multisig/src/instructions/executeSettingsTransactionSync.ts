@@ -21,6 +21,7 @@ export function executeSettingsTransactionSync({
             settings: settingsPda,
             rentPayer: feePayer ?? undefined,
             systemProgram: SystemProgram.programId,
+            program: programId,
         },
         {
             args: {

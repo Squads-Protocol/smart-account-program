@@ -1,11 +1,14 @@
 #![allow(deprecated)]
 use std::borrow::Borrow;
 
+use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::errors::SmartAccountError;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
 /// These are only used to prevent the DOS vector of front running txns that
@@ -59,6 +62,7 @@ pub struct CreateSmartAccount<'info> {
     pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl<'info> CreateSmartAccount<'info> {
@@ -145,6 +149,19 @@ impl<'info> CreateSmartAccount<'info> {
 
         // Increment the smart account index.
         program_config.increment_smart_account_index()?;
+
+        // Log Smart Account Creation
+        let event = CreateSmartAccountEvent {
+            new_settings_pubkey: settings_pubkey,
+            new_settings_content: settings_configuration.clone(),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings_account_info.clone(),
+            authority_seeds: get_settings_signer_seeds(settings_seed),
+            bump: settings_bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::CreateSmartAccountEvent(event).log(&log_authority_info)?;
 
         Ok(())
     }

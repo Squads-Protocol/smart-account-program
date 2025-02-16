@@ -27,6 +27,7 @@ export function removeSpendingLimitAsAuthority({
       settingsAuthority,
       spendingLimit,
       rentCollector,
+      program: programId,
     },
     {
       args: {
