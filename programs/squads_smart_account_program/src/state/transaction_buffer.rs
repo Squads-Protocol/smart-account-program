@@ -65,10 +65,7 @@ impl TransactionBuffer {
             self.final_buffer_size as usize <= MAX_BUFFER_SIZE,
             SmartAccountError::FinalBufferSizeExceeded
         );
-        require!(
-            self.buffer.len() <= MAX_BUFFER_SIZE,
-            SmartAccountError::FinalBufferSizeExceeded
-        );
+       
         require!(
             self.buffer.len() <= self.final_buffer_size as usize,
             SmartAccountError::FinalBufferSizeMismatch

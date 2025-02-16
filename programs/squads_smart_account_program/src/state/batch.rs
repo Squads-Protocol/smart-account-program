@@ -51,8 +51,8 @@ pub struct BatchTransaction {
     /// Derivation bumps for additional signers.
     /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
     /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
-    /// When wrapping such transactions into multisig ones, we replace these "ephemeral" signing keypairs
-    /// with PDAs derived from the transaction's `transaction_index` and controlled by the Multisig Program;
+    /// When wrapping such transactions into Smart Account ones, we replace these "ephemeral" signing keypairs
+    /// with PDAs derived from the transaction's `transaction_index` and controlled by the Smart Account Program;
     /// during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,
     /// thus "signing" on behalf of these PDAs.
     pub ephemeral_signer_bumps: Vec<u8>,

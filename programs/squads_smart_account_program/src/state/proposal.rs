@@ -3,17 +3,19 @@ use anchor_lang::prelude::*;
 
 use crate::errors::*;
 use crate::id;
+use crate::utils;
+use crate::utils::realloc;
 
 use anchor_lang::system_program;
 
-/// Stores the data required for tracking the status of a multisig proposal.
-/// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `VaultTransaction` or a `ConfigTransaction`;
+/// Stores the data required for tracking the status of a smart account proposal.
+/// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `Transaction` or a `SettingsTransaction`;
 /// the latter can be executed only after the `Proposal` has been approved and its time lock is released.
 #[account]
 pub struct Proposal {
     /// The settings this belongs to.
     pub settings: Pubkey,
-    /// Index of the multisig transaction this proposal is associated with.
+    /// Index of the smart account transaction this proposal is associated with.
     pub transaction_index: u64,
     /// The rent collector for the proposal account.
     pub rent_collector: Pubkey,
@@ -30,30 +32,30 @@ pub struct Proposal {
 }
 
 impl Proposal {
-    pub fn size(members_len: usize) -> usize {
+    pub fn size(signers_len: usize) -> usize {
         8 +   // anchor account discriminator
-        32 +  // multisig
+        32 +  // settings
         8 +   // index
         32 +  // rent_payer
         1 +   // status enum variant
         8 +   // status enum wrapped timestamp (i64)
         1 +   // bump
-        (4 + (members_len * 32)) + // approved vec
-        (4 + (members_len * 32)) + // rejected vec
-        (4 + (members_len * 32)) // cancelled vec
+        (4 + (signers_len * 32)) + // approved vec
+        (4 + (signers_len * 32)) + // rejected vec
+        (4 + (signers_len * 32)) // cancelled vec
     }
 
     /// Register an approval vote.
-    pub fn approve(&mut self, member: Pubkey, threshold: usize) -> Result<()> {
-        // If `member` has previously voted to reject, remove that vote.
-        if let Some(vote_index) = self.has_voted_reject(member.key()) {
+    pub fn approve(&mut self, signer: Pubkey, threshold: usize) -> Result<()> {
+        // If `signer` has previously voted to reject, remove that vote.
+        if let Some(vote_index) = self.has_voted_reject(signer.key()) {
             self.remove_rejection_vote(vote_index);
         }
 
         // Insert the vote of approval.
-        match self.approved.binary_search(&member) {
+        match self.approved.binary_search(&signer) {
             Ok(_) => return err!(SmartAccountError::AlreadyApproved),
-            Err(pos) => self.approved.insert(pos, member),
+            Err(pos) => self.approved.insert(pos, signer),
         };
 
         // If current number of approvals reaches threshold, mark the transaction as `Approved`.
@@ -67,16 +69,16 @@ impl Proposal {
     }
 
     /// Register a rejection vote.
-    pub fn reject(&mut self, member: Pubkey, cutoff: usize) -> Result<()> {
-        // If `member` has previously voted to approve, remove that vote.
-        if let Some(vote_index) = self.has_voted_approve(member.key()) {
+    pub fn reject(&mut self, signer: Pubkey, cutoff: usize) -> Result<()> {
+        // If `signer` has previously voted to approve, remove that vote.
+        if let Some(vote_index) = self.has_voted_approve(signer.key()) {
             self.remove_approval_vote(vote_index);
         }
 
         // Insert the vote of rejection.
-        match self.rejected.binary_search(&member) {
+        match self.rejected.binary_search(&signer) {
             Ok(_) => return err!(SmartAccountError::AlreadyRejected),
-            Err(pos) => self.rejected.insert(pos, member),
+            Err(pos) => self.rejected.insert(pos, signer),
         };
 
         // If current number of rejections reaches cutoff, mark the transaction as `Rejected`.
@@ -90,11 +92,11 @@ impl Proposal {
     }
 
     /// Registers a cancellation vote.
-    pub fn cancel(&mut self, member: Pubkey, threshold: usize) -> Result<()> {
+    pub fn cancel(&mut self, signer: Pubkey, threshold: usize) -> Result<()> {
         // Insert the vote of cancellation.
-        match self.cancelled.binary_search(&member) {
+        match self.cancelled.binary_search(&signer) {
             Ok(_) => return err!(SmartAccountError::AlreadyCancelled),
-            Err(pos) => self.cancelled.insert(pos, member),
+            Err(pos) => self.cancelled.insert(pos, signer),
         };
 
         // If current number of cancellations reaches threshold, mark the transaction as `Cancelled`.
@@ -107,16 +109,16 @@ impl Proposal {
         Ok(())
     }
 
-    /// Check if the member approved the transaction.
-    /// Returns `Some(index)` if `member` has approved the transaction, with `index` into the `approved` vec.
-    fn has_voted_approve(&self, member: Pubkey) -> Option<usize> {
-        self.approved.binary_search(&member).ok()
+    /// Check if the signer approved the transaction.
+    /// Returns `Some(index)` if `signer` has approved the transaction, with `index` into the `approved` vec.
+    fn has_voted_approve(&self, signer: Pubkey) -> Option<usize> {
+        self.approved.binary_search(&signer).ok()
     }
 
-    /// Check if the member rejected the transaction.
-    /// Returns `Some(index)` if `member` has rejected the transaction, with `index` into the `rejected` vec.
-    fn has_voted_reject(&self, member: Pubkey) -> Option<usize> {
-        self.rejected.binary_search(&member).ok()
+    /// Check if the signer rejected the transaction.
+    /// Returns `Some(index)` if `signer` has rejected the transaction, with `index` into the `rejected` vec.
+    fn has_voted_reject(&self, signer: Pubkey) -> Option<usize> {
+        self.rejected.binary_search(&signer).ok()
     }
 
     /// Delete the vote of rejection at the `index`.
@@ -130,11 +132,11 @@ impl Proposal {
     }
 
     /// Check if the proposal account space needs to be reallocated to accommodate `cancelled` vec.
-    /// Proposal size is crated at creation, and thus may not accomodate enough space for all members to cancel if more are added or changed
+    /// Proposal size is crated at creation, and thus may not accomodate enough space for all signers to cancel if more are added or changed
     /// Returns `true` if the account was reallocated.
     pub fn realloc_if_needed<'a>(
         proposal: AccountInfo<'a>,
-        members_length: usize,
+        signers_length: usize,
         rent_payer: Option<AccountInfo<'a>>,
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
@@ -146,47 +148,35 @@ impl Proposal {
         );
 
         let current_account_size = proposal.data.borrow().len();
-        let account_size_to_fit_members = Proposal::size(members_length);
+        let account_size_to_fit_signers = Proposal::size(signers_length);
 
         // Check if we need to reallocate space.
-        if current_account_size >= account_size_to_fit_members {
+        if current_account_size >= account_size_to_fit_signers {
             return Ok(false);
         }
-
         // Reallocate more space.
-        AccountInfo::realloc(&proposal, account_size_to_fit_members, false)?;
-
-        // If more lamports are needed, transfer them to the account.
-        let rent_exempt_lamports = Rent::get()
-            .unwrap()
-            .minimum_balance(account_size_to_fit_members)
-            .max(1);
-        let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(proposal.to_account_info().lamports());
-
-        if top_up_lamports > 0 {
-            let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
-            require_keys_eq!(
-                *system_program.key,
-                system_program::ID,
-                SmartAccountError::InvalidAccount
-            );
-
-            let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
-
-            system_program::transfer(
-                CpiContext::new(
-                    system_program,
-                    system_program::Transfer {
-                        from: rent_payer,
-                        to: proposal,
-                    },
-                ),
-                top_up_lamports,
-            )?;
-        }
+        realloc(&proposal, account_size_to_fit_signers, rent_payer, system_program)?;
 
         Ok(true)
+    }
+
+    /// Close the proposal account if it exists, transferring rent to the rent collector
+    pub fn close_if_exists<'info>(
+        proposal_account: Option<Proposal>,
+        proposal_info: AccountInfo<'info>,
+        proposal_rent_collector: AccountInfo<'info>,
+    ) -> Result<()> {
+        if let Some(proposal) = proposal_account {
+            require!(
+                proposal_rent_collector.key() == proposal.rent_collector,
+                SmartAccountError::InvalidRentCollector
+            );
+            utils::close(
+                proposal_info,
+                proposal_rent_collector,
+            )?;
+        }
+        Ok(())
     }
 }
 

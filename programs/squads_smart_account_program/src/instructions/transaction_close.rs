@@ -112,16 +112,11 @@ impl CloseSettingsTransaction<'_> {
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
-        if let Some(proposal) = proposal_account {
-            require!(
-                proposal_rent_collector.key() == proposal.rent_collector,
-                SmartAccountError::InvalidRentCollector
-            );
-            utils::close(
-                ctx.accounts.proposal.to_account_info(),
-                proposal_rent_collector.to_account_info(),
-            )?;
-        }
+        Proposal::close_if_exists(
+            proposal_account,
+            proposal.to_account_info(),
+            proposal_rent_collector.clone(),
+        )?;
 
         // Anchor will close the `transaction` account for us.
         Ok(())
@@ -225,16 +220,11 @@ impl CloseTransaction<'_> {
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
         // Close the `proposal` account if exists.
-        if let Some(proposal) = proposal_account {
-            require!(
-                proposal_rent_collector.key() == proposal.rent_collector,
-                SmartAccountError::InvalidRentCollector
-            );
-            utils::close(
-                ctx.accounts.proposal.to_account_info(),
-                proposal_rent_collector.to_account_info(),
-            )?;
-        }
+        Proposal::close_if_exists(
+            proposal_account,
+            proposal.to_account_info(),
+            proposal_rent_collector.clone(),
+        )?;
 
         // Anchor will close the `transaction` account for us.
         Ok(())
@@ -469,16 +459,11 @@ impl CloseBatch<'_> {
         require_eq!(batch.size, 0, SmartAccountError::BatchNotEmpty);
 
         // Close the `proposal` account if exists.
-        if let Some(proposal) = proposal_account {
-            require!(
-                proposal_rent_collector.key() == proposal.rent_collector,
-                SmartAccountError::InvalidRentCollector
-            );
-            utils::close(
-                ctx.accounts.proposal.to_account_info(),
-                proposal_rent_collector.to_account_info(),
-            )?;
-        }
+        Proposal::close_if_exists(
+            proposal_account,
+            proposal.to_account_info(),
+            proposal_rent_collector.clone(),
+        )?;
 
         // Anchor will close the `batch` account for us.
         Ok(())

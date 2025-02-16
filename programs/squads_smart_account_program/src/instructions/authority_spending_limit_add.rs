@@ -7,7 +7,7 @@ use crate::state::*;
 pub struct AddSpendingLimitArgs {
     /// Key that is used to seed the SpendingLimit PDA.
     pub seed: Pubkey,
-    /// The index of the vault that the spending limit is for.
+    /// The index of the smart account that the spending limit is for.
     pub account_index: u8,
     /// The token mint the spending limit is for.
     pub mint: Pubkey,

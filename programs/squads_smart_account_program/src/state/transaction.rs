@@ -4,19 +4,21 @@ use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 use crate::errors::*;
 use crate::instructions::{CompiledInstruction, MessageAddressTableLookup, TransactionMessage};
 
-/// Stores data required for tracking the voting and execution status of a vault transaction.
-/// Vault transaction is a transaction that's executed on behalf of the multisig vault PDA
+/// Stores data required for tracking the voting and execution status of a smart
+///account transaction.
+/// Smart Account transaction is a transaction that's executed on behalf of the
+/// smart account PDA
 /// and wraps arbitrary Solana instructions, typically calling into other Solana programs.
 #[account]
 #[derive(Default)]
 pub struct Transaction {
     /// The settings this belongs to.
     pub settings: Pubkey,
-    /// Member of the Multisig who submitted the transaction.
+    /// Signer of the Smart Account who submitted the transaction.
     pub creator: Pubkey,
     /// The rent collector for the transaction account.
     pub rent_collector: Pubkey,
-    /// Index of this transaction within the multisig.
+    /// Index of this transaction within the smart account.
     pub index: u64,
     /// bump for the transaction seeds.
     pub bump: u8,
@@ -27,8 +29,9 @@ pub struct Transaction {
     /// Derivation bumps for additional signers.
     /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
     /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
-    /// When wrapping such transactions into multisig ones, we replace these "ephemeral" signing keypairs
-    /// with PDAs derived from the MultisigTransaction's `transaction_index` and controlled by the Multisig Program;
+    /// When wrapping such transactions into smart account ones, we replace these "ephemeral" signing keypairs
+    /// with PDAs derived from the SmartAccountTransaction's `transaction_index`
+    /// and controlled by the Smart Account Program;
     /// during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,
     /// thus "signing" on behalf of these PDAs.
     pub ephemeral_signer_bumps: Vec<u8>,
@@ -44,18 +47,18 @@ impl Transaction {
 
         Ok(
             8 +   // anchor account discriminator
-            32 +  // multisig
+            32 +  // settings
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
             1 +   // bump
-            1 +   // vault_index
-            1 +   // vault_bump
+            1 +   // account_index
+            1 +   // account_bump
             (4 + usize::from(ephemeral_signers_length)) +   // ephemeral_signers_bumps vec
             message_size, // message
         )
     }
-    /// Reduces the VaultTransaction to its default empty value and moves
+    /// Reduces the Transaction to its default empty value and moves
     /// ownership of the data to the caller/return value.
     pub fn take(&mut self) -> Transaction {
         core::mem::take(self)
