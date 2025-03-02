@@ -4,18 +4,18 @@ import {
   PublicKey,
   TransactionMessage,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import * as assert from "assert";
 import BN from "bn.js";
 import {
   comparePubkeys,
   createAutonomousMultisig,
-  createControlledMultisig,
+  createControlledSmartAccount,
   createLocalhostConnection,
   createTestTransferInstruction,
   fundKeypair,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestAccountCreationAuthority,
   getTestProgramId,
@@ -23,23 +23,23 @@ import {
   TestMembers,
 } from "../utils";
 
-const { toBigInt } = multisig.utils;
+const { toBigInt } = smartAccount.utils;
 const { Settings, Transaction, SettingsTransaction, Proposal, SpendingLimit } =
-  multisig.accounts;
-const { Permission, Permissions } = multisig.types;
+  smartAccount.accounts;
+const { Permission, Permissions } = smartAccount.types;
 
 const programId = getTestProgramId();
 
-describe("Multisig SDK", () => {
+describe("Smart Account SDK", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;
 
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
-  describe("multisig_add_member", () => {
+  describe("smart_account_add_signer", () => {
     const newSigner = {
       key: Keypair.generate().publicKey,
       permissions: Permissions.all(),
@@ -55,9 +55,9 @@ describe("Multisig SDK", () => {
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           configAuthority: configAuthority.publicKey,
@@ -72,9 +72,9 @@ describe("Multisig SDK", () => {
     it("error: adding an existing member", async () => {
       const feePayer = await generateFundedKeypair(connection);
 
-      // Adding the same member again should fail.
+      // Adding the samesigneragain should fail.
       await assert.rejects(
-        multisig.rpc.addSignerAsAuthority({
+        smartAccount.rpc.addSignerAsAuthority({
           connection,
           feePayer,
           settingsPda,
@@ -95,7 +95,7 @@ describe("Multisig SDK", () => {
       const feePayer = await generateFundedKeypair(connection);
 
       await assert.rejects(
-        multisig.rpc.addSignerAsAuthority({
+        smartAccount.rpc.addSignerAsAuthority({
           connection,
           feePayer,
           settingsPda,
@@ -115,7 +115,7 @@ describe("Multisig SDK", () => {
       const fakeAuthority = await generateFundedKeypair(connection);
 
       await assert.rejects(
-        multisig.rpc.addSignerAsAuthority({
+        smartAccount.rpc.addSignerAsAuthority({
           connection,
           feePayer: fakeAuthority,
           settingsPda,
@@ -129,7 +129,7 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("add a new member to the controlled multisig", async () => {
+    it("add a new signer to the controlled smart account", async () => {
       // feePayer can be anyone.
       const feePayer = await generateFundedKeypair(connection);
 
@@ -139,23 +139,23 @@ describe("Multisig SDK", () => {
 
       const initialMembersLength = multisigAccount.signers.length;
       const initialOccupiedSize =
-        multisig.generated.settingsBeet.toFixedFromValue({
-          accountDiscriminator: multisig.generated.settingsDiscriminator,
+        smartAccount.generated.settingsBeet.toFixedFromValue({
+          accountDiscriminator: smartAccount.generated.settingsDiscriminator,
           ...multisigAccount,
         }).byteSize;
       const initialAllocatedSize = multisigAccountInfo.data.length;
 
-      // Right after the creation of the multisig, the allocated account space is fully utilized,
+      // Right after the creation of the smart account, the allocated account space is fully utilized,
       assert.equal(initialOccupiedSize, initialAllocatedSize);
 
-      let signature = await multisig.rpc.addSignerAsAuthority({
+      let signature = await smartAccount.rpc.addSignerAsAuthority({
         connection,
         feePayer,
         settingsPda,
         settingsAuthority: configAuthority.publicKey,
         rentPayer: configAuthority,
         newSigner,
-        memo: "Adding my good friend to the multisig",
+        memo: "Adding my good friend to the smart account",
         signers: [configAuthority],
         sendOptions: { skipPreflight: true },
         programId,
@@ -166,12 +166,13 @@ describe("Multisig SDK", () => {
       multisigAccount = Settings.fromAccountInfo(multisigAccountInfo!)[0];
 
       let newMembersLength = multisigAccount.signers.length;
-      let newOccupiedSize = multisig.generated.settingsBeet.toFixedFromValue({
-        accountDiscriminator: multisig.generated.settingsDiscriminator,
-        ...multisigAccount,
-      }).byteSize;
+      let newOccupiedSize =
+        smartAccount.generated.settingsBeet.toFixedFromValue({
+          accountDiscriminator: smartAccount.generated.settingsDiscriminator,
+          ...multisigAccount,
+        }).byteSize;
 
-      // New member was added.
+      // Newsignerwas added.
       assert.strictEqual(newMembersLength, initialMembersLength + 1);
       assert.ok(
         multisigAccount.signers.find((m) => m.key.equals(newSigner.key))
@@ -179,16 +180,18 @@ describe("Multisig SDK", () => {
       // Account occupied size increased by the size of the new Member.
       assert.strictEqual(
         newOccupiedSize,
-        initialOccupiedSize + multisig.generated.smartAccountSignerBeet.byteSize
+        initialOccupiedSize +
+          smartAccount.generated.smartAccountSignerBeet.byteSize
       );
       // Account allocated size increased by the size of 1 Member
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize + 1 * multisig.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize +
+          1 * smartAccount.generated.smartAccountSignerBeet.byteSize
       );
 
-      // Adding one more member shouldn't increase the allocated size.
-      signature = await multisig.rpc.addSignerAsAuthority({
+      // Adding one moresignershouldn't increase the allocated size.
+      signature = await smartAccount.rpc.addSignerAsAuthority({
         connection,
         feePayer,
         settingsPda,
@@ -200,12 +203,12 @@ describe("Multisig SDK", () => {
         programId,
       });
       await connection.confirmTransaction(signature);
-      // Re-fetch the multisig account.
+      // Re-fetch the smart account account.
       multisigAccountInfo = await connection.getAccountInfo(settingsPda);
       multisigAccount = Settings.fromAccountInfo(multisigAccountInfo!)[0];
       newMembersLength = multisigAccount.signers.length;
-      newOccupiedSize = multisig.generated.settingsBeet.toFixedFromValue({
-        accountDiscriminator: multisig.generated.settingsDiscriminator,
+      newOccupiedSize = smartAccount.generated.settingsBeet.toFixedFromValue({
+        accountDiscriminator: smartAccount.generated.settingsDiscriminator,
         ...multisigAccount,
       }).byteSize;
       // Added one more member.
@@ -216,17 +219,19 @@ describe("Multisig SDK", () => {
       // Account occupied size increased by the size of one more Member.
       assert.strictEqual(
         newOccupiedSize,
-        initialOccupiedSize + 2 * multisig.generated.smartAccountSignerBeet.byteSize
+        initialOccupiedSize +
+          2 * smartAccount.generated.smartAccountSignerBeet.byteSize
       );
       // Account allocated size increased by the size of 1 Member again.
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize + 2 * multisig.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize +
+          2 * smartAccount.generated.smartAccountSignerBeet.byteSize
       );
     });
   });
 
-  describe("multisig_batch_transactions", () => {
+  describe("smart_account_batch_transactions", () => {
     const newSigner = {
       key: Keypair.generate().publicKey,
       permissions: Permissions.all(),
@@ -242,9 +247,9 @@ describe("Multisig SDK", () => {
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           configAuthority: configAuthority.publicKey,
@@ -259,7 +264,7 @@ describe("Multisig SDK", () => {
     it("create a batch transaction", async () => {
       const feePayer = await generateFundedKeypair(connection);
 
-      const createBatchSignature = await multisig.rpc.createBatch({
+      const createBatchSignature = await smartAccount.rpc.createBatch({
         connection,
         batchIndex: 1n,
         creator: members.proposer,
@@ -272,13 +277,13 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_config_transaction_set_time_lock", () => {
+  describe("smart_account_settings_transaction_set_time_lock", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -293,7 +298,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.createSettingsTransaction({
+        smartAccount.rpc.createSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -306,8 +311,8 @@ describe("Multisig SDK", () => {
         /Attempted to perform an unauthorized action/;
     });
 
-    it("set `time_lock` for the autonomous multisig", async () => {
-      const signature = await multisig.rpc.createSettingsTransaction({
+    it("set `time_lock` for the autonomous smart account", async () => {
+      const signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -320,7 +325,7 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_set_time_lock", () => {
+  describe("smart_account_set_time_lock_as_authority", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     let wrongConfigAuthority: Keypair;
@@ -328,9 +333,9 @@ describe("Multisig SDK", () => {
       configAuthority = await generateFundedKeypair(connection);
       wrongConfigAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           members,
@@ -344,7 +349,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.setTimeLockAsAuthority({
+        smartAccount.rpc.setTimeLockAsAuthority({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -357,9 +362,9 @@ describe("Multisig SDK", () => {
         /Attempted to perform an unauthorized action/;
     });
 
-    it("set `time_lock` for the controlled multisig", async () => {
+    it("set `time_lock` for the controlled smart account", async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const signature = await multisig.rpc.setTimeLockAsAuthority({
+      const signature = await smartAccount.rpc.setTimeLockAsAuthority({
         connection,
         feePayer,
         settingsPda: settingsPda,
@@ -372,16 +377,16 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_set_config_authority", () => {
+  describe("smart_account_set_settings_authority_as_authority", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           members,
@@ -396,7 +401,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.setNewSettingsAuthorityAsAuthority({
+        smartAccount.rpc.setNewSettingsAuthorityAsAuthority({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -408,22 +413,23 @@ describe("Multisig SDK", () => {
         /Attempted to perform an unauthorized action/;
     });
 
-    it("set `config authority for the controlled multisig", async () => {
+    it("set `settings authority` for the controlled smart account", async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const signature = await multisig.rpc.setNewSettingsAuthorityAsAuthority({
-        connection,
-        feePayer,
-        settingsPda: settingsPda,
-        settingsAuthority: configAuthority.publicKey,
-        newSettingsAuthority: members.voter.publicKey,
-        signers: [feePayer, configAuthority],
-        programId,
-      });
+      const signature =
+        await smartAccount.rpc.setNewSettingsAuthorityAsAuthority({
+          connection,
+          feePayer,
+          settingsPda: settingsPda,
+          settingsAuthority: configAuthority.publicKey,
+          newSettingsAuthority: members.voter.publicKey,
+          signers: [feePayer, configAuthority],
+          programId,
+        });
       await connection.confirmTransaction(signature);
     });
   });
 
-  describe("multisig_remove_member", () => {
+  describe("smart_account_remove_signer_as_authority", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     let wrongConfigAuthority: Keypair;
@@ -431,9 +437,9 @@ describe("Multisig SDK", () => {
       configAuthority = await generateFundedKeypair(connection);
       wrongConfigAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           members,
@@ -448,7 +454,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.removeSignerAsAuthority({
+        smartAccount.rpc.removeSignerAsAuthority({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -461,8 +467,8 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("remove the member for the controlled multisig", async () => {
-      const signature = await multisig.rpc.removeSignerAsAuthority({
+    it("remove the signer for the controlled smart account", async () => {
+      const signature = await smartAccount.rpc.removeSignerAsAuthority({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -475,14 +481,14 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_change_threshold", () => {
+  describe("change_threshold_as_authority", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
 
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -498,7 +504,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.createSettingsTransaction({
+        smartAccount.rpc.createSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -514,7 +520,7 @@ describe("Multisig SDK", () => {
     it("error: change threshold to higher amount than members", async () => {
       const feePayer = await generateFundedKeypair(connection);
       const configTransactionCreateSignature =
-        await multisig.rpc.createSettingsTransaction({
+        await smartAccount.rpc.createSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -526,7 +532,7 @@ describe("Multisig SDK", () => {
         });
       await connection.confirmTransaction(configTransactionCreateSignature);
 
-      const createProposalSignature = await multisig.rpc.createProposal({
+      const createProposalSignature = await smartAccount.rpc.createProposal({
         connection,
         creator: members.proposer,
         settingsPda,
@@ -537,7 +543,7 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(createProposalSignature);
 
-      const approveSignature = await multisig.rpc.approveProposal({
+      const approveSignature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -548,7 +554,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(approveSignature);
 
       await assert.rejects(
-        multisig.rpc.executeSettingsTransaction({
+        smartAccount.rpc.executeSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -561,8 +567,8 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("change `threshold` for the controlled multisig", async () => {
-      const signature = await multisig.rpc.createSettingsTransaction({
+    it("change `threshold` for the controlled smart account", async () => {
+      const signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -575,13 +581,13 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_config_transaction_remove_member", () => {
+  describe("smart_account_settings_transaction_remove_signer", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -596,7 +602,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.createSettingsTransaction({
+        smartAccount.rpc.createSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -611,8 +617,8 @@ describe("Multisig SDK", () => {
         /Attempted to perform an unauthorized action/;
     });
 
-    it("remove the member for the controlled multisig", async () => {
-      const signature = await multisig.rpc.createSettingsTransaction({
+    it("remove the signer for the controlled smart account", async () => {
+      const signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -627,14 +633,14 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_config_transaction_add_member", () => {
+  describe("smart_account_settings_transaction_add_signer", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     const newSigner = Keypair.generate();
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -649,7 +655,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       const feePayer = await generateFundedKeypair(connection);
       await assert.rejects(
-        multisig.rpc.createSettingsTransaction({
+        smartAccount.rpc.createSettingsTransaction({
           connection,
           feePayer,
           settingsPda: settingsPda,
@@ -671,9 +677,9 @@ describe("Multisig SDK", () => {
         /Attempted to perform an unauthorized action/;
     });
 
-    it("add member to the autonomous multisig", async () => {
+    it("add signer to the autonomous smart account", async () => {
       const feePayer = await generateFundedKeypair(connection);
-      const signature = await multisig.rpc.createSettingsTransaction({
+      const signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -692,7 +698,7 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
       // create the proposal
-      const createProposalSignature = await multisig.rpc.createProposal({
+      const createProposalSignature = await smartAccount.rpc.createProposal({
         connection,
         creator: members.proposer,
         settingsPda,
@@ -703,7 +709,7 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(createProposalSignature);
 
-      const approveSignature = await multisig.rpc.approveProposal({
+      const approveSignature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -714,9 +720,9 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(approveSignature);
     });
 
-    it("execute the add member transaction", async () => {
+    it("execute the add signer transaction", async () => {
       const fundedKeypair = await generateFundedKeypair(connection);
-      const signature = await multisig.rpc.executeSettingsTransaction({
+      const signature = await smartAccount.rpc.executeSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: settingsPda,
@@ -729,15 +735,15 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_set_config_authority", () => {
+  describe("smart_account_set_settings_authority_as_authority", () => {
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
     before(async () => {
       configAuthority = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       settingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           connection,
           accountIndex,
           configAuthority: configAuthority.publicKey,
@@ -749,9 +755,9 @@ describe("Multisig SDK", () => {
       )[0];
     });
 
-    it("set `config_authority` for the controlled multisig", async () => {
+    it("set `settings_authority` for the controlled smart account", async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
-      await createControlledMultisig({
+      await createControlledSmartAccount({
         accountIndex,
         configAuthority: members.almighty.publicKey,
         members,
@@ -763,7 +769,7 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("multisig_add_spending_limit", () => {
+  describe("set_spending_limit_as_authority", () => {
     let controlledsettingsPda: PublicKey;
     let feePayer: Keypair;
     let spendingLimitPda: PublicKey;
@@ -772,7 +778,7 @@ describe("Multisig SDK", () => {
     before(async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
       controlledsettingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           accountIndex,
           configAuthority: members.almighty.publicKey,
           members,
@@ -787,7 +793,7 @@ describe("Multisig SDK", () => {
 
       spendingLimitCreateKey = Keypair.generate().publicKey;
 
-      spendingLimitPda = multisig.getSpendingLimitPda({
+      spendingLimitPda = smartAccount.getSpendingLimitPda({
         settingsPda: controlledsettingsPda,
         seed: spendingLimitCreateKey,
         programId,
@@ -797,7 +803,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.addSpendingLimitAsAuthority({
+          smartAccount.rpc.addSpendingLimitAsAuthority({
             connection,
             feePayer: feePayer,
             settingsPda: controlledsettingsPda,
@@ -806,7 +812,7 @@ describe("Multisig SDK", () => {
             rentPayer: feePayer,
             amount: BigInt(1000000000),
             settingsAuthority: members.voter,
-            period: multisig.generated.Period.Day,
+            period: smartAccount.generated.Period.Day,
             mint: Keypair.generate().publicKey,
             destinations: [Keypair.generate().publicKey],
             signers: [members.almighty.publicKey],
@@ -820,7 +826,7 @@ describe("Multisig SDK", () => {
     it("error: invalid SpendingLimit amount", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.addSpendingLimitAsAuthority({
+          smartAccount.rpc.addSpendingLimitAsAuthority({
             connection,
             feePayer: feePayer,
             settingsPda: controlledsettingsPda,
@@ -830,7 +836,7 @@ describe("Multisig SDK", () => {
             // Must be positive.
             amount: BigInt(0),
             settingsAuthority: members.almighty,
-            period: multisig.generated.Period.Day,
+            period: smartAccount.generated.Period.Day,
             mint: Keypair.generate().publicKey,
             destinations: [Keypair.generate().publicKey],
             signers: [members.almighty.publicKey],
@@ -841,10 +847,10 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("create a new Spending Limit for the controlled multisig with member of the ms and non-member", async () => {
+    it("create a new Spending Limit for the controlled smart account with signer of the smart account and non-signer", async () => {
       const nonMember = await generateFundedKeypair(connection);
-      const expiration = Date.now() / 1000 + 5
-      const signature = await multisig.rpc.addSpendingLimitAsAuthority({
+      const expiration = Date.now() / 1000 + 5;
+      const signature = await smartAccount.rpc.addSpendingLimitAsAuthority({
         connection,
         feePayer: feePayer,
         settingsPda: controlledsettingsPda,
@@ -853,7 +859,7 @@ describe("Multisig SDK", () => {
         rentPayer: feePayer,
         amount: BigInt(1000000000),
         settingsAuthority: members.almighty,
-        period: multisig.generated.Period.Day,
+        period: smartAccount.generated.Period.Day,
         mint: Keypair.generate().publicKey,
         destinations: [Keypair.generate().publicKey],
         signers: [members.almighty.publicKey, nonMember.publicKey],
@@ -865,13 +871,18 @@ describe("Multisig SDK", () => {
 
       await connection.confirmTransaction(signature);
 
-      const spendingLimitAccount = await SpendingLimit.fromAccountAddress(connection, spendingLimitPda);
-      assert.strictEqual(spendingLimitAccount.expiration.toString(), new BN(expiration).toString());
+      const spendingLimitAccount = await SpendingLimit.fromAccountAddress(
+        connection,
+        spendingLimitPda
+      );
+      assert.strictEqual(
+        spendingLimitAccount.expiration.toString(),
+        new BN(expiration).toString()
+      );
     });
-
   });
 
-  describe("multisig_remove_spending_limit", () => {
+  describe("remove_spending_limit_as_authority", () => {
     let controlledsettingsPda: PublicKey;
     let feePayer: Keypair;
     let spendingLimitPda: PublicKey;
@@ -880,7 +891,7 @@ describe("Multisig SDK", () => {
     before(async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
       controlledsettingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           accountIndex,
           connection,
           configAuthority: members.almighty.publicKey,
@@ -895,13 +906,13 @@ describe("Multisig SDK", () => {
 
       spendingLimitCreateKey = Keypair.generate().publicKey;
 
-      spendingLimitPda = multisig.getSpendingLimitPda({
+      spendingLimitPda = smartAccount.getSpendingLimitPda({
         settingsPda: controlledsettingsPda,
         seed: spendingLimitCreateKey,
         programId,
       })[0];
 
-      const signature = await multisig.rpc.addSpendingLimitAsAuthority({
+      const signature = await smartAccount.rpc.addSpendingLimitAsAuthority({
         connection,
         feePayer: feePayer,
         settingsPda: controlledsettingsPda,
@@ -910,7 +921,7 @@ describe("Multisig SDK", () => {
         rentPayer: feePayer,
         amount: BigInt(1000000000),
         settingsAuthority: members.almighty,
-        period: multisig.generated.Period.Day,
+        period: smartAccount.generated.Period.Day,
         mint: Keypair.generate().publicKey,
         destinations: [Keypair.generate().publicKey],
         signers: [members.almighty.publicKey],
@@ -925,7 +936,7 @@ describe("Multisig SDK", () => {
     it("error: invalid authority", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.removeSpendingLimitAsAuthority({
+          smartAccount.rpc.removeSpendingLimitAsAuthority({
             connection,
             settingsPda: controlledsettingsPda,
             spendingLimit: spendingLimitPda,
@@ -939,10 +950,10 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("error: Spending Limit doesn't belong to the multisig", async () => {
+    it("error: Spending Limit doesn't belong to the smart account", async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
       const wrongControlledsettingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           accountIndex,
           connection,
           configAuthority: members.almighty.publicKey,
@@ -954,14 +965,14 @@ describe("Multisig SDK", () => {
       )[0];
 
       const wrongCreateKey = Keypair.generate().publicKey;
-      const wrongSpendingLimitPda = multisig.getSpendingLimitPda({
+      const wrongSpendingLimitPda = smartAccount.getSpendingLimitPda({
         settingsPda: wrongControlledsettingsPda,
         seed: wrongCreateKey,
         programId,
       })[0];
 
       const addSpendingLimitSignature =
-        await multisig.rpc.addSpendingLimitAsAuthority({
+        await smartAccount.rpc.addSpendingLimitAsAuthority({
           connection,
           feePayer: feePayer,
           settingsPda: wrongControlledsettingsPda,
@@ -970,7 +981,7 @@ describe("Multisig SDK", () => {
           rentPayer: feePayer,
           amount: BigInt(1000000000),
           settingsAuthority: members.almighty,
-          period: multisig.generated.Period.Day,
+          period: smartAccount.generated.Period.Day,
           mint: Keypair.generate().publicKey,
           destinations: [Keypair.generate().publicKey],
           signers: [members.almighty.publicKey],
@@ -981,7 +992,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(addSpendingLimitSignature);
       await assert.rejects(
         () =>
-          multisig.rpc.removeSpendingLimitAsAuthority({
+          smartAccount.rpc.removeSpendingLimitAsAuthority({
             connection,
             settingsPda: controlledsettingsPda,
             spendingLimit: wrongSpendingLimitPda,
@@ -995,8 +1006,8 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("remove the Spending Limit from the controlled multisig", async () => {
-      const signature = await multisig.rpc.removeSpendingLimitAsAuthority({
+    it("remove the Spending Limit from the controlled smart account", async () => {
+      const signature = await smartAccount.rpc.removeSpendingLimitAsAuthority({
         connection,
         settingsPda: controlledsettingsPda,
         spendingLimit: spendingLimitPda,
@@ -1011,12 +1022,12 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("config_transaction_create", () => {
+  describe("settings_transaction_create", () => {
     let autonomoussettingsPda: PublicKey;
     let controlledsettingsPda: PublicKey;
 
     before(async () => {
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       autonomoussettingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1027,9 +1038,9 @@ describe("Multisig SDK", () => {
         })
       )[0];
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new controlled multisig.
+      // Create new controlled smartAccount.
       controlledsettingsPda = (
-        await createControlledMultisig({
+        await createControlledSmartAccount({
           accountIndex,
           connection,
           configAuthority: Keypair.generate().publicKey,
@@ -1041,10 +1052,10 @@ describe("Multisig SDK", () => {
       )[0];
     });
 
-    it("error: not supported for controlled multisig", async () => {
+    it("error: not supported for controlled smart account", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.createSettingsTransaction({
+          smartAccount.rpc.createSettingsTransaction({
             connection,
             feePayer: members.proposer,
             settingsPda: controlledsettingsPda,
@@ -1060,7 +1071,7 @@ describe("Multisig SDK", () => {
     it("error: empty actions", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.createSettingsTransaction({
+          smartAccount.rpc.createSettingsTransaction({
             connection,
             feePayer: members.proposer,
             settingsPda: autonomoussettingsPda,
@@ -1078,7 +1089,7 @@ describe("Multisig SDK", () => {
 
       await assert.rejects(
         () =>
-          multisig.rpc.createSettingsTransaction({
+          smartAccount.rpc.createSettingsTransaction({
             connection,
             feePayer: nonMember,
             settingsPda: autonomoussettingsPda,
@@ -1094,7 +1105,7 @@ describe("Multisig SDK", () => {
     it("error: unauthorized", async () => {
       await assert.rejects(
         () =>
-          multisig.rpc.createSettingsTransaction({
+          smartAccount.rpc.createSettingsTransaction({
             connection,
             feePayer: members.voter,
             settingsPda: autonomoussettingsPda,
@@ -1108,10 +1119,10 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("create a config transaction", async () => {
+    it("create a settings transaction", async () => {
       const transactionIndex = 1n;
 
-      const signature = await multisig.rpc.createSettingsTransaction({
+      const signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda: autonomoussettingsPda,
@@ -1122,24 +1133,27 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Fetch the multisig account.
+      // Fetch the smart account account.
       const multisigAccount = await Settings.fromAccountAddress(
         connection,
         autonomoussettingsPda
       );
-      const lastTransactionIndex = multisig.utils.toBigInt(
+      const lastTransactionIndex = smartAccount.utils.toBigInt(
         multisigAccount.transactionIndex
       );
       assert.strictEqual(lastTransactionIndex, transactionIndex);
 
       // Fetch the newly created ConfigTransaction account.
-      const [transactionPda, transactionBump] = multisig.getTransactionPda({
+      const [transactionPda, transactionBump] = smartAccount.getTransactionPda({
         settingsPda: autonomoussettingsPda,
         transactionIndex,
         programId,
       });
       const configTransactionAccount =
-        await SettingsTransaction.fromAccountAddress(connection, transactionPda);
+        await SettingsTransaction.fromAccountAddress(
+          connection,
+          transactionPda
+        );
 
       // Assertions.
       assert.strictEqual(
@@ -1164,12 +1178,12 @@ describe("Multisig SDK", () => {
     });
   });
 
-  describe("vault_transaction_create", () => {
+  describe("transaction_create", () => {
     let settingsPda: PublicKey;
 
     before(async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1182,11 +1196,11 @@ describe("Multisig SDK", () => {
       )[0];
     });
 
-    it("error: not a member", async () => {
+    it("error: not a signer", async () => {
       const nonMember = await generateFundedKeypair(connection);
 
       // Default vault.
-      const [vaultPda] = multisig.getSmartAccountPda({
+      const [vaultPda] = smartAccount.getSmartAccountPda({
         settingsPda,
         accountIndex: 0,
         programId,
@@ -1206,7 +1220,7 @@ describe("Multisig SDK", () => {
 
       await assert.rejects(
         () =>
-          multisig.rpc.createTransaction({
+          smartAccount.rpc.createTransaction({
             connection,
             feePayer: nonMember,
             settingsPda,
@@ -1223,7 +1237,7 @@ describe("Multisig SDK", () => {
 
     it("error: unauthorized", async () => {
       // Default vault.
-      const [vaultPda] = multisig.getSmartAccountPda({
+      const [vaultPda] = smartAccount.getSmartAccountPda({
         settingsPda,
         accountIndex: 0,
         programId,
@@ -1243,7 +1257,7 @@ describe("Multisig SDK", () => {
 
       await assert.rejects(
         () =>
-          multisig.rpc.createTransaction({
+          smartAccount.rpc.createTransaction({
             connection,
             feePayer: members.voter,
             settingsPda,
@@ -1258,11 +1272,11 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("create a new vault transaction", async () => {
+    it("create a new transaction", async () => {
       const transactionIndex = 1n;
 
       // Default vault.
-      const [vaultPda, vaultBump] = multisig.getSmartAccountPda({
+      const [vaultPda, vaultBump] = smartAccount.getSmartAccountPda({
         settingsPda,
         accountIndex: 0,
         programId,
@@ -1286,7 +1300,7 @@ describe("Multisig SDK", () => {
         instructions: [testIx1, testIx2],
       });
 
-      const signature = await multisig.rpc.createTransaction({
+      const signature = await smartAccount.rpc.createTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1309,7 +1323,7 @@ describe("Multisig SDK", () => {
         transactionIndex.toString()
       );
 
-      const [transactionPda, transactionBump] = multisig.getTransactionPda({
+      const [transactionPda, transactionBump] = smartAccount.getTransactionPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -1347,7 +1361,7 @@ describe("Multisig SDK", () => {
     before(async () => {
       const accountIndex = await getNextAccountIndex(connection, programId);
 
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1359,13 +1373,13 @@ describe("Multisig SDK", () => {
         })
       )[0];
 
-      // Create a config transaction.
+      // Create a settings transaction.
       const newSigner = {
         key: Keypair.generate().publicKey,
         permissions: Permissions.all(),
       } as const;
 
-      let signature = await multisig.rpc.createSettingsTransaction({
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1382,7 +1396,7 @@ describe("Multisig SDK", () => {
       const transactionIndex = 2n;
       await assert.rejects(
         () =>
-          multisig.rpc.createProposal({
+          smartAccount.rpc.createProposal({
             connection,
             feePayer: members.almighty,
             settingsPda,
@@ -1394,13 +1408,13 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("error: non-members can't create a proposal", async () => {
+    it("error: non-signers can't create a proposal", async () => {
       const nonMember = await generateFundedKeypair(connection);
 
       const transactionIndex = 2n;
 
-      // Create a config transaction.
-      let signature = await multisig.rpc.createSettingsTransaction({
+      // Create a settings transaction.
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1413,7 +1427,7 @@ describe("Multisig SDK", () => {
 
       await assert.rejects(
         () =>
-          multisig.rpc.createProposal({
+          smartAccount.rpc.createProposal({
             connection,
             feePayer: nonMember,
             settingsPda,
@@ -1425,12 +1439,12 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("error: members without Initiate or Vote permissions can't create a proposal", async () => {
+    it("error: signers without Initiate or Vote permissions can't create a proposal", async () => {
       const transactionIndex = 2n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.createProposal({
+          smartAccount.rpc.createProposal({
             connection,
             feePayer: members.executor,
             settingsPda,
@@ -1442,13 +1456,13 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("member with Initiate or Vote permissions can create proposal", async () => {
+    it("signer with Initiate or Vote permissions can create proposal", async () => {
       const nonMember = await generateFundedKeypair(connection);
 
       const transactionIndex = 2n;
 
-      // Create a proposal for the config transaction.
-      let signature = await multisig.rpc.createProposal({
+      // Create a proposal for the settings transaction.
+      let signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -1459,7 +1473,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Fetch the newly created Proposal account.
-      const [proposalPda, proposalBump] = multisig.getProposalPda({
+      const [proposalPda, proposalBump] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -1478,7 +1492,9 @@ describe("Multisig SDK", () => {
         proposalAccount.transactionIndex.toString(),
         transactionIndex.toString()
       );
-      assert.ok(multisig.types.isProposalStatusActive(proposalAccount.status));
+      assert.ok(
+        smartAccount.types.isProposalStatusActive(proposalAccount.status)
+      );
       assert.ok(isCloseToNow(toBigInt(proposalAccount.status.timestamp)));
       assert.strictEqual(proposalAccount.bump, proposalBump);
       assert.deepEqual(proposalAccount.approved, []);
@@ -1487,8 +1503,8 @@ describe("Multisig SDK", () => {
     });
 
     it("error: cannot create proposal for stale transaction", async () => {
-      // Approve the second config transaction.
-      let signature = await multisig.rpc.approveProposal({
+      // Approve the second settings transaction.
+      let signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -1498,7 +1514,7 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -1508,8 +1524,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Execute the second config transaction.
-      signature = await multisig.rpc.executeSettingsTransaction({
+      // Execute the second settings transaction.
+      signature = await smartAccount.rpc.executeSettingsTransaction({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -1526,7 +1542,7 @@ describe("Multisig SDK", () => {
       // Attempt to create a proposal for it should fail.
       await assert.rejects(
         () =>
-          multisig.rpc.createProposal({
+          smartAccount.rpc.createProposal({
             connection,
             feePayer,
             settingsPda,
@@ -1546,7 +1562,7 @@ describe("Multisig SDK", () => {
       const feePayer = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
 
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1560,8 +1576,8 @@ describe("Multisig SDK", () => {
 
       const transactionIndex = 1n;
 
-      // Create a config transaction.
-      let signature = await multisig.rpc.createSettingsTransaction({
+      // Create a settings transaction.
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1572,8 +1588,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Create a proposal for the config transaction.
-      signature = await multisig.rpc.createProposal({
+      // Create a proposal for the settings transaction.
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer,
         settingsPda,
@@ -1584,7 +1600,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
     });
 
-    it("error: not a member", async () => {
+    it("error: not a signer", async () => {
       const nonMember = await generateFundedKeypair(connection);
 
       const transactionIndex = 1n;
@@ -1592,7 +1608,7 @@ describe("Multisig SDK", () => {
       // Non-member cannot approve the proposal.
       await assert.rejects(
         () =>
-          multisig.rpc.approveProposal({
+          smartAccount.rpc.approveProposal({
             connection,
             feePayer: nonMember,
             settingsPda,
@@ -1610,7 +1626,7 @@ describe("Multisig SDK", () => {
       // Executor is not authorized to approve config transactions.
       await assert.rejects(
         () =>
-          multisig.rpc.approveProposal({
+          smartAccount.rpc.approveProposal({
             connection,
             feePayer: members.executor,
             settingsPda,
@@ -1622,11 +1638,11 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("approve config transaction", async () => {
-      // Approve the proposal for the first config transaction.
+    it("approve settings transaction", async () => {
+      // Approve the proposal for the first settings transaction.
       const transactionIndex = 1n;
 
-      const signature = await multisig.rpc.approveProposal({
+      const signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -1637,7 +1653,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Fetch the Proposal account.
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -1652,16 +1668,18 @@ describe("Multisig SDK", () => {
       assert.deepEqual(proposalAccount.rejected, []);
       assert.deepEqual(proposalAccount.cancelled, []);
       // Our threshold is 2, so the proposal is not yet Approved.
-      assert.ok(multisig.types.isProposalStatusActive(proposalAccount.status));
+      assert.ok(
+        smartAccount.types.isProposalStatusActive(proposalAccount.status)
+      );
     });
 
     it("error: already approved", async () => {
-      // Approve the proposal for the first config transaction once again.
+      // Approve the proposal for the first settings transaction once again.
       const transactionIndex = 1n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.approveProposal({
+          smartAccount.rpc.approveProposal({
             connection,
             feePayer: members.voter,
             settingsPda,
@@ -1673,11 +1691,11 @@ describe("Multisig SDK", () => {
       );
     });
 
-    it("approve config transaction and reach threshold", async () => {
-      // Approve the proposal for the first config transaction.
+    it("approve settings transaction and reach threshold", async () => {
+      // Approve the proposal for the first settings transaction.
       const transactionIndex = 1n;
 
-      const signature = await multisig.rpc.approveProposal({
+      const signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -1688,7 +1706,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Fetch the Proposal account.
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -1709,7 +1727,7 @@ describe("Multisig SDK", () => {
       assert.deepEqual(proposalAccount.cancelled, []);
       // Our threshold is 2, so the transaction is now Approved.
       assert.ok(
-        multisig.types.isProposalStatusApproved(proposalAccount.status)
+        smartAccount.types.isProposalStatusApproved(proposalAccount.status)
       );
     });
 
@@ -1717,7 +1735,7 @@ describe("Multisig SDK", () => {
 
     it("error: invalid transaction status");
 
-    it("error: proposal is not for multisig");
+    it("error: proposal is not for smart account");
   });
 
   describe("proposal_reject", () => {
@@ -1727,7 +1745,7 @@ describe("Multisig SDK", () => {
       const feePayer = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
 
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1739,8 +1757,8 @@ describe("Multisig SDK", () => {
         })
       )[0];
 
-      // Create first config transaction.
-      let signature = await multisig.rpc.createSettingsTransaction({
+      // Create first settings transaction.
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1751,8 +1769,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Create second config transaction.
-      signature = await multisig.rpc.createSettingsTransaction({
+      // Create second settings transaction.
+      signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1763,8 +1781,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Create a proposal for the first config transaction.
-      signature = await multisig.rpc.createProposal({
+      // Create a proposal for the first settings transaction.
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer,
         settingsPda,
@@ -1774,8 +1792,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Create a proposal for the second config transaction.
-      signature = await multisig.rpc.createProposal({
+      // Create a proposal for the second settings transaction.
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer,
         settingsPda,
@@ -1785,8 +1803,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Approve the proposal for the first config transaction and reach the threshold.
-      signature = await multisig.rpc.approveProposal({
+      // Approve the proposal for the first settings transaction and reach the threshold.
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -1795,7 +1813,7 @@ describe("Multisig SDK", () => {
         programId,
       });
       await connection.confirmTransaction(signature);
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -1807,12 +1825,12 @@ describe("Multisig SDK", () => {
     });
 
     it("error: try to reject an approved proposal", async () => {
-      // Reject the proposal for the first config transaction.
+      // Reject the proposal for the first settings transaction.
       const transactionIndex = 1n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.rejectProposal({
+          smartAccount.rpc.rejectProposal({
             connection,
             feePayer: members.voter,
             settingsPda,
@@ -1824,26 +1842,26 @@ describe("Multisig SDK", () => {
       );
       const proposalAccount = await Proposal.fromAccountAddress(
         connection,
-        multisig.getProposalPda({
+        smartAccount.getProposalPda({
           settingsPda,
           transactionIndex,
           programId,
         })[0]
       );
       assert.ok(
-        multisig.types.isProposalStatusApproved(proposalAccount.status)
+        smartAccount.types.isProposalStatusApproved(proposalAccount.status)
       );
     });
 
-    it("error: not a member", async () => {
+    it("error: not a signer", async () => {
       const nonMember = await generateFundedKeypair(connection);
 
-      // Reject the proposal for the second config transaction.
+      // Reject the proposal for the second settings transaction.
       const transactionIndex = 2n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.rejectProposal({
+          smartAccount.rpc.rejectProposal({
             connection,
             feePayer: nonMember,
             settingsPda,
@@ -1856,12 +1874,12 @@ describe("Multisig SDK", () => {
     });
 
     it("error: unauthorized", async () => {
-      // Reject the proposal for the second config transaction.
+      // Reject the proposal for the second settings transaction.
       const transactionIndex = 2n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.rejectProposal({
+          smartAccount.rpc.rejectProposal({
             connection,
             feePayer: members.executor,
             settingsPda,
@@ -1879,10 +1897,10 @@ describe("Multisig SDK", () => {
         settingsPda
       );
 
-      // Reject the proposal for the second config transaction.
+      // Reject the proposal for the second settings transaction.
       const transactionIndex = 2n;
 
-      const signature = await multisig.rpc.rejectProposal({
+      const signature = await smartAccount.rpc.rejectProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -1894,7 +1912,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Fetch the Proposal account.
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -1916,17 +1934,17 @@ describe("Multisig SDK", () => {
       );
       // ...thus we've reached the cutoff, and the proposal is now Rejected.
       assert.ok(
-        multisig.types.isProposalStatusRejected(proposalAccount.status)
+        smartAccount.types.isProposalStatusRejected(proposalAccount.status)
       );
     });
 
     it("error: already rejected", async () => {
-      // Reject the proposal for the second config transaction.
+      // Reject the proposal for the second settings transaction.
       const transactionIndex = 2n;
 
       await assert.rejects(
         () =>
-          multisig.rpc.rejectProposal({
+          smartAccount.rpc.rejectProposal({
             connection,
             feePayer: members.almighty,
             settingsPda,
@@ -1939,20 +1957,20 @@ describe("Multisig SDK", () => {
 
       const proposalAccount = await Proposal.fromAccountAddress(
         connection,
-        multisig.getProposalPda({
+        smartAccount.getProposalPda({
           settingsPda,
           transactionIndex,
           programId,
         })[0]
       );
       assert.ok(
-        multisig.types.isProposalStatusRejected(proposalAccount.status)
+        smartAccount.types.isProposalStatusRejected(proposalAccount.status)
       );
     });
 
     it("error: stale transaction");
 
-    it("error: transaction is not for multisig");
+    it("error: transaction is not for smart account");
   });
 
   describe("proposal_cancel", () => {
@@ -1962,7 +1980,7 @@ describe("Multisig SDK", () => {
       const feePayer = await generateFundedKeypair(connection);
       const accountIndex = await getNextAccountIndex(connection, programId);
 
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -1974,8 +1992,8 @@ describe("Multisig SDK", () => {
         })
       )[0];
 
-      // Create a config transaction.
-      let signature = await multisig.rpc.createSettingsTransaction({
+      // Create a settings transaction.
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -1986,8 +2004,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Create a proposal for the config transaction.
-      signature = await multisig.rpc.createProposal({
+      // Create a proposal for the settings transaction.
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer,
         settingsPda,
@@ -1997,8 +2015,8 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      // Approve the proposal for the config transaction and reach the threshold.
-      signature = await multisig.rpc.approveProposal({
+      // Approve the proposal for the settings transaction and reach the threshold.
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -2007,7 +2025,7 @@ describe("Multisig SDK", () => {
         programId,
       });
       await connection.confirmTransaction(signature);
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -2018,7 +2036,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // The proposal must be `Approved` now.
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex: 1n,
         programId,
@@ -2028,7 +2046,7 @@ describe("Multisig SDK", () => {
         proposalPda
       );
       assert.ok(
-        multisig.types.isProposalStatusApproved(proposalAccount.status)
+        smartAccount.types.isProposalStatusApproved(proposalAccount.status)
       );
     });
 
@@ -2036,7 +2054,7 @@ describe("Multisig SDK", () => {
       const transactionIndex = 1n;
 
       // Now cancel the proposal.
-      let signature = await multisig.rpc.cancelProposal({
+      let signature = await smartAccount.rpc.cancelProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -2046,7 +2064,7 @@ describe("Multisig SDK", () => {
       });
       await connection.confirmTransaction(signature);
 
-      const proposalPda = multisig.getProposalPda({
+      const proposalPda = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -2057,11 +2075,11 @@ describe("Multisig SDK", () => {
       );
       // Our threshold is 2, so after the first cancel, the proposal is still `Approved`.
       assert.ok(
-        multisig.types.isProposalStatusApproved(proposalAccount.status)
+        smartAccount.types.isProposalStatusApproved(proposalAccount.status)
       );
 
-      // Second member cancels the transaction.
-      signature = await multisig.rpc.cancelProposal({
+      // Secondsignercancels the transaction.
+      signature = await smartAccount.rpc.cancelProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -2077,34 +2095,42 @@ describe("Multisig SDK", () => {
       );
       // Reached the threshold, so the transaction should be `Cancelled` now.
       assert.ok(
-        multisig.types.isProposalStatusCancelled(proposalAccount.status)
+        smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
       );
     });
 
     it("proposal_cancel_v2", async () => {
-      // Create a config transaction.
+      // Create a settings transaction.
       const transactionIndex = 2n;
       let newVotingMember = new Keypair();
 
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       });
 
-      let signature = await multisig.rpc.createSettingsTransaction({
+      let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
         transactionIndex,
         creator: members.proposer.publicKey,
-        actions: [{ __kind: "AddSigner", newSigner: { key: newVotingMember.publicKey, permissions: multisig.types.Permissions.all() } }],
+        actions: [
+          {
+            __kind: "AddSigner",
+            newSigner: {
+              key: newVotingMember.publicKey,
+              permissions: smartAccount.types.Permissions.all(),
+            },
+          },
+        ],
         programId,
       });
       await connection.confirmTransaction(signature);
 
       // Create a proposal for the transaction.
-      signature = await multisig.rpc.createProposal({
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -2115,7 +2141,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Approve the proposal 1.
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -2126,7 +2152,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Approve the proposal 2.
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -2142,11 +2168,11 @@ describe("Multisig SDK", () => {
       );
       // Our threshold is 2, so after the first cancel, the proposal is still `Approved`.
       assert.ok(
-        multisig.types.isProposalStatusApproved(proposalAccount.status)
+        smartAccount.types.isProposalStatusApproved(proposalAccount.status)
       );
 
       // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-      signature = await multisig.rpc.cancelProposal({
+      signature = await smartAccount.rpc.cancelProposal({
         connection,
         feePayer: members.voter,
         signer: members.voter,
@@ -2157,7 +2183,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-      signature = await multisig.rpc.cancelProposal({
+      signature = await smartAccount.rpc.cancelProposal({
         connection,
         feePayer: members.almighty,
         signer: members.almighty,
@@ -2172,16 +2198,17 @@ describe("Multisig SDK", () => {
         connection,
         proposalPda
       );
-      assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
+      assert.ok(
+        smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
+      );
     });
-
   });
 
-  describe("vault_transaction_execute", () => {
+  describe("transaction_execute", () => {
     let settingsPda: PublicKey;
 
     before(async () => {
-      // Create new autonomous multisig.
+      // Create new autonomous smartAccount.
       settingsPda = (
         await createAutonomousMultisig({
           connection,
@@ -2193,7 +2220,7 @@ describe("Multisig SDK", () => {
       )[0];
 
       // Default vault.
-      const [vaultPda, vaultBump] = multisig.getSmartAccountPda({
+      const [vaultPda, vaultBump] = smartAccount.getSmartAccountPda({
         settingsPda,
         accountIndex: 0,
         programId,
@@ -2226,8 +2253,8 @@ describe("Multisig SDK", () => {
 
       const transactionIndex = 1n;
 
-      // Create a vault transaction.
-      let signature = await multisig.rpc.createTransaction({
+      // Create a transaction.
+      let signature = await smartAccount.rpc.createTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -2242,7 +2269,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Create a proposal for the transaction.
-      signature = await multisig.rpc.createProposal({
+      signature = await smartAccount.rpc.createProposal({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -2253,7 +2280,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Approve the proposal by the first member.
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -2264,7 +2291,7 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
 
       // Approve the proposal by the second member.
-      signature = await multisig.rpc.approveProposal({
+      signature = await smartAccount.rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -2275,11 +2302,11 @@ describe("Multisig SDK", () => {
       await connection.confirmTransaction(signature);
     });
 
-    it("execute a vault transaction", async () => {
-      // Execute the vault transaction.
+    it("execute a transaction", async () => {
+      // Execute the transaction.
       const transactionIndex = 1n;
 
-      const [transactionPda] = multisig.getTransactionPda({
+      const [transactionPda] = smartAccount.getTransactionPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -2289,13 +2316,13 @@ describe("Multisig SDK", () => {
         transactionPda
       );
 
-      const [proposalPda] = multisig.getProposalPda({
+      const [proposalPda] = smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       });
 
-      const [vaultPda] = multisig.getSmartAccountPda({
+      const [vaultPda] = smartAccount.getSmartAccountPda({
         settingsPda,
         accountIndex: transactionAccount.accountIndex,
         programId,
@@ -2304,7 +2331,7 @@ describe("Multisig SDK", () => {
       assert.strictEqual(preVaultBalance, 2 * LAMPORTS_PER_SOL);
 
       // Execute the transaction.
-      const signature = await multisig.rpc.executeTransaction({
+      const signature = await smartAccount.rpc.executeTransaction({
         connection,
         feePayer: members.executor,
         settingsPda,
@@ -2321,7 +2348,7 @@ describe("Multisig SDK", () => {
         proposalPda
       );
       assert.ok(
-        multisig.types.isProposalStatusExecuted(proposalAccount.status)
+        smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
       );
 
       const postVaultBalance = await connection.getBalance(vaultPda);
@@ -2335,7 +2362,7 @@ describe("Multisig SDK", () => {
 
     it("error: invalid transaction status");
 
-    it("error: transaction is not for multisig");
+    it("error: transaction is not for smart account");
 
     it("error: execute reentrancy");
   });
@@ -2347,23 +2374,26 @@ describe("Multisig SDK", () => {
         await fundKeypair(connection, multisigCreator);
 
         const accountIndex = await getNextAccountIndex(connection, programId);
-        const [settingsPda] = multisig.getSettingsPda({
+        const [settingsPda] = smartAccount.getSettingsPda({
           accountIndex,
           programId,
         });
-        const [configAuthority] = multisig.getSmartAccountPda({
+        const [configAuthority] = smartAccount.getSmartAccountPda({
           settingsPda,
           accountIndex: 0,
           programId,
         });
-        const programConfigPda = multisig.getProgramConfigPda({ programId })[0];
-        const programConfig = await multisig.accounts.ProgramConfig.fromAccountAddress(
-          connection,
-          programConfigPda
-        );
+        const programConfigPda = smartAccount.getProgramConfigPda({
+          programId,
+        })[0];
+        const programConfig =
+          await smartAccount.accounts.ProgramConfig.fromAccountAddress(
+            connection,
+            programConfigPda
+          );
         const treasury = programConfig.treasury;
         const multisigCreateArgs: Parameters<
-          typeof multisig.transactions.createSmartAccount
+          typeof smartAccount.transactions.createSmartAccount
         >[0] = {
           blockhash: (await connection.getLatestBlockhash()).blockhash,
           creator: multisigCreator.publicKey,
@@ -2383,18 +2413,19 @@ describe("Multisig SDK", () => {
         };
 
         const createMultisigTxWithoutMemo =
-          multisig.transactions.createSmartAccount(multisigCreateArgs);
+          smartAccount.transactions.createSmartAccount(multisigCreateArgs);
 
-        const availableMemoSize = multisig.utils.getAvailableMemoSize(
+        const availableMemoSize = smartAccount.utils.getAvailableMemoSize(
           createMultisigTxWithoutMemo
         );
 
         const memo = "a".repeat(availableMemoSize);
 
-        const createMultisigTxWithMemo = multisig.transactions.createSmartAccount({
-          ...multisigCreateArgs,
-          memo,
-        });
+        const createMultisigTxWithMemo =
+          smartAccount.transactions.createSmartAccount({
+            ...multisigCreateArgs,
+            memo,
+          });
         // The transaction with memo should have the maximum allowed size.
         assert.strictEqual(createMultisigTxWithMemo.serialize().length, 1232);
         // The transaction should work.

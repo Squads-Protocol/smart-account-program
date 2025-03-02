@@ -1,22 +1,22 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
-  createControlledMultisig,
+  createControlledSmartAccount,
   createLocalhostConnection,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Settings } = multisig.accounts;
+const { Settings } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / multisig_set_rent_collector", () => {
+describe("Instructions / smart_account_set_archival_authority", () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let configAuthority: Keypair;
@@ -24,11 +24,11 @@ describe("Instructions / multisig_set_rent_collector", () => {
   before(async () => {
     configAuthority = await generateFundedKeypair(connection);
     const accountIndex = await getNextAccountIndex(connection, programId);
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
 
-    // Create new controlled multisig with no rent_collector.
+    // Create new controlled smart account with no rent_collector.
     settingsPda = (
-      await createControlledMultisig({
+      await createControlledSmartAccount({
         connection,
         accountIndex,
         configAuthority: configAuthority.publicKey,
@@ -40,12 +40,12 @@ describe("Instructions / multisig_set_rent_collector", () => {
     )[0];
   });
 
-  it("set `rent_collector` for the controlled multisig", async () => {
+  it("set `archival_authority` for the controlled smart account", async () => {
     const multisigAccountInfoPreExecution = await connection.getAccountInfo(
       settingsPda
     )!;
 
-    const vaultPda = multisig.getSmartAccountPda({
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -53,7 +53,7 @@ describe("Instructions / multisig_set_rent_collector", () => {
 
     assert.rejects(
       async () =>
-        await multisig.rpc.setRentCollectorAsAuthority({
+        await smartAccount.rpc.setArchivalAuthorityAsAuthority({
           connection,
           settingsPda,
           feePayer: configAuthority,
@@ -61,10 +61,11 @@ describe("Instructions / multisig_set_rent_collector", () => {
           newArchivalAuthority: vaultPda,
           programId,
           signers: [configAuthority],
-        }), /NotImplemented/
+        }),
+      /NotImplemented/
     );
 
-    // Verify the multisig account.
+    // Verify the smart account account.
     const multisigAccountInfoPostExecution = await connection.getAccountInfo(
       settingsPda
     );
@@ -76,17 +77,17 @@ describe("Instructions / multisig_set_rent_collector", () => {
       multisigAccountPostExecution.staleTransactionIndex.toString(),
       "0"
     );
-    // multisig space should not be reallocated because we allocate 32 bytes for potential rent_collector when we create multisig.
+    // smart account space should not be reallocated because we allocate 32 bytes for potential rent_collector when we create smartAccount.
     assert.ok(
       multisigAccountInfoPostExecution!.data.length ===
-      multisigAccountInfoPreExecution!.data.length
+        multisigAccountInfoPreExecution!.data.length
     );
   });
 
-  it("unset `rent_collector` for the controlled multisig", async () => {
+  it("unset `archival_authority` for the controlled smart account", async () => {
     assert.rejects(
       async () =>
-        await multisig.rpc.setRentCollectorAsAuthority({
+        await smartAccount.rpc.setArchivalAuthorityAsAuthority({
           connection,
           settingsPda,
           feePayer: configAuthority,

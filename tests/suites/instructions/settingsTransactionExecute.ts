@@ -1,27 +1,27 @@
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Settings, Proposal } = multisig.accounts;
+const { Settings, Proposal } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / config_transaction_execute", () => {
+describe("Instructions / settings_transaction_execute", () => {
   let members: TestMembers;
 
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
   it("error: invalid proposal status (Rejected)", async () => {
-    // Create new autonomous multisig.
+    // Create new autonomous smartAccount.
     const settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -32,9 +32,9 @@ describe("Instructions / config_transaction_execute", () => {
       })
     )[0];
 
-    // Create a config transaction.
+    // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -46,7 +46,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -58,7 +58,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     // Reject the proposal by a member.
     // Our threshold is 2 out of 2 voting members, so the cutoff is 1.
-    signature = await multisig.rpc.rejectProposal({
+    signature = await smartAccount.rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -71,7 +71,7 @@ describe("Instructions / config_transaction_execute", () => {
     // Attempt to execute a transaction with a rejected proposal.
     await assert.rejects(
       () =>
-        multisig.rpc.executeSettingsTransaction({
+        smartAccount.rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -84,8 +84,8 @@ describe("Instructions / config_transaction_execute", () => {
     );
   });
 
-  it("error: removing a member causes threshold to be unreachable", async () => {
-    // Create new autonomous multisig.
+  it("error: removing asignercauses threshold to be unreachable", async () => {
+    // Create new autonomous smartAccount.
     const settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -97,9 +97,9 @@ describe("Instructions / config_transaction_execute", () => {
       })
     )[0];
 
-    // Create a config transaction.
+    // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -112,7 +112,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -123,7 +123,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -134,7 +134,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -146,7 +146,7 @@ describe("Instructions / config_transaction_execute", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.executeSettingsTransaction({
+        smartAccount.rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -159,8 +159,8 @@ describe("Instructions / config_transaction_execute", () => {
     );
   });
 
-  it("execute config transaction with RemoveMember and ChangeThreshold actions", async () => {
-    // Create new autonomous multisig.
+  it("execute settings transaction with RemoveMember and ChangeThreshold actions", async () => {
+    // Create new autonomous smartAccount.
     const settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -172,9 +172,9 @@ describe("Instructions / config_transaction_execute", () => {
       })
     )[0];
 
-    // Create a config transaction.
+    // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -191,7 +191,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -202,7 +202,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -213,7 +213,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -223,7 +223,7 @@ describe("Instructions / config_transaction_execute", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await multisig.rpc.executeSettingsTransaction({
+    signature = await smartAccount.rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -234,7 +234,7 @@ describe("Instructions / config_transaction_execute", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Verify the multisig account.
+    // Verify the smart account account.
     const multisigAccount = await Settings.fromAccountAddress(
       connection,
       settingsPda
@@ -251,8 +251,8 @@ describe("Instructions / config_transaction_execute", () => {
     assert.strictEqual(multisigAccount.staleTransactionIndex.toString(), "1");
   });
 
-  it("execute config transaction with ChangeThreshold action", async () => {
-    // Create new autonomous multisig.
+  it("execute settings transaction with ChangeThreshold action", async () => {
+    // Create new autonomous smartAccount.
     const settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -263,9 +263,9 @@ describe("Instructions / config_transaction_execute", () => {
       })
     )[0];
 
-    // Create a config transaction.
+    // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -277,7 +277,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -288,7 +288,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -298,8 +298,8 @@ describe("Instructions / config_transaction_execute", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Execute the approved config transaction.
-    signature = await multisig.rpc.executeSettingsTransaction({
+    // Execute the approved settings transaction.
+    signature = await smartAccount.rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -311,7 +311,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Verify the proposal account.
-    const [proposalPda] = multisig.getProposalPda({
+    const [proposalPda] = smartAccount.getProposalPda({
       settingsPda,
       transactionIndex,
       programId,
@@ -320,9 +320,11 @@ describe("Instructions / config_transaction_execute", () => {
       connection,
       proposalPda
     );
-    assert.ok(multisig.types.isProposalStatusExecuted(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
+    );
 
-    // Verify the multisig account.
+    // Verify the smart account account.
     const multisigAccount = await Settings.fromAccountAddress(
       connection,
       settingsPda
@@ -333,8 +335,8 @@ describe("Instructions / config_transaction_execute", () => {
     assert.strictEqual(multisigAccount.staleTransactionIndex.toString(), "1");
   });
 
-  it("execute config transaction with SetRentCollector action", async () => {
-    // Create new autonomous multisig without rent_collector.
+  it("execute settings transaction with SetRentCollector action", async () => {
+    // Create new autonomous smart account without rent_collector.
     const settingsPda = (
       await createAutonomousMultisig({
         connection,
@@ -349,27 +351,29 @@ describe("Instructions / config_transaction_execute", () => {
       settingsPda
     )!;
 
-    const vaultPda = multisig.getSmartAccountPda({
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     })[0];
 
-    // Create a config transaction.
+    // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "SetArchivalAuthority", newArchivalAuthority: vaultPda }],
+      actions: [
+        { __kind: "SetArchivalAuthority", newArchivalAuthority: vaultPda },
+      ],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Approved).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -380,7 +384,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -390,10 +394,10 @@ describe("Instructions / config_transaction_execute", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Execute the approved config transaction.
+    // Execute the approved settings transaction.
     await assert.rejects(
       () =>
-        multisig.rpc.executeSettingsTransaction({
+        smartAccount.rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -406,7 +410,7 @@ describe("Instructions / config_transaction_execute", () => {
     );
     await connection.confirmTransaction(signature);
     // Reject the proposal.
-    signature = await multisig.rpc.cancelProposal({
+    signature = await smartAccount.rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -417,7 +421,7 @@ describe("Instructions / config_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Verify the proposal account.
-    const [proposalPda] = multisig.getProposalPda({
+    const [proposalPda] = smartAccount.getProposalPda({
       settingsPda,
       transactionIndex,
       programId,
@@ -426,7 +430,8 @@ describe("Instructions / config_transaction_execute", () => {
       connection,
       proposalPda
     );
-    assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
-
+    assert.ok(
+      smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
+    );
   });
 });

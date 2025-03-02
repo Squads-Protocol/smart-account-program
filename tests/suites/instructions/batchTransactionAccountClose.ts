@@ -5,47 +5,47 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
-  createAutonomousMultisigV2,
+  createAutonomousSmartAccountV2,
   createAutonomousMultisigWithRentReclamationAndVariousBatches,
   createLocalhostConnection,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
   MultisigWithRentReclamationAndVariousBatches,
   TestMembers,
 } from "../../utils";
 
-const { Settings, Batch } = multisig.accounts;
+const { Settings, Batch } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / vault_batch_transaction_account_close", () => {
+describe("Instructions / batch_transaction_account_close", () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let testMultisig: MultisigWithRentReclamationAndVariousBatches;
 
-  // Set up a multisig with some batches.
+  // Set up a smart account with some batches.
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    settingsPda = multisig.getSettingsPda({
+    settingsPda = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     })[0];
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     });
 
-    // Create new autonomous multisig with rentCollector set to its default vault.
+    // Create new autonomous smart account with rentCollector set to its default vault.
     testMultisig =
       await createAutonomousMultisigWithRentReclamationAndVariousBatches({
         connection,
@@ -57,10 +57,10 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
   });
 
   it("error: wrong rent collector", async () => {
-    // Create a multisig with rent reclamation disabled.
+    // Create a smart account with rent reclamation disabled.
     const accountIndex = await getNextAccountIndex(connection, programId);
     const settingsPda = (
-      await createAutonomousMultisigV2({
+      await createAutonomousSmartAccountV2({
         connection,
         members,
         threshold: 1,
@@ -71,7 +71,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       })
     )[0];
 
-    const vaultPda = multisig.getSmartAccountPda({
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda: settingsPda,
       accountIndex: 0,
       programId,
@@ -87,7 +87,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     // Create a batch.
     const batchIndex = 1n;
-    let signature = await multisig.rpc.createBatch({
+    let signature = await smartAccount.rpc.createBatch({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -99,7 +99,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a draft proposal for the batch.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -111,7 +111,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Add a transaction to the batch.
-    signature = await multisig.rpc.addTransactionToBatch({
+    signature = await smartAccount.rpc.addTransactionToBatch({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -126,7 +126,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Activate the proposal.
-    signature = await multisig.rpc.activateProposal({
+    signature = await smartAccount.rpc.activateProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -137,7 +137,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Reject the proposal.
-    signature = await multisig.rpc.rejectProposal({
+    signature = await smartAccount.rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -146,7 +146,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
-    signature = await multisig.rpc.rejectProposal({
+    signature = await smartAccount.rpc.rejectProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -159,7 +159,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     // Attempt to close the accounts.
     await assert.rejects(
       () =>
-        multisig.rpc.closeBatchTransaction({
+        smartAccount.rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -172,9 +172,8 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     );
   });
 
-
-  it("error: accounts are for another multisig", async () => {
-    const vaultPda = multisig.getSmartAccountPda({
+  it("error: accounts are for another smart account", async () => {
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -188,7 +187,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       ],
     });
 
-    // Create another multisig.
+    // Create another smartAccount.
     const otherMultisig = (
       await createAutonomousMultisig({
         connection,
@@ -201,7 +200,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     // Create a batch.
     const batchIndex = 1n;
-    let signature = await multisig.rpc.createBatch({
+    let signature = await smartAccount.rpc.createBatch({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -213,7 +212,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a draft proposal for it.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -225,7 +224,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Add a transaction to the batch.
-    signature = await multisig.rpc.addTransactionToBatch({
+    signature = await smartAccount.rpc.addTransactionToBatch({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -240,7 +239,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Activate the proposal.
-    signature = await multisig.rpc.activateProposal({
+    signature = await smartAccount.rpc.activateProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -250,31 +249,30 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Manually construct an instruction that uses proposal account from another multisig.
-    const ix =
-      multisig.generated.createCloseBatchTransactionInstruction(
-        {
-          settings: settingsPda,
-          transactionRentCollector: members.proposer.publicKey,
-          proposal: multisig.getProposalPda({
-            settingsPda: otherMultisig,
-            transactionIndex: 1n,
-            programId,
-          })[0],
-          batch: multisig.getTransactionPda({
-            settingsPda,
-            transactionIndex: testMultisig.rejectedBatchIndex,
-            programId,
-          })[0],
-          transaction: multisig.getBatchTransactionPda({
-            settingsPda,
-            batchIndex: testMultisig.rejectedBatchIndex,
-            transactionIndex: 1,
-            programId,
-          })[0],
-        },
-        programId
-      );
+    // Manually construct an instruction that uses proposal account from another smartAccount.
+    const ix = smartAccount.generated.createCloseBatchTransactionInstruction(
+      {
+        settings: settingsPda,
+        transactionRentCollector: members.proposer.publicKey,
+        proposal: smartAccount.getProposalPda({
+          settingsPda: otherMultisig,
+          transactionIndex: 1n,
+          programId,
+        })[0],
+        batch: smartAccount.getTransactionPda({
+          settingsPda,
+          transactionIndex: testMultisig.rejectedBatchIndex,
+          programId,
+        })[0],
+        transaction: smartAccount.getBatchTransactionPda({
+          settingsPda,
+          batchIndex: testMultisig.rejectedBatchIndex,
+          transactionIndex: 1,
+          programId,
+        })[0],
+      },
+      programId
+    );
 
     const feePayer = await generateFundedKeypair(connection);
 
@@ -290,7 +288,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       () =>
         connection
           .sendTransaction(tx)
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /Proposal is for another smart account/
     );
   });
@@ -305,7 +303,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeBatchTransaction({
+        smartAccount.rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -329,7 +327,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeBatchTransaction({
+        smartAccount.rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -352,7 +350,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeBatchTransaction({
+        smartAccount.rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -376,7 +374,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeBatchTransaction({
+        smartAccount.rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -398,7 +396,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       settingsPda
     );
 
-    const signature = await multisig.rpc.closeBatchTransaction({
+    const signature = await smartAccount.rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -411,7 +409,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Make sure the account is closed.
-    const transactionPda1 = multisig.getBatchTransactionPda({
+    const transactionPda1 = smartAccount.getBatchTransactionPda({
       settingsPda,
       batchIndex,
       transactionIndex: 1,
@@ -420,13 +418,13 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     assert.equal(await connection.getAccountInfo(transactionPda1), null);
 
     // Make sure batch and proposal accounts are NOT closed.
-    const batchPda = multisig.getTransactionPda({
+    const batchPda = smartAccount.getTransactionPda({
       settingsPda,
       transactionIndex: batchIndex,
       programId,
     })[0];
     assert.notEqual(await connection.getAccountInfo(batchPda), null);
-    const proposalPda = multisig.getProposalPda({
+    const proposalPda = smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: batchIndex,
       programId,
@@ -442,7 +440,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       settingsPda
     );
 
-    const batchPda = multisig.getTransactionPda({
+    const batchPda = smartAccount.getTransactionPda({
       settingsPda,
       transactionIndex: batchIndex,
       programId,
@@ -451,7 +449,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     let batchAccount = await Batch.fromAccountAddress(connection, batchPda);
     assert.strictEqual(batchAccount.size, 2);
 
-    let signature = await multisig.rpc.closeBatchTransaction({
+    let signature = await smartAccount.rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -465,7 +463,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
     batchAccount = await Batch.fromAccountAddress(connection, batchPda);
     assert.strictEqual(batchAccount.size, 1);
 
-    signature = await multisig.rpc.closeBatchTransaction({
+    signature = await smartAccount.rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -488,7 +486,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       settingsPda
     );
 
-    let signature = await multisig.rpc.closeBatchTransaction({
+    let signature = await smartAccount.rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -508,7 +506,7 @@ describe("Instructions / vault_batch_transaction_account_close", () => {
       settingsPda
     );
 
-    let signature = await multisig.rpc.closeBatchTransaction({
+    let signature = await smartAccount.rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,

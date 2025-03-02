@@ -5,16 +5,16 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   comparePubkeys,
-  createAutonomousMultisigV2,
+  createAutonomousSmartAccountV2,
   createControlledMultisigV2,
   createLocalhostConnection,
   fundKeypair,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestAccountCreationAuthority,
   getTestProgramConfigAuthority,
@@ -23,26 +23,26 @@ import {
   TestMembers,
 } from "../../utils";
 
-const { Settings } = multisig.accounts;
-const { Permission, Permissions } = multisig.types;
+const { Settings } = smartAccount.accounts;
+const { Permission, Permissions } = smartAccount.types;
 
 const connection = createLocalhostConnection();
 
 const programId = getTestProgramId();
 const programConfigAuthority = getTestProgramConfigAuthority();
 const programTreasury = getTestProgramTreasury();
-const programConfigPda = multisig.getProgramConfigPda({ programId })[0];
+const programConfigPda = smartAccount.getProgramConfigPda({ programId })[0];
 
-describe("Instructions / multisig_create_v2", () => {
+describe("Instructions / smart_account_create", () => {
   let members: TestMembers;
   let programTreasury: PublicKey;
 
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
 
-    const programConfigPda = multisig.getProgramConfigPda({ programId })[0];
+    const programConfigPda = smartAccount.getProgramConfigPda({ programId })[0];
     const programConfig =
-      await multisig.accounts.ProgramConfig.fromAccountAddress(
+      await smartAccount.accounts.ProgramConfig.fromAccountAddress(
         connection,
         programConfigPda
       );
@@ -55,14 +55,14 @@ describe("Instructions / multisig_create_v2", () => {
 
     const accountIndex = await getNextAccountIndex(connection, programId);
 
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
     await assert.rejects(
       () =>
-        multisig.rpc.createSmartAccount({
+        smartAccount.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
           creator,
@@ -92,13 +92,13 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       // Pass wrong account index
       accountIndex: accountIndex + 1n,
       programId,
     });
 
-    const tx = multisig.transactions.createSmartAccount({
+    const tx = smartAccount.transactions.createSmartAccount({
       blockhash: (await connection.getLatestBlockhash()).blockhash,
       treasury: programTreasury,
       creator: creator.publicKey,
@@ -133,12 +133,12 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex: accountIndex,
       programId,
     });
 
-    const tx = multisig.transactions.createSmartAccount({
+    const tx = smartAccount.transactions.createSmartAccount({
       blockhash: (await connection.getLatestBlockhash()).blockhash,
       treasury: programTreasury,
       creator: creator.publicKey,
@@ -173,7 +173,7 @@ describe("Instructions / multisig_create_v2", () => {
     // 3006 is AccountNotMutable
     await assert.rejects(
       async () => await connection.sendTransaction(tx),
-      /3006/
+      /0xbbe/
     );
   });
 
@@ -182,14 +182,14 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
     await assert.rejects(
       () =>
-        multisig.rpc.createSmartAccount({
+        smartAccount.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
           creator,
@@ -205,21 +205,21 @@ describe("Instructions / multisig_create_v2", () => {
     );
   });
 
-  it("error: member has unknown permission", async () => {
+  it("error:signerhas unknown permission", async () => {
     const creator = getTestAccountCreationAuthority();
     await fundKeypair(connection, creator);
 
     const member = Keypair.generate();
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
     await assert.rejects(
       () =>
-        multisig.rpc.createSmartAccount({
+        smartAccount.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
           creator,
@@ -250,14 +250,14 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
     await assert.rejects(
       () =>
-        multisig.rpc.createSmartAccount({
+        smartAccount.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
           creator,
@@ -281,14 +281,14 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
     await assert.rejects(
       () =>
-        multisig.rpc.createSmartAccount({
+        smartAccount.rpc.createSmartAccount({
           connection,
           treasury: programTreasury,
           creator,
@@ -325,10 +325,10 @@ describe("Instructions / multisig_create_v2", () => {
     );
   });
 
-  it("create a new autonomous multisig", async () => {
+  it("create a new autonomous smart account", async () => {
     const accountIndex = await getNextAccountIndex(connection, programId);
 
-    const [settingsPda, settingsBump] = await createAutonomousMultisigV2({
+    const [settingsPda, settingsBump] = await createAutonomousSmartAccountV2({
       connection,
       accountIndex,
       members,
@@ -390,15 +390,15 @@ describe("Instructions / multisig_create_v2", () => {
     assert.strictEqual(multisigAccount.bump, settingsBump);
   });
 
-  it("error: create a new autonomous multisig with wrong account creation authority", async () => {
+  it("error: create a new autonomous smart account with wrong account creation authority", async () => {
     const accountIndex = await getNextAccountIndex(connection, programId);
     const rentCollector = Keypair.generate().publicKey;
-    const settingsPda = multisig.getSettingsPda({
+    const settingsPda = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     })[0];
 
-    const createTransaction = multisig.transactions.createSmartAccount({
+    const createTransaction = smartAccount.transactions.createSmartAccount({
       blockhash: (await connection.getLatestBlockhash()).blockhash,
       treasury: programTreasury,
       // This needs to be the account creation authority
@@ -420,7 +420,7 @@ describe("Instructions / multisig_create_v2", () => {
     );
   });
 
-  it("create a new controlled multisig", async () => {
+  it("create a new controlled smart account", async () => {
     const accountIndex = await getNextAccountIndex(connection, programId);
     const configAuthority = await generateFundedKeypair(connection);
 
@@ -448,7 +448,7 @@ describe("Instructions / multisig_create_v2", () => {
     // in the previous case and will be the same here.
   });
 
-  it("create a new multisig and pay creation fee", async () => {
+  it("create a new smart account and pay creation fee", async () => {
     //region Airdrop to the program config authority
     let signature = await connection.requestAirdrop(
       programConfigAuthority.publicKey,
@@ -459,9 +459,9 @@ describe("Instructions / multisig_create_v2", () => {
 
     const multisigCreationFee = 0.1 * LAMPORTS_PER_SOL;
 
-    //region Configure the global multisig creation fee
+    //region Configure the global smart account creation fee
     const setCreationFeeIx =
-      multisig.generated.createSetProgramConfigSmartAccountCreationFeeInstruction(
+      smartAccount.generated.createSetProgramConfigSmartAccountCreationFeeInstruction(
         {
           programConfig: programConfigPda,
           authority: programConfigAuthority.publicKey,
@@ -481,7 +481,7 @@ describe("Instructions / multisig_create_v2", () => {
     signature = await connection.sendTransaction(tx);
     await connection.confirmTransaction(signature);
     let programConfig =
-      await multisig.accounts.ProgramConfig.fromAccountAddress(
+      await smartAccount.accounts.ProgramConfig.fromAccountAddress(
         connection,
         programConfigPda
       );
@@ -491,7 +491,7 @@ describe("Instructions / multisig_create_v2", () => {
     );
     //endregion
 
-    //region Create a new multisig
+    //region Create a new smart account
     const creator = getTestAccountCreationAuthority();
     await fundKeypair(connection, creator);
 
@@ -499,12 +499,12 @@ describe("Instructions / multisig_create_v2", () => {
 
     const creatorBalancePre = await connection.getBalance(creator.publicKey);
 
-    const settingsPda = multisig.getSettingsPda({
+    const settingsPda = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     })[0];
 
-    signature = await multisig.rpc.createSmartAccount({
+    signature = await smartAccount.rpc.createSmartAccount({
       connection,
       treasury: programTreasury,
       creator,
@@ -534,7 +534,7 @@ describe("Instructions / multisig_create_v2", () => {
     await connection.confirmTransaction(signature);
 
     const creatorBalancePost = await connection.getBalance(creator.publicKey);
-    const rentAndNetworkFee = 2677640;
+    const rentAndNetworkFee = 2698520;
 
     assert.strictEqual(
       creatorBalancePost,
@@ -542,9 +542,9 @@ describe("Instructions / multisig_create_v2", () => {
     );
     //endregion
 
-    //region Reset the global multisig creation fee
+    //region Reset the global smart account creation fee
     const resetCreationFeeIx =
-      multisig.generated.createSetProgramConfigSmartAccountCreationFeeInstruction(
+      smartAccount.generated.createSetProgramConfigSmartAccountCreationFeeInstruction(
         {
           programConfig: programConfigPda,
           authority: programConfigAuthority.publicKey,
@@ -563,10 +563,11 @@ describe("Instructions / multisig_create_v2", () => {
     tx2.sign([programConfigAuthority]);
     signature = await connection.sendTransaction(tx2);
     await connection.confirmTransaction(signature);
-    programConfig = await multisig.accounts.ProgramConfig.fromAccountAddress(
-      connection,
-      programConfigPda
-    );
+    programConfig =
+      await smartAccount.accounts.ProgramConfig.fromAccountAddress(
+        connection,
+        programConfigPda
+      );
     assert.strictEqual(programConfig.smartAccountCreationFee.toString(), "0");
     //endregion
   });
@@ -576,17 +577,17 @@ describe("Instructions / multisig_create_v2", () => {
     await fundKeypair(connection, creator);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
-    const [wrongSettingsPda] = multisig.getSettingsPda({
+    const [wrongSettingsPda] = smartAccount.getSettingsPda({
       // Pass wrong account index
       accountIndex: accountIndex + 1n,
       programId,
     });
-    const [settingsPda] = multisig.getSettingsPda({
+    const [settingsPda] = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     });
 
-    const tx = multisig.transactions.createSmartAccount({
+    const tx = smartAccount.transactions.createSmartAccount({
       blockhash: (await connection.getLatestBlockhash()).blockhash,
       treasury: programTreasury,
       creator: creator.publicKey,
@@ -618,8 +619,6 @@ describe("Instructions / multisig_create_v2", () => {
     tx.sign([creator]);
 
     // Should still pass since the program looks through the remaining accounts
-    await assert.ok(
-      async () => await connection.sendTransaction(tx)
-    );
+    await assert.ok(async () => await connection.sendTransaction(tx));
   });
 });

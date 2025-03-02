@@ -1,54 +1,58 @@
 import {
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
-  createAutonomousMultisigV2,
+  createAutonomousSmartAccountV2,
   createLocalhostConnection,
+  createTestTransferInstruction,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Settings, Proposal } = multisig.accounts;
+const { Settings, Proposal } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / config_transaction_accounts_close", () => {
+describe("Instructions / transaction_accounts_close", () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
-  const staleTransactionIndex = 1n;
+  const staleNonApprovedTransactionIndex = 1n;
   const staleNoProposalTransactionIndex = 2n;
-  const executedTransactionIndex = 3n;
-  const activeTransactionIndex = 4n;
-  const approvedTransactionIndex = 5n;
-  const rejectedTransactionIndex = 6n;
-  const cancelledTransactionIndex = 7n;
+  const staleApprovedTransactionIndex = 3n;
+  const executedConfigTransactionIndex = 4n;
+  const executedVaultTransactionIndex = 5n;
+  const activeTransactionIndex = 6n;
+  const approvedTransactionIndex = 7n;
+  const rejectedTransactionIndex = 8n;
+  const cancelledTransactionIndex = 9n;
 
-  // Set up a multisig with config transactions.
+  // Set up a smart account with some transactions.
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
     const accountIndex = await getNextAccountIndex(connection, programId);
-    settingsPda = multisig.getSettingsPda({
+    settingsPda = smartAccount.getSettingsPda({
       accountIndex,
       programId,
     })[0];
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     });
 
-    // Create new autonomous multisig with rentCollector set to its default vault.
-    await createAutonomousMultisigV2({
+    // Create new autonomous smart account with rentCollector set to its default vault.
+    await createAutonomousSmartAccountV2({
       connection,
       accountIndex,
       members,
@@ -58,57 +62,145 @@ describe("Instructions / config_transaction_accounts_close", () => {
       programId,
     });
 
-    //region Stale
-    // Create a config transaction (Stale).
-    let signature = await multisig.rpc.createSettingsTransaction({
+    // Test transfer instruction.
+    const testPayee = Keypair.generate();
+    const testIx = await createTestTransferInstruction(
+      vaultPda,
+      testPayee.publicKey,
+      1 * LAMPORTS_PER_SOL
+    );
+    const testTransferMessage = new TransactionMessage({
+      payerKey: vaultPda,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [testIx],
+    });
+
+    // Airdrop some SOL to the vault
+    let signature = await connection.requestAirdrop(
+      vaultPda,
+      10 * LAMPORTS_PER_SOL
+    );
+    await connection.confirmTransaction(signature);
+
+    //region Stale and Non-Approved
+    // Create a transaction (Stale and Non-Approved).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
-      transactionIndex: staleTransactionIndex,
+      transactionIndex: staleNonApprovedTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
-    // Create a proposal for the transaction (Stale).
-    signature = await multisig.rpc.createProposal({
+    // Create a proposal for the transaction (Stale and Non-Approved).
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
-      transactionIndex: staleTransactionIndex,
+      transactionIndex: staleNonApprovedTransactionIndex,
       creator: members.proposer,
       programId,
     });
     await connection.confirmTransaction(signature);
-    // This transaction will become stale when the second config transaction is executed.
+    // This transaction will become stale when the settings transaction is executed.
     //endregion
 
     //region Stale and No Proposal
-    // Create a config transaction (Stale and No Proposal).
-    signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction (Stale and Non-Approved).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex: staleNoProposalTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // No proposal created for this transaction.
 
-    // This transaction will become stale when the config transaction is executed.
+    // This transaction will become stale when the settings transaction is executed.
     //endregion
 
-    //region Executed
-    // Create a config transaction (Executed).
-    signature = await multisig.rpc.createSettingsTransaction({
+    //region Stale and Approved
+    // Create a transaction (Stale and Approved).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
-      transactionIndex: executedTransactionIndex,
+      transactionIndex: staleApprovedTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      creator: members.proposer.publicKey,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Create a proposal for the transaction (Stale and Approved).
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: staleApprovedTransactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Approve the proposal by the first member.
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex: staleApprovedTransactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Approve the proposal by the second member.
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.almighty,
+      settingsPda,
+      transactionIndex: staleApprovedTransactionIndex,
+      signer: members.almighty,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Make sure the proposal is approved.
+    let proposalAccount = await Proposal.fromAccountAddress(
+      connection,
+      smartAccount.getProposalPda({
+        settingsPda,
+        transactionIndex: staleApprovedTransactionIndex,
+        programId,
+      })[0]
+    );
+    assert.ok(
+      smartAccount.types.isProposalStatusApproved(proposalAccount.status)
+    );
+
+    // This transaction will become stale when the settings transaction is executed.
+    //endregion
+
+    //region Executed Config Transaction
+    // Create a transaction (Executed).
+    signature = await smartAccount.rpc.createSettingsTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: executedConfigTransactionIndex,
       creator: members.proposer.publicKey,
       actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
@@ -116,44 +208,44 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Executed).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
-      transactionIndex: executedTransactionIndex,
+      transactionIndex: executedConfigTransactionIndex,
       creator: members.proposer,
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the first member.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
-      transactionIndex: executedTransactionIndex,
+      transactionIndex: executedConfigTransactionIndex,
       signer: members.voter,
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the second member.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      transactionIndex: executedTransactionIndex,
+      transactionIndex: executedConfigTransactionIndex,
       signer: members.almighty,
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Execute the transaction.
-    signature = await multisig.rpc.executeSettingsTransaction({
+    signature = await smartAccount.rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
-      transactionIndex: executedTransactionIndex,
+      transactionIndex: executedConfigTransactionIndex,
       signer: members.almighty,
       rentPayer: members.almighty,
       programId,
@@ -162,21 +254,88 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     //endregion
 
+    //region Executed Vault transaction
+    // Create a transaction (Executed).
+    signature = await smartAccount.rpc.createTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: executedVaultTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
+      creator: members.proposer.publicKey,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Create a proposal for the transaction (Approved).
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: executedVaultTransactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Approve the proposal.
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex: executedVaultTransactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Execute the transaction.
+    signature = await smartAccount.rpc.executeTransaction({
+      connection,
+      feePayer: members.executor,
+      settingsPda,
+      transactionIndex: executedVaultTransactionIndex,
+      signer: members.executor.publicKey,
+      signers: [members.executor],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Make sure the proposal is executed.
+    proposalAccount = await Proposal.fromAccountAddress(
+      connection,
+      smartAccount.getProposalPda({
+        settingsPda,
+        transactionIndex: executedVaultTransactionIndex,
+        programId,
+      })[0]
+    );
+    assert.ok(
+      smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
+    );
+    //endregion
+
     //region Active
-    // Create a config transaction (Active).
-    signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction (Active).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex: activeTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Active).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -187,32 +346,37 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Make sure the proposal is active.
-    let proposalAccount = await Proposal.fromAccountAddress(
+    proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex: activeTransactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusActive(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusActive(proposalAccount.status)
+    );
     //endregion
 
     //region Approved
-    // Create a config transaction (Approved).
-    signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction (Approved).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex: approvedTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Approved).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -223,7 +387,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -236,30 +400,35 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is approved.
     proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex: approvedTransactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusApproved(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusApproved(proposalAccount.status)
+    );
     //endregion
 
     //region Rejected
-    // Create a config transaction (Rejected).
-    signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction (Rejected).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex: rejectedTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 3 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Rejected).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -272,7 +441,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Our threshold is 1, and 2 voters, so the cutoff is 2...
 
     // Reject the proposal by the first member.
-    signature = await multisig.rpc.rejectProposal({
+    signature = await smartAccount.rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -283,7 +452,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Reject the proposal by the second member.
-    signature = await multisig.rpc.rejectProposal({
+    signature = await smartAccount.rpc.rejectProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -296,32 +465,38 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is rejected.
     proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex: rejectedTransactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusRejected(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusRejected(proposalAccount.status)
+    );
     //endregion
 
     //region Cancelled
-    // Create a config transaction (Cancelled).
-    signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction (Cancelled).
+    signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex: cancelledTransactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 3 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Cancelled).
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
-      feePayer: members.proposer,
+      feePayer: members.voter,
+      rentPayer: members.voter,
       settingsPda,
       transactionIndex: cancelledTransactionIndex,
       creator: members.proposer,
@@ -330,7 +505,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -341,7 +516,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Cancel the proposal (The proposal should be approved at this point).
-    signature = await multisig.rpc.cancelProposal({
+    signature = await smartAccount.rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -354,47 +529,69 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is cancelled.
     proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex: cancelledTransactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
-
+    assert.ok(
+      smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
+    );
     //endregion
   });
 
-  it("error: invalid transaction rent_collector", async () => {
-    // Create a multisig with rent reclamation disabled.
+  it("error: wrong rent collector", async () => {
+    // Create a smart account with rent reclamation disabled.
     const accountIndex = await getNextAccountIndex(connection, programId);
     const settingsPda = (
-      await createAutonomousMultisigV2({
+      await createAutonomousSmartAccountV2({
         connection,
         members,
-        threshold: 2,
+        threshold: 1,
         timeLock: 0,
-        accountIndex,
         rentCollector: null,
         programId,
+        accountIndex,
       })
     )[0];
 
-    // Create a config transaction.
+    const vaultPda = smartAccount.getSmartAccountPda({
+      settingsPda: settingsPda,
+      accountIndex: 0,
+      programId,
+    })[0];
+
+    const testPayee = Keypair.generate();
+    const testIx = await createTestTransferInstruction(
+      vaultPda,
+      testPayee.publicKey,
+      1 * LAMPORTS_PER_SOL
+    );
+    const testTransferMessage = new TransactionMessage({
+      payerKey: vaultPda,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [testIx],
+    });
+
+    // Create a transaction.
     const transactionIndex = 1n;
-    let signature = await multisig.rpc.createSettingsTransaction({
+    let signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
       transactionIndex,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -404,8 +601,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Approve the proposal by the first member.
-    signature = await multisig.rpc.approveProposal({
+    // Approve the proposal by a member.
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -415,33 +612,21 @@ describe("Instructions / config_transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Approve the proposal by the second member.
-    signature = await multisig.rpc.approveProposal({
+    // Cancel the proposal.
+    signature = await smartAccount.rpc.cancelProposal({
       connection,
-      feePayer: members.almighty,
+      feePayer: members.voter,
       settingsPda,
       transactionIndex,
-      signer: members.almighty,
+      signer: members.voter,
       programId,
     });
     await connection.confirmTransaction(signature);
 
-    // Execute the transaction.
-    signature = await multisig.rpc.executeSettingsTransaction({
-      connection,
-      feePayer: members.almighty,
-      settingsPda,
-      transactionIndex,
-      signer: members.almighty,
-      rentPayer: members.almighty,
-      programId,
-    });
-    await connection.confirmTransaction(signature);
-
-    // Attempt to close the accounts.
+    // Attempt to close the accounts with the wrong transaction rent collector.
     await assert.rejects(
       () =>
-        multisig.rpc.closeSettingsTransaction({
+        smartAccount.rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -452,21 +637,16 @@ describe("Instructions / config_transaction_accounts_close", () => {
         }),
       /InvalidRentCollector/
     );
-  });
 
-  it("error: invalid proposal rent_collector", async () => {
-    const transactionIndex = 1n;
-
-    const fakeRentCollector = Keypair.generate().publicKey;
-
+    // Attempt to close the accounts with the wrong proposal rent collector.
     await assert.rejects(
       () =>
-        multisig.rpc.closeSettingsTransaction({
+        smartAccount.rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
           transactionRentCollector: members.proposer.publicKey,
-          proposalRentCollector: fakeRentCollector,
+          proposalRentCollector: Keypair.generate().publicKey,
           transactionIndex,
           programId,
         }),
@@ -474,37 +654,51 @@ describe("Instructions / config_transaction_accounts_close", () => {
     );
   });
 
-  it("error: proposal is for another multisig", async () => {
-    const vaultPda = multisig.getSmartAccountPda({
+  it("error: proposal is for another smart account", async () => {
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     })[0];
-    const accountIndex = await getNextAccountIndex(connection, programId);
-    // Create another multisig.
+
+    const testPayee = Keypair.generate();
+    const testIx = await createTestTransferInstruction(
+      vaultPda,
+      testPayee.publicKey,
+      1 * LAMPORTS_PER_SOL
+    );
+    const testTransferMessage = new TransactionMessage({
+      payerKey: vaultPda,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [testIx],
+    });
+
+    // Create another smartAccount.
     const otherMultisig = (
       await createAutonomousMultisig({
         connection,
         members,
         threshold: 2,
         timeLock: 0,
-        accountIndex,
         programId,
       })
     )[0];
-    // Create a config transaction for it.
-    let signature = await multisig.rpc.createSettingsTransaction({
+    // Create a transaction for it.
+    let signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
       transactionIndex: 1n,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
     // Create a proposal for it.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -514,26 +708,25 @@ describe("Instructions / config_transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Manually construct an instruction that uses the proposal account from the other multisig.
-    const ix =
-      multisig.generated.createCloseSettingsTransactionInstruction(
-        {
-          settings: settingsPda,
-          transactionRentCollector: members.proposer.publicKey,
-          proposalRentCollector: members.proposer.publicKey,
-          proposal: multisig.getProposalPda({
-            settingsPda: otherMultisig,
-            transactionIndex: 1n,
-            programId,
-          })[0],
-          transaction: multisig.getTransactionPda({
-            settingsPda: otherMultisig,
-            transactionIndex: 1n,
-            programId,
-          })[0],
-        },
-        programId
-      );
+    // Manually construct an instruction that uses the proposal account from the other smartAccount.
+    const ix = smartAccount.generated.createCloseTransactionInstruction(
+      {
+        settings: settingsPda,
+        transactionRentCollector: members.proposer.publicKey,
+        proposalRentCollector: members.proposer.publicKey,
+        proposal: smartAccount.getProposalPda({
+          settingsPda: otherMultisig,
+          transactionIndex: 1n,
+          programId,
+        })[0],
+        transaction: smartAccount.getTransactionPda({
+          settingsPda: otherMultisig,
+          transactionIndex: 1n,
+          programId,
+        })[0],
+      },
+      programId
+    );
 
     const feePayer = await generateFundedKeypair(connection);
 
@@ -549,7 +742,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
       () =>
         connection
           .sendTransaction(tx)
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /A seeds constraint was violated/
     );
   });
@@ -564,7 +757,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeSettingsTransaction({
+        smartAccount.rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -587,7 +780,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     await assert.rejects(
       () =>
-        multisig.rpc.closeSettingsTransaction({
+        smartAccount.rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -600,32 +793,79 @@ describe("Instructions / config_transaction_accounts_close", () => {
     );
   });
 
-  it("error: transaction is for another multisig", async () => {
-    // Create another multisig.
-    const accountIndex = await getNextAccountIndex(connection, programId);
+  it("error: invalid proposal status (Stale but Approved)", async () => {
+    const transactionIndex = staleApprovedTransactionIndex;
+
+    const multisigAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+
+    // Make sure the proposal is stale.
+    assert.ok(
+      transactionIndex <=
+        smartAccount.utils.toBigInt(multisigAccount.staleTransactionIndex)
+    );
+
+    await assert.rejects(
+      () =>
+        smartAccount.rpc.closeTransaction({
+          connection,
+          feePayer: members.almighty,
+          settingsPda,
+          transactionRentCollector: members.proposer.publicKey,
+          proposalRentCollector: members.proposer.publicKey,
+          transactionIndex,
+          programId,
+        }),
+      /Invalid proposal status/
+    );
+  });
+
+  it("error: transaction is for another smart account", async () => {
+    // Create another smartAccount.
     const otherMultisig = (
       await createAutonomousMultisig({
         connection,
         members,
         threshold: 2,
         timeLock: 0,
-        accountIndex,
         programId,
       })
     )[0];
-    // Create a config transaction for it.
-    let signature = await multisig.rpc.createSettingsTransaction({
+
+    // Create a transaction for it.
+    const vaultPda = smartAccount.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
+      programId,
+    })[0];
+    const testPayee = Keypair.generate();
+    const testIx = await createTestTransferInstruction(
+      vaultPda,
+      testPayee.publicKey,
+      1 * LAMPORTS_PER_SOL
+    );
+    const testTransferMessage = new TransactionMessage({
+      payerKey: vaultPda,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [testIx],
+    });
+    let signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
       transactionIndex: 1n,
+      accountIndex: 0,
+      transactionMessage: testTransferMessage,
+      ephemeralSigners: 0,
+      addressLookupTableAccounts: [],
       creator: members.proposer.publicKey,
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 1 }],
       programId,
     });
     await connection.confirmTransaction(signature);
     // Create a proposal for it.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -635,34 +875,27 @@ describe("Instructions / config_transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
 
-    const vaultPda = multisig.getSmartAccountPda({
-      settingsPda,
-      accountIndex: 0,
-      programId,
-    })[0];
-
     const feePayer = await generateFundedKeypair(connection);
 
     // Manually construct an instruction that uses transaction that doesn't match proposal.
-    const ix =
-      multisig.generated.createCloseSettingsTransactionInstruction(
-        {
-          settings: settingsPda,
-          transactionRentCollector: members.proposer.publicKey,
-          proposalRentCollector: members.proposer.publicKey,
-          proposal: multisig.getProposalPda({
-            settingsPda,
-            transactionIndex: 1n,
-            programId,
-          })[0],
-          transaction: multisig.getTransactionPda({
-            settingsPda: otherMultisig,
-            transactionIndex: 1n,
-            programId,
-          })[0],
-        },
-        programId
-      );
+    const ix = smartAccount.generated.createCloseTransactionInstruction(
+      {
+        settings: settingsPda,
+        transactionRentCollector: members.proposer.publicKey,
+        proposalRentCollector: members.proposer.publicKey,
+        proposal: smartAccount.getProposalPda({
+          settingsPda,
+          transactionIndex: 1n,
+          programId,
+        })[0],
+        transaction: smartAccount.getTransactionPda({
+          settingsPda: otherMultisig,
+          transactionIndex: 1n,
+          programId,
+        })[0],
+      },
+      programId
+    );
 
     const message = new TransactionMessage({
       payerKey: feePayer.publicKey,
@@ -676,7 +909,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
       () =>
         connection
           .sendTransaction(tx)
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /Transaction is for another smart account/
     );
   });
@@ -684,33 +917,32 @@ describe("Instructions / config_transaction_accounts_close", () => {
   it("error: transaction doesn't match proposal", async () => {
     const feePayer = await generateFundedKeypair(connection);
 
-    const vaultPda = multisig.getSmartAccountPda({
+    const vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     })[0];
 
     // Manually construct an instruction that uses transaction that doesn't match proposal.
-    const ix =
-      multisig.generated.createCloseSettingsTransactionInstruction(
-        {
-          settings: settingsPda,
-          transactionRentCollector: members.proposer.publicKey,
-          proposalRentCollector: members.proposer.publicKey,
-          proposal: multisig.getProposalPda({
-            settingsPda,
-            transactionIndex: rejectedTransactionIndex,
-            programId,
-          })[0],
-          transaction: multisig.getTransactionPda({
-            settingsPda,
-            // Wrong transaction index.
-            transactionIndex: approvedTransactionIndex,
-            programId,
-          })[0],
-        },
-        programId
-      );
+    const ix = smartAccount.generated.createCloseTransactionInstruction(
+      {
+        settings: settingsPda,
+        transactionRentCollector: members.proposer.publicKey,
+        proposalRentCollector: members.proposer.publicKey,
+        proposal: smartAccount.getProposalPda({
+          settingsPda,
+          transactionIndex: rejectedTransactionIndex,
+          programId,
+        })[0],
+        transaction: smartAccount.getTransactionPda({
+          settingsPda,
+          // Wrong transaction index.
+          transactionIndex: approvedTransactionIndex,
+          programId,
+        })[0],
+      },
+      programId
+    );
 
     const message = new TransactionMessage({
       payerKey: feePayer.publicKey,
@@ -724,13 +956,14 @@ describe("Instructions / config_transaction_accounts_close", () => {
       () =>
         connection
           .sendTransaction(tx)
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /A seeds constraint was violated/
     );
   });
 
   it("close accounts for Stale transaction", async () => {
-    const transactionIndex = staleTransactionIndex;
+    // Close the accounts for the Approved transaction.
+    const transactionIndex = staleNonApprovedTransactionIndex;
 
     const multisigAccount = await Settings.fromAccountAddress(
       connection,
@@ -740,20 +973,22 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is still active.
     let proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusActive(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusActive(proposalAccount.status)
+    );
 
     // Make sure the proposal is stale.
     assert.ok(
       proposalAccount.transactionIndex <= multisigAccount.staleTransactionIndex
     );
 
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -761,7 +996,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await multisig.rpc.closeSettingsTransaction({
+    const sig = await smartAccount.rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -773,7 +1008,8 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(sig);
 
     const postBalance = await connection.getBalance(members.proposer.publicKey);
-    assert.ok(postBalance > preBalance);
+
+    assert.equal(postBalance > preBalance, true);
   });
 
   it("close accounts for Stale transaction with No Proposal", async () => {
@@ -786,7 +1022,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     // Make sure there's no proposal.
     let proposalAccount = await connection.getAccountInfo(
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
@@ -797,10 +1033,10 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the transaction is stale.
     assert.ok(
       transactionIndex <=
-      multisig.utils.toBigInt(multisigAccount.staleTransactionIndex)
+        smartAccount.utils.toBigInt(multisigAccount.staleTransactionIndex)
     );
 
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -808,7 +1044,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await multisig.rpc.closeSettingsTransaction({
+    const sig = await smartAccount.rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -820,24 +1056,26 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(sig);
 
     const postBalance = await connection.getBalance(members.proposer.publicKey);
-    assert.ok(postBalance > preBalance);
+    assert.equal(postBalance > preBalance, true);
   });
 
   it("close accounts for Executed transaction", async () => {
-    const transactionIndex = executedTransactionIndex;
+    const transactionIndex = executedVaultTransactionIndex;
 
     // Make sure the proposal is Executed.
     let proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusExecuted(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
+    );
 
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -845,7 +1083,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await multisig.rpc.closeSettingsTransaction({
+    const sig = await smartAccount.rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -857,7 +1095,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(sig);
 
     const postBalance = await connection.getBalance(members.proposer.publicKey);
-    assert.ok(postBalance > preBalance);
+    assert.equal(postBalance > preBalance, true);
   });
 
   it("close accounts for Rejected transaction", async () => {
@@ -866,15 +1104,17 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is Rejected.
     let proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusRejected(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusRejected(proposalAccount.status)
+    );
 
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -882,7 +1122,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await multisig.rpc.closeSettingsTransaction({
+    const sig = await smartAccount.rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -894,7 +1134,7 @@ describe("Instructions / config_transaction_accounts_close", () => {
     await connection.confirmTransaction(sig);
 
     const postBalance = await connection.getBalance(members.proposer.publicKey);
-    assert.ok(postBalance > preBalance);
+    assert.equal(postBalance > preBalance, true);
   });
 
   it("close accounts for Cancelled transaction", async () => {
@@ -903,34 +1143,42 @@ describe("Instructions / config_transaction_accounts_close", () => {
     // Make sure the proposal is Cancelled.
     let proposalAccount = await Proposal.fromAccountAddress(
       connection,
-      multisig.getProposalPda({
+      smartAccount.getProposalPda({
         settingsPda,
         transactionIndex,
         programId,
       })[0]
     );
-    assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
+    );
 
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     });
-
+    const preBalanceVoter = await connection.getBalance(
+      members.voter.publicKey
+    );
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await multisig.rpc.closeSettingsTransaction({
+    const sig = await smartAccount.rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
       transactionRentCollector: members.proposer.publicKey,
-      proposalRentCollector: members.proposer.publicKey,
+      proposalRentCollector: members.voter.publicKey,
       transactionIndex,
       programId,
     });
     await connection.confirmTransaction(sig);
 
+    const postBalanceVoter = await connection.getBalance(
+      members.voter.publicKey
+    );
     const postBalance = await connection.getBalance(members.proposer.publicKey);
-    assert.ok(postBalance > preBalance);
+    assert.equal(postBalance > preBalance, true);
+    assert.equal(postBalanceVoter > preBalanceVoter, true);
   });
 });
