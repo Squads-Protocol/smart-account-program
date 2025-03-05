@@ -6,9 +6,9 @@ import {
   SystemProgram,
   Transaction,
   TransactionMessage,
-  VersionedTransaction
+  VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import {
   CreateTransactionArgs,
   CreateTransactionBufferArgs,
@@ -16,17 +16,17 @@ import {
   CreateTransactionFromBufferInstructionArgs,
   ExtendTransactionBufferArgs,
   ExtendTransactionBufferInstructionArgs,
-} from "@sqds/multisig/lib/generated";
+} from "@sqds/smart-account/lib/generated";
 import assert from "assert";
 import * as crypto from "crypto";
 import {
   TestMembers,
-  createAutonomousMultisigV2,
+  createAutonomousSmartAccountV2,
   createLocalhostConnection,
   createTestTransferInstruction,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
-  getTestProgramId
+  getTestProgramId,
 } from "../../utils";
 
 const programId = getTestProgramId();
@@ -40,10 +40,10 @@ describe("Examples / Transaction Buffers", () => {
   let vaultPda: PublicKey;
 
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
     let accountIndex = await getNextAccountIndex(connection, programId);
     settingsPda = (
-      await createAutonomousMultisigV2({
+      await createAutonomousSmartAccountV2({
         connection,
         members: members,
         accountIndex,
@@ -53,7 +53,7 @@ describe("Examples / Transaction Buffers", () => {
         rentCollector: vaultPda,
       })
     )[0];
-    vaultPda = multisig.getSmartAccountPda({
+    vaultPda = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
@@ -87,7 +87,7 @@ describe("Examples / Transaction Buffers", () => {
 
     // Serialize the message. Must be done with this util function
     const messageBuffer =
-      multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
+      smartAccount.utils.transactionMessageToMultisigTransactionMessageBytes({
         message: testTransferMessage,
         addressLookupTableAccounts: [],
         smartAccountPda: vaultPda,
@@ -99,7 +99,7 @@ describe("Examples / Transaction Buffers", () => {
         settingsPda.toBuffer(),
         Buffer.from("transaction_buffer"),
         members.almighty.publicKey.toBuffer(),
-        Buffer.from([bufferIndex])
+        Buffer.from([bufferIndex]),
       ],
       programId
     );
@@ -112,7 +112,7 @@ describe("Examples / Transaction Buffers", () => {
     // Slice the message buffer into two parts.
     const firstSlice = messageBuffer.slice(0, 400);
 
-    const ix = multisig.generated.createCreateTransactionBufferInstruction(
+    const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
         settings: settingsPda,
         transactionBuffer,
@@ -161,7 +161,7 @@ describe("Examples / Transaction Buffers", () => {
       transactionBuffer
     );
     const [txBufferDeser1] =
-      await multisig.generated.TransactionBuffer.fromAccountInfo(
+      await smartAccount.generated.TransactionBuffer.fromAccountInfo(
         transactionBufferInfo1!
       );
 
@@ -172,7 +172,7 @@ describe("Examples / Transaction Buffers", () => {
 
     // Extned the buffer.
     const secondIx =
-      multisig.generated.createExtendTransactionBufferInstruction(
+      smartAccount.generated.createExtendTransactionBufferInstruction(
         {
           settings: settingsPda,
           transactionBuffer,
@@ -208,15 +208,15 @@ describe("Examples / Transaction Buffers", () => {
       transactionBuffer
     );
     const [txBufferDeser2] =
-      await multisig.generated.TransactionBuffer.fromAccountInfo(
+      await smartAccount.generated.TransactionBuffer.fromAccountInfo(
         transactionBufferInfo2!
       );
 
     // Full buffer uploaded. Check that length is as expected.
     assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
 
-    // Derive vault transaction PDA.
-    const [transactionPda] = multisig.getTransactionPda({
+    // Derive transaction PDA.
+    const [transactionPda] = smartAccount.getTransactionPda({
       settingsPda,
       transactionIndex,
       programId,
@@ -225,11 +225,11 @@ describe("Examples / Transaction Buffers", () => {
     const transactionBufferMeta: AccountMeta = {
       pubkey: transactionBuffer,
       isWritable: true,
-      isSigner: false
-    }
+      isSigner: false,
+    };
     // Create final instruction.
     const thirdIx =
-      multisig.generated.createCreateTransactionFromBufferInstruction(
+      smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
           transactionCreateItemSettings: settingsPda,
           transactionCreateItemTransaction: transactionPda,
@@ -269,27 +269,27 @@ describe("Examples / Transaction Buffers", () => {
     await connection.confirmTransaction(thirdSignature);
 
     const transactionInfo =
-      await multisig.accounts.Transaction.fromAccountAddress(
+      await smartAccount.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
 
-    // Ensure final vault transaction has 23 instructions
+    // Ensure final transaction has 23 instructions
     assert.equal(transactionInfo.message.instructions.length, 23);
   });
 
   it("create proposal, approve, execute from buffer derived transaction", async () => {
     const transactionIndex = 1n;
 
-    // Derive vault transaction PDA.
-    const [transactionPda] = multisig.getTransactionPda({
+    // Derive transaction PDA.
+    const [transactionPda] = smartAccount.getTransactionPda({
       settingsPda,
       transactionIndex,
       programId,
     });
 
     const transactionInfo =
-      await multisig.accounts.Transaction.fromAccountAddress(
+      await smartAccount.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
@@ -297,13 +297,13 @@ describe("Examples / Transaction Buffers", () => {
     // Check that we're dealing with the same account from last test.
     assert.equal(transactionInfo.message.instructions.length, 23);
 
-    const [proposalPda] = multisig.getProposalPda({
+    const [proposalPda] = smartAccount.getProposalPda({
       settingsPda,
       transactionIndex,
       programId,
     });
 
-    const signature = await multisig.rpc.createProposal({
+    const signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -314,7 +314,7 @@ describe("Examples / Transaction Buffers", () => {
     });
     await connection.confirmTransaction(signature);
 
-    const signature3 = await multisig.rpc.approveProposal({
+    const signature3 = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -325,12 +325,13 @@ describe("Examples / Transaction Buffers", () => {
     await connection.confirmTransaction(signature3);
 
     // Fetch the proposal account.
-    let proposalAccount1 = await multisig.accounts.Proposal.fromAccountAddress(
-      connection,
-      proposalPda
-    );
+    let proposalAccount1 =
+      await smartAccount.accounts.Proposal.fromAccountAddress(
+        connection,
+        proposalPda
+      );
 
-    const ix = await multisig.instructions.executeTransaction({
+    const ix = await smartAccount.instructions.executeTransaction({
       connection,
       settingsPda,
       transactionIndex,
@@ -348,10 +349,11 @@ describe("Examples / Transaction Buffers", () => {
     await connection.confirmTransaction(signature4);
 
     // Fetch the proposal account.
-    let proposalAccount = await multisig.accounts.Proposal.fromAccountAddress(
-      connection,
-      proposalPda
-    );
+    let proposalAccount =
+      await smartAccount.accounts.Proposal.fromAccountAddress(
+        connection,
+        proposalPda
+      );
 
     // Check status.
     assert.equal(proposalAccount.status.__kind, "Executed");

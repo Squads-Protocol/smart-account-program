@@ -141,7 +141,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                     let event = AddSpendingLimitEvent {
                         settings_pubkey: settings_key,
                         spending_limit_pubkey: spending_limit_pubkey,
-                        spending_limit: SpendingLimit::try_from_slice(**&spending_limit_data)?,
+                        spending_limit: SpendingLimit::try_from_slice(&spending_limit_data[8..])?,
                     };
                     SmartAccountEvent::AddSpendingLimitEvent(event).log(&log_authority_info)?;
                 }

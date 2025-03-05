@@ -6,21 +6,21 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
   createTestTransferInstruction,
   generateFundedKeypair,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
   range,
   TestMembers,
 } from "../../utils";
 
-const { Settings, Proposal } = multisig.accounts;
+const { Settings, Proposal } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
@@ -29,11 +29,11 @@ describe("Examples / Batch SOL Transfer", () => {
 
   let members: TestMembers;
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
   it("create and execute batch transaction containing multiple SOL transfers", async () => {
-    // Use a different fee payer for the batch execution to isolate member balance changes.
+    // Use a different fee payer for the batch execution to isolatesignerbalance changes.
     const feePayer = await generateFundedKeypair(connection);
 
     const accountIndex = await getNextAccountIndex(connection, programId);
@@ -54,29 +54,29 @@ describe("Examples / Batch SOL Transfer", () => {
 
     const vaultIndex = 0;
     const batchIndex =
-      multisig.utils.toBigInt(multisigAccount.transactionIndex) + 1n;
+      smartAccount.utils.toBigInt(multisigAccount.transactionIndex) + 1n;
 
-    const [proposalPda] = multisig.getProposalPda({
+    const [proposalPda] = smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: batchIndex,
       programId,
     });
 
     // Default vault, index 0.
-    const [vaultPda] = multisig.getSmartAccountPda({
+    const [vaultPda] = smartAccount.getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
       programId,
     });
 
     // Prepare transactions for the batch.
-    // We are going to make a payout of 1 SOL to every member of the multisig
+    // We are going to make a payout of 1 SOL to everysignerof the smart account
     // first as a separate transaction per member, then in a single transaction
-    // that also uses an Account Lookup Table containing all member addresses.
+    // that also uses an Account Lookup Table containing allsigneraddresses.
     // Airdrop SOL amount required for the payout to the Vault.
     const airdropSig = await connection.requestAirdrop(
       vaultPda,
-      // Each member will be paid 2 x 1 SOL.
+      // Eachsignerwill be paid 2 x 1 SOL.
       Object.keys(members).length * 2 * LAMPORTS_PER_SOL
     );
     await connection.confirmTransaction(airdropSig);
@@ -105,7 +105,7 @@ describe("Examples / Batch SOL Transfer", () => {
       });
     }
 
-    // Create a lookup table with all member addresses.
+    // Create a lookup table with allsigneraddresses.
     const memberAddresses = Object.values(members).map((m) => m.publicKey);
     const [lookupTableIx, lookupTableAddress] =
       AddressLookupTableProgram.createLookupTable({
@@ -158,7 +158,7 @@ describe("Examples / Batch SOL Transfer", () => {
     });
 
     // Create a batch account.
-    signature = await multisig.rpc.createBatch({
+    signature = await smartAccount.rpc.createBatch({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -171,7 +171,7 @@ describe("Examples / Batch SOL Transfer", () => {
     await connection.confirmTransaction(signature);
 
     // Initialize the proposal for the batch.
-    signature = await multisig.rpc.createProposal({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -187,7 +187,7 @@ describe("Examples / Batch SOL Transfer", () => {
       index,
       { message, addressLookupTableAccounts },
     ] of testTransactionMessages.entries()) {
-      signature = await multisig.rpc.addTransactionToBatch({
+      signature = await smartAccount.rpc.addTransactionToBatch({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -205,7 +205,7 @@ describe("Examples / Batch SOL Transfer", () => {
     }
 
     // Activate the proposal (finalize the batch).
-    signature = await multisig.rpc.activateProposal({
+    signature = await smartAccount.rpc.activateProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -216,7 +216,7 @@ describe("Examples / Batch SOL Transfer", () => {
     await connection.confirmTransaction(signature);
 
     // First approval for the batch proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -228,7 +228,7 @@ describe("Examples / Batch SOL Transfer", () => {
     await connection.confirmTransaction(signature);
 
     // Second approval for the batch proposal.
-    signature = await multisig.rpc.approveProposal({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -239,7 +239,7 @@ describe("Examples / Batch SOL Transfer", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Fetch the member balances before the batch execution.
+    // Fetch thesignerbalances before the batch execution.
     const preBalances = [] as number[];
     for (const member of Object.values(members)) {
       const balance = await connection.getBalance(member.publicKey);
@@ -249,7 +249,7 @@ describe("Examples / Batch SOL Transfer", () => {
 
     // Execute the transactions from the batch sequentially one-by-one.
     for (const transactionIndex of range(1, testTransactionMessages.length)) {
-      signature = await multisig.rpc.executeBatchTransaction({
+      signature = await smartAccount.rpc.executeBatchTransaction({
         connection,
         feePayer: feePayer,
         settingsPda,
@@ -266,7 +266,9 @@ describe("Examples / Batch SOL Transfer", () => {
       connection,
       proposalPda
     );
-    assert.ok(multisig.types.isProposalStatusExecuted(proposalAccount.status));
+    assert.ok(
+      smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
+    );
 
     // Verify that the members received the funds.
     for (const [index, preBalance] of preBalances.entries()) {

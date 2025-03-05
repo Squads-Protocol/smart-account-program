@@ -35,7 +35,7 @@ security_txt! {
 }
 
 #[cfg(not(feature = "testing"))]
-declare_id!("SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk");
+declare_id!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG");
 
 #[cfg(feature = "testing")]
 declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
@@ -61,7 +61,7 @@ pub mod squads_smart_account_program {
         ProgramConfig::set_authority(ctx, args)
     }
 
-    /// Set the `multisig_creation_fee` parameter of the program config.
+    /// Set the `smart_account_creation_fee` parameter of the program config.
     pub fn set_program_config_smart_account_creation_fee(
         ctx: Context<ProgramConfig>,
         args: ProgramConfigSetSmartAccountCreationFeeArgs,
@@ -84,7 +84,7 @@ pub mod squads_smart_account_program {
         CreateSmartAccount::create_smart_account(ctx, args)
     }
 
-    /// Add a new signer to the controlled multisig.
+    /// Add a new signer to the controlled smart account.
     pub fn add_signer_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: AddSignerArgs,
@@ -92,7 +92,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::add_signer(ctx, args)
     }
 
-    /// Remove a signer from the controlled multisig.
+    /// Remove a signer from the controlled smart account.
     pub fn remove_signer_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: RemoveSignerArgs,
@@ -100,7 +100,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::remove_signer(ctx, args)
     }
 
-    /// Set the `time_lock` config parameter for the controlled multisig.
+    /// Set the `time_lock` config parameter for the controlled smart account.
     pub fn set_time_lock_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: SetTimeLockArgs,
@@ -108,7 +108,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::set_time_lock(ctx, args)
     }
 
-    /// Set the `threshold` config parameter for the controlled multisig.
+    /// Set the `threshold` config parameter for the controlled smart account.
     pub fn change_threshold_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: ChangeThresholdArgs,
@@ -116,7 +116,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::change_threshold(ctx, args)
     }
 
-    /// Set the multisig `config_authority`.
+    /// Set the smart account `settings_authority`.
     pub fn set_new_settings_authority_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: SetNewSettingsAuthorityArgs,
@@ -124,7 +124,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::set_new_settings_authority(ctx, args)
     }
 
-    /// Set the multisig `archival_authority`.
+    /// Set the smart account `archival_authority`.
     pub fn set_archival_authority_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
         args: SetArchivalAuthorityArgs,
@@ -132,7 +132,7 @@ pub mod squads_smart_account_program {
         ExecuteSettingsTransactionAsAuthority::set_archival_authority(ctx, args)
     }
 
-    /// Create a new spending limit for the controlled multisig.
+    /// Create a new spending limit for the controlled smart account.
     pub fn add_spending_limit_as_authority(
         ctx: Context<AddSpendingLimitAsAuthority>,
         args: AddSpendingLimitArgs,
@@ -140,7 +140,7 @@ pub mod squads_smart_account_program {
         AddSpendingLimitAsAuthority::add_spending_limit(ctx, args)
     }
 
-    /// Remove the spending limit from the controlled multisig.
+    /// Remove the spending limit from the controlled smart account.
     pub fn remove_spending_limit_as_authority(
         ctx: Context<RemoveSpendingLimitAsAuthority>,
         args: RemoveSpendingLimitArgs,
@@ -226,35 +226,35 @@ pub mod squads_smart_account_program {
         ExecuteBatchTransaction::execute_batch_transaction(ctx)
     }
 
-    /// Create a new multisig proposal.
+    /// Create a new smart account proposal.
     pub fn create_proposal(ctx: Context<CreateProposal>, args: CreateProposalArgs) -> Result<()> {
         CreateProposal::create_proposal(ctx, args)
     }
 
-    /// Update status of a multisig proposal from `Draft` to `Active`.
+    /// Update status of a smart account proposal from `Draft` to `Active`.
     pub fn activate_proposal(ctx: Context<ActivateProposal>) -> Result<()> {
         ActivateProposal::activate_proposal(ctx)
     }
 
-    /// Approve a multisig proposal on behalf of the `member`.
+    /// Approve a smart account proposal on behalf of the `member`.
     /// The proposal must be `Active`.
     pub fn approve_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
         VoteOnProposal::approve_proposal(ctx, args)
     }
 
-    /// Reject a multisig proposal on behalf of the `member`.
+    /// Reject a smart account proposal on behalf of the `member`.
     /// The proposal must be `Active`.
     pub fn reject_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
         VoteOnProposal::reject_proposal(ctx, args)
     }
 
-    /// Cancel a multisig proposal on behalf of the `member`.
+    /// Cancel a smart account proposal on behalf of the `member`.
     /// The proposal must be `Approved`.
     pub fn cancel_proposal(ctx: Context<VoteOnProposal>, args: VoteOnProposalArgs) -> Result<()> {
         VoteOnProposal::cancel_proposal(ctx, args)
     }
 
-    /// Use a spending limit to transfer tokens from a multisig vault to a destination account.
+    /// Use a spending limit to transfer tokens from a smart account vault to a destination account.
     pub fn use_spending_limit(
         ctx: Context<UseSpendingLimit>,
         args: UseSpendingLimitArgs,
@@ -311,7 +311,7 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         SyncSettingsTransaction::sync_settings_transaction(ctx, args)
     }
-    /// Log an event 
+    /// Log an event
     pub fn log_event<'info>(ctx: Context<'_, '_, 'info, 'info, LogEvent<'info>>, args: LogEventArgs) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }

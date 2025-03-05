@@ -1,22 +1,22 @@
 import { TransactionMessage, VersionedTransaction } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Settings } = multisig.accounts;
+const { Settings } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
 /**
- * If user can sign a transaction with enough member keys to reach the threshold,
- * they can batch all multisig instructions required to create, approve and execute the multisig transaction
+ * If user can sign a transaction with enoughsignerkeys to reach the threshold,
+ * they can batch all smart account instructions required to create, approve and execute the smart account transaction
  * into one Solana transaction, so the transaction is executed immediately.
  */
 describe("Examples / Immediate Execution", () => {
@@ -24,7 +24,7 @@ describe("Examples / Immediate Execution", () => {
 
   let members: TestMembers;
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
   it("create, approve and execute, all in 1 Solana transaction", async () => {
@@ -41,37 +41,37 @@ describe("Examples / Immediate Execution", () => {
 
     const transactionIndex = 1n;
 
-    const createTransactionIx = multisig.instructions.createSettingsTransaction({
-      settingsPda,
-      transactionIndex,
-      creator: members.almighty.publicKey,
-      // Change threshold to 2.
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
-      programId,
-    });
-    const createProposalIx = multisig.instructions.createProposal({
+    const createTransactionIx =
+      smartAccount.instructions.createSettingsTransaction({
+        settingsPda,
+        transactionIndex,
+        creator: members.almighty.publicKey,
+        // Change threshold to 2.
+        actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
+        programId,
+      });
+    const createProposalIx = smartAccount.instructions.createProposal({
       settingsPda,
       transactionIndex,
       creator: members.almighty.publicKey,
       programId,
     });
 
-    const approveProposalIx = multisig.instructions.approveProposal({
+    const approveProposalIx = smartAccount.instructions.approveProposal({
       settingsPda,
       transactionIndex,
       signer: members.almighty.publicKey,
       programId,
     });
 
-    const executeTransactionIx = multisig.instructions.executeSettingsTransaction(
-      {
+    const executeTransactionIx =
+      smartAccount.instructions.executeSettingsTransaction({
         settingsPda,
         transactionIndex,
         signer: members.almighty.publicKey,
         rentPayer: members.almighty.publicKey,
         programId,
-      }
-    );
+      });
 
     const message = new TransactionMessage({
       payerKey: members.almighty.publicKey,
@@ -93,7 +93,7 @@ describe("Examples / Immediate Execution", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Verify the multisig account.
+    // Verify the smart account account.
     const multisigAccount = await Settings.fromAccountAddress(
       connection,
       settingsPda

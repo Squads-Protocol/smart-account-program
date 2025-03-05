@@ -9,13 +9,13 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import { readFileSync } from "fs";
 import path from "path";
 
-const { Permission, Permissions } = multisig.types;
-const { Proposal } = multisig.accounts;
+const { Permission, Permissions } = smartAccount.types;
+const { Proposal } = smartAccount.accounts;
 
 export function getTestProgramId() {
   const programKeypair = Keypair.fromSecretKey(
@@ -88,10 +88,7 @@ export function getTestAccountCreationAuthority() {
     Buffer.from(
       JSON.parse(
         readFileSync(
-          path.join(
-            __dirname,
-            "../test-account-creation-authority.json"
-          ),
+          path.join(__dirname, "../test-account-creation-authority.json"),
           "utf-8"
         )
       )
@@ -125,7 +122,7 @@ export async function fundKeypair(connection: Connection, keypair: Keypair) {
   await connection.confirmTransaction(tx);
 }
 
-export async function generateMultisigMembers(
+export async function generateSmartAccountSigners(
   connection: Connection
 ): Promise<TestMembers> {
   const members = {
@@ -159,13 +156,15 @@ export function createLocalhostConnection() {
   return new Connection("http://127.0.0.1:8899", "confirmed");
 }
 
-export const getLogs = async (connection: Connection, signature: string): Promise<string[]> => {
-  const tx = await connection.getTransaction(
-    signature,
-    { commitment: "confirmed" }
-  )
-  return tx!.meta!.logMessages || []
-}
+export const getLogs = async (
+  connection: Connection,
+  signature: string
+): Promise<string[]> => {
+  const tx = await connection.getTransaction(signature, {
+    commitment: "confirmed",
+  });
+  return tx!.meta!.logMessages || [];
+};
 
 export async function createAutonomousMultisig({
   connection,
@@ -185,12 +184,12 @@ export async function createAutonomousMultisig({
   if (!accountIndex) {
     accountIndex = await getNextAccountIndex(connection, programId);
   }
-  const [settingsPda, settingsBump] = multisig.getSettingsPda({
+  const [settingsPda, settingsBump] = smartAccount.getSettingsPda({
     accountIndex,
     programId,
   });
 
-  await createAutonomousMultisigV2({
+  await createAutonomousSmartAccountV2({
     connection,
     accountIndex,
     members,
@@ -203,21 +202,21 @@ export async function createAutonomousMultisig({
   return [settingsPda, settingsBump] as const;
 }
 
-export async function createAutonomousMultisigV2({
-  connection,
+export async function createAutonomousSmartAccountV2({
   accountIndex,
+  connection,
   members,
   threshold,
   timeLock,
   rentCollector,
   programId,
   creator,
-  sendOptions
+  sendOptions,
 }: {
-  accountIndex: bigint;
   members: TestMembers;
   threshold: number;
   timeLock: number;
+  accountIndex?: bigint;
   rentCollector: PublicKey | null;
   connection: Connection;
   programId: PublicKey;
@@ -230,16 +229,19 @@ export async function createAutonomousMultisigV2({
   }
 
   const programConfig =
-    await multisig.accounts.ProgramConfig.fromAccountAddress(
+    await smartAccount.accounts.ProgramConfig.fromAccountAddress(
       connection,
-      multisig.getProgramConfigPda({ programId })[0]
+      smartAccount.getProgramConfigPda({ programId })[0]
     );
+  if (!accountIndex) {
+    accountIndex = BigInt(programConfig.smartAccountIndex.toString()) + 1n;
+  }
   const programTreasury = programConfig.treasury;
-  const [settingsPda, settingsBump] = multisig.getSettingsPda({
+  const [settingsPda, settingsBump] = smartAccount.getSettingsPda({
     accountIndex,
     programId,
   });
-  const signature = await multisig.rpc.createSmartAccount({
+  const signature = await smartAccount.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
@@ -272,7 +274,7 @@ export async function createAutonomousMultisigV2({
   return [settingsPda, settingsBump] as const;
 }
 
-export async function createControlledMultisig({
+export async function createControlledSmartAccount({
   connection,
   accountIndex,
   configAuthority,
@@ -289,8 +291,7 @@ export async function createControlledMultisig({
   connection: Connection;
   programId: PublicKey;
 }) {
-
-  const [settingsPda, settingsBump] = multisig.getSettingsPda({
+  const [settingsPda, settingsBump] = smartAccount.getSettingsPda({
     accountIndex,
     programId,
   });
@@ -303,7 +304,7 @@ export async function createControlledMultisig({
     threshold,
     configAuthority: configAuthority,
     timeLock,
-    programId
+    programId,
   });
 
   return [settingsPda, settingsBump] as const;
@@ -331,18 +332,18 @@ export async function createControlledMultisigV2({
   const creator = getTestAccountCreationAuthority();
   await fundKeypair(connection, creator);
 
-  const [settingsPda, settingsBump] = multisig.getSettingsPda({
+  const [settingsPda, settingsBump] = smartAccount.getSettingsPda({
     accountIndex,
     programId,
   });
   const programConfig =
-    await multisig.accounts.ProgramConfig.fromAccountAddress(
+    await smartAccount.accounts.ProgramConfig.fromAccountAddress(
       connection,
-      multisig.getProgramConfigPda({ programId })[0]
+      smartAccount.getProgramConfigPda({ programId })[0]
     );
   const programTreasury = programConfig.treasury;
 
-  const signature = await multisig.rpc.createSmartAccount({
+  const signature = await smartAccount.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
@@ -395,7 +396,7 @@ export type MultisigWithRentReclamationAndVariousBatches = {
    * The proposal is stale.
    */
   staleApprovedBatchIndex: bigint;
-  /** Index of a config transaction that is executed, rendering the batches created before it stale. */
+  /** Index of a settings transaction that is executed, rendering the batches created before it stale. */
   executedConfigTransactionIndex: bigint;
   /**
    * Index of a batch with a proposal in the Executed state.
@@ -438,29 +439,29 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   programId: PublicKey;
 }): Promise<MultisigWithRentReclamationAndVariousBatches> {
   const programConfig =
-    await multisig.accounts.ProgramConfig.fromAccountAddress(
+    await smartAccount.accounts.ProgramConfig.fromAccountAddress(
       connection,
-      multisig.getProgramConfigPda({ programId })[0]
+      smartAccount.getProgramConfigPda({ programId })[0]
     );
   const programTreasury = programConfig.treasury;
-  const accountIndex = BigInt(programConfig.smartAccountIndex.toString())
-  const nextAccountIndex = accountIndex + 1n
+  const accountIndex = BigInt(programConfig.smartAccountIndex.toString());
+  const nextAccountIndex = accountIndex + 1n;
 
   const creator = getTestAccountCreationAuthority();
   await fundKeypair(connection, creator);
 
-  const [settingsPda, settingsBump] = multisig.getSettingsPda({
+  const [settingsPda, settingsBump] = smartAccount.getSettingsPda({
     accountIndex: nextAccountIndex,
     programId,
   });
-  const [vaultPda] = multisig.getSmartAccountPda({
+  const [vaultPda] = smartAccount.getSmartAccountPda({
     settingsPda,
     accountIndex: 0,
     programId,
   });
 
-  //region Create a multisig
-  let signature = await multisig.rpc.createSmartAccount({
+  //region Create a smart account
+  let signature = await smartAccount.rpc.createSmartAccount({
     connection,
     treasury: programTreasury,
     creator,
@@ -517,7 +518,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region Stale batch with proposal in Draft state
   // Create a batch (Stale and Non-Approved).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -529,7 +530,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Stale and Non-Approved).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -541,7 +542,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Stale and Non-Approved).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -554,12 +555,12 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
     programId,
   });
   await connection.confirmTransaction(signature);
-  // This batch will become stale when the config transaction is executed.
+  // This batch will become stale when the settings transaction is executed.
   //endregion
 
   //region Stale batch with No Proposal
   // Create a batch (Stale and Non-Approved).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -572,12 +573,12 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   // No Proposal for this batch.
 
-  // This batch will become stale when the config transaction is executed.
+  // This batch will become stale when the settings transaction is executed.
   //endregion
 
   //region Stale batch with Approved proposal
   // Create a batch (Stale and Approved).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -589,7 +590,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Stale and Approved).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -601,7 +602,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Stale and Approved).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -616,7 +617,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Stale and Approved).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -631,7 +632,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Stale and Approved).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -642,7 +643,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Stale and Approved).
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -651,7 +652,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
     programId,
   });
   await connection.confirmTransaction(signature);
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.almighty,
     settingsPda,
@@ -662,7 +663,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Execute the first batch transaction proposal (Stale and Approved).
-  signature = await multisig.rpc.executeBatchTransaction({
+  signature = await smartAccount.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
     settingsPda,
@@ -672,12 +673,12 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
     programId,
   });
   await connection.confirmTransaction(signature);
-  // This proposal will become stale when the config transaction is executed.
+  // This proposal will become stale when the settings transaction is executed.
   //endregion
 
   //region Executed Config Transaction
-  // Create a vault transaction (Executed).
-  signature = await multisig.rpc.createSettingsTransaction({
+  // Create a transaction (Executed).
+  signature = await smartAccount.rpc.createSettingsTransaction({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -689,7 +690,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a proposal for the transaction (Executed).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -700,7 +701,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal by the first member.
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -711,7 +712,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal by the second member.
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.almighty,
     settingsPda,
@@ -722,7 +723,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Execute the transaction.
-  signature = await multisig.rpc.executeSettingsTransaction({
+  signature = await smartAccount.rpc.executeSettingsTransaction({
     connection,
     feePayer: members.almighty,
     settingsPda,
@@ -736,7 +737,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Executed proposal (all batch tx are executed)
   // Create a batch (Executed).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -748,7 +749,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Executed).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -760,7 +761,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Executed).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -775,7 +776,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Executed).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -790,7 +791,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Executed).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -801,7 +802,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Executed).
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -812,7 +813,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Execute the first batch transaction proposal (Executed).
-  signature = await multisig.rpc.executeBatchTransaction({
+  signature = await smartAccount.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
     settingsPda,
@@ -824,7 +825,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Execute the second batch transaction proposal (Executed).
-  signature = await multisig.rpc.executeBatchTransaction({
+  signature = await smartAccount.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
     settingsPda,
@@ -838,18 +839,20 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   // Make sure the proposal is executed.
   let proposalAccount = await Proposal.fromAccountAddress(
     connection,
-    multisig.getProposalPda({
+    smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: executedBatchIndex,
       programId,
     })[0]
   );
-  assert.ok(multisig.types.isProposalStatusExecuted(proposalAccount.status));
+  assert.ok(
+    smartAccount.types.isProposalStatusExecuted(proposalAccount.status)
+  );
   //endregion
 
   //region batch with Active proposal
   // Create a batch (Active).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -861,7 +864,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Active).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -873,7 +876,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Active).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -888,7 +891,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Active).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -901,18 +904,18 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   // Make sure the proposal is Active.
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
-    multisig.getProposalPda({
+    smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: activeBatchIndex,
       programId,
     })[0]
   );
-  assert.ok(multisig.types.isProposalStatusActive(proposalAccount.status));
+  assert.ok(smartAccount.types.isProposalStatusActive(proposalAccount.status));
   //endregion
 
   //region batch with Approved proposal
   // Create a batch (Approved).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -924,7 +927,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Approved).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -936,7 +939,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add first transaction to the batch (Approved).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -951,7 +954,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add second transaction to the batch (Approved).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -966,7 +969,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Approved).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -977,7 +980,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Approved).
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -990,16 +993,18 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   // Make sure the proposal is Approved.
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
-    multisig.getProposalPda({
+    smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: approvedBatchIndex,
       programId,
     })[0]
   );
-  assert.ok(multisig.types.isProposalStatusApproved(proposalAccount.status));
+  assert.ok(
+    smartAccount.types.isProposalStatusApproved(proposalAccount.status)
+  );
 
   // Execute first batch transaction (Approved).
-  signature = await multisig.rpc.executeBatchTransaction({
+  signature = await smartAccount.rpc.executeBatchTransaction({
     connection,
     feePayer: members.executor,
     settingsPda,
@@ -1013,7 +1018,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
 
   //region batch with Rejected proposal
   // Create a batch (Rejected).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1025,7 +1030,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Rejected).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1037,7 +1042,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Rejected).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1052,7 +1057,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Rejected).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1063,7 +1068,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Reject the proposal (Rejected).
-  signature = await multisig.rpc.rejectProposal({
+  signature = await smartAccount.rpc.rejectProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -1072,7 +1077,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
     programId,
   });
   await connection.confirmTransaction(signature);
-  signature = await multisig.rpc.rejectProposal({
+  signature = await smartAccount.rpc.rejectProposal({
     connection,
     feePayer: members.almighty,
     settingsPda,
@@ -1085,18 +1090,20 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   // Make sure the proposal is Rejected.
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
-    multisig.getProposalPda({
+    smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: rejectedBatchIndex,
       programId,
     })[0]
   );
-  assert.ok(multisig.types.isProposalStatusRejected(proposalAccount.status));
+  assert.ok(
+    smartAccount.types.isProposalStatusRejected(proposalAccount.status)
+  );
   //endregion
 
   //region batch with Cancelled proposal
   // Create a batch (Cancelled).
-  signature = await multisig.rpc.createBatch({
+  signature = await smartAccount.rpc.createBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1108,7 +1115,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Create a draft proposal for the batch (Cancelled).
-  signature = await multisig.rpc.createProposal({
+  signature = await smartAccount.rpc.createProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1120,7 +1127,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Add a transaction to the batch (Cancelled).
-  signature = await multisig.rpc.addTransactionToBatch({
+  signature = await smartAccount.rpc.addTransactionToBatch({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1135,7 +1142,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Activate the proposal (Cancelled).
-  signature = await multisig.rpc.activateProposal({
+  signature = await smartAccount.rpc.activateProposal({
     connection,
     feePayer: members.proposer,
     settingsPda,
@@ -1146,7 +1153,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Approve the proposal (Cancelled).
-  signature = await multisig.rpc.approveProposal({
+  signature = await smartAccount.rpc.approveProposal({
     connection,
     feePayer: members.voter,
     settingsPda,
@@ -1157,7 +1164,7 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   await connection.confirmTransaction(signature);
 
   // Cancel the proposal (Cancelled).
-  signature = await multisig.rpc.cancelProposal({
+  signature = await smartAccount.rpc.cancelProposal({
     connection,
     feePayer: members.almighty,
     settingsPda,
@@ -1170,13 +1177,15 @@ export async function createAutonomousMultisigWithRentReclamationAndVariousBatch
   // Make sure the proposal is Cancelled.
   proposalAccount = await Proposal.fromAccountAddress(
     connection,
-    multisig.getProposalPda({
+    smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: cancelledBatchIndex,
       programId,
     })[0]
   );
-  assert.ok(multisig.types.isProposalStatusCancelled(proposalAccount.status));
+  assert.ok(
+    smartAccount.types.isProposalStatusCancelled(proposalAccount.status)
+  );
   //endregion
 
   return {
@@ -1244,7 +1253,7 @@ export async function processBufferInChunks(
 
     const chunk = buffer.slice(startIndex, startIndex + chunkSize);
 
-    const ix = multisig.generated.createExtendTransactionBufferInstruction(
+    const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
         settings: settingsPda,
         transactionBuffer: bufferAccount,
@@ -1281,10 +1290,18 @@ export async function processBufferInChunks(
   await processChunk(startIndex);
 }
 
-export async function getNextAccountIndex(connection: Connection, programId: PublicKey): Promise<bigint> {
-  const [programConfigPda] = multisig.getProgramConfigPda({ programId });
-  const programConfig = await multisig.accounts.ProgramConfig.fromAccountAddress(connection, programConfigPda, "processed");
-  const accountIndex = BigInt(programConfig.smartAccountIndex.toString())
-  const nextAccountIndex = accountIndex + 1n
-  return nextAccountIndex
+export async function getNextAccountIndex(
+  connection: Connection,
+  programId: PublicKey
+): Promise<bigint> {
+  const [programConfigPda] = smartAccount.getProgramConfigPda({ programId });
+  const programConfig =
+    await smartAccount.accounts.ProgramConfig.fromAccountAddress(
+      connection,
+      programConfigPda,
+      "processed"
+    );
+  const accountIndex = BigInt(programConfig.smartAccountIndex.toString());
+  const nextAccountIndex = accountIndex + 1n;
+  return nextAccountIndex;
 }

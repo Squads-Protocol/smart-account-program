@@ -11,27 +11,6 @@ use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
-/// These are only used to prevent the DOS vector of front running txns that
-/// incrememnt the smart account index.
-/// They will be removed once compression/archival is implemented.
-#[cfg(feature = "testing")]
-const ACCOUNT_CREATION_AUTHORITIES: &[Pubkey] = &[Pubkey::new_from_array([
-    152, 165, 37, 245, 229, 240, 130, 196, 233, 36, 234, 92, 142, 236, 214, 104, 221, 210, 13, 223,
-    131, 100, 240, 8, 247, 125, 70, 118, 31, 150, 70, 126
-])];
-
-#[cfg(not(feature = "testing"))]
-const ACCOUNT_CREATION_AUTHORITIES: &[Pubkey] = &[
-    Pubkey::new_from_array([
-        92, 31, 87, 5, 157, 232, 219, 156, 230, 146, 81, 200, 219, 20, 50, 127, 26, 18, 84, 147,
-        206, 244, 197, 115, 68, 27, 220, 156, 253, 92, 79, 64,
-    ]),
-    Pubkey::new_from_array([
-        100, 57, 230, 72, 209, 123, 213, 241, 160, 182, 243, 48, 11, 19, 49, 251, 99, 157, 157,
-        132, 209, 192, 68, 196, 238, 180, 9, 139, 224, 143, 220, 14,
-    ]),
-];
-
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSmartAccountArgs {
     /// The authority that can configure the smart account: add/remove signers, change the threshold, etc.
@@ -63,8 +42,7 @@ pub struct CreateSmartAccount<'info> {
     pub treasury: AccountInfo<'info>,
 
     /// The creator of the smart account.
-    #[account(mut,
-    constraint = ACCOUNT_CREATION_AUTHORITIES.contains(&creator.key())  @ SmartAccountError::Unauthorized)]
+    #[account(mut)]
     pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,

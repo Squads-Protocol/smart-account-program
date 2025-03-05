@@ -8,22 +8,22 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import {
   CreateTransactionArgs,
   CreateTransactionBufferArgs,
   CreateTransactionBufferInstructionArgs,
   CreateTransactionFromBufferInstructionArgs,
-} from "@sqds/multisig/lib/generated";
+} from "@sqds/smart-account/lib/generated";
 import assert from "assert";
 import { BN } from "bn.js";
 import * as crypto from "crypto";
 import {
   TestMembers,
-  createAutonomousMultisigV2,
+  createAutonomousSmartAccountV2,
   createLocalhostConnection,
   createTestTransferInstruction,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
   getTestProgramId,
   processBufferInChunks,
 } from "../../utils";
@@ -36,25 +36,16 @@ describe("Examples / Custom Heap Usage", () => {
 
   const createKey = Keypair.generate();
 
-  let settingsPda = multisig.getSettingsPda({
-    createKey: createKey.publicKey,
-    programId,
-  })[0];
+  let settingsPda: PublicKey;
+  let vaultPda: PublicKey;
 
-  const [vaultPda] = multisig.getSmartAccountPda({
-    settingsPda,
-    accountIndex: 0,
-    programId,
-  });
-
-  // Set up a multisig with some transactions.
+  // Set up a smart account with some transactions.
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
 
-    // Create new autonomous multisig with rentCollector set to its default vault.
-    await createAutonomousMultisigV2({
+    // Create new autonomous smart account with rentCollector set to its default vault.
+    await createAutonomousSmartAccountV2({
       connection,
-      createKey,
       members,
       threshold: 1,
       timeLock: 0,
@@ -71,7 +62,7 @@ describe("Examples / Custom Heap Usage", () => {
   });
 
   // We expect this to succeed when requesting extra heap.
-  it("execute large vault transaction (custom heap)", async () => {
+  it("execute large transaction (custom heap)", async () => {
     const transactionIndex = 1n;
 
     const testIx = await createTestTransferInstruction(vaultPda, vaultPda, 1);
@@ -92,7 +83,7 @@ describe("Examples / Custom Heap Usage", () => {
     //region Create & Upload Buffer
     // Serialize the message. Must be done with this util function
     const messageBuffer =
-      multisig.utils.transactionMessageToMultisigTransactionMessageBytes({
+      smartAccount.utils.transactionMessageToMultisigTransactionMessageBytes({
         message: testTransferMessage,
         addressLookupTableAccounts: [],
         smartAccountPda: vaultPda,
@@ -117,7 +108,7 @@ describe("Examples / Custom Heap Usage", () => {
     const firstSlice = messageBuffer.slice(0, 700);
     const bufferLength = messageBuffer.length;
 
-    const ix = multisig.generated.createCreateTransactionBufferInstruction(
+    const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
         settings: settingsPda,
         transactionBuffer,
@@ -157,7 +148,7 @@ describe("Examples / Custom Heap Usage", () => {
     );
 
     const [txBufferDeser1] =
-      multisig.generated.TransactionBuffer.fromAccountInfo(
+      smartAccount.generated.TransactionBuffer.fromAccountInfo(
         transactionBufferAccount!
       );
 
@@ -185,15 +176,15 @@ describe("Examples / Custom Heap Usage", () => {
       transactionBuffer
     );
     const [txBufferDeser2] =
-      multisig.generated.TransactionBuffer.fromAccountInfo(
+      smartAccount.generated.TransactionBuffer.fromAccountInfo(
         transactionBufferInfo2!
       );
 
     // Final chunk uploaded. Check that length is as expected.
     assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
 
-    // Derive vault transaction PDA.
-    const [transactionPda] = multisig.getTransactionPda({
+    // Derive transaction PDA.
+    const [transactionPda] = smartAccount.getTransactionPda({
       settingsPda,
       transactionIndex: transactionIndex,
       programId,
@@ -203,7 +194,7 @@ describe("Examples / Custom Heap Usage", () => {
     //region Create Transaction From Buffer
     // Create final instruction.
     const thirdIx =
-      multisig.generated.createCreateTransactionFromBufferInstruction(
+      smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
           transactionCreateItemSettings: settingsPda,
           transactionCreateItemTransaction: transactionPda,
@@ -251,18 +242,18 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature3);
 
     const transactionInfo =
-      await multisig.accounts.Transaction.fromAccountAddress(
+      await smartAccount.accounts.Transaction.fromAccountAddress(
         connection,
         transactionPda
       );
 
-    // Ensure final vault transaction has 60 instructions
+    // Ensure final transaction has 60 instructions
     assert.equal(transactionInfo.message.instructions.length, 60);
     //endregion
 
     //region Create, Vote, and Execute
     // Create a proposal for the newly uploaded transaction.
-    const signature4 = await multisig.rpc.createProposal({
+    const signature4 = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -274,7 +265,7 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature4);
 
     // Approve the proposal.
-    const signature5 = await multisig.rpc.approveProposal({
+    const signature5 = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -285,7 +276,7 @@ describe("Examples / Custom Heap Usage", () => {
     await connection.confirmTransaction(signature5);
 
     // Execute the transaction.
-    const executeIx = await multisig.instructions.executeTransaction({
+    const executeIx = await smartAccount.instructions.executeTransaction({
       connection,
       settingsPda,
       transactionIndex: 1n,
@@ -315,16 +306,17 @@ describe("Examples / Custom Heap Usage", () => {
 
     await connection.confirmTransaction(signature6);
 
-    const proposal = await multisig.getProposalPda({
+    const proposal = await smartAccount.getProposalPda({
       settingsPda,
       transactionIndex: 1n,
       programId,
     })[0];
 
-    const proposalInfo = await multisig.accounts.Proposal.fromAccountAddress(
-      connection,
-      proposal
-    );
+    const proposalInfo =
+      await smartAccount.accounts.Proposal.fromAccountAddress(
+        connection,
+        proposal
+      );
 
     assert.equal(proposalInfo.status.__kind, "Executed");
     //endregion
