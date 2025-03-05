@@ -28,10 +28,10 @@ security_txt! {
     name: "Squads Smart Account Program",
     project_url: "https://squads.so",
     contacts: "email:security@sqds.io,email:contact@osec.io",
-    policy: "https://github.com/Squads-Protocol/v4/blob/main/SECURITY.md",
+    policy: "https://github.com/Squads-Protocol/smart-account-program/blob/main/SECURITY.md",
     preferred_languages: "en",
-    source_code: "https://github.com/squads-protocol/v4",
-    auditors: "OtterSec, Neodyme"
+    source_code: "https://github.com/squads-protocol/smart-account-program",
+    auditors: "OtterSec, Certora"
 }
 
 #[cfg(not(feature = "testing"))]
