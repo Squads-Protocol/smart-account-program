@@ -5,16 +5,16 @@ use crate::state::*;
 use crate::utils::*;
 
 #[derive(Accounts)]
-pub struct BatchExecuteTransaction<'info> {
-    /// Multisig account this batch belongs to.
+pub struct ExecuteBatchTransaction<'info> {
+    /// Settings account this batch belongs to.
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
-    /// Member of the multisig.
-    pub member: Signer<'info>,
+    /// Signer of the settings.
+    pub signer: Signer<'info>,
 
     /// The proposal account associated with the batch.
     /// If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`.
@@ -22,7 +22,7 @@ pub struct BatchExecuteTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -35,7 +35,7 @@ pub struct BatchExecuteTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
         ],
@@ -47,7 +47,7 @@ pub struct BatchExecuteTransaction<'info> {
     #[account(
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_BATCH_TRANSACTION,
@@ -55,7 +55,7 @@ pub struct BatchExecuteTransaction<'info> {
         ],
         bump = transaction.bump,
     )]
-    pub transaction: Account<'info, VaultBatchTransaction>,
+    pub transaction: Account<'info, BatchTransaction>,
     //
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. AddressLookupTable accounts in the order they appear in `message.address_table_lookups`.
@@ -63,34 +63,34 @@ pub struct BatchExecuteTransaction<'info> {
     // 3. Accounts in the order they appear in `message.address_table_lookups`.
 }
 
-impl BatchExecuteTransaction<'_> {
+impl ExecuteBatchTransaction<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            multisig,
-            member,
+            settings,
+            signer,
             proposal,
             ..
         } = self;
 
-        // `member`
+        // `signer`
         require!(
-            multisig.is_member(member.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(signer.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
-            multisig.member_has_permission(member.key(), Permission::Execute),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(signer.key(), Permission::Execute),
+            SmartAccountError::Unauthorized
         );
 
         // `proposal`
         match proposal.status {
             ProposalStatus::Approved { timestamp } => {
                 require!(
-                    Clock::get()?.unix_timestamp - timestamp >= i64::from(multisig.time_lock),
-                    MultisigError::TimeLockNotReleased
+                    Clock::get()?.unix_timestamp - timestamp >= i64::from(settings.time_lock),
+                    SmartAccountError::TimeLockNotReleased
                 );
             }
-            _ => return err!(MultisigError::InvalidProposalStatus),
+            _ => return err!(SmartAccountError::InvalidProposalStatus),
         };
         // Stale batch transaction proposals CAN be executed if they were approved
         // before becoming stale, hence no check for staleness here.
@@ -104,26 +104,26 @@ impl BatchExecuteTransaction<'_> {
 
     /// Execute a transaction from the batch.
     #[access_control(ctx.accounts.validate())]
-    pub fn batch_execute_transaction(ctx: Context<Self>) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
         let batch = &mut ctx.accounts.batch;
 
-        // NOTE: After `take()` is called, the VaultTransaction is reduced to
+        // NOTE: After `take()` is called, the BatchTransaction is reduced to
         // its default empty value, which means it should no longer be referenced or
         // used after this point to avoid faulty behavior.
         // Instead only make use of the returned `transaction` value.
         let transaction = ctx.accounts.transaction.take();
 
-        let multisig_key = multisig.key();
+        let settings_key = settings.key();
         let batch_key = batch.key();
 
-        let vault_seeds = &[
+        let smart_account_seeds = &[
             SEED_PREFIX,
-            multisig_key.as_ref(),
-            SEED_VAULT,
-            &batch.vault_index.to_le_bytes(),
-            &[batch.vault_bump],
+            settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
+            &batch.account_index.to_le_bytes(),
+            &[batch.account_bump],
         ];
 
         let transaction_message = transaction.message;
@@ -132,13 +132,13 @@ impl BatchExecuteTransaction<'_> {
         let message_account_infos = ctx
             .remaining_accounts
             .get(num_lookups..)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
         let address_lookup_table_account_infos = ctx
             .remaining_accounts
             .get(..num_lookups)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        let vault_pubkey = Pubkey::create_program_address(vault_seeds, ctx.program_id).unwrap();
+        let smart_account_pubkey = Pubkey::create_program_address(smart_account_seeds, ctx.program_id).unwrap();
 
         let (ephemeral_signer_keys, ephemeral_signer_seeds) =
             derive_ephemeral_signers(batch_key, &transaction.ephemeral_signer_bumps);
@@ -147,7 +147,7 @@ impl BatchExecuteTransaction<'_> {
             transaction_message,
             message_account_infos,
             address_lookup_table_account_infos,
-            &vault_pubkey,
+            &smart_account_pubkey,
             &ephemeral_signer_keys,
         )?;
 
@@ -160,7 +160,7 @@ impl BatchExecuteTransaction<'_> {
         // references or usages of `self.message` should be made to avoid
         // faulty behavior.
         executable_message.execute_message(
-            vault_seeds,
+            smart_account_seeds,
             &ephemeral_signer_seeds,
             protected_accounts,
         )?;

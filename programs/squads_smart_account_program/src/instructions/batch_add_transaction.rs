@@ -5,27 +5,27 @@ use crate::state::*;
 use crate::TransactionMessage;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct BatchAddTransactionArgs {
+pub struct AddTransactionToBatchArgs {
     /// Number of ephemeral signing PDAs required by the transaction.
     pub ephemeral_signers: u8,
     pub transaction_message: Vec<u8>,
 }
 
 #[derive(Accounts)]
-#[instruction(args: BatchAddTransactionArgs)]
-pub struct BatchAddTransaction<'info> {
-    /// Multisig account this batch belongs to.
+#[instruction(args: AddTransactionToBatchArgs)]
+pub struct AddTransactionToBatch<'info> {
+    /// Settings account this batch belongs to.
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     /// The proposal account associated with the batch.
     #[account(
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -38,7 +38,7 @@ pub struct BatchAddTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
         ],
@@ -46,14 +46,14 @@ pub struct BatchAddTransaction<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// `VaultBatchTransaction` account to initialize and add to the `batch`.
+    /// `BatchTransaction` account to initialize and add to the `batch`.
     #[account(
         init,
         payer = rent_payer,
-        space = VaultBatchTransaction::size(args.ephemeral_signers, &args.transaction_message)?,
+        space = BatchTransaction::size(args.ephemeral_signers, &args.transaction_message)?,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_BATCH_TRANSACTION,
@@ -61,10 +61,10 @@ pub struct BatchAddTransaction<'info> {
         ],
         bump
     )]
-    pub transaction: Account<'info, VaultBatchTransaction>,
+    pub transaction: Account<'info, BatchTransaction>,
 
-    /// Member of the multisig.
-    pub member: Signer<'info>,
+    /// Signer of the smart account.
+    pub signer: Signer<'info>,
 
     /// The payer for the batch transaction account rent.
     #[account(mut)]
@@ -73,32 +73,35 @@ pub struct BatchAddTransaction<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl BatchAddTransaction<'_> {
+impl AddTransactionToBatch<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            multisig,
-            member,
+            settings,
+            signer,
             proposal,
             batch,
             ..
         } = self;
 
-        // `member`
+        // `signer`
         require!(
-            multisig.is_member(member.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(signer.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
-            multisig.member_has_permission(member.key(), Permission::Initiate),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(signer.key(), Permission::Initiate),
+            SmartAccountError::Unauthorized
         );
         // Only batch creator can add transactions to it.
-        require!(member.key() == batch.creator, MultisigError::Unauthorized);
+        require!(
+            signer.key() == batch.creator,
+            SmartAccountError::Unauthorized
+        );
 
         // `proposal`
         require!(
             matches!(proposal.status, ProposalStatus::Draft { .. }),
-            MultisigError::InvalidProposalStatus
+            SmartAccountError::InvalidProposalStatus
         );
 
         // `batch` is validated by its seeds.
@@ -108,10 +111,10 @@ impl BatchAddTransaction<'_> {
 
     /// Add a transaction to the batch.
     #[access_control(ctx.accounts.validate())]
-    pub fn batch_add_transaction(ctx: Context<Self>, args: BatchAddTransactionArgs) -> Result<()> {
+    pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
         let transaction = &mut ctx.accounts.transaction;
-
+        let rent_payer = &mut ctx.accounts.rent_payer;
         let batch_key = batch.key();
 
         let transaction_message =
@@ -134,6 +137,7 @@ impl BatchAddTransaction<'_> {
             .collect();
 
         transaction.bump = ctx.bumps.transaction;
+        transaction.rent_collector = rent_payer.key();
         transaction.ephemeral_signer_bumps = ephemeral_signer_bumps;
         transaction.message = transaction_message.try_into()?;
 

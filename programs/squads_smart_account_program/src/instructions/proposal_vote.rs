@@ -4,26 +4,26 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ProposalVoteArgs {
+pub struct VoteOnProposalArgs {
     pub memo: Option<String>,
 }
 
 #[derive(Accounts)]
-pub struct ProposalVote<'info> {
+pub struct VoteOnProposal<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(mut)]
-    pub member: Signer<'info>,
+    pub signer: Signer<'info>,
 
     #[account(
         mut,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &proposal.transaction_index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -31,33 +31,28 @@ pub struct ProposalVote<'info> {
         bump = proposal.bump,
     )]
     pub proposal: Account<'info, Proposal>,
+
+    // Only required for cancelling a proposal.
+    pub system_program: Option<Program<'info, System>>,
 }
 
-#[derive(Accounts)]
-pub struct ProposalCancelV2<'info> {
-    // The context needed for the ProposalVote instruction
-    pub proposal_vote: ProposalVote<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-impl ProposalVote<'_> {
+impl VoteOnProposal<'_> {
     fn validate(&self, vote: Vote) -> Result<()> {
         let Self {
-            multisig,
+            settings,
             proposal,
-            member,
+            signer,
             ..
         } = self;
 
-        // member
+        // signer
         require!(
-            multisig.is_member(member.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(signer.key()).is_some(),
+            SmartAccountError::NotASigner
         );
         require!(
-            multisig.member_has_permission(member.key(), Permission::Vote),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(signer.key(), Permission::Vote),
+            SmartAccountError::Unauthorized
         );
 
         // proposal
@@ -65,18 +60,18 @@ impl ProposalVote<'_> {
             Vote::Approve | Vote::Reject => {
                 require!(
                     matches!(proposal.status, ProposalStatus::Active { .. }),
-                    MultisigError::InvalidProposalStatus
+                    SmartAccountError::InvalidProposalStatus
                 );
                 // CANNOT approve or reject a stale proposal
                 require!(
-                    proposal.transaction_index > multisig.stale_transaction_index,
-                    MultisigError::StaleProposal
+                    proposal.transaction_index > settings.stale_transaction_index,
+                    SmartAccountError::StaleProposal
                 );
             }
             Vote::Cancel => {
                 require!(
                     matches!(proposal.status, ProposalStatus::Approved { .. }),
-                    MultisigError::InvalidProposalStatus
+                    SmartAccountError::InvalidProposalStatus
                 );
                 // CAN cancel a stale proposal.
             }
@@ -85,78 +80,60 @@ impl ProposalVote<'_> {
         Ok(())
     }
 
-    /// Approve a multisig proposal on behalf of the `member`.
+    /// Approve a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(Vote::Approve))]
-    pub fn proposal_approve(ctx: Context<Self>, _args: ProposalVoteArgs) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn approve_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
-        let member = &mut ctx.accounts.member;
+        let signer = &mut ctx.accounts.signer;
 
-        proposal.approve(member.key(), usize::from(multisig.threshold))?;
+        proposal.approve(signer.key(), usize::from(settings.threshold))?;
 
         Ok(())
     }
 
-    /// Reject a multisig proposal on behalf of the `member`.
+    /// Reject a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(Vote::Reject))]
-    pub fn proposal_reject(ctx: Context<Self>, _args: ProposalVoteArgs) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn reject_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
-        let member = &mut ctx.accounts.member;
+        let signer = &mut ctx.accounts.signer;
 
-        let cutoff = Multisig::cutoff(multisig);
+        let cutoff = Settings::cutoff(&settings);
 
-        proposal.reject(member.key(), cutoff)?;
+        proposal.reject(signer.key(), cutoff)?;
 
         Ok(())
     }
 
-    /// Cancel a multisig proposal on behalf of the `member`.
+    /// Cancel a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Approved`.
     #[access_control(ctx.accounts.validate(Vote::Cancel))]
-    pub fn proposal_cancel(ctx: Context<Self>, _args: ProposalVoteArgs) -> Result<()> {
-        let multisig = &mut ctx.accounts.multisig;
+    pub fn cancel_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
-        let member = &mut ctx.accounts.member;
+        let signer = &mut ctx.accounts.signer;
+        let system_program = &ctx
+            .accounts
+            .system_program
+            .as_ref()
+            .ok_or(SmartAccountError::MissingAccount)?;
 
         proposal
             .cancelled
-            .retain(|k| multisig.is_member(*k).is_some());
+            .retain(|k| settings.is_signer(*k).is_some());
 
-        proposal.cancel(member.key(), usize::from(multisig.threshold))?;
+        proposal.cancel(signer.key(), usize::from(settings.threshold))?;
 
-        Ok(())
-    }
-}
-
-impl<'info> ProposalCancelV2<'info> {
-
-    /// Cancel a multisig proposal on behalf of the `member`.
-    /// The proposal must be `Approved`.
-    pub fn proposal_cancel_v2(ctx: Context<'_, '_, 'info, 'info, Self>, _args: ProposalVoteArgs) -> Result<()> {
-        // Readonly accounts
-        let multisig = &ctx.accounts.proposal_vote.multisig.clone();
-
-        // Account infos necessary for reallocation
-        let proposal_account_info = &ctx.accounts.proposal_vote.proposal.to_account_info();
-        let member_account_info = &ctx.accounts.proposal_vote.member.to_account_info();
-        let system_program_account_info = &ctx.accounts.system_program.to_account_info();
-
-        // Create context for cancel instruction
-        let cancel_context = Context::new(ctx.program_id, &mut ctx.accounts.proposal_vote, ctx.remaining_accounts, ctx.bumps.proposal_vote);
-
-        // Call cancel instruction
-        ProposalVote::proposal_cancel(cancel_context, _args)?;
-
-        // Reallocate the proposal size if needed
         Proposal::realloc_if_needed(
-            proposal_account_info.clone(),
-            multisig.members.len(),
-            Some(member_account_info.clone()),
-            Some(system_program_account_info.clone()),
+            proposal.to_account_info().clone(),
+            settings.signers.len(),
+            Some(signer.to_account_info().clone()),
+            Some(system_program.to_account_info().clone()),
         )?;
+
         Ok(())
     }
 }

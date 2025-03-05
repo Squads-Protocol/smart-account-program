@@ -6,17 +6,18 @@ import {
   TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
 import { SystemProgram, TransactionMessage } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Multisig } = multisig.accounts;
+const { Settings } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
@@ -25,36 +26,38 @@ describe("Examples / Create Mint", () => {
 
   let members: TestMembers;
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
   it("should create a mint", async () => {
-    const [multisigPda] = await createAutonomousMultisig({
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 2,
       timeLock: 0,
       programId,
+      accountIndex,
     });
 
-    let multisigAccount = await Multisig.fromAccountAddress(
+    let multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
 
     const transactionIndex =
-      multisig.utils.toBigInt(multisigAccount.transactionIndex) + 1n;
+      smartAccount.utils.toBigInt(multisigAccount.transactionIndex) + 1n;
 
-    const [transactionPda] = multisig.getTransactionPda({
-      multisigPda,
-      index: transactionIndex,
+    const [transactionPda] = smartAccount.getTransactionPda({
+      settingsPda,
+      transactionIndex: transactionIndex,
       programId,
     });
 
     // Default vault, index 0.
-    const [vaultPda] = multisig.getVaultPda({
-      multisigPda,
-      index: 0,
+    const [vaultPda] = smartAccount.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
       programId,
     });
 
@@ -71,7 +74,7 @@ describe("Examples / Create Mint", () => {
 
     // Mint account is a signer in the SystemProgram.createAccount ix,
     // so we use an Ephemeral Signer provided by the Multisig program as the Mint account.
-    const [mintPda, mintBump] = multisig.getEphemeralSignerPda({
+    const [mintPda, mintBump] = smartAccount.getEphemeralSignerPda({
       transactionPda,
       ephemeralSignerIndex: 0,
       programId,
@@ -99,13 +102,13 @@ describe("Examples / Create Mint", () => {
     });
 
     // Create VaultTransaction account.
-    let signature = await multisig.rpc.vaultTransactionCreate({
+    let signature = await smartAccount.rpc.createTransaction({
       connection,
       feePayer: members.proposer,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.proposer.publicKey,
-      vaultIndex: 0,
+      accountIndex: 0,
       ephemeralSigners: 1,
       transactionMessage: testTransactionMessage,
       memo: "Create new mint",
@@ -114,10 +117,10 @@ describe("Examples / Create Mint", () => {
     await connection.confirmTransaction(signature);
 
     // Create Proposal account.
-    signature = await multisig.rpc.proposalCreate({
+    signature = await smartAccount.rpc.createProposal({
       connection,
       feePayer: members.voter,
-      multisigPda,
+      settingsPda,
       transactionIndex,
       creator: members.voter,
       programId,
@@ -125,36 +128,36 @@ describe("Examples / Create Mint", () => {
     await connection.confirmTransaction(signature);
 
     // Approve 1.
-    signature = await multisig.rpc.proposalApprove({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.voter,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.voter,
+      signer: members.voter,
       memo: "LGTM",
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Approve 2.
-    signature = await multisig.rpc.proposalApprove({
+    signature = await smartAccount.rpc.approveProposal({
       connection,
       feePayer: members.almighty,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.almighty,
+      signer: members.almighty,
       memo: "LGTM too",
       programId,
     });
     await connection.confirmTransaction(signature);
 
     // Execute.
-    signature = await multisig.rpc.vaultTransactionExecute({
+    signature = await smartAccount.rpc.executeTransaction({
       connection,
       feePayer: members.executor,
-      multisigPda,
+      settingsPda,
       transactionIndex,
-      member: members.executor.publicKey,
+      signer: members.executor.publicKey,
       signers: [members.executor],
       sendOptions: { skipPreflight: true },
       programId,

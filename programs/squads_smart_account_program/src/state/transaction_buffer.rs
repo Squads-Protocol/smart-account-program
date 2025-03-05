@@ -1,21 +1,21 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
-use crate::errors::MultisigError;
+use crate::errors::SmartAccountError;
 
 pub const MAX_BUFFER_SIZE: usize = 4000;
 
 #[account]
 #[derive(Default, Debug)]
 pub struct TransactionBuffer {
-    /// The multisig this belongs to.
-    pub multisig: Pubkey,
-    /// Member of the Multisig who created the TransactionBuffer.
+    /// The settings this belongs to.
+    pub settings: Pubkey,
+    /// Signer of the smart account who created the TransactionBuffer.
     pub creator: Pubkey,
     /// Index to seed address derivation
     pub buffer_index: u8,
-    /// Vault index of the transaction this buffer belongs to.
-    pub vault_index: u8,
+    /// Smart account index of the transaction this buffer belongs to.
+    pub account_index: u8,
     /// Hash of the final assembled transaction message.
     pub final_buffer_hash: [u8; 32],
     /// The size of the final assembled transaction message.
@@ -28,7 +28,7 @@ impl TransactionBuffer {
     pub fn size(final_message_buffer_size: u16) -> Result<usize> {
         // Make sure final size is not greater than MAX_BUFFER_SIZE bytes.
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
-            return err!(MultisigError::FinalBufferSizeExceeded);
+            return err!(SmartAccountError::FinalBufferSizeExceeded);
         }
         Ok(
             8 +   // anchor account discriminator
@@ -47,7 +47,7 @@ impl TransactionBuffer {
         let message_buffer_hash = hash(&self.buffer);
         require!(
             message_buffer_hash.to_bytes() == self.final_buffer_hash,
-            MultisigError::FinalBufferHashMismatch
+            SmartAccountError::FinalBufferHashMismatch
         );
         Ok(())
     }
@@ -55,7 +55,7 @@ impl TransactionBuffer {
         require_eq!(
             self.buffer.len(),
             self.final_buffer_size as usize,
-            MultisigError::FinalBufferSizeMismatch
+            SmartAccountError::FinalBufferSizeMismatch
         );
         Ok(())
     }
@@ -63,15 +63,12 @@ impl TransactionBuffer {
     pub fn invariant(&self) -> Result<()> {
         require!(
             self.final_buffer_size as usize <= MAX_BUFFER_SIZE,
-            MultisigError::FinalBufferSizeExceeded
+            SmartAccountError::FinalBufferSizeExceeded
         );
-        require!(
-            self.buffer.len() <= MAX_BUFFER_SIZE,
-            MultisigError::FinalBufferSizeExceeded
-        );
+       
         require!(
             self.buffer.len() <= self.final_buffer_size as usize,
-            MultisigError::FinalBufferSizeMismatch
+            SmartAccountError::FinalBufferSizeMismatch
         );
 
         Ok(())

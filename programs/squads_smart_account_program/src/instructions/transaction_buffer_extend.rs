@@ -4,27 +4,27 @@ use crate::errors::*;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct TransactionBufferExtendArgs {
+pub struct ExtendTransactionBufferArgs {
     // Buffer to extend the TransactionBuffer with.
     pub buffer: Vec<u8>,
 }
 
 #[derive(Accounts)]
-#[instruction(args: TransactionBufferExtendArgs)]
-pub struct TransactionBufferExtend<'info> {
+#[instruction(args: ExtendTransactionBufferArgs)]
+pub struct ExtendTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_MULTISIG, multisig.create_key.as_ref()],
-        bump = multisig.bump,
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump = settings.bump,
     )]
-    pub multisig: Account<'info, Multisig>,
+    pub settings: Account<'info, Settings>,
 
     #[account(
         mut,
         // Only the creator can extend the buffer
-        constraint = transaction_buffer.creator == creator.key() @ MultisigError::Unauthorized,
+        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
         seeds = [
             SEED_PREFIX,
-            multisig.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()
@@ -33,29 +33,29 @@ pub struct TransactionBufferExtend<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The member of the multisig that created the TransactionBuffer.
+    /// The signer on the smart account that created the TransactionBuffer.
     pub creator: Signer<'info>,
 }
 
-impl TransactionBufferExtend<'_> {
-    fn validate(&self, args: &TransactionBufferExtendArgs) -> Result<()> {
+impl ExtendTransactionBuffer<'_> {
+    fn validate(&self, args: &ExtendTransactionBufferArgs) -> Result<()> {
         let Self {
-            multisig,
+            settings,
             creator,
             transaction_buffer,
             ..
         } = self;
 
-        // creator is still a member in the multisig
+        // creator is still a signer on the smart account
         require!(
-            multisig.is_member(creator.key()).is_some(),
-            MultisigError::NotAMember
+            settings.is_signer(creator.key()).is_some(),
+            SmartAccountError::NotASigner
         );
 
         // creator still has initiate permissions
         require!(
-            multisig.member_has_permission(creator.key(), Permission::Initiate),
-            MultisigError::Unauthorized
+            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            SmartAccountError::Unauthorized
         );
 
         // Extended Buffer size must not exceed final buffer size
@@ -70,17 +70,17 @@ impl TransactionBufferExtend<'_> {
         let new_data_size = args.buffer.len() as u16;
         require!(
             new_data_size <= remaining_space,
-            MultisigError::FinalBufferSizeExceeded
+            SmartAccountError::FinalBufferSizeExceeded
         );
 
         Ok(())
     }
 
-    /// Create a new vault transaction.
+    /// Extend the transaction buffer with the provided buffer.
     #[access_control(ctx.accounts.validate(&args))]
-    pub fn transaction_buffer_extend(
+    pub fn extend_transaction_buffer(
         ctx: Context<Self>,
-        args: TransactionBufferExtendArgs,
+        args: ExtendTransactionBufferArgs,
     ) -> Result<()> {
         // Mutable Accounts
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
@@ -88,7 +88,7 @@ impl TransactionBufferExtend<'_> {
         // Required Data
         let buffer_slice_extension = args.buffer;
 
-        // Extend the Buffer inside the TransactionBuffer
+        // Extend the buffer inside the transaction buffer
         transaction_buffer
             .buffer
             .extend_from_slice(&buffer_slice_extension);

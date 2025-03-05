@@ -1,21 +1,22 @@
-import * as multisig from "@sqds/multisig";
 import { TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
-  generateMultisigMembers,
+  generateSmartAccountSigners,
+  getNextAccountIndex,
   getTestProgramId,
   TestMembers,
 } from "../../utils";
 
-const { Multisig } = multisig.accounts;
+const { Settings } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
 /**
- * If user can sign a transaction with enough member keys to reach the threshold,
- * they can batch all multisig instructions required to create, approve and execute the multisig transaction
+ * If user can sign a transaction with enoughsignerkeys to reach the threshold,
+ * they can batch all smart account instructions required to create, approve and execute the smart account transaction
  * into one Solana transaction, so the transaction is executed immediately.
  */
 describe("Examples / Immediate Execution", () => {
@@ -23,51 +24,54 @@ describe("Examples / Immediate Execution", () => {
 
   let members: TestMembers;
   before(async () => {
-    members = await generateMultisigMembers(connection);
+    members = await generateSmartAccountSigners(connection);
   });
 
   it("create, approve and execute, all in 1 Solana transaction", async () => {
-    const [multisigPda] = await createAutonomousMultisig({
+    const accountIndex = await getNextAccountIndex(connection, programId);
+
+    const [settingsPda] = await createAutonomousMultisig({
       connection,
       members,
       threshold: 1,
       timeLock: 0,
       programId,
+      accountIndex,
     });
 
     const transactionIndex = 1n;
 
-    const createTransactionIx = multisig.instructions.configTransactionCreate({
-      multisigPda,
-      transactionIndex,
-      creator: members.almighty.publicKey,
-      // Change threshold to 2.
-      actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
-      programId,
-    });
-    const createProposalIx = multisig.instructions.proposalCreate({
-      multisigPda,
-      transactionIndex,
-      creator: members.almighty.publicKey,
-      programId,
-    });
-
-    const approveProposalIx = multisig.instructions.proposalApprove({
-      multisigPda,
-      transactionIndex,
-      member: members.almighty.publicKey,
-      programId,
-    });
-
-    const executeTransactionIx = multisig.instructions.configTransactionExecute(
-      {
-        multisigPda,
+    const createTransactionIx =
+      smartAccount.instructions.createSettingsTransaction({
+        settingsPda,
         transactionIndex,
-        member: members.almighty.publicKey,
+        creator: members.almighty.publicKey,
+        // Change threshold to 2.
+        actions: [{ __kind: "ChangeThreshold", newThreshold: 2 }],
+        programId,
+      });
+    const createProposalIx = smartAccount.instructions.createProposal({
+      settingsPda,
+      transactionIndex,
+      creator: members.almighty.publicKey,
+      programId,
+    });
+
+    const approveProposalIx = smartAccount.instructions.approveProposal({
+      settingsPda,
+      transactionIndex,
+      signer: members.almighty.publicKey,
+      programId,
+    });
+
+    const executeTransactionIx =
+      smartAccount.instructions.executeSettingsTransaction({
+        settingsPda,
+        transactionIndex,
+        signer: members.almighty.publicKey,
         rentPayer: members.almighty.publicKey,
         programId,
-      }
-    );
+      });
 
     const message = new TransactionMessage({
       payerKey: members.almighty.publicKey,
@@ -89,10 +93,10 @@ describe("Examples / Immediate Execution", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Verify the multisig account.
-    const multisigAccount = await Multisig.fromAccountAddress(
+    // Verify the smart account account.
+    const multisigAccount = await Settings.fromAccountAddress(
       connection,
-      multisigPda
+      settingsPda
     );
 
     // The threshold should be updated.

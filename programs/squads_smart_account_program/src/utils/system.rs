@@ -1,4 +1,4 @@
-use crate::errors::MultisigError;
+use crate::errors::SmartAccountError;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
@@ -17,7 +17,7 @@ pub fn create_account<'a, 'info>(
     require_keys_eq!(
         *system_program.key,
         system_program::ID,
-        MultisigError::InvalidAccount
+        SmartAccountError::InvalidAccount
     );
 
     let current_lamports = **new_account.try_borrow_lamports()?;
@@ -112,4 +112,44 @@ pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info
 
     info.assign(&system_program::ID);
     info.realloc(0, false).map_err(Into::into)
+}
+
+/// Reallocates an account to a new size and ensures it maintains rent-exemption by transferring additional lamports if needed.
+/// Returns an error if the system program or rent payer accounts are missing when additional lamports are required.
+pub fn realloc<'info>(
+    account: &AccountInfo<'info>,
+    new_size: usize,
+    rent_payer: Option<AccountInfo<'info>>,
+    system_program: Option<AccountInfo<'info>>,
+) -> Result<()> {
+    // Reallocate more space
+    AccountInfo::realloc(account, new_size, false)?;
+
+    // Calculate if more lamports are needed for rent-exemption
+    let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_size).max(1);
+    let top_up_lamports = rent_exempt_lamports.saturating_sub(account.lamports());
+
+    if top_up_lamports > 0 {
+        let system_program = system_program.ok_or(SmartAccountError::MissingAccount)?;
+        require_keys_eq!(
+            *system_program.key,
+            system_program::ID,
+            SmartAccountError::InvalidAccount
+        );
+
+        let rent_payer = rent_payer.ok_or(SmartAccountError::MissingAccount)?;
+
+        system_program::transfer(
+            CpiContext::new(
+                system_program,
+                system_program::Transfer {
+                    from: rent_payer,
+                    to: account.clone(),
+                },
+            ),
+            top_up_lamports,
+        )?;
+    }
+
+    Ok(())
 }

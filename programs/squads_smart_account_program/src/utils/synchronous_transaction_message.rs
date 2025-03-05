@@ -7,58 +7,51 @@ use crate::state::*;
 
 /// Sanitized and validated combination of transaction instructions and accounts
 pub struct SynchronousTransactionMessage<'info> {
-    instructions: Vec<MultisigCompiledInstruction>,
-    accounts: Vec<AccountInfo<'info>>,
+    pub instructions: Vec<SmartAccountCompiledInstruction>,
+    pub accounts: Vec<AccountInfo<'info>>,
 }
 
 impl<'info> SynchronousTransactionMessage<'info> {
     pub fn new_validated(
-        multisig_key: &Pubkey,
-        multisig: &Multisig,
-        vault_pubkey: &Pubkey,
-        instructions: Vec<MultisigCompiledInstruction>,
+        settings_key: &Pubkey,
+        settings: &Settings,
+        smart_account_pubkey: &Pubkey,
+        instructions: Vec<SmartAccountCompiledInstruction>,
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
         // Validate instruction indices first
         for instruction in &instructions {
             require!(
                 (instruction.program_id_index as usize) < remaining_accounts.len(),
-                MultisigError::InvalidTransactionMessage
+                SmartAccountError::InvalidTransactionMessage
             );
             for account_index in &instruction.account_indexes {
                 require!(
                     (*account_index as usize) < remaining_accounts.len(),
-                    MultisigError::InvalidTransactionMessage
+                    SmartAccountError::InvalidTransactionMessage
                 );
             }
         }
 
-        let threshold = multisig.threshold as usize;
         let mut accounts = Vec::with_capacity(remaining_accounts.len());
 
         // Process accounts and modify signer states
         for (i, account) in remaining_accounts.iter().enumerate() {
             let mut account_info = account.clone();
 
-            if i < threshold {
-                // First N accounts (threshold) should not get passed along as signers
+            // For remaining accounts:
+            // - Set account as signer
+            // - Remove signer privilege from any smart account signers
+            // - Set smart account as non-writable
+            if account.key == smart_account_pubkey {
+                account_info.is_signer = true;
+            } else if account.key == settings_key {
+                // This prevents dangerous re-entrancy
+                account_info.is_writable = false;
+            } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer {
+                // We may want to remove this so that a signer can be a rent
+                // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;
-            } else {
-                // For remaining accounts:
-                // - Set vault as signer
-                // - Remove signer privilege from any multisig members
-                // - Set multisig as non-writable
-                if account.key == vault_pubkey {
-                    account_info.is_signer = true;
-                } else if account.key == multisig_key {
-                    // This prevents dangerous re-entrancy
-                    account_info.is_writable = false;
-                } else if multisig.is_member(account.key.to_owned()).is_some() && account.is_signer
-                {
-                    // We may want to remove this so that a member can be a rent
-                    // or feepayer on any of the CPI instructions
-                    account_info.is_signer = false;
-                }
             }
 
             accounts.push(account_info);
@@ -71,7 +64,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
     }
 
     /// Executes all instructions in the message via CPI calls
-    pub fn execute(&self, vault_seeds: &[&[u8]]) -> Result<()> {
+    pub fn execute(&self, smart_account_seeds: &[&[u8]]) -> Result<()> {
         for instruction in &self.instructions {
             let program_id = self.accounts[instruction.program_id_index as usize].key;
 
@@ -102,7 +95,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
                 .map(|&idx| self.accounts[idx as usize].clone())
                 .collect();
 
-            invoke_signed(&ix, &accounts_slice, &[vault_seeds])?;
+            invoke_signed(&ix, &accounts_slice, &[smart_account_seeds])?;
         }
         Ok(())
     }

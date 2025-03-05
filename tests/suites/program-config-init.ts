@@ -4,7 +4,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import * as multisig from "@sqds/multisig";
+import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
 import {
   createLocalhostConnection,
@@ -19,7 +19,7 @@ const programId = getTestProgramId();
 const programConfigInitializer = getTestProgramConfigInitializer();
 const programConfigAuthority = getTestProgramConfigAuthority();
 const programTreasury = getTestProgramTreasury();
-const programConfigPda = multisig.getProgramConfigPda({ programId })[0];
+const programConfigPda = smartAccount.getProgramConfigPda({ programId })[0];
 
 const connection = createLocalhostConnection();
 
@@ -36,20 +36,21 @@ describe("Initialize Global ProgramConfig", () => {
   it("error: invalid initializer", async () => {
     const fakeInitializer = await generateFundedKeypair(connection);
 
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
-      {
-        programConfig: programConfigPda,
-        initializer: fakeInitializer.publicKey,
-      },
-      {
-        args: {
-          authority: programConfigAuthority.publicKey,
-          treasury: programTreasury,
-          multisigCreationFee: 0,
+    const initIx =
+      smartAccount.generated.createInitializeProgramConfigInstruction(
+        {
+          programConfig: programConfigPda,
+          initializer: fakeInitializer.publicKey,
         },
-      },
-      programId
-    );
+        {
+          args: {
+            authority: programConfigAuthority.publicKey,
+            treasury: programTreasury,
+            smartAccountCreationFee: 0,
+          },
+        },
+        programId
+      );
 
     const blockhash = (await connection.getLatestBlockhash()).blockhash;
     const message = new TransactionMessage({
@@ -64,26 +65,27 @@ describe("Initialize Global ProgramConfig", () => {
       () =>
         connection
           .sendRawTransaction(tx.serialize())
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /Unauthorized: Attempted to perform an unauthorized action/
     );
   });
 
   it("error: `authority` is PublicKey.default", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
-      {
-        programConfig: programConfigPda,
-        initializer: programConfigInitializer.publicKey,
-      },
-      {
-        args: {
-          authority: PublicKey.default,
-          treasury: programTreasury,
-          multisigCreationFee: 0,
+    const initIx =
+      smartAccount.generated.createInitializeProgramConfigInstruction(
+        {
+          programConfig: programConfigPda,
+          initializer: programConfigInitializer.publicKey,
         },
-      },
-      programId
-    );
+        {
+          args: {
+            authority: PublicKey.default,
+            treasury: programTreasury,
+            smartAccountCreationFee: 0,
+          },
+        },
+        programId
+      );
 
     const blockhash = (await connection.getLatestBlockhash()).blockhash;
     const message = new TransactionMessage({
@@ -98,26 +100,27 @@ describe("Initialize Global ProgramConfig", () => {
       () =>
         connection
           .sendRawTransaction(tx.serialize())
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /InvalidAccount: Invalid account provided/
     );
   });
 
   it("error: `treasury` is PublicKey.default", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
-      {
-        programConfig: programConfigPda,
-        initializer: programConfigInitializer.publicKey,
-      },
-      {
-        args: {
-          authority: programConfigAuthority.publicKey,
-          treasury: PublicKey.default,
-          multisigCreationFee: 0,
+    const initIx =
+      smartAccount.generated.createInitializeProgramConfigInstruction(
+        {
+          programConfig: programConfigPda,
+          initializer: programConfigInitializer.publicKey,
         },
-      },
-      programId
-    );
+        {
+          args: {
+            authority: programConfigAuthority.publicKey,
+            treasury: PublicKey.default,
+            smartAccountCreationFee: 0,
+          },
+        },
+        programId
+      );
 
     const blockhash = (await connection.getLatestBlockhash()).blockhash;
     const message = new TransactionMessage({
@@ -132,26 +135,27 @@ describe("Initialize Global ProgramConfig", () => {
       () =>
         connection
           .sendRawTransaction(tx.serialize())
-          .catch(multisig.errors.translateAndThrowAnchorError),
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
       /InvalidAccount: Invalid account provided/
     );
   });
 
   it("initialize program config", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
-      {
-        programConfig: programConfigPda,
-        initializer: programConfigInitializer.publicKey,
-      },
-      {
-        args: {
-          authority: programConfigAuthority.publicKey,
-          treasury: programTreasury,
-          multisigCreationFee: 0,
+    const initIx =
+      smartAccount.generated.createInitializeProgramConfigInstruction(
+        {
+          programConfig: programConfigPda,
+          initializer: programConfigInitializer.publicKey,
         },
-      },
-      programId
-    );
+        {
+          args: {
+            authority: programConfigAuthority.publicKey,
+            treasury: programTreasury,
+            smartAccountCreationFee: 0,
+          },
+        },
+        programId
+      );
 
     const blockhash = (await connection.getLatestBlockhash()).blockhash;
     const message = new TransactionMessage({
@@ -161,11 +165,13 @@ describe("Initialize Global ProgramConfig", () => {
     }).compileToV0Message();
     const tx = new VersionedTransaction(message);
     tx.sign([programConfigInitializer]);
-    const sig = await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true });
+    const sig = await connection.sendRawTransaction(tx.serialize(), {
+      skipPreflight: true,
+    });
     await connection.confirmTransaction(sig);
 
     const programConfigData =
-      await multisig.accounts.ProgramConfig.fromAccountAddress(
+      await smartAccount.accounts.ProgramConfig.fromAccountAddress(
         connection,
         programConfigPda
       );
@@ -174,7 +180,10 @@ describe("Initialize Global ProgramConfig", () => {
       programConfigData.authority.toBase58(),
       programConfigAuthority.publicKey.toBase58()
     );
-    assert.strictEqual(programConfigData.multisigCreationFee.toString(), "0");
+    assert.strictEqual(
+      programConfigData.smartAccountCreationFee.toString(),
+      "0"
+    );
     assert.strictEqual(
       programConfigData.treasury.toBase58(),
       programTreasury.toBase58()
@@ -182,20 +191,21 @@ describe("Initialize Global ProgramConfig", () => {
   });
 
   it("error: initialize program config twice", async () => {
-    const initIx = multisig.generated.createProgramConfigInitInstruction(
-      {
-        programConfig: programConfigPda,
-        initializer: programConfigInitializer.publicKey,
-      },
-      {
-        args: {
-          authority: programConfigAuthority.publicKey,
-          treasury: programTreasury,
-          multisigCreationFee: 0,
+    const initIx =
+      smartAccount.generated.createInitializeProgramConfigInstruction(
+        {
+          programConfig: programConfigPda,
+          initializer: programConfigInitializer.publicKey,
         },
-      },
-      programId
-    );
+        {
+          args: {
+            authority: programConfigAuthority.publicKey,
+            treasury: programTreasury,
+            smartAccountCreationFee: 0,
+          },
+        },
+        programId
+      );
 
     const blockhash = (await connection.getLatestBlockhash()).blockhash;
     const message = new TransactionMessage({
@@ -212,7 +222,7 @@ describe("Initialize Global ProgramConfig", () => {
         return err;
       });
 
-    assert.ok(multisig.errors.isErrorWithLogs(err));
+    assert.ok(smartAccount.errors.isErrorWithLogs(err));
     assert.ok(
       err.logs.find((line) => {
         return line.includes("already in use");

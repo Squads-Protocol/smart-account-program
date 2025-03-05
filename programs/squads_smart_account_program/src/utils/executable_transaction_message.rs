@@ -13,7 +13,7 @@ use crate::state::*;
 /// Sanitized and validated combination of a `MsTransactionMessage` and `AccountInfo`s it references.
 pub struct ExecutableTransactionMessage<'a, 'info> {
     /// Message which loaded a collection of lookup table addresses.
-    message: VaultTransactionMessage,
+    message: SmartAccountTransactionMessage,
     /// Resolved `account_keys` of the message.
     static_accounts: Vec<&'a AccountInfo<'info>>,
     /// Concatenated vector of resolved `writable_indexes` from all address lookups.
@@ -29,10 +29,10 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     /// `address_lookup_table_account_infos` - AccountInfo's that are expected to correspond to the lookup tables mentioned in `message.address_table_lookups`.
     /// `vault_pubkey` - The vault PDA that is expected to sign the message.
     pub fn new_validated(
-        message: VaultTransactionMessage,
+        message: SmartAccountTransactionMessage,
         message_account_infos: &'a [AccountInfo<'info>],
         address_lookup_table_account_infos: &'a [AccountInfo<'info>],
-        vault_pubkey: &'a Pubkey,
+        smart_account_pubkey: &'a Pubkey,
         ephemeral_signer_pdas: &'a [Pubkey],
     ) -> Result<Self> {
         // CHECK: `address_lookup_table_account_infos` must be valid `AddressLookupTable`s
@@ -40,7 +40,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         require_eq!(
             address_lookup_table_account_infos.len(),
             message.address_table_lookups.len(),
-            MultisigError::InvalidNumberOfAccounts
+            SmartAccountError::InvalidNumberOfAccounts
         );
         let lookup_tables: HashMap<&Pubkey, &AccountInfo> = address_lookup_table_account_infos
             .iter()
@@ -49,7 +49,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 // The lookup table account must be owned by SolanaAddressLookupTableProgram.
                 require!(
                     maybe_lookup_table.owner == &address_lookup_table::program::ID,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 // The lookup table must be mentioned in `message.address_table_lookups` at the same index.
                 require!(
@@ -58,7 +58,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                         .get(index)
                         .map(|lookup| &lookup.account_key)
                         == Some(maybe_lookup_table.key),
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 Ok((maybe_lookup_table.key, maybe_lookup_table))
             })
@@ -68,7 +68,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         require_eq!(
             message_account_infos.len(),
             message.num_all_account_keys(),
-            MultisigError::InvalidNumberOfAccounts
+            SmartAccountError::InvalidNumberOfAccounts
         );
 
         let mut static_accounts = Vec::new();
@@ -79,20 +79,20 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             require_keys_eq!(
                 *account_info.key,
                 *account_key,
-                MultisigError::InvalidAccount
+                SmartAccountError::InvalidAccount
             );
             // If the account is marked as signer in the message, it must be a signer in the account infos too.
-            // Unless it's a vault or an ephemeral signer PDA, as they cannot be passed as signers to `remaining_accounts`,
+            // Unless it's a smart account or an ephemeral signer PDA, as they cannot be passed as signers to `remaining_accounts`,
             // because they are PDA's and can't sign the transaction.
             if message.is_signer_index(i)
-                && account_info.key != vault_pubkey
+                && account_info.key != smart_account_pubkey
                 && !ephemeral_signer_pdas.contains(account_info.key)
             {
-                require!(account_info.is_signer, MultisigError::InvalidAccount);
+                require!(account_info.is_signer, SmartAccountError::InvalidAccount);
             }
             // If the account is marked as writable in the message, it must be writable in the account infos too.
             if message.is_static_writable_index(i) {
-                require!(account_info.is_writable, MultisigError::InvalidAccount);
+                require!(account_info.is_writable, SmartAccountError::InvalidAccount);
             }
             static_accounts.push(account_info);
         }
@@ -112,7 +112,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .data
                 .borrow()[..];
             let lookup_table = AddressLookupTable::deserialize(lookup_table_data)
-                .map_err(|_| MultisigError::InvalidAccount)?;
+                .map_err(|_| SmartAccountError::InvalidAccount)?;
 
             // Accounts listed as writable in lookup, should be loaded as writable.
             for (i, index_in_lookup_table) in lookup.writable_indexes.iter().enumerate() {
@@ -120,21 +120,21 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
                     .get(index)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+                    .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
                 require_eq!(
                     loaded_account_info.is_writable,
                     true,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
                 // Check that the pubkey matches the one from the actual lookup table.
                 let pubkey_from_lookup_table = lookup_table
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
-                    .ok_or(MultisigError::InvalidAccount)?;
+                    .ok_or(SmartAccountError::InvalidAccount)?;
                 require_keys_eq!(
                     *loaded_account_info.key,
                     *pubkey_from_lookup_table,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
 
                 writable_accounts.push(*loaded_account_info);
@@ -147,16 +147,16 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
                     .get(index)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+                    .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
                 // Check that the pubkey matches the one from the actual lookup table.
                 let pubkey_from_lookup_table = lookup_table
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
-                    .ok_or(MultisigError::InvalidAccount)?;
+                    .ok_or(SmartAccountError::InvalidAccount)?;
                 require_keys_eq!(
                     *loaded_account_info.key,
                     *pubkey_from_lookup_table,
-                    MultisigError::InvalidAccount
+                    SmartAccountError::InvalidAccount
                 );
 
                 readonly_accounts.push(*loaded_account_info);
@@ -174,12 +174,12 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
     /// Executes all instructions in the message via CPI calls.
     /// # Arguments
-    /// * `vault_seeds` - Seeds for the vault PDA.
+    /// * `smart_account_seeds` - Seeds for the smart account PDA.
     /// * `ephemeral_signer_seeds` - Seeds for the ephemeral signer PDAs.
     /// * `protected_accounts` - Accounts that must not be passed as writable to the CPI calls to prevent potential reentrancy attacks.
     pub fn execute_message(
         self,
-        vault_seeds: &[&[u8]],
+        smart_account_seeds: &[&[u8]],
         ephemeral_signer_seeds: &[Vec<Vec<u8>>],
         protected_accounts: &[Pubkey],
     ) -> Result<()> {
@@ -193,8 +193,8 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             .iter()
             .map(Vec::as_slice)
             .collect::<Vec<&[&[u8]]>>();
-        // Add the vault seeds.
-        signer_seeds.push(&vault_seeds);
+        // Add the smart account seeds.
+        signer_seeds.push(&smart_account_seeds);
 
         // NOTE: `self.to_instructions_and_accounts()` calls `take()` on
         // `self.message.instructions`, therefore after this point no more
@@ -205,7 +205,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             for account_meta in ix.accounts.iter().filter(|m| m.is_writable) {
                 require!(
                     !protected_accounts.contains(&account_meta.pubkey),
-                    MultisigError::ProtectedAccount
+                    SmartAccountError::ProtectedAccount
                 );
             }
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
@@ -232,7 +232,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             return Ok(self.loaded_readonly_accounts[index]);
         }
 
-        Err(MultisigError::InvalidTransactionMessage.into())
+        Err(SmartAccountError::InvalidTransactionMessage.into())
     }
 
     /// Whether the account at the `index` is requested as writable.
@@ -255,8 +255,8 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 
-        for ms_compiled_instruction in core::mem::take(&mut self.message.instructions) {
-            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = ms_compiled_instruction
+        for sa_compiled_instruction in core::mem::take(&mut self.message.instructions) {
+            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = sa_compiled_instruction
                 .account_indexes
                 .iter()
                 .map(|account_index| {
@@ -278,7 +278,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .collect();
 
             let ix_program_account_info = self
-                .get_account_by_index(usize::from(ms_compiled_instruction.program_id_index))
+                .get_account_by_index(usize::from(sa_compiled_instruction.program_id_index))
                 .unwrap();
 
             let ix = Instruction {
@@ -287,7 +287,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     .iter()
                     .map(|(_, account_meta)| account_meta.clone())
                     .collect(),
-                data: ms_compiled_instruction.data,
+                data: sa_compiled_instruction.data,
             };
 
             let mut account_infos: Vec<AccountInfo> = ix_accounts
