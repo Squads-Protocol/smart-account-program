@@ -63,33 +63,54 @@ List of SDKs:
 
 You can compile the code with Anchor.
 
-```
+```bash
 anchor build
 ```
+
+To successfully execute `anchor build` for this project, you must have Solana CLI version 1.18.16 (`solana-cli 1.18.16`) installed.
+
+### How to Check Your Solana Version
+
+```bash
+# Run the following command:
+solana --version
+```
+
+If your version is not `1.18.16`, you need to switch to the required version.
+
+### How to Switch Solana CLI Version
+
+Use the Agave installer to initialize the correct version:
+
+```bash
+agave-install init 1.18.16
+```
+
+### Installing Anchor
 
 If you do not have the Solana Anchor framework CLI installed, you can do so by following [this guide](https://www.anchor-lang.com/docs/installation).
 
 To deploy the program on a local validator instance for testing or development purposes, you can create a local instance by running this command from the [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools).
 
-```
+```bash
 solana-test-validator
 ```
 
 To run the tests, first install the node modules for the repository.
 
-```
+```bash
 yarn
 ```
 
 or
 
-```
+```bash
 npm install
 ```
 
 And run these tests with this command:
 
-```
+```bash
 yarn test
 ```
 
@@ -97,29 +118,29 @@ yarn test
 
 First, compile the programs code from the `Squads-Protocol/smart-account-program` Github repository to get its bytecode.
 
-```
+```bash
 git clone https://github.com/Squads-Protocol/smart-account-program.git
 ```
 
-```
+```bash
 anchor build
 ```
 
 Now, install the [Ellipsis Labs verifiable build](https://crates.io/crates/solana-verify) crate.
 
-```
+```bash
 cargo install solana-verify
 ```
 
 Get the executable hash of the bytecode from the Squads program that was compiled.
 
-```
+```bash
 solana-verify get-executable-hash target/deploy/squads_smart_account_program.so
 ```
 
 Get the hash from the bytecode of the on-chain Squads program you want to verify.
 
-```
+```bash
 solana-verify get-program-hash -u <cluster url> SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk
 ```
 
