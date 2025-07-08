@@ -616,7 +616,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sqds/smart-account@workspace:sdk/smart-account":
+"@sqds/smart-account@workspace:^, @sqds/smart-account@workspace:sdk/smart-account":
   version: 0.0.0-use.local
   resolution: "@sqds/smart-account@workspace:sdk/smart-account"
   dependencies:
@@ -3035,6 +3035,7 @@ __metadata:
     "@solana/spl-memo": ^0.2.3
     "@solana/spl-token": "*"
     "@solana/web3.js": ^1.95.5
+    "@sqds/smart-account": "workspace:^"
     "@types/bn.js": 5.1.0
     "@types/mocha": 10.0.1
     "@types/node-fetch": 2.6.2
