@@ -102,11 +102,6 @@ To run the tests, first install the node modules for the repository.
 yarn
 ```
 
-or
-
-```bash
-npm install
-```
 
 And run these tests with this command:
 
