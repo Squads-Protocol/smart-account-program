@@ -12,8 +12,8 @@ use crate::instructions::{CompiledInstruction, MessageAddressTableLookup, Transa
 #[account]
 #[derive(Default)]
 pub struct Transaction {
-    /// The settings this belongs to.
-    pub settings: Pubkey,
+    /// The consensus account this belongs to.
+    pub consensus_account: Pubkey,
     /// Signer of the Smart Account who submitted the transaction.
     pub creator: Pubkey,
     /// The rent collector for the transaction account.

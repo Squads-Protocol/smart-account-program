@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus::ConsensusAccount;
 use crate::errors::*;
 use crate::state::*;
 use crate::utils::*;
@@ -19,10 +20,9 @@ pub struct CreateTransactionArgs {
 pub struct CreateTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation().is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         init,
@@ -30,9 +30,9 @@ pub struct CreateTransaction<'info> {
         space = Transaction::size(args.ephemeral_signers, &args.transaction_message)?,
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION,
-            &settings.transaction_index.checked_add(1).unwrap().to_le_bytes(),
+            &consensus_account.transaction_index().checked_add(1).unwrap().to_le_bytes(),
         ],
         bump
     )]
@@ -51,16 +51,18 @@ pub struct CreateTransaction<'info> {
 impl<'info> CreateTransaction<'info> {
     pub fn validate(&self) -> Result<()> {
         let Self {
-            settings, creator, ..
+            consensus_account,
+            creator,
+            ..
         } = self;
 
         // creator
         require!(
-            settings.is_signer(creator.key()).is_some(),
+            consensus_account.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
         );
         require!(
-            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
             SmartAccountError::Unauthorized
         );
 
@@ -70,7 +72,7 @@ impl<'info> CreateTransaction<'info> {
     /// Create a new vault transaction.
     #[access_control(ctx.accounts.validate())]
     pub fn create_transaction(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        let consensus_account = &mut ctx.accounts.consensus_account;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
         let rent_payer = &mut ctx.accounts.rent_payer;
@@ -78,7 +80,7 @@ impl<'info> CreateTransaction<'info> {
         let transaction_message =
             TransactionMessage::deserialize(&mut args.transaction_message.as_slice())?;
 
-        let settings_key = settings.key();
+        let settings_key = consensus_account.key();
         let transaction_key = transaction.key();
 
         let smart_account_seeds = &[
@@ -106,10 +108,13 @@ impl<'info> CreateTransaction<'info> {
             .collect();
 
         // Increment the transaction index.
-        let transaction_index = settings.transaction_index.checked_add(1).unwrap();
+        let transaction_index = consensus_account
+            .transaction_index()
+            .checked_add(1)
+            .unwrap();
 
         // Initialize the transaction fields.
-        transaction.settings = settings_key;
+        transaction.consensus_account = consensus_account.key();
         transaction.creator = creator.key();
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
@@ -120,12 +125,9 @@ impl<'info> CreateTransaction<'info> {
         transaction.message = transaction_message.try_into()?;
 
         // Updated last transaction index in the settings account.
-        settings.transaction_index = transaction_index;
+        consensus_account.set_transaction_index(transaction_index)?;
 
-        settings.invariant()?;
-
-        // Logs for indexing.
-        msg!("transaction index: {}", transaction_index);
+        consensus_account.invariant()?;
 
         Ok(())
     }

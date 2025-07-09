@@ -7,6 +7,8 @@ pub use seeds::*;
 pub use spending_limit::*;
 pub use transaction_buffer::*;
 pub use transaction::*;
+pub use policy::*;
+pub use transaction_v2::*;
 
 mod batch;
 mod settings_transaction;
@@ -17,3 +19,5 @@ mod seeds;
 mod spending_limit;
 mod transaction_buffer;
 mod transaction;
+mod policy;
+mod transaction_v2;

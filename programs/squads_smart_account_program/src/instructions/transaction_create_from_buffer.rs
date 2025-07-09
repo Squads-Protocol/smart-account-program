@@ -16,7 +16,7 @@ pub struct CreateTransactionFromBuffer<'info> {
         constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
         seeds = [
             SEED_PREFIX,
-            transaction_create.settings.key().as_ref(),
+            transaction_create.consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes(),

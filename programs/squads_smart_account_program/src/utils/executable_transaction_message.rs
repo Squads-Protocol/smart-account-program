@@ -292,8 +292,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
             let mut account_infos: Vec<AccountInfo> = ix_accounts
                 .into_iter()
-                .map(|(account_info, _)| account_info)
+                .map(|(account_info, _)| (*account_info.key, account_info))
+                .collect::<HashMap<Pubkey, AccountInfo>>()
+                .into_values()
                 .collect();
+
             // Add Program ID
             account_infos.push(ix_program_account_info.clone());
 

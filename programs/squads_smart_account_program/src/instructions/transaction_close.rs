@@ -11,6 +11,7 @@
 //! into having 3 different `Accounts` structs.
 use anchor_lang::prelude::*;
 
+use crate::consensus::ConsensusAccount;
 use crate::errors::*;
 use crate::state::*;
 use crate::utils;
@@ -126,10 +127,9 @@ impl CloseSettingsTransaction<'_> {
 #[derive(Accounts)]
 pub struct CloseTransaction<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation().is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
     ///         the logic within `transaction_close` does the rest of the checks.
@@ -137,7 +137,7 @@ pub struct CloseTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION,
             &transaction.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -149,7 +149,7 @@ pub struct CloseTransaction<'info> {
     /// Transaction corresponding to the `proposal`.
     #[account(
         mut,
-        has_one = settings @ SmartAccountError::TransactionForAnotherSmartAccount,
+        has_one = consensus_account @ SmartAccountError::TransactionForAnotherSmartAccount,
         close = transaction_rent_collector
     )]
     pub transaction: Account<'info, Transaction>,
@@ -176,12 +176,12 @@ impl CloseTransaction<'_> {
     /// - the `proposal` is in a terminal state: `Executed`, `Rejected`, or `Cancelled`.
     /// - the `proposal` is stale and not `Approved`.
     pub fn close_transaction(ctx: Context<Self>) -> Result<()> {
-        let settings = &ctx.accounts.settings;
+        let consensus_account = &ctx.accounts.consensus_account;
         let transaction = &ctx.accounts.transaction;
         let proposal = &mut ctx.accounts.proposal;
         let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;
 
-        let is_stale = transaction.index <= settings.stale_transaction_index;
+        let is_stale = transaction.index <= consensus_account.stale_transaction_index();
 
         let proposal_account = if proposal.data.borrow().is_empty() {
             None

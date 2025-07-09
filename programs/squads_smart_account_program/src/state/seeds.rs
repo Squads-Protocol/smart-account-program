@@ -12,6 +12,7 @@ pub const SEED_SMART_ACCOUNT: &[u8] = b"smart_account";
 pub const SEED_EPHEMERAL_SIGNER: &[u8] = b"ephemeral_signer";
 pub const SEED_SPENDING_LIMIT: &[u8] = b"spending_limit";
 pub const SEED_TRANSACTION_BUFFER: &[u8] = b"transaction_buffer";
+pub const SEED_POLICY: &[u8] = b"policy";
 
 pub fn get_settings_signer_seeds(settings_seed: u128) -> Vec<Vec<u8>> {
     vec![

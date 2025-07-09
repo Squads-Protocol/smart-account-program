@@ -1,7 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-use crate::{errors::*, id, state::*, utils::*, SettingsAction};
+use crate::{
+    errors::*,
+    id,
+    interface::consensus_trait::{Consensus, ConsensusAccountType, ConsensusSigner},
+    state::*,
+    utils::*,
+    SettingsAction,
+};
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 #[account]
@@ -459,5 +466,68 @@ impl Permissions {
 
     pub fn has(&self, permission: Permission) -> bool {
         self.mask & (permission as u8) != 0
+    }
+}
+
+// Implement ConsensusSigner for SmartAccountSigner
+impl ConsensusSigner for SmartAccountSigner {
+    fn key(&self) -> Pubkey {
+        self.key
+    }
+
+    fn permissions(&self) -> Permissions {
+        self.permissions
+    }
+}
+
+// Implement Consensus for Settings
+impl Consensus for Settings {
+    type SignerType = SmartAccountSigner;
+
+    fn account_type(&self) -> ConsensusAccountType {
+        ConsensusAccountType::Settings
+    }
+
+    fn key(&self) -> Pubkey {
+        // This will be set by Anchor when the account is loaded
+        Pubkey::default() // Placeholder - will be overridden by account context
+    }
+
+    fn check_derivation(&self) -> Result<()> {
+        let (address, _bump) = Pubkey::find_program_address(
+            &[SEED_PREFIX, SEED_SETTINGS, self.seed.to_le_bytes().as_ref()],
+            &crate::ID,
+        );
+        require_keys_eq!(address, self.key(), SmartAccountError::InvalidAccount);
+        Ok(())
+    }
+
+    fn signers(&self) -> &[Self::SignerType] {
+        &self.signers
+    }
+
+    fn threshold(&self) -> u16 {
+        self.threshold
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.time_lock
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.transaction_index
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.transaction_index = transaction_index;
+        Ok(())
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.stale_transaction_index
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.stale_transaction_index = self.transaction_index;
     }
 }
