@@ -65,7 +65,7 @@
     {
       "name": "setProgramConfigSmartAccountCreationFee",
       "docs": [
-        "Set the `multisig_creation_fee` parameter of the program config."
+        "Set the `smart_account_creation_fee` parameter of the program config."
       ],
       "accounts": [
         {
@@ -167,7 +167,7 @@
     {
       "name": "addSignerAsAuthority",
       "docs": [
-        "Add a new signer to the controlled multisig."
+        "Add a new signer to the controlled smart account."
       ],
       "accounts": [
         {
@@ -221,7 +221,7 @@
     {
       "name": "removeSignerAsAuthority",
       "docs": [
-        "Remove a signer from the controlled multisig."
+        "Remove a signer from the controlled smart account."
       ],
       "accounts": [
         {
@@ -275,7 +275,7 @@
     {
       "name": "setTimeLockAsAuthority",
       "docs": [
-        "Set the `time_lock` config parameter for the controlled multisig."
+        "Set the `time_lock` config parameter for the controlled smart account."
       ],
       "accounts": [
         {
@@ -329,7 +329,7 @@
     {
       "name": "changeThresholdAsAuthority",
       "docs": [
-        "Set the `threshold` config parameter for the controlled multisig."
+        "Set the `threshold` config parameter for the controlled smart account."
       ],
       "accounts": [
         {
@@ -383,7 +383,7 @@
     {
       "name": "setNewSettingsAuthorityAsAuthority",
       "docs": [
-        "Set the multisig `config_authority`."
+        "Set the smart account `settings_authority`."
       ],
       "accounts": [
         {
@@ -437,7 +437,7 @@
     {
       "name": "setArchivalAuthorityAsAuthority",
       "docs": [
-        "Set the multisig `archival_authority`."
+        "Set the smart account `archival_authority`."
       ],
       "accounts": [
         {
@@ -491,7 +491,7 @@
     {
       "name": "addSpendingLimitAsAuthority",
       "docs": [
-        "Create a new spending limit for the controlled multisig."
+        "Create a new spending limit for the controlled smart account."
       ],
       "accounts": [
         {
@@ -543,7 +543,7 @@
     {
       "name": "removeSpendingLimitAsAuthority",
       "docs": [
-        "Remove the spending limit from the controlled multisig."
+        "Remove the spending limit from the controlled smart account."
       ],
       "accounts": [
         {
@@ -1113,7 +1113,7 @@
     {
       "name": "createProposal",
       "docs": [
-        "Create a new multisig proposal."
+        "Create a new smart account proposal."
       ],
       "accounts": [
         {
@@ -1160,7 +1160,7 @@
     {
       "name": "activateProposal",
       "docs": [
-        "Update status of a multisig proposal from `Draft` to `Active`."
+        "Update status of a smart account proposal from `Draft` to `Active`."
       ],
       "accounts": [
         {
@@ -1184,7 +1184,7 @@
     {
       "name": "approveProposal",
       "docs": [
-        "Approve a multisig proposal on behalf of the `member`.",
+        "Approve a smart account proposal on behalf of the `member`.",
         "The proposal must be `Active`."
       ],
       "accounts": [
@@ -1222,7 +1222,7 @@
     {
       "name": "rejectProposal",
       "docs": [
-        "Reject a multisig proposal on behalf of the `member`.",
+        "Reject a smart account proposal on behalf of the `member`.",
         "The proposal must be `Active`."
       ],
       "accounts": [
@@ -1260,7 +1260,7 @@
     {
       "name": "cancelProposal",
       "docs": [
-        "Cancel a multisig proposal on behalf of the `member`.",
+        "Cancel a smart account proposal on behalf of the `member`.",
         "The proposal must be `Approved`."
       ],
       "accounts": [
@@ -1298,7 +1298,7 @@
     {
       "name": "useSpendingLimit",
       "docs": [
-        "Use a spending limit to transfer tokens from a multisig vault to a destination account."
+        "Use a spending limit to transfer tokens from a smart account vault to a destination account."
       ],
       "accounts": [
         {
