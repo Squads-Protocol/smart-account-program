@@ -97,7 +97,7 @@ describe("Instructions / transaction_buffer_close", () => {
     const createIx =
       smartAccount.generated.createCreateTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
           rentPayer: members.proposer.publicKey,
@@ -135,7 +135,7 @@ describe("Instructions / transaction_buffer_close", () => {
     const closeIx =
       smartAccount.generated.createCloseTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.voter.publicKey,
         },
@@ -164,7 +164,7 @@ describe("Instructions / transaction_buffer_close", () => {
     const closeIx =
       smartAccount.generated.createCloseTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },

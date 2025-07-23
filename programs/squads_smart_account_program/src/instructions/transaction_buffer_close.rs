@@ -1,15 +1,15 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 
 #[derive(Accounts)]
 pub struct CloseTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         mut,
@@ -21,7 +21,7 @@ pub struct CloseTransactionBuffer<'info> {
         // current settings transaction index
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()

@@ -208,6 +208,16 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     SmartAccountError::ProtectedAccount
                 );
             }
+            // Make sure we're not calling self logging instruction
+            if ix.program_id == crate::ID {
+                if let Some(discriminator) = ix.data.get(0..8) {
+                    // Check if the discriminator is the log event discriminator
+                    require!(
+                        discriminator != [0x05, 0x09, 0x5a, 0x8d, 0xdf, 0x86, 0x39, 0xd9],
+                        SmartAccountError::ProtectedInstruction
+                    );
+                }
+            }
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
         }
         Ok(())
@@ -255,7 +265,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 
-        for sa_compiled_instruction in core::mem::take(&mut self.message.instructions) {
+        for sa_compiled_instruction in std::mem::take(&mut self.message.instructions) {
             let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = sa_compiled_instruction
                 .account_indexes
                 .iter()

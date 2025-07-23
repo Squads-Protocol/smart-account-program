@@ -12,7 +12,7 @@ pub struct VoteOnProposalArgs {
 #[derive(Accounts)]
 pub struct VoteOnProposal<'info> {
     #[account(
-        constraint = consensus_account.check_derivation().is_ok()
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
@@ -37,13 +37,16 @@ pub struct VoteOnProposal<'info> {
 }
 
 impl VoteOnProposal<'_> {
-    fn validate(&self, vote: Vote) -> Result<()> {
+    fn validate(&self, ctx: &Context<Self>, vote: Vote) -> Result<()> {
         let Self {
             consensus_account,
             proposal,
             signer,
             ..
         } = self;
+
+        // Check if the consensus account is active
+        consensus_account.is_active(&ctx.remaining_accounts)?;
 
         // signer
         require!(
@@ -82,7 +85,7 @@ impl VoteOnProposal<'_> {
 
     /// Approve a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
-    #[access_control(ctx.accounts.validate(Vote::Approve))]
+    #[access_control(ctx.accounts.validate(&ctx, Vote::Approve))]
     pub fn approve_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
@@ -95,7 +98,7 @@ impl VoteOnProposal<'_> {
 
     /// Reject a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
-    #[access_control(ctx.accounts.validate(Vote::Reject))]
+    #[access_control(ctx.accounts.validate(&ctx, Vote::Reject))]
     pub fn reject_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
@@ -110,7 +113,7 @@ impl VoteOnProposal<'_> {
 
     /// Cancel a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Approved`.
-    #[access_control(ctx.accounts.validate(Vote::Cancel))]
+    #[access_control(ctx.accounts.validate(&ctx, Vote::Cancel))]
     pub fn cancel_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;

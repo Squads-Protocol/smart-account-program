@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   createExecuteSettingsTransactionInstruction,
   PROGRAM_ID,
@@ -11,6 +11,7 @@ export function executeSettingsTransaction({
   signer,
   rentPayer,
   spendingLimits,
+  policies,
   programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
@@ -19,6 +20,7 @@ export function executeSettingsTransaction({
   rentPayer?: PublicKey;
   /** In case the transaction adds or removes SpendingLimits, pass the array of their Pubkeys here. */
   spendingLimits?: PublicKey[];
+  policies?: PublicKey[];
   programId?: PublicKey;
 }) {
   const [proposalPda] = getProposalPda({
@@ -32,6 +34,21 @@ export function executeSettingsTransaction({
     programId,
   });
 
+  let remainingAccounts: AccountMeta[] = [];
+  if (spendingLimits) {
+    remainingAccounts = spendingLimits.map((spendingLimit) => ({
+      pubkey: spendingLimit,
+      isWritable: true,
+      isSigner: false,
+    }));
+  }
+  if (policies) {
+    remainingAccounts = policies.map((policy) => ({
+      pubkey: policy,
+      isWritable: true,
+      isSigner: false,
+    }));
+  }
   return createExecuteSettingsTransactionInstruction(
     {
       settings: settingsPda,
@@ -40,11 +57,7 @@ export function executeSettingsTransaction({
       transaction: transactionPda,
       rentPayer: rentPayer ?? signer,
       systemProgram: SystemProgram.programId,
-      anchorRemainingAccounts: spendingLimits?.map((spendingLimit) => ({
-        pubkey: spendingLimit,
-        isWritable: true,
-        isSigner: false,
-      })),
+      anchorRemainingAccounts: remainingAccounts,
     },
     programId
   );

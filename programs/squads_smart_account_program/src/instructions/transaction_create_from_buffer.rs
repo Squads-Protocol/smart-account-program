@@ -38,11 +38,21 @@ impl<'info> CreateTransactionFromBuffer<'info> {
     pub fn validate(&self, args: &CreateTransactionArgs) -> Result<()> {
         let transaction_buffer_account = &self.transaction_buffer;
 
-        // Check that the transaction message is "empty"
-        require!(
-            args.transaction_message == vec![0, 0, 0, 0, 0, 0],
-            SmartAccountError::InvalidInstructionArgs
-        );
+        // Check that the transaction message is "empty" and this is a TransactionPayload
+        match args {
+            CreateTransactionArgs::PolicyPayload { .. } => {
+                return Err(SmartAccountError::InvalidInstructionArgs.into())
+            }
+            CreateTransactionArgs::TransactionPayload {
+                transaction_message,
+                ..
+            } => {
+                require!(
+                    transaction_message == &vec![0, 0, 0, 0, 0, 0],
+                    SmartAccountError::InvalidInstructionArgs
+                );
+            }
+        }
 
         // Validate that the final hash matches the buffer
         transaction_buffer_account.validate_hash()?;
@@ -63,11 +73,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             .transaction_create
             .transaction
             .to_account_info();
-        let rent_payer_account_info = &ctx
-            .accounts
-            .transaction_create
-            .rent_payer
-            .to_account_info();
+        let rent_payer_account_info = &ctx.accounts.transaction_create.rent_payer.to_account_info();
 
         let system_program = &ctx
             .accounts
@@ -80,8 +86,14 @@ impl<'info> CreateTransactionFromBuffer<'info> {
 
         // Calculate the new required length of the transaction account,
         // since it was initialized with an empty transaction message
-        let new_len =
-            Transaction::size(args.ephemeral_signers, transaction_buffer.buffer.as_slice())?;
+        let new_len = match &args {
+            CreateTransactionArgs::TransactionPayload {
+                ephemeral_signers, ..
+            } => Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?,
+            CreateTransactionArgs::PolicyPayload { .. } => {
+                return Err(SmartAccountError::InvalidInstructionArgs.into())
+            }
+        };
 
         // Calculate the rent exemption for new length
         let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_len).max(1);
@@ -105,11 +117,21 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         AccountInfo::realloc(&transaction_account_info, new_len, true)?;
 
         // Create the args for the `create_transaction` instruction
-        let create_args = CreateTransactionArgs {
-            account_index: args.account_index,
-            ephemeral_signers: args.ephemeral_signers,
-            transaction_message: transaction_buffer.buffer.clone(),
-            memo: args.memo,
+        let create_args = match &args {
+            CreateTransactionArgs::TransactionPayload {
+                account_index,
+                ephemeral_signers,
+                memo,
+                ..
+            } => CreateTransactionArgs::TransactionPayload {
+                account_index: *account_index,
+                ephemeral_signers: *ephemeral_signers,
+                transaction_message: transaction_buffer.buffer.clone(),
+                memo: memo.clone(),
+            },
+            CreateTransactionArgs::PolicyPayload { .. } => {
+                return Err(SmartAccountError::InvalidInstructionArgs.into())
+            }
         };
         // Create the context for the `create_transaction` instruction
         let context = Context::new(

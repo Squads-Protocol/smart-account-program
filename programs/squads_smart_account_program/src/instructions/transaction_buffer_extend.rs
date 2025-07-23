@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -13,10 +14,9 @@ pub struct ExtendTransactionBufferArgs {
 #[instruction(args: ExtendTransactionBufferArgs)]
 pub struct ExtendTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         mut,
@@ -24,7 +24,7 @@ pub struct ExtendTransactionBuffer<'info> {
         constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()
@@ -40,7 +40,7 @@ pub struct ExtendTransactionBuffer<'info> {
 impl ExtendTransactionBuffer<'_> {
     fn validate(&self, args: &ExtendTransactionBufferArgs) -> Result<()> {
         let Self {
-            settings,
+            consensus_account,
             creator,
             transaction_buffer,
             ..
@@ -48,13 +48,13 @@ impl ExtendTransactionBuffer<'_> {
 
         // creator is still a signer on the smart account
         require!(
-            settings.is_signer(creator.key()).is_some(),
+            consensus_account.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
         );
 
         // creator still has initiate permissions
         require!(
-            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
             SmartAccountError::Unauthorized
         );
 

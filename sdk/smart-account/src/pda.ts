@@ -1,7 +1,13 @@
 import { PublicKey } from "@solana/web3.js";
 import invariant from "invariant";
 import { PROGRAM_ID } from "./generated";
-import { toU128Bytes, toU32Bytes, toU64Bytes, toU8Bytes, toUtfBytes } from "./utils";
+import {
+  toU128Bytes,
+  toU32Bytes,
+  toU64Bytes,
+  toU8Bytes,
+  toUtfBytes,
+} from "./utils";
 
 const SEED_PREFIX = toUtfBytes("smart_account");
 const SEED_PROGRAM_CONFIG = toUtfBytes("program_config");
@@ -12,6 +18,7 @@ const SEED_PROPOSAL = toUtfBytes("proposal");
 const SEED_BATCH_TRANSACTION = toUtfBytes("batch_transaction");
 const SEED_EPHEMERAL_SIGNER = toUtfBytes("ephemeral_signer");
 const SEED_SPENDING_LIMIT = toUtfBytes("spending_limit");
+const SEED_POLICY = toUtfBytes("policy");
 
 export function getProgramConfigPda({
   programId = PROGRAM_ID,
@@ -157,11 +164,26 @@ export function getSpendingLimitPda({
   programId?: PublicKey;
 }): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
+    [SEED_PREFIX, settingsPda.toBytes(), SEED_SPENDING_LIMIT, seed.toBytes()],
+    programId
+  );
+}
+
+export function getPolicyPda({
+  settingsPda,
+  policySeed,
+  programId = PROGRAM_ID,
+}: {
+  settingsPda: PublicKey;
+  policySeed: number;
+  programId?: PublicKey;
+}): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
     [
       SEED_PREFIX,
       settingsPda.toBytes(),
-      SEED_SPENDING_LIMIT,
-      seed.toBytes(),
+      SEED_POLICY,
+      toU64Bytes(BigInt(policySeed)),
     ],
     programId
   );

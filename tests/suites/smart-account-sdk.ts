@@ -13,6 +13,7 @@ import {
   createControlledSmartAccount,
   createLocalhostConnection,
   createTestTransferInstruction,
+  extractTransactionPayloadDetails,
   fundKeypair,
   generateFundedKeypair,
   generateSmartAccountSigners,
@@ -1332,8 +1333,11 @@ describe("Smart Account SDK", () => {
         connection,
         transactionPda
       );
+      let transactionPayloadDetails = extractTransactionPayloadDetails(
+        transactionAccount.payload
+      );
       assert.strictEqual(
-        transactionAccount.settings.toBase58(),
+        transactionAccount.consensusAccount.toBase58(),
         settingsPda.toBase58()
       );
       assert.strictEqual(
@@ -1344,14 +1348,15 @@ describe("Smart Account SDK", () => {
         transactionAccount.index.toString(),
         transactionIndex.toString()
       );
-      assert.strictEqual(transactionAccount.accountBump, vaultBump);
+
+      assert.strictEqual(transactionPayloadDetails.accountBump, vaultBump);
       assert.deepEqual(
-        transactionAccount.ephemeralSignerBumps,
+        transactionPayloadDetails.ephemeralSignerBumps,
         new Uint8Array()
       );
-      assert.strictEqual(transactionAccount.bump, transactionBump);
+      assert.deepEqual(transactionPayloadDetails.accountIndex, 0);
       // TODO: verify the transaction message data.
-      assert.ok(transactionAccount.message);
+      assert.ok(transactionPayloadDetails.message);
     });
   });
 
@@ -2321,10 +2326,12 @@ describe("Smart Account SDK", () => {
         transactionIndex,
         programId,
       });
-
+      let transactionPayloadDetails = extractTransactionPayloadDetails(
+        transactionAccount.payload
+      );
       const [vaultPda] = smartAccount.getSmartAccountPda({
         settingsPda,
-        accountIndex: transactionAccount.accountIndex,
+        accountIndex: transactionPayloadDetails.accountIndex,
         programId,
       });
       const preVaultBalance = await connection.getBalance(vaultPda);

@@ -24,6 +24,7 @@ import {
   createAutonomousSmartAccountV2,
   createLocalhostConnection,
   createTestTransferInstruction,
+  extractTransactionPayloadDetails,
   generateSmartAccountSigners,
   getLogs,
   getNextAccountIndex,
@@ -120,7 +121,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -128,6 +129,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
       },
       {
         args: {
+          __kind: "TransactionPayload",
           bufferIndex: bufferIndex,
           accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
@@ -181,7 +183,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const secondIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
@@ -249,7 +251,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const thirdIx =
       smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
-          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemConsensusAccount: settingsPda,
           transactionCreateItemTransaction: transactionPda,
           transactionCreateItemCreator: members.proposer.publicKey,
           transactionCreateItemRentPayer: members.proposer.publicKey,
@@ -259,6 +261,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
         },
         {
           args: {
+            __kind: "TransactionPayload",
             accountIndex: 0,
             ephemeralSigners: 0,
             transactionMessage: new Uint8Array(6).fill(0),
@@ -305,7 +308,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
       );
 
     // Ensure final transaction has 43 instructions
-    assert.equal(transactionInfo.message.instructions.length, 43);
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
+    assert.equal(transactionPayloadDetails.message.instructions.length, 43);
   });
 
   it("error: create from buffer with mismatched hash", async () => {
@@ -349,7 +355,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const createIx =
       smartAccount.generated.createCreateTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
           rentPayer: members.proposer.publicKey,
@@ -357,6 +363,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
         },
         {
           args: {
+            __kind: "TransactionPayload",
             bufferIndex,
             accountIndex: 0,
             finalBufferHash: Array.from(dummyHash),
@@ -395,7 +402,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const createFromBufferIx =
       smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
-          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemConsensusAccount: settingsPda,
           transactionCreateItemTransaction: transactionPda,
           transactionCreateItemCreator: members.proposer.publicKey,
           transactionCreateItemRentPayer: members.proposer.publicKey,
@@ -405,6 +412,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
         },
         {
           args: {
+            __kind: "TransactionPayload",
             accountIndex: 0,
             ephemeralSigners: 0,
             transactionMessage: new Uint8Array(6).fill(0),
@@ -450,7 +458,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
       );
 
     // Check that we're dealing with the same account from first test.
-    assert.equal(transactionInfo.message.instructions.length, 43);
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
+    assert.equal(transactionPayloadDetails.message.instructions.length, 43);
 
     const fourthSignature = await smartAccount.rpc.createProposal({
       connection,

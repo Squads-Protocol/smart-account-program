@@ -26,3 +26,7 @@ export * from "./createTransaction.js";
 export * from "./executeTransaction.js";
 export * from "./executeTransactionSync.js";
 export * from "./executeSettingsTransactionSync.js";
+export * from "./createPolicyTransaction.js";
+export * from "./executePolicyTransaction.js";
+export * from "./executeTransactionSyncV2.js";
+export * from "./executePolicyPayloadSync.js";

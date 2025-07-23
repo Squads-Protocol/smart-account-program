@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
@@ -19,6 +20,7 @@ export function createSettingsTransaction({
   transactionIndex,
   actions,
   memo,
+  remainingAccounts,
   programId,
 }: {
   blockhash: string;
@@ -31,6 +33,7 @@ export function createSettingsTransaction({
   transactionIndex: bigint;
   actions: SettingsAction[];
   memo?: string;
+  remainingAccounts?: AccountMeta[];
   programId?: PublicKey;
 }): VersionedTransaction {
   const message = new TransactionMessage({
@@ -44,6 +47,7 @@ export function createSettingsTransaction({
         transactionIndex,
         actions,
         memo,
+        remainingAccounts,
         programId,
       }),
     ],

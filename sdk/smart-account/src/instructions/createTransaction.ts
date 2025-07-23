@@ -1,7 +1,4 @@
-import {
-  createCreateTransactionInstruction,
-  PROGRAM_ID,
-} from "../generated";
+import { createCreateTransactionInstruction, PROGRAM_ID } from "../generated";
 import {
   AddressLookupTableAccount,
   PublicKey,
@@ -57,13 +54,14 @@ export function createTransaction({
 
   return createCreateTransactionInstruction(
     {
-      settings: settingsPda,
+      consensusAccount: settingsPda,
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
     },
     {
       args: {
+        __kind: "TransactionPayload",
         accountIndex,
         ephemeralSigners,
         transactionMessage: transactionMessageBytes,

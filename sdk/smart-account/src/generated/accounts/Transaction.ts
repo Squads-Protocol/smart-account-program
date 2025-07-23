@@ -8,10 +8,7 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
-import {
-  SmartAccountTransactionMessage,
-  smartAccountTransactionMessageBeet,
-} from '../types/SmartAccountTransactionMessage'
+import { Payload, payloadBeet } from '../types/Payload'
 
 /**
  * Arguments used to create {@link Transaction}
@@ -19,15 +16,11 @@ import {
  * @category generated
  */
 export type TransactionArgs = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   creator: web3.PublicKey
   rentCollector: web3.PublicKey
   index: beet.bignum
-  bump: number
-  accountIndex: number
-  accountBump: number
-  ephemeralSignerBumps: Uint8Array
-  message: SmartAccountTransactionMessage
+  payload: Payload
 }
 
 export const transactionDiscriminator = [11, 24, 174, 129, 203, 117, 242, 23]
@@ -40,15 +33,11 @@ export const transactionDiscriminator = [11, 24, 174, 129, 203, 117, 242, 23]
  */
 export class Transaction implements TransactionArgs {
   private constructor(
-    readonly settings: web3.PublicKey,
+    readonly consensusAccount: web3.PublicKey,
     readonly creator: web3.PublicKey,
     readonly rentCollector: web3.PublicKey,
     readonly index: beet.bignum,
-    readonly bump: number,
-    readonly accountIndex: number,
-    readonly accountBump: number,
-    readonly ephemeralSignerBumps: Uint8Array,
-    readonly message: SmartAccountTransactionMessage
+    readonly payload: Payload
   ) {}
 
   /**
@@ -56,15 +45,11 @@ export class Transaction implements TransactionArgs {
    */
   static fromArgs(args: TransactionArgs) {
     return new Transaction(
-      args.settings,
+      args.consensusAccount,
       args.creator,
       args.rentCollector,
       args.index,
-      args.bump,
-      args.accountIndex,
-      args.accountBump,
-      args.ephemeralSignerBumps,
-      args.message
+      args.payload
     )
   }
 
@@ -173,7 +158,7 @@ export class Transaction implements TransactionArgs {
    */
   pretty() {
     return {
-      settings: this.settings.toBase58(),
+      consensusAccount: this.consensusAccount.toBase58(),
       creator: this.creator.toBase58(),
       rentCollector: this.rentCollector.toBase58(),
       index: (() => {
@@ -187,11 +172,7 @@ export class Transaction implements TransactionArgs {
         }
         return x
       })(),
-      bump: this.bump,
-      accountIndex: this.accountIndex,
-      accountBump: this.accountBump,
-      ephemeralSignerBumps: this.ephemeralSignerBumps,
-      message: this.message,
+      payload: this.payload.__kind,
     }
   }
 }
@@ -208,15 +189,11 @@ export const transactionBeet = new beet.FixableBeetStruct<
 >(
   [
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['settings', beetSolana.publicKey],
+    ['consensusAccount', beetSolana.publicKey],
     ['creator', beetSolana.publicKey],
     ['rentCollector', beetSolana.publicKey],
     ['index', beet.u64],
-    ['bump', beet.u8],
-    ['accountIndex', beet.u8],
-    ['accountBump', beet.u8],
-    ['ephemeralSignerBumps', beet.bytes],
-    ['message', smartAccountTransactionMessageBeet],
+    ['payload', payloadBeet],
   ],
   Transaction.fromArgs,
   'Transaction'

@@ -29,7 +29,7 @@ export function createBatch({
 
   return createCreateBatchInstruction(
     {
-      settings: settingsPda,
+      consensusAccount: settingsPda,
       creator,
       rentPayer: rentPayer ?? creator,
       batch: batchPda,

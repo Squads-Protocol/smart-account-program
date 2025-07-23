@@ -106,7 +106,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -167,7 +167,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix = smartAccount.generated.createCloseTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
       },
@@ -242,7 +242,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -288,7 +288,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix2 = smartAccount.generated.createCloseTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
       },
@@ -375,7 +375,7 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: nonMember.publicKey,
         rentPayer: nonMember.publicKey,
@@ -463,7 +463,7 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: memberWithoutInitiatePermissions.publicKey,
         rentPayer: memberWithoutInitiatePermissions.publicKey,
@@ -550,7 +550,7 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -616,7 +616,7 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,

@@ -36,7 +36,7 @@ export const createBatchStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _createBatch_ instruction
  *
- * @property [_writable_] settings
+ * @property [_writable_] consensusAccount
  * @property [_writable_] batch
  * @property [**signer**] creator
  * @property [_writable_, **signer**] rentPayer
@@ -45,7 +45,7 @@ export const createBatchStruct = new beet.FixableBeetArgsStruct<
  * @category generated
  */
 export type CreateBatchInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   batch: web3.PublicKey
   creator: web3.PublicKey
   rentPayer: web3.PublicKey
@@ -78,7 +78,7 @@ export function createCreateBatchInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: true,
       isSigner: false,
     },

@@ -127,7 +127,7 @@ impl CloseSettingsTransaction<'_> {
 #[derive(Accounts)]
 pub struct CloseTransaction<'info> {
     #[account(
-        constraint = consensus_account.check_derivation().is_ok()
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 

@@ -22,7 +22,7 @@ export function rejectProposal({
   });
 
   return createRejectProposalInstruction(
-    { settings: settingsPda, proposal: proposalPda, signer },
+    { consensusAccount: settingsPda, proposal: proposalPda, signer },
     { args: { memo: memo ?? null } },
     programId
   );

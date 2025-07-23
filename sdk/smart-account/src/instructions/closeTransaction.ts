@@ -31,8 +31,7 @@ export function closeTransaction({
 
   return createCloseTransactionInstruction(
     {
-      settings: settingsPda,
-
+      consensusAccount: settingsPda,
       proposal: proposalPda,
       proposalRentCollector,
       transaction: transactionPda,

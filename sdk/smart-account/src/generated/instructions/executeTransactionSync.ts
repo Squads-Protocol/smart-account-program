@@ -8,9 +8,9 @@
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import {
-  SyncTransactionArgs,
-  syncTransactionArgsBeet,
-} from '../types/SyncTransactionArgs'
+  LegacySyncTransactionArgs,
+  legacySyncTransactionArgsBeet,
+} from '../types/LegacySyncTransactionArgs'
 
 /**
  * @category Instructions
@@ -18,7 +18,7 @@ import {
  * @category generated
  */
 export type ExecuteTransactionSyncInstructionArgs = {
-  args: SyncTransactionArgs
+  args: LegacySyncTransactionArgs
 }
 /**
  * @category Instructions
@@ -32,21 +32,21 @@ export const executeTransactionSyncStruct = new beet.FixableBeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', syncTransactionArgsBeet],
+    ['args', legacySyncTransactionArgsBeet],
   ],
   'ExecuteTransactionSyncInstructionArgs'
 )
 /**
  * Accounts required by the _executeTransactionSync_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [] program
  * @category Instructions
  * @category ExecuteTransactionSync
  * @category generated
  */
 export type ExecuteTransactionSyncInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
@@ -76,7 +76,7 @@ export function createExecuteTransactionSyncInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

@@ -39,7 +39,7 @@ export const createProposalStruct = new beet.BeetArgsStruct<
 /**
  * Accounts required by the _createProposal_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [_writable_] proposal
  * @property [**signer**] creator
  * @property [_writable_, **signer**] rentPayer
@@ -48,7 +48,7 @@ export const createProposalStruct = new beet.BeetArgsStruct<
  * @category generated
  */
 export type CreateProposalInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   proposal: web3.PublicKey
   creator: web3.PublicKey
   rentPayer: web3.PublicKey
@@ -81,7 +81,7 @@ export function createCreateProposalInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

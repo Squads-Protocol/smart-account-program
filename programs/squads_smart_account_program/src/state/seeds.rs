@@ -1,4 +1,4 @@
-use anchor_lang::AnchorSerialize;
+use anchor_lang::{prelude::Pubkey, AnchorSerialize};
 
 use super::Settings;
 
@@ -19,5 +19,18 @@ pub fn get_settings_signer_seeds(settings_seed: u128) -> Vec<Vec<u8>> {
         SEED_PREFIX.to_vec(),
         SEED_SETTINGS.to_vec(),
         settings_seed.to_le_bytes().to_vec(),
+    ]
+}
+
+/// Derives the account seeds for a given smart account based on the settings key and account index
+pub fn get_smart_account_seeds<'a>(
+    settings_key: &'a Pubkey,
+    account_index_bytes: &'a [u8],
+) -> [&'a [u8]; 4] {
+    [
+        SEED_PREFIX,
+        settings_key.as_ref(),
+        SEED_SMART_ACCOUNT,
+        account_index_bytes,
     ]
 }

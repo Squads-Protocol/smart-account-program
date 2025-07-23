@@ -1,13 +1,18 @@
 use anchor_lang::{
-    prelude::Pubkey, AccountDeserialize, AccountSerialize, Discriminator, Owners, Result,
+    prelude::{AccountInfo, Interface, InterfaceAccount, Pubkey}, AccountDeserialize, AccountSerialize, Discriminator, Key, Owners, Result
 };
+use solana_program::msg;
 
-use crate::{state::Settings, Policy};
+use crate::{
+    errors::SmartAccountError,
+    state::{Policy, Settings},
+    PolicyPayload, SmartAccountSigner,
+};
 
 use super::consensus_trait::{Consensus, ConsensusAccountType};
 
 #[derive(Clone)]
-pub enum ConsensusAccount {
+pub(crate) enum ConsensusAccount {
     Settings(Settings),
     Policy(Policy),
 }
@@ -59,12 +64,56 @@ impl AccountDeserialize for ConsensusAccount {
         }
     }
 }
-
 impl ConsensusAccount {
-    pub fn check_derivation(&self) -> Result<()> {
+    /// Returns the settings if the consensus account is a settings.
+    pub fn settings(&mut self) -> Result<&mut Settings> {
         match self {
-            ConsensusAccount::Settings(settings) => settings.check_derivation()?,
-            ConsensusAccount::Policy(policy) => policy.check_derivation()?,
+            ConsensusAccount::Settings(settings) => Ok(settings),
+            ConsensusAccount::Policy(_) => Err(SmartAccountError::PlaceholderError.into()),
+        }
+    }
+
+    /// Returns the settings if the consensus account is a settings.
+    pub fn read_only_settings(&self) -> Result<&Settings> {
+        match self {
+            ConsensusAccount::Settings(settings) => Ok(settings),
+            ConsensusAccount::Policy(_) => Err(SmartAccountError::PlaceholderError.into()),
+        }
+    }
+    /// Returns the policy if the consensus account is a policy.
+    pub fn policy(&mut self) -> Result<&mut Policy> {
+        match self {
+            ConsensusAccount::Settings(_) => {
+                return Err(SmartAccountError::ConsensusAccountNotPolicy.into())
+            }
+            ConsensusAccount::Policy(policy) => Ok(policy),
+        }
+    }
+
+    ///
+    pub fn read_only_policy(&self) -> Result<&Policy> {
+        match self {
+            ConsensusAccount::Settings(_) => {
+                return Err(SmartAccountError::ConsensusAccountNotPolicy.into())
+            }
+            ConsensusAccount::Policy(policy) => Ok(policy),
+        }
+    }
+
+    /// Checks if the consensus account is active.
+    pub fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        match self {
+            ConsensusAccount::Settings(settings) => settings.is_active(accounts),
+            ConsensusAccount::Policy(policy) => policy.is_active(accounts),
+        }
+    }
+
+    pub fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        match self {
+            ConsensusAccount::Settings(settings) => {
+                settings.check_derivation(key)?
+            }
+            ConsensusAccount::Policy(policy) => policy.check_derivation(key)?,
         }
         Ok(())
     }
@@ -84,10 +133,10 @@ impl ConsensusAccount {
         }
     }
 
-    pub fn key(&self) -> Pubkey {
+    pub fn signers(&self) -> &[SmartAccountSigner] {
         match self {
-            ConsensusAccount::Settings(settings) => settings.key(),
-            ConsensusAccount::Policy(policy) => policy.key(),
+            ConsensusAccount::Settings(settings) => settings.signers(),
+            ConsensusAccount::Policy(policy) => policy.signers(),
         }
     }
 
@@ -114,7 +163,9 @@ impl ConsensusAccount {
 
     pub fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
         match self {
-            ConsensusAccount::Settings(settings) => settings.set_transaction_index(transaction_index),
+            ConsensusAccount::Settings(settings) => {
+                settings.set_transaction_index(transaction_index)
+            }
             ConsensusAccount::Policy(policy) => policy.set_transaction_index(transaction_index),
         }
     }

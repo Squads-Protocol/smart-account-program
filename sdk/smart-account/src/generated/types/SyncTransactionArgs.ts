@@ -6,10 +6,11 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
+import { SyncPayload, syncPayloadBeet } from './SyncPayload'
 export type SyncTransactionArgs = {
   accountIndex: number
   numSigners: number
-  instructions: Uint8Array
+  payload: SyncPayload
 }
 
 /**
@@ -21,7 +22,7 @@ export const syncTransactionArgsBeet =
     [
       ['accountIndex', beet.u8],
       ['numSigners', beet.u8],
-      ['instructions', beet.bytes],
+      ['payload', syncPayloadBeet],
     ],
     'SyncTransactionArgs'
   )

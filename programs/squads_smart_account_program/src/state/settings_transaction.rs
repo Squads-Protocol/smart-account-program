@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 
 use super::*;
+use crate::state::policies::policy_core::{PolicyCreationPayload, PolicyExpiration};
 
 /// Stores data required for execution of a settings configuration transaction.
 /// Settings transactions can perform a predefined set of actions on the Settings PDA, such as adding/removing members,
@@ -81,4 +82,26 @@ pub enum SettingsAction {
     RemoveSpendingLimit { spending_limit: Pubkey },
     /// Set the `archival_authority` config parameter of the settings.
     SetArchivalAuthority { new_archival_authority: Option<Pubkey> },
+    /// Create a new policy account.
+    PolicyCreate {
+        /// Key that is used to seed the Policy PDA.
+        seed: u64,
+        /// The policy creation payload containing policy-specific configuration.
+        policy_creation_payload: PolicyCreationPayload,
+        /// Signers attached to the policy with their permissions.
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// Timestamp when the policy becomes active.
+        start_timestamp: Option<i64>,
+        /// Policy expiration - either time-based or state-based.
+        expiration: Option<PolicyExpiration>,
+    },
+    /// Remove a policy account.
+    PolicyRemove {
+        /// The policy account to remove.
+        policy: Pubkey
+    },
 }

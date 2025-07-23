@@ -1,18 +1,26 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus::ConsensusAccount;
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
+use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::state::*;
 use crate::utils::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct CreateTransactionArgs {
-    /// Index of the smart account this transaction belongs to.
-    pub account_index: u8,
-    /// Number of ephemeral signing PDAs required by the transaction.
-    pub ephemeral_signers: u8,
-    pub transaction_message: Vec<u8>,
-    pub memo: Option<String>,
+pub enum CreateTransactionArgs {
+    TransactionPayload {
+        /// Index of the smart account this transaction belongs to.
+        account_index: u8,
+        /// Number of ephemeral signing PDAs required by the transaction.
+        ephemeral_signers: u8,
+        /// The message of the transaction.
+        transaction_message: Vec<u8>,
+        memo: Option<String>,
+    },
+    PolicyPayload {
+        /// The payload of the policy transaction.
+        payload: PolicyPayload,
+    },
 }
 
 #[derive(Accounts)]
@@ -20,14 +28,21 @@ pub struct CreateTransactionArgs {
 pub struct CreateTransaction<'info> {
     #[account(
         mut,
-        constraint = consensus_account.check_derivation().is_ok()
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         init,
         payer = rent_payer,
-        space = Transaction::size(args.ephemeral_signers, &args.transaction_message)?,
+        space = match &args {
+            CreateTransactionArgs::TransactionPayload { ephemeral_signers, transaction_message, .. } => {
+                Transaction::size_for_transaction(*ephemeral_signers, transaction_message)?
+            },
+            CreateTransactionArgs::PolicyPayload { payload } => {
+                Transaction::size_for_policy(payload)?
+            }
+        },
         seeds = [
             SEED_PREFIX,
             consensus_account.key().as_ref(),
@@ -49,13 +64,37 @@ pub struct CreateTransaction<'info> {
 }
 
 impl<'info> CreateTransaction<'info> {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(&self, ctx: &Context<Self>, args: &CreateTransactionArgs) -> Result<()> {
         let Self {
             consensus_account,
             creator,
             ..
         } = self;
 
+        // Check if the consensus account is active
+        consensus_account.is_active(&ctx.remaining_accounts)?;
+
+        // Validate the transaction payload
+        match consensus_account.account_type() {
+            ConsensusAccountType::Settings => {
+                assert!(matches!(
+                    args,
+                    CreateTransactionArgs::TransactionPayload { .. }
+                ));
+            }
+            ConsensusAccountType::Policy => {
+                let policy = consensus_account.read_only_policy()?;
+                // Validate that the args match the policy type
+                match args {
+                    CreateTransactionArgs::PolicyPayload { payload } => {
+                        policy.validate_payload(payload)?;
+                    }
+                    _ => {
+                        return Err(SmartAccountError::InvalidTransactionMessage.into());
+                    }
+                }
+            }
+        }
         // creator
         require!(
             consensus_account.is_signer(creator.key()).is_some(),
@@ -70,42 +109,15 @@ impl<'info> CreateTransaction<'info> {
     }
 
     /// Create a new vault transaction.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx, &args))]
     pub fn create_transaction(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
         let rent_payer = &mut ctx.accounts.rent_payer;
 
-        let transaction_message =
-            TransactionMessage::deserialize(&mut args.transaction_message.as_slice())?;
-
         let settings_key = consensus_account.key();
         let transaction_key = transaction.key();
-
-        let smart_account_seeds = &[
-            SEED_PREFIX,
-            settings_key.as_ref(),
-            SEED_SMART_ACCOUNT,
-            &args.account_index.to_le_bytes(),
-        ];
-        let (_, smart_account_bump) =
-            Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
-
-        let ephemeral_signer_bumps: Vec<u8> = (0..args.ephemeral_signers)
-            .map(|ephemeral_signer_index| {
-                let ephemeral_signer_seeds = &[
-                    SEED_PREFIX,
-                    transaction_key.as_ref(),
-                    SEED_EPHEMERAL_SIGNER,
-                    &ephemeral_signer_index.to_le_bytes(),
-                ];
-
-                let (_, bump) =
-                    Pubkey::find_program_address(ephemeral_signer_seeds, ctx.program_id);
-                bump
-            })
-            .collect();
 
         // Increment the transaction index.
         let transaction_index = consensus_account
@@ -118,11 +130,59 @@ impl<'info> CreateTransaction<'info> {
         transaction.creator = creator.key();
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
-        transaction.bump = ctx.bumps.transaction;
-        transaction.account_index = args.account_index;
-        transaction.account_bump = smart_account_bump;
-        transaction.ephemeral_signer_bumps = ephemeral_signer_bumps;
-        transaction.message = transaction_message.try_into()?;
+        match (args, consensus_account.account_type()) {
+            (
+                CreateTransactionArgs::TransactionPayload {
+                    account_index,
+                    ephemeral_signers,
+                    transaction_message,
+                    memo: _,
+                },
+                ConsensusAccountType::Settings,
+            ) => {
+                let transaction_message_parsed =
+                    TransactionMessage::deserialize(&mut transaction_message.as_slice())?;
+
+                // Proceed with normal transaction creation.
+                let smart_account_seeds = &[
+                    SEED_PREFIX,
+                    settings_key.as_ref(),
+                    SEED_SMART_ACCOUNT,
+                    &account_index.to_le_bytes(),
+                ];
+                let (_, smart_account_bump) =
+                    Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
+
+                let ephemeral_signer_bumps: Vec<u8> = (0..ephemeral_signers)
+                    .map(|ephemeral_signer_index| {
+                        let ephemeral_signer_seeds = &[
+                            SEED_PREFIX,
+                            transaction_key.as_ref(),
+                            SEED_EPHEMERAL_SIGNER,
+                            &ephemeral_signer_index.to_le_bytes(),
+                        ];
+
+                        let (_, bump) =
+                            Pubkey::find_program_address(ephemeral_signer_seeds, ctx.program_id);
+                        bump
+                    })
+                    .collect();
+
+                transaction.payload = Payload::TransactionPayload(TransactionPayloadDetails {
+                    account_index: account_index,
+                    account_bump: smart_account_bump,
+                    ephemeral_signer_bumps,
+                    message: transaction_message_parsed.try_into()?,
+                });
+            }
+            (CreateTransactionArgs::PolicyPayload { payload }, ConsensusAccountType::Policy) => {
+                transaction.payload =
+                    Payload::PolicyPayload(PolicyActionPayloadDetails { payload: payload });
+            }
+            _ => {
+                return Err(SmartAccountError::InvalidTransactionMessage.into());
+            }
+        }
 
         // Updated last transaction index in the settings account.
         consensus_account.set_transaction_index(transaction_index)?;

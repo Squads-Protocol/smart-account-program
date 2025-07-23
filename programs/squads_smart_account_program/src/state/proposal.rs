@@ -13,7 +13,7 @@ use anchor_lang::system_program;
 /// the latter can be executed only after the `Proposal` has been approved and its time lock is released.
 #[account]
 pub struct Proposal {
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Pubkey,
     /// Index of the smart account transaction this proposal is associated with.
     pub transaction_index: u64,

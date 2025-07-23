@@ -17,6 +17,7 @@ export async function executeSettingsTransaction({
   signer,
   rentPayer,
   spendingLimits,
+  policies,
   signers,
   sendOptions,
   programId,
@@ -29,6 +30,8 @@ export async function executeSettingsTransaction({
   rentPayer: Signer;
   /** In case the transaction adds or removes SpendingLimits, pass the array of their Pubkeys here. */
   spendingLimits?: PublicKey[];
+  /** In case the transaction adds or removes Policies, pass the array of their Pubkeys here. */
+  policies?: PublicKey[];
   signers?: Signer[];
   sendOptions?: SendOptions;
   programId?: PublicKey;
@@ -43,13 +46,14 @@ export async function executeSettingsTransaction({
     signer: signer.publicKey,
     rentPayer: rentPayer.publicKey,
     spendingLimits,
+    policies,
     programId,
   });
 
   tx.sign([feePayer, signer, rentPayer, ...(signers ?? [])]);
 
   try {
-    return await connection.sendTransaction(tx, sendOptions);
+    return await connection.sendRawTransaction(tx.serialize(), sendOptions);
   } catch (err) {
     translateAndThrowAnchorError(err);
   }

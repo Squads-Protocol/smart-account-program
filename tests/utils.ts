@@ -10,6 +10,8 @@ import {
   VersionedTransaction,
 } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
+import { Payload } from "@sqds/smart-account/lib/generated";
+import { TransactionPayloadDetails } from "@sqds/smart-account/src/generated/types";
 import assert from "assert";
 import { readFileSync } from "fs";
 import path from "path";
@@ -1255,7 +1257,7 @@ export async function processBufferInChunks(
 
     const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer: bufferAccount,
         creator: signer.publicKey,
       },
@@ -1304,4 +1306,18 @@ export async function getNextAccountIndex(
   const accountIndex = BigInt(programConfig.smartAccountIndex.toString());
   const nextAccountIndex = accountIndex + 1n;
   return nextAccountIndex;
+}
+
+
+/**
+ * Extracts the TransactionPayloadDetails from a Payload.
+ * @param transactionPayload - The Payload to extract the TransactionPayloadDetails from.
+ * @returns The TransactionPayloadDetails.
+ */
+export function extractTransactionPayloadDetails(transactionPayload: Payload): TransactionPayloadDetails {
+  if (transactionPayload.__kind === "TransactionPayload") {
+    return transactionPayload.fields[0] as TransactionPayloadDetails
+  } else {
+    throw new Error("Invalid transaction payload")
+  }
 }

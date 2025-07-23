@@ -1,26 +1,20 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::SmartAccountError, Permission, Permissions};
+use crate::{errors::SmartAccountError, Permission, Permissions, SmartAccountSigner};
 
-pub trait ConsensusSigner {
-    fn key(&self) -> Pubkey;
-    fn permissions(&self) -> Permissions;
-}
-
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum ConsensusAccountType {
     Settings,
     Policy,
 }
 
 pub trait Consensus {
-    type SignerType: ConsensusSigner;
-
     fn account_type(&self) -> ConsensusAccountType;
-    fn key(&self) -> Pubkey;
-    fn check_derivation(&self) -> Result<()>;
+    fn check_derivation(&self, key: Pubkey) -> Result<()>;
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()>;
 
     // Core consensus fields
-    fn signers(&self) -> &[Self::SignerType];
+    fn signers(&self) -> &[SmartAccountSigner];
     fn threshold(&self) -> u16;
     fn time_lock(&self) -> u32;
     fn transaction_index(&self) -> u64;
@@ -30,13 +24,13 @@ pub trait Consensus {
     // Signer validation methods (ported from Settings)
     fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
         self.signers()
-            .binary_search_by_key(&signer_pubkey, |s| s.key())
+            .binary_search_by_key(&signer_pubkey, |s| s.key)
             .ok()
     }
 
     fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
         match self.is_signer(signer_pubkey) {
-            Some(index) => self.signers()[index].permissions().has(permission),
+            Some(index) => self.signers()[index].permissions.has(permission),
             _ => false,
         }
     }
@@ -45,21 +39,21 @@ pub trait Consensus {
     fn num_voters(&self) -> usize {
         self.signers()
             .iter()
-            .filter(|s| s.permissions().has(Permission::Vote))
+            .filter(|s| s.permissions.has(Permission::Vote))
             .count()
     }
 
     fn num_proposers(&self) -> usize {
         self.signers()
             .iter()
-            .filter(|s| s.permissions().has(Permission::Initiate))
+            .filter(|s| s.permissions.has(Permission::Initiate))
             .count()
     }
 
     fn num_executors(&self) -> usize {
         self.signers()
             .iter()
-            .filter(|s| s.permissions().has(Permission::Execute))
+            .filter(|s| s.permissions.has(Permission::Execute))
             .count()
     }
 
@@ -87,12 +81,12 @@ pub trait Consensus {
         let has_duplicates = self
             .signers()
             .windows(2)
-            .any(|win| win[0].key() == win[1].key());
+            .any(|win| win[0].key == win[1].key);
         require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 
         // Signers must not have unknown permissions
         require!(
-            self.signers().iter().all(|s| s.permissions().mask < 8),
+            self.signers().iter().all(|s| s.permissions.mask < 8),
             SmartAccountError::UnknownPermission
         );
 

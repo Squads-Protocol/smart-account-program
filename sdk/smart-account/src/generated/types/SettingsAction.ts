@@ -13,6 +13,11 @@ import {
   smartAccountSignerBeet,
 } from './SmartAccountSigner'
 import { Period, periodBeet } from './Period'
+import {
+  PolicyCreationPayload,
+  policyCreationPayloadBeet,
+} from './PolicyCreationPayload'
+import { PolicyExpiration, policyExpirationBeet } from './PolicyExpiration'
 /**
  * This type is used to derive the {@link SettingsAction} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link SettingsAction} type instead.
@@ -39,6 +44,16 @@ export type SettingsActionRecord = {
   }
   RemoveSpendingLimit: { spendingLimit: web3.PublicKey }
   SetArchivalAuthority: { newArchivalAuthority: beet.COption<web3.PublicKey> }
+  PolicyCreate: {
+    seed: beet.bignum
+    policyCreationPayload: PolicyCreationPayload
+    signers: SmartAccountSigner[]
+    threshold: number
+    timeLock: number
+    startTimestamp: beet.COption<beet.bignum>
+    expiration: beet.COption<PolicyExpiration>
+  }
+  PolicyRemove: { policy: web3.PublicKey }
 }
 
 /**
@@ -80,6 +95,14 @@ export const isSettingsActionSetArchivalAuthority = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'SetArchivalAuthority' } =>
   x.__kind === 'SetArchivalAuthority'
+export const isSettingsActionPolicyCreate = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyCreate' } =>
+  x.__kind === 'PolicyCreate'
+export const isSettingsActionPolicyRemove = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyRemove' } =>
+  x.__kind === 'PolicyRemove'
 
 /**
  * @category userTypes
@@ -150,6 +173,30 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
     >(
       [['newArchivalAuthority', beet.coption(beetSolana.publicKey)]],
       'SettingsActionRecord["SetArchivalAuthority"]'
+    ),
+  ],
+
+  [
+    'PolicyCreate',
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyCreate']>(
+      [
+        ['seed', beet.u64],
+        ['policyCreationPayload', policyCreationPayloadBeet],
+        ['signers', beet.array(smartAccountSignerBeet)],
+        ['threshold', beet.u16],
+        ['timeLock', beet.u32],
+        ['startTimestamp', beet.coption(beet.i64)],
+        ['expiration', beet.coption(policyExpirationBeet)],
+      ],
+      'SettingsActionRecord["PolicyCreate"]'
+    ),
+  ],
+
+  [
+    'PolicyRemove',
+    new beet.BeetArgsStruct<SettingsActionRecord['PolicyRemove']>(
+      [['policy', beetSolana.publicKey]],
+      'SettingsActionRecord["PolicyRemove"]'
     ),
   ],
 ]) as beet.FixableBeet<SettingsAction, SettingsAction>

@@ -97,7 +97,7 @@ impl<'info> CreateSmartAccount<'info> {
             bump: settings_bump,
             signers,
             account_utilization: 0,
-            _reserved1: 0,
+            policy_seed: Some(0),
             _reserved2: 0,
         };
 

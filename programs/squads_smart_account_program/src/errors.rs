@@ -110,4 +110,42 @@ pub enum SmartAccountError {
     TimeLockNotZero,
     #[msg("Feature not implemented")]
     NotImplemented,
+    #[msg("Invalid cadence configuration")]
+    SpendingLimitInvalidCadenceConfiguration,
+    #[msg("Invalid data constraint")]
+    InvalidDataConstraint,
+    #[msg("Invalid policy payload")]
+    InvalidPolicyPayload,
+    #[msg("Policy expired")]
+    PolicyExpired,
+    #[msg("Consensus account is not a policy")]
+    ConsensusAccountNotPolicy,
+    #[msg("Invalid payload")]
+    InvalidPayload,
+    #[msg("Protected instruction")]
+    ProtectedInstruction,
+    #[msg("Placeholder error")]
+    PlaceholderError,
+
+    // ===============================================
+    // Program Interaction Policy Errors
+    // ===============================================
+    #[msg("Program interaction data constraint failed: instruction data too short")]
+    ProgramInteractionDataTooShort,
+    #[msg("Program interaction data constraint failed: invalid numeric value")]
+    ProgramInteractionInvalidNumericValue,
+    #[msg("Program interaction data constraint failed: invalid byte sequence")]
+    ProgramInteractionInvalidByteSequence,
+    #[msg("Program interaction data constraint failed: unsupported operator for byte slice")]
+    ProgramInteractionUnsupportedSliceOperator,
+    #[msg("Program interaction constraint failed: instruction data parsing error")]
+    ProgramInteractionDataParsingError,
+    #[msg("Program interaction constraint failed: program ID mismatch")]
+    ProgramInteractionProgramIdMismatch,
+    #[msg("Program interaction constraint failed: account constraint violation")]
+    ProgramInteractionAccountConstraintFailed,
+    #[msg("Program interaction constraint failed: instruction constraint index out of bounds")]
+    ProgramInteractionConstraintIndexOutOfBounds,
+    #[msg("Program interaction constraint failed: instruction count mismatch")]
+    ProgramInteractionInstructionCountMismatch,
 }

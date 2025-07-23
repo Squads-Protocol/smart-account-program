@@ -22,7 +22,7 @@ export const closeTransactionBufferStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _closeTransactionBuffer_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [_writable_] transactionBuffer
  * @property [**signer**] creator
  * @category Instructions
@@ -30,7 +30,7 @@ export const closeTransactionBufferStruct = new beet.BeetArgsStruct<{
  * @category generated
  */
 export type CloseTransactionBufferInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   transactionBuffer: web3.PublicKey
   creator: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -57,7 +57,7 @@ export function createCloseTransactionBufferInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

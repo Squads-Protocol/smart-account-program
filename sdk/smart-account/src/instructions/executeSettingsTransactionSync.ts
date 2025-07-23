@@ -18,7 +18,7 @@ export function executeSettingsTransactionSync({
 }) {
     const ix = createExecuteSettingsTransactionSyncInstruction(
         {
-            settings: settingsPda,
+            consensusAccount: settingsPda,
             rentPayer: feePayer ?? undefined,
             systemProgram: SystemProgram.programId,
             program: programId,

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::state::MAX_BUFFER_SIZE;
 use crate::state::*;
 
@@ -22,10 +23,9 @@ pub struct CreateTransactionBufferArgs {
 #[instruction(args: CreateTransactionBufferArgs)]
 pub struct CreateTransactionBuffer<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         init,
@@ -33,7 +33,7 @@ pub struct CreateTransactionBuffer<'info> {
         space = TransactionBuffer::size(args.final_buffer_size)?,
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
             creator.key().as_ref(),
             &args.buffer_index.to_le_bytes(),
@@ -55,17 +55,17 @@ pub struct CreateTransactionBuffer<'info> {
 impl CreateTransactionBuffer<'_> {
     fn validate(&self, args: &CreateTransactionBufferArgs) -> Result<()> {
         let Self {
-            settings, creator, ..
+            consensus_account, creator, ..
         } = self;
 
         // creator is a signer on the smart account
         require!(
-            settings.is_signer(creator.key()).is_some(),
+            consensus_account.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
         );
         // creator has initiate permissions
         require!(
-            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
             SmartAccountError::Unauthorized
         );
 
@@ -86,14 +86,14 @@ impl CreateTransactionBuffer<'_> {
 
         // Readonly Accounts
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-        let settings = &ctx.accounts.settings;
+        let consensus_account = &ctx.accounts.consensus_account;
         let creator = &mut ctx.accounts.creator;
 
         // Get the buffer index.
         let buffer_index = args.buffer_index;
 
         // Initialize the transaction fields.
-        transaction_buffer.settings = settings.key();
+        transaction_buffer.settings = consensus_account.key();
         transaction_buffer.creator = creator.key();
         transaction_buffer.account_index = args.account_index;
         transaction_buffer.buffer_index = buffer_index;

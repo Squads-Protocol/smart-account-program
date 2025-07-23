@@ -110,7 +110,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const createIx =
       smartAccount.generated.createCreateTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: creator.publicKey,
           rentPayer: creator.publicKey,
@@ -153,7 +153,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const closeIx =
       smartAccount.generated.createCloseTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: creator.publicKey,
         },
@@ -228,7 +228,7 @@ describe("Instructions / transaction_buffer_extend", () => {
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -290,7 +290,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const secondIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
@@ -355,7 +355,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const dummyData = Buffer.alloc(100, 1);
     const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: nonMember.publicKey,
       },
@@ -399,7 +399,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const largeData = Buffer.alloc(500, 1);
     const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.almighty.publicKey,
       },
@@ -444,7 +444,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const extendIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.almighty.publicKey,
         },

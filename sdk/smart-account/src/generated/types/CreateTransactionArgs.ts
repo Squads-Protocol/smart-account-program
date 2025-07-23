@@ -6,24 +6,77 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type CreateTransactionArgs = {
-  accountIndex: number
-  ephemeralSigners: number
-  transactionMessage: Uint8Array
-  memo: beet.COption<string>
+import { PolicyPayload, policyPayloadBeet } from './PolicyPayload'
+/**
+ * This type is used to derive the {@link CreateTransactionArgs} type as well as the de/serializer.
+ * However don't refer to it in your code but use the {@link CreateTransactionArgs} type instead.
+ *
+ * @category userTypes
+ * @category enums
+ * @category generated
+ * @private
+ */
+export type CreateTransactionArgsRecord = {
+  TransactionPayload: {
+    accountIndex: number
+    ephemeralSigners: number
+    transactionMessage: Uint8Array
+    memo: beet.COption<string>
+  }
+  PolicyPayload: { payload: PolicyPayload }
 }
+
+/**
+ * Union type respresenting the CreateTransactionArgs data enum defined in Rust.
+ *
+ * NOTE: that it includes a `__kind` property which allows to narrow types in
+ * switch/if statements.
+ * Additionally `isCreateTransactionArgs*` type guards are exposed below to narrow to a specific variant.
+ *
+ * @category userTypes
+ * @category enums
+ * @category generated
+ */
+export type CreateTransactionArgs =
+  beet.DataEnumKeyAsKind<CreateTransactionArgsRecord>
+
+export const isCreateTransactionArgsTransactionPayload = (
+  x: CreateTransactionArgs
+): x is CreateTransactionArgs & { __kind: 'TransactionPayload' } =>
+  x.__kind === 'TransactionPayload'
+export const isCreateTransactionArgsPolicyPayload = (
+  x: CreateTransactionArgs
+): x is CreateTransactionArgs & { __kind: 'PolicyPayload' } =>
+  x.__kind === 'PolicyPayload'
 
 /**
  * @category userTypes
  * @category generated
  */
 export const createTransactionArgsBeet =
-  new beet.FixableBeetArgsStruct<CreateTransactionArgs>(
+  beet.dataEnum<CreateTransactionArgsRecord>([
     [
-      ['accountIndex', beet.u8],
-      ['ephemeralSigners', beet.u8],
-      ['transactionMessage', beet.bytes],
-      ['memo', beet.coption(beet.utf8String)],
+      'TransactionPayload',
+      new beet.FixableBeetArgsStruct<
+        CreateTransactionArgsRecord['TransactionPayload']
+      >(
+        [
+          ['accountIndex', beet.u8],
+          ['ephemeralSigners', beet.u8],
+          ['transactionMessage', beet.bytes],
+          ['memo', beet.coption(beet.utf8String)],
+        ],
+        'CreateTransactionArgsRecord["TransactionPayload"]'
+      ),
     ],
-    'CreateTransactionArgs'
-  )
+
+    [
+      'PolicyPayload',
+      new beet.FixableBeetArgsStruct<
+        CreateTransactionArgsRecord['PolicyPayload']
+      >(
+        [['payload', policyPayloadBeet]],
+        'CreateTransactionArgsRecord["PolicyPayload"]'
+      ),
+    ],
+  ]) as beet.FixableBeet<CreateTransactionArgs, CreateTransactionArgs>

@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { AccountMeta, PublicKey } from "@solana/web3.js";
 import {
   SettingsAction,
   createCreateSettingsTransactionInstruction,
@@ -13,6 +13,7 @@ export function createSettingsTransaction({
   rentPayer,
   actions,
   memo,
+  remainingAccounts,
   programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
@@ -23,6 +24,7 @@ export function createSettingsTransaction({
   transactionIndex: bigint;
   actions: SettingsAction[];
   memo?: string;
+  remainingAccounts?: AccountMeta[];
   programId?: PublicKey;
 }) {
   const [transactionPda] = getTransactionPda({
@@ -37,6 +39,7 @@ export function createSettingsTransaction({
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
+      anchorRemainingAccounts: remainingAccounts,
     },
     { args: { actions, memo: memo ?? null } },
     programId

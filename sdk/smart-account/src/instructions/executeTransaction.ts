@@ -8,6 +8,7 @@ import {
   createExecuteTransactionInstruction,
   PROGRAM_ID,
   Transaction,
+  TransactionPayloadDetails,
 } from "../generated";
 import { getProposalPda, getSmartAccountPda, getTransactionPda } from "../pda";
 import { accountsForTransactionExecute } from "../utils";
@@ -42,18 +43,25 @@ export async function executeTransaction({
     connection,
     transactionPda
   );
+  const transactionPayload = transactionAccount.payload
+  let transactionDetails: TransactionPayloadDetails
+  if (transactionPayload.__kind === "TransactionPayload") {
+    transactionDetails = transactionPayload.fields[0]
+  } else {
+    throw new Error("Invalid transaction payload")
+  }
 
   const [smartAccountPda] = getSmartAccountPda({
     settingsPda,
-    accountIndex: transactionAccount.accountIndex,
+    accountIndex: transactionDetails.accountIndex,
     programId,
   });
 
   const { accountMetas, lookupTableAccounts } =
     await accountsForTransactionExecute({
       connection,
-      message: transactionAccount.message,
-      ephemeralSignerBumps: [...transactionAccount.ephemeralSignerBumps],
+      message: transactionDetails.message,
+      ephemeralSignerBumps: [...transactionDetails.ephemeralSignerBumps],
       smartAccountPda,
       transactionPda,
       programId,
@@ -62,7 +70,7 @@ export async function executeTransaction({
   return {
     instruction: createExecuteTransactionInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         signer,
         proposal: proposalPda,
         transaction: transactionPda,

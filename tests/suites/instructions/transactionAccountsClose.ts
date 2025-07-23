@@ -711,7 +711,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Manually construct an instruction that uses the proposal account from the other smartAccount.
     const ix = smartAccount.generated.createCloseTransactionInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionRentCollector: members.proposer.publicKey,
         proposalRentCollector: members.proposer.publicKey,
         proposal: smartAccount.getProposalPda({
@@ -880,7 +880,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Manually construct an instruction that uses transaction that doesn't match proposal.
     const ix = smartAccount.generated.createCloseTransactionInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionRentCollector: members.proposer.publicKey,
         proposalRentCollector: members.proposer.publicKey,
         proposal: smartAccount.getProposalPda({
@@ -926,7 +926,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Manually construct an instruction that uses transaction that doesn't match proposal.
     const ix = smartAccount.generated.createCloseTransactionInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionRentCollector: members.proposer.publicKey,
         proposalRentCollector: members.proposer.publicKey,
         proposal: smartAccount.getProposalPda({

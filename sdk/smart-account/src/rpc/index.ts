@@ -24,3 +24,7 @@ export * from "./setArchivalAuthorityAsAuthority.js";
 export * from "./setTimeLockAsAuthority.js";
 export * from "./useSpendingLimit.js";
 export * from "./activateProposal.js";
+export * from "./createPolicyTransaction.js";
+export * from "./executePolicyTransaction.js";
+export * from "./executeTransactionSyncV2.js";
+export * from "./executePolicyPayloadSync.js";

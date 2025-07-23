@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -14,10 +15,9 @@ pub struct CreateBatchArgs {
 pub struct CreateBatch<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         init,
@@ -25,9 +25,9 @@ pub struct CreateBatch<'info> {
         space = 8 + Batch::INIT_SPACE,
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION,
-            &settings.transaction_index.checked_add(1).unwrap().to_le_bytes(),
+            &consensus_account.transaction_index().checked_add(1).unwrap().to_le_bytes(),
         ],
         bump
     )]
@@ -44,18 +44,23 @@ pub struct CreateBatch<'info> {
 }
 
 impl CreateBatch<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, ctx: &Context<Self>) -> Result<()> {
         let Self {
-            settings, creator, ..
+            consensus_account,
+            creator,
+            ..
         } = self;
+
+        // Check if the consensus account is active
+        consensus_account.is_active(&ctx.remaining_accounts)?;
 
         // creator
         require!(
-            settings.is_signer(creator.key()).is_some(),
+            consensus_account.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
         );
         require!(
-            settings.signer_has_permission(creator.key(), Permission::Initiate),
+            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
             SmartAccountError::Unauthorized
         );
 
@@ -63,27 +68,30 @@ impl CreateBatch<'_> {
     }
 
     /// Create a new batch.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx))]
     pub fn create_batch(ctx: Context<Self>, args: CreateBatchArgs) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        let consensus_account = &mut ctx.accounts.consensus_account;
         let creator = &mut ctx.accounts.creator;
         let batch = &mut ctx.accounts.batch;
         let rent_payer = &mut ctx.accounts.rent_payer;
-        let settings_key = settings.key();
+        let consensus_account_key = consensus_account.key();
 
         // Increment the transaction index.
-        let index = settings.transaction_index.checked_add(1).expect("overflow");
+        let index = consensus_account
+            .transaction_index()
+            .checked_add(1)
+            .expect("overflow");
 
         let smart_account_seeds = &[
             SEED_PREFIX,
-            settings_key.as_ref(),
+            consensus_account_key.as_ref(),
             SEED_SMART_ACCOUNT,
             &args.account_index.to_le_bytes(),
         ];
         let (_, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
-        batch.settings = settings_key;
+        batch.settings = consensus_account_key;
         batch.creator = creator.key();
         batch.rent_collector = rent_payer.key();
         batch.index = index;
@@ -95,10 +103,10 @@ impl CreateBatch<'_> {
 
         batch.invariant()?;
 
-        // Updated last transaction index in the settings account.
-        settings.transaction_index = index;
+        // Updated last transaction index in the consensus account.
+        consensus_account.set_transaction_index(index)?;
 
-        settings.invariant()?;
+        consensus_account.invariant()?;
 
         // Logs for indexing.
         msg!("batch index: {}", index);

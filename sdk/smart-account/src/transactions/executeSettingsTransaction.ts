@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
@@ -17,6 +18,7 @@ export function executeSettingsTransaction({
   rentPayer,
   transactionIndex,
   spendingLimits,
+  policies,
   programId,
 }: {
   blockhash: string;
@@ -27,6 +29,8 @@ export function executeSettingsTransaction({
   rentPayer: PublicKey;
   /** In case the transaction adds or removes SpendingLimits, pass the array of their Pubkeys here. */
   spendingLimits?: PublicKey[];
+  /** In case the transaction adds or removes Policies, pass the array of their Pubkeys here. */
+  policies?: PublicKey[];
   programId?: PublicKey;
 }): VersionedTransaction {
   const message = new TransactionMessage({
@@ -39,6 +43,7 @@ export function executeSettingsTransaction({
         signer,
         rentPayer,
         spendingLimits,
+        policies,
         programId,
       }),
     ],

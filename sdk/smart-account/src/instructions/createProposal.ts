@@ -33,7 +33,7 @@ export function createProposal({
     {
       creator,
       rentPayer: rentPayer ?? creator,
-      settings: settingsPda,
+      consensusAccount: settingsPda,
       proposal: proposalPda,
     },
     { args: { transactionIndex: Number(transactionIndex), draft: isDraft } },

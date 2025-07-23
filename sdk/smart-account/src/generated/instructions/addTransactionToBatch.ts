@@ -39,7 +39,7 @@ export const addTransactionToBatchStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _addTransactionToBatch_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [] proposal
  * @property [_writable_] batch
  * @property [_writable_] transaction
@@ -50,7 +50,7 @@ export const addTransactionToBatchStruct = new beet.FixableBeetArgsStruct<
  * @category generated
  */
 export type AddTransactionToBatchInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   proposal: web3.PublicKey
   batch: web3.PublicKey
   transaction: web3.PublicKey
@@ -85,7 +85,7 @@ export function createAddTransactionToBatchInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

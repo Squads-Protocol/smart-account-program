@@ -1254,6 +1254,447 @@ createErrorFromCodeLookup.set(0x17a5, () => new NotImplementedError())
 createErrorFromNameLookup.set('NotImplemented', () => new NotImplementedError())
 
 /**
+ * SpendingLimitInvalidCadenceConfiguration: 'Invalid cadence configuration'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SpendingLimitInvalidCadenceConfigurationError extends Error {
+  readonly code: number = 0x17a6
+  readonly name: string = 'SpendingLimitInvalidCadenceConfiguration'
+  constructor() {
+    super('Invalid cadence configuration')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        SpendingLimitInvalidCadenceConfigurationError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17a6,
+  () => new SpendingLimitInvalidCadenceConfigurationError()
+)
+createErrorFromNameLookup.set(
+  'SpendingLimitInvalidCadenceConfiguration',
+  () => new SpendingLimitInvalidCadenceConfigurationError()
+)
+
+/**
+ * InvalidDataConstraint: 'Invalid data constraint'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidDataConstraintError extends Error {
+  readonly code: number = 0x17a7
+  readonly name: string = 'InvalidDataConstraint'
+  constructor() {
+    super('Invalid data constraint')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidDataConstraintError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a7, () => new InvalidDataConstraintError())
+createErrorFromNameLookup.set(
+  'InvalidDataConstraint',
+  () => new InvalidDataConstraintError()
+)
+
+/**
+ * InvalidPolicyPayload: 'Invalid policy payload'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPolicyPayloadError extends Error {
+  readonly code: number = 0x17a8
+  readonly name: string = 'InvalidPolicyPayload'
+  constructor() {
+    super('Invalid policy payload')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPolicyPayloadError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a8, () => new InvalidPolicyPayloadError())
+createErrorFromNameLookup.set(
+  'InvalidPolicyPayload',
+  () => new InvalidPolicyPayloadError()
+)
+
+/**
+ * PolicyExpired: 'Policy expired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyExpiredError extends Error {
+  readonly code: number = 0x17a9
+  readonly name: string = 'PolicyExpired'
+  constructor() {
+    super('Policy expired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PolicyExpiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17a9, () => new PolicyExpiredError())
+createErrorFromNameLookup.set('PolicyExpired', () => new PolicyExpiredError())
+
+/**
+ * ConsensusAccountNotPolicy: 'Consensus account is not a policy'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ConsensusAccountNotPolicyError extends Error {
+  readonly code: number = 0x17aa
+  readonly name: string = 'ConsensusAccountNotPolicy'
+  constructor() {
+    super('Consensus account is not a policy')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ConsensusAccountNotPolicyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17aa,
+  () => new ConsensusAccountNotPolicyError()
+)
+createErrorFromNameLookup.set(
+  'ConsensusAccountNotPolicy',
+  () => new ConsensusAccountNotPolicyError()
+)
+
+/**
+ * InvalidPayload: 'Invalid payload'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPayloadError extends Error {
+  readonly code: number = 0x17ab
+  readonly name: string = 'InvalidPayload'
+  constructor() {
+    super('Invalid payload')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPayloadError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17ab, () => new InvalidPayloadError())
+createErrorFromNameLookup.set('InvalidPayload', () => new InvalidPayloadError())
+
+/**
+ * ProtectedInstruction: 'Protected instruction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProtectedInstructionError extends Error {
+  readonly code: number = 0x17ac
+  readonly name: string = 'ProtectedInstruction'
+  constructor() {
+    super('Protected instruction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProtectedInstructionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17ac, () => new ProtectedInstructionError())
+createErrorFromNameLookup.set(
+  'ProtectedInstruction',
+  () => new ProtectedInstructionError()
+)
+
+/**
+ * PlaceholderError: 'Placeholder error'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PlaceholderErrorError extends Error {
+  readonly code: number = 0x17ad
+  readonly name: string = 'PlaceholderError'
+  constructor() {
+    super('Placeholder error')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PlaceholderErrorError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17ad, () => new PlaceholderErrorError())
+createErrorFromNameLookup.set(
+  'PlaceholderError',
+  () => new PlaceholderErrorError()
+)
+
+/**
+ * ProgramInteractionDataTooShort: 'Program interaction data constraint failed: instruction data too short'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionDataTooShortError extends Error {
+  readonly code: number = 0x17ae
+  readonly name: string = 'ProgramInteractionDataTooShort'
+  constructor() {
+    super(
+      'Program interaction data constraint failed: instruction data too short'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProgramInteractionDataTooShortError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17ae,
+  () => new ProgramInteractionDataTooShortError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionDataTooShort',
+  () => new ProgramInteractionDataTooShortError()
+)
+
+/**
+ * ProgramInteractionInvalidNumericValue: 'Program interaction data constraint failed: invalid numeric value'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionInvalidNumericValueError extends Error {
+  readonly code: number = 0x17af
+  readonly name: string = 'ProgramInteractionInvalidNumericValue'
+  constructor() {
+    super('Program interaction data constraint failed: invalid numeric value')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProgramInteractionInvalidNumericValueError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17af,
+  () => new ProgramInteractionInvalidNumericValueError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionInvalidNumericValue',
+  () => new ProgramInteractionInvalidNumericValueError()
+)
+
+/**
+ * ProgramInteractionInvalidByteSequence: 'Program interaction data constraint failed: invalid byte sequence'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionInvalidByteSequenceError extends Error {
+  readonly code: number = 0x17b0
+  readonly name: string = 'ProgramInteractionInvalidByteSequence'
+  constructor() {
+    super('Program interaction data constraint failed: invalid byte sequence')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProgramInteractionInvalidByteSequenceError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b0,
+  () => new ProgramInteractionInvalidByteSequenceError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionInvalidByteSequence',
+  () => new ProgramInteractionInvalidByteSequenceError()
+)
+
+/**
+ * ProgramInteractionUnsupportedSliceOperator: 'Program interaction data constraint failed: unsupported operator for byte slice'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionUnsupportedSliceOperatorError extends Error {
+  readonly code: number = 0x17b1
+  readonly name: string = 'ProgramInteractionUnsupportedSliceOperator'
+  constructor() {
+    super(
+      'Program interaction data constraint failed: unsupported operator for byte slice'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        ProgramInteractionUnsupportedSliceOperatorError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b1,
+  () => new ProgramInteractionUnsupportedSliceOperatorError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionUnsupportedSliceOperator',
+  () => new ProgramInteractionUnsupportedSliceOperatorError()
+)
+
+/**
+ * ProgramInteractionDataParsingError: 'Program interaction constraint failed: instruction data parsing error'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionDataParsingErrorError extends Error {
+  readonly code: number = 0x17b2
+  readonly name: string = 'ProgramInteractionDataParsingError'
+  constructor() {
+    super(
+      'Program interaction constraint failed: instruction data parsing error'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProgramInteractionDataParsingErrorError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b2,
+  () => new ProgramInteractionDataParsingErrorError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionDataParsingError',
+  () => new ProgramInteractionDataParsingErrorError()
+)
+
+/**
+ * ProgramInteractionProgramIdMismatch: 'Program interaction constraint failed: program ID mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionProgramIdMismatchError extends Error {
+  readonly code: number = 0x17b3
+  readonly name: string = 'ProgramInteractionProgramIdMismatch'
+  constructor() {
+    super('Program interaction constraint failed: program ID mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProgramInteractionProgramIdMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b3,
+  () => new ProgramInteractionProgramIdMismatchError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionProgramIdMismatch',
+  () => new ProgramInteractionProgramIdMismatchError()
+)
+
+/**
+ * ProgramInteractionAccountConstraintFailed: 'Program interaction constraint failed: account constraint violation'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionAccountConstraintFailedError extends Error {
+  readonly code: number = 0x17b4
+  readonly name: string = 'ProgramInteractionAccountConstraintFailed'
+  constructor() {
+    super('Program interaction constraint failed: account constraint violation')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        ProgramInteractionAccountConstraintFailedError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b4,
+  () => new ProgramInteractionAccountConstraintFailedError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionAccountConstraintFailed',
+  () => new ProgramInteractionAccountConstraintFailedError()
+)
+
+/**
+ * ProgramInteractionConstraintIndexOutOfBounds: 'Program interaction constraint failed: instruction constraint index out of bounds'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionConstraintIndexOutOfBoundsError extends Error {
+  readonly code: number = 0x17b5
+  readonly name: string = 'ProgramInteractionConstraintIndexOutOfBounds'
+  constructor() {
+    super(
+      'Program interaction constraint failed: instruction constraint index out of bounds'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        ProgramInteractionConstraintIndexOutOfBoundsError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b5,
+  () => new ProgramInteractionConstraintIndexOutOfBoundsError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionConstraintIndexOutOfBounds',
+  () => new ProgramInteractionConstraintIndexOutOfBoundsError()
+)
+
+/**
+ * ProgramInteractionInstructionCountMismatch: 'Program interaction constraint failed: instruction count mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ProgramInteractionInstructionCountMismatchError extends Error {
+  readonly code: number = 0x17b6
+  readonly name: string = 'ProgramInteractionInstructionCountMismatch'
+  constructor() {
+    super('Program interaction constraint failed: instruction count mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        ProgramInteractionInstructionCountMismatchError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17b6,
+  () => new ProgramInteractionInstructionCountMismatchError()
+)
+createErrorFromNameLookup.set(
+  'ProgramInteractionInstructionCountMismatch',
+  () => new ProgramInteractionInstructionCountMismatchError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

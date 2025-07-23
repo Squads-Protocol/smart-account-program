@@ -39,7 +39,7 @@ export const rejectProposalStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _rejectProposal_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [_writable_, **signer**] signer
  * @property [_writable_] proposal
  * @category Instructions
@@ -47,7 +47,7 @@ export const rejectProposalStruct = new beet.FixableBeetArgsStruct<
  * @category generated
  */
 export type RejectProposalInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   signer: web3.PublicKey
   proposal: web3.PublicKey
   systemProgram?: web3.PublicKey
@@ -82,7 +82,7 @@ export function createRejectProposalInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

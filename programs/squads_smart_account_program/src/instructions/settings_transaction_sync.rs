@@ -1,7 +1,7 @@
 use account_events::{AddSpendingLimitEvent, RemoveSpendingLimitEvent};
 use anchor_lang::prelude::*;
 
-use crate::{errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
+use crate::{consensus::ConsensusAccount, consensus_trait::ConsensusAccountType, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
@@ -16,10 +16,10 @@ pub struct SyncSettingsTransactionArgs {
 pub struct SyncSettingsTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
+        constraint = consensus_account.account_type() == ConsensusAccountType::Settings
     )]
-    pub settings: Box<Account<'info, Settings>>,
+    pub consensus_account: Box<InterfaceAccount<'info, ConsensusAccount>>,
 
     /// The account that will be charged/credited in case the settings transaction causes space reallocation,
     /// for example when adding a new signer, adding or removing a spending limit.
@@ -41,7 +41,10 @@ impl<'info> SyncSettingsTransaction<'info> {
         args: &SyncSettingsTransactionArgs,
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
-        let Self { settings, .. } = self;
+        let Self { consensus_account, .. } = self;
+
+        // The context has already validated that its a settings account
+        let settings = consensus_account.read_only_settings()?;
 
         // Settings must not be controlled
         require_keys_eq!(
@@ -54,7 +57,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         validate_settings_actions(&args.actions)?;
 
         // Validates synchronous consensus across the signers
-        validate_synchronous_consensus(settings, args.num_signers, remaining_accounts)?;
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)?;
 
         Ok(())
     }
@@ -64,8 +67,12 @@ impl<'info> SyncSettingsTransaction<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
-        let settings_key = settings.key();
+        // Wrapper consensus account
+        let consensus_account = &mut ctx.accounts.consensus_account;
+        // Get the settings account info
+        let settings_key = consensus_account.key();
+        let settings_account_info = consensus_account.to_account_info();
+        let settings = consensus_account.settings()?;
         let rent = Rent::get()?;
 
         // Execute the actions one by one
@@ -83,7 +90,7 @@ impl<'info> SyncSettingsTransaction<'info> {
 
         // Make sure the smart account can fit the updated state: added signers or newly set archival_authority.
         Settings::realloc_if_needed(
-            settings.to_account_info(),
+            settings_account_info.clone(),
             settings.signers.len(),
             ctx.accounts
                 .rent_payer
@@ -109,7 +116,7 @@ impl<'info> SyncSettingsTransaction<'info> {
             changes: args.actions.clone(),
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
+            authority: settings_account_info,
             authority_seeds: get_settings_signer_seeds(settings.seed),
             bump: settings.bump,
             program: ctx.accounts.program.to_account_info(),

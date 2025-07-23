@@ -75,7 +75,7 @@ export async function executeBatchTransaction({
   return {
     instruction: createExecuteBatchTransactionInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         signer,
         proposal: proposalPda,
         batch: batchPda,

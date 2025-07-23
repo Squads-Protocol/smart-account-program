@@ -22,7 +22,7 @@ export const executeTransactionStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _executeTransaction_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [_writable_] proposal
  * @property [] transaction
  * @property [**signer**] signer
@@ -31,7 +31,7 @@ export const executeTransactionStruct = new beet.BeetArgsStruct<{
  * @category generated
  */
 export type ExecuteTransactionInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   proposal: web3.PublicKey
   transaction: web3.PublicKey
   signer: web3.PublicKey
@@ -59,7 +59,7 @@ export function createExecuteTransactionInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },
