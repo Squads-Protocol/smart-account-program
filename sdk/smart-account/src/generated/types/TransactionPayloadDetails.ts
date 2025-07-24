@@ -12,7 +12,6 @@ import {
 } from './SmartAccountTransactionMessage'
 export type TransactionPayloadDetails = {
   accountIndex: number
-  accountBump: number
   ephemeralSignerBumps: Uint8Array
   message: SmartAccountTransactionMessage
 }
@@ -25,7 +24,6 @@ export const transactionPayloadDetailsBeet =
   new beet.FixableBeetArgsStruct<TransactionPayloadDetails>(
     [
       ['accountIndex', beet.u8],
-      ['accountBump', beet.u8],
       ['ephemeralSignerBumps', beet.bytes],
       ['message', smartAccountTransactionMessageBeet],
     ],

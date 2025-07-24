@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
@@ -15,7 +16,9 @@ pub struct CreateBatchArgs {
 pub struct CreateBatch<'info> {
     #[account(
         mut,
-        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
+        // Batches currenlty don't support policies
+        constraint = consensus_account.account_type() == ConsensusAccountType::Settings
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 

@@ -542,6 +542,7 @@ impl Settings {
                     expiration: expiration.clone(),
                 };
 
+                // Check the policy invariant
                 policy.invariant()?;
                 policy.try_serialize(&mut &mut policy_info.data.borrow_mut()[..])?;
             }

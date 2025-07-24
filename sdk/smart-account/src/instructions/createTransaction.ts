@@ -45,7 +45,7 @@ export function createTransaction({
     programId,
   });
 
-  const transactionMessageBytes =
+  const { transactionMessageBytes, compiledMessage } =
     transactionMessageToMultisigTransactionMessageBytes({
       message: transactionMessage,
       addressLookupTableAccounts,
@@ -62,10 +62,14 @@ export function createTransaction({
     {
       args: {
         __kind: "TransactionPayload",
-        accountIndex,
-        ephemeralSigners,
-        transactionMessage: transactionMessageBytes,
-        memo: memo ?? null,
+        fields: [
+          {
+            accountIndex,
+            ephemeralSigners,
+            transactionMessage: transactionMessageBytes,
+            memo: memo ?? null,
+          },
+        ],
       },
     },
     programId

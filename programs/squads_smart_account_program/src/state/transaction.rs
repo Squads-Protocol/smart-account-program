@@ -51,8 +51,6 @@ impl Payload {
 pub struct TransactionPayloadDetails {
     /// The account index of the smart account this transaction belongs to.
     pub account_index: u8,
-    /// Derivation bump of the smart account PDA this transaction belongs to.
-    pub account_bump: u8,
     /// The ephemeral signer bumps for the transaction.
     pub ephemeral_signer_bumps: Vec<u8>,
     /// The message of the transaction.
@@ -71,7 +69,6 @@ impl Transaction {
 
         let payload = Payload::TransactionPayload(TransactionPayloadDetails {
             account_index: 0,
-            account_bump: 0,
             ephemeral_signer_bumps: vec![0; usize::from(ephemeral_signers_length)],
             message: transaction_message,
         });

@@ -156,7 +156,7 @@ describe("Instructions / policy_settings_actions", () => {
                 accountConstraints: [],
               },
             ],
-            balanceConstraint: null, // No balance constraints
+            resourceLimits: [], // No balance constraints
           },
         ],
       };

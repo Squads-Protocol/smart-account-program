@@ -71,8 +71,8 @@ impl LegacySyncTransaction<'_> {
 
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
-            &settings,
             &smart_account_pubkey,
+            &settings.signers,
             settings_compiled_instructions,
             &ctx.remaining_accounts,
         )?;

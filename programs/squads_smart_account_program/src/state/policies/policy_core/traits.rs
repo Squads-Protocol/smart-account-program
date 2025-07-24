@@ -45,4 +45,5 @@ pub trait PolicyTrait {
         payload: &Self::UsagePayload,
         accounts: &'info [AccountInfo<'info>],
     ) -> Result<()>;
+
 }

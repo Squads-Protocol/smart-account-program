@@ -7,12 +7,12 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import {
-  TransactionPayloadDetails,
-  transactionPayloadDetailsBeet,
-} from './TransactionPayloadDetails'
+  ProgramInteractionTransactionPayload,
+  programInteractionTransactionPayloadBeet,
+} from './ProgramInteractionTransactionPayload'
 export type ProgramInteractionPayload = {
   instructionConstraintIndices: beet.COption<Uint8Array>
-  transactionPayload: TransactionPayloadDetails
+  transactionPayload: ProgramInteractionTransactionPayload
 }
 
 /**
@@ -23,7 +23,7 @@ export const programInteractionPayloadBeet =
   new beet.FixableBeetArgsStruct<ProgramInteractionPayload>(
     [
       ['instructionConstraintIndices', beet.coption(beet.bytes)],
-      ['transactionPayload', transactionPayloadDetailsBeet],
+      ['transactionPayload', programInteractionTransactionPayloadBeet],
     ],
     'ProgramInteractionPayload'
   )

@@ -20,7 +20,9 @@ import "./suites/program-config-init";
 // import "./suites/instructions/transactionCreateFromBuffer";
 // import "./suites/instructions/transactionSynchronous";
 // import "./suites/instructions/policySettingsActions"
-import "./suites/instructions/internalFundTransferPolicy";
+//import "./suites/instructions/programInteractionPolicy";
+import "./suites/instructions/spendingLimitPolicy";
+//import "./suites/instructions/internalFundTransferPolicy";
 // import "./suites/smart-account-sdk";
 // // // Uncomment to enable the heapTest instruction testing
 // // //import "./suites/instructions/heapTest";

@@ -142,10 +142,20 @@ pub enum SmartAccountError {
     ProgramInteractionDataParsingError,
     #[msg("Program interaction constraint failed: program ID mismatch")]
     ProgramInteractionProgramIdMismatch,
-    #[msg("Program interaction constraint failed: account constraint violation")]
-    ProgramInteractionAccountConstraintFailed,
-    #[msg("Program interaction constraint failed: instruction constraint index out of bounds")]
+    #[msg("Program interaction constraint violation: account constraint")]
+    ProgramInteractionAccountConstraintViolated,
+    #[msg("Program interaction constraint violation: instruction constraint index out of bounds")]
     ProgramInteractionConstraintIndexOutOfBounds,
-    #[msg("Program interaction constraint failed: instruction count mismatch")]
+    #[msg("Program interaction constraint violation: instruction count mismatch")]
     ProgramInteractionInstructionCountMismatch,
+    #[msg("Program interaction constraint violation: insufficient remaining lamport allowance")]
+    ProgramInteractionInsufficientLamportAllowance,
+    #[msg("Program interaction constraint violation: insufficient remaining token allowance")]
+    ProgramInteractionInsufficientTokenAllowance,
+    #[msg("Program interaction constraint violation: modified illegal balance")]
+    ProgramInteractionModifiedIllegalBalance,
+    #[msg("Program interaction constraint violation: illegal token account modification")]
+    ProgramInteractionIllegalTokenAccountModification,
+    #[msg("Program interaction invariant violation: duplicate resource limit for the same mint")]
+    ProgramInteractionDuplicateResourceLimit,
 }

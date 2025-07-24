@@ -16,12 +16,12 @@ use super::CompiledInstruction;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum SyncPayload {
-    Transaction(SmallVec<u16, u8>),
+    Transaction(Vec<u8>),
     Policy(PolicyPayload),
 }
 
 impl SyncPayload {
-    pub fn to_transaction_payload(&self) -> Result<&SmallVec<u16, u8>> {
+    pub fn to_transaction_payload(&self) -> Result<&Vec<u8>> {
         match self {
             SyncPayload::Transaction(payload) => Ok(payload),
             _ => err!(SmartAccountError::InvalidPayload),
@@ -105,7 +105,7 @@ impl<'info> SyncTransaction<'info> {
                 let settings_key = consensus_account_key;
                 // Deserialize the instructions
                 let compiled_instructions =
-                    SmallVec::<u8, CompiledInstruction>::try_from_slice(&payload.try_to_vec()?)
+                    SmallVec::<u8, CompiledInstruction>::try_from_slice(&payload)
                         .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
                 // Convert to SmartAccountCompiledInstruction
                 let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
@@ -135,8 +135,8 @@ impl<'info> SyncTransaction<'info> {
 
                 let executable_message = SynchronousTransactionMessage::new_validated(
                     &settings_key,
-                    &settings,
                     &smart_account_pubkey,
+                    &settings.signers,
                     settings_compiled_instructions,
                     &remaining_accounts,
                 )?;
@@ -148,6 +148,7 @@ impl<'info> SyncTransaction<'info> {
                 // references or usages of `self.message` should be made to avoid
                 // faulty behavior.
                 executable_message.execute(smart_account_signer_seeds)?;
+
                 // Log the event
                 let event = SynchronousTransactionEvent {
                     settings_pubkey: settings_key,
@@ -175,10 +176,16 @@ impl<'info> SyncTransaction<'info> {
                 let payload = args.payload.to_policy_payload()?;
                 let policy = consensus_account.policy()?;
 
-                policy.validate_and_execute(None, None, payload, &remaining_accounts)?;
+                // Execute the policy
+                policy.execute(None, None, payload, &remaining_accounts)?;
+
             }
         }
+
+        // Check the policy invariant
+        consensus_account.invariant()?;
 
         Ok(())
     }
 }
+

@@ -6,20 +6,12 @@
  */
 
 import * as web3 from '@solana/web3.js'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
-import { TimeConstraints, timeConstraintsBeet } from './TimeConstraints'
-import {
-  QuantityConstraints,
-  quantityConstraintsBeet,
-} from './QuantityConstraints'
-import { UsageState, usageStateBeet } from './UsageState'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { ResourceLimit, resourceLimitBeet } from './ResourceLimit'
 export type SpendingLimitPolicy = {
-  mint: web3.PublicKey
+  resourceLimit: ResourceLimit
   sourceAccountIndex: number
-  timing: TimeConstraints
-  constraints: QuantityConstraints
-  usage: UsageState
   destinations: web3.PublicKey[]
 }
 
@@ -30,11 +22,8 @@ export type SpendingLimitPolicy = {
 export const spendingLimitPolicyBeet =
   new beet.FixableBeetArgsStruct<SpendingLimitPolicy>(
     [
-      ['mint', beetSolana.publicKey],
+      ['resourceLimit', resourceLimitBeet],
       ['sourceAccountIndex', beet.u8],
-      ['timing', timeConstraintsBeet],
-      ['constraints', quantityConstraintsBeet],
-      ['usage', usageStateBeet],
       ['destinations', beet.array(beetSolana.publicKey)],
     ],
     'SpendingLimitPolicy'

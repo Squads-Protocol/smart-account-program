@@ -1308,16 +1308,101 @@ export async function getNextAccountIndex(
   return nextAccountIndex;
 }
 
-
 /**
  * Extracts the TransactionPayloadDetails from a Payload.
  * @param transactionPayload - The Payload to extract the TransactionPayloadDetails from.
  * @returns The TransactionPayloadDetails.
  */
-export function extractTransactionPayloadDetails(transactionPayload: Payload): TransactionPayloadDetails {
+export function extractTransactionPayloadDetails(
+  transactionPayload: Payload
+): TransactionPayloadDetails {
   if (transactionPayload.__kind === "TransactionPayload") {
-    return transactionPayload.fields[0] as TransactionPayloadDetails
+    return transactionPayload.fields[0] as TransactionPayloadDetails;
   } else {
-    throw new Error("Invalid transaction payload")
+    throw new Error("Invalid transaction payload");
   }
+}
+
+/**
+ * Creates a mint and transfers tokens to the recipient.
+ * @param connection - The connection to use.
+ * @param payer - The keypair to use as the mint authority.
+ * @param recipient - The recipient of the tokens.
+ * @param amount - The amount of tokens to transfer.
+ * @returns The mint address.
+ */
+export async function createMintAndTransferTo(
+  connection: Connection,
+  payer: Keypair,
+  recipient: PublicKey,
+  amount: number
+): Promise<[PublicKey, number]> {
+  // Import SPL token functions
+  const {
+    createMint,
+    getOrCreateAssociatedTokenAccount,
+    getAssociatedTokenAddressSync,
+    TOKEN_PROGRAM_ID,
+  } = await import("@solana/spl-token");
+
+  let mintDecimals = 9;
+  // Create a new mint with 9 decimals
+  const mint = await createMint(
+    connection,
+    payer,
+    payer.publicKey, // mint authority
+    null, // freeze authority (you can set this to null if you don't want a freeze authority)
+    mintDecimals, // decimals
+    undefined, // keypair (will generate a new one)
+    undefined, // options
+    TOKEN_PROGRAM_ID
+  );
+
+  // Get the associated token account address for the recipient
+  const associatedTokenAccount = getAssociatedTokenAddressSync(
+    mint,
+    recipient,
+    true, // allowOwnerOffCurve
+    TOKEN_PROGRAM_ID
+  );
+
+  // Create the associated token account for the recipient
+  await getOrCreateAssociatedTokenAccount(
+    connection,
+    payer,
+    mint,
+    recipient,
+    true
+  );
+
+  // Mint tokens to the recipient
+  const { createMintToInstruction } = await import("@solana/spl-token");
+  const mintToIx = createMintToInstruction(
+    mint,
+    associatedTokenAccount,
+    payer.publicKey,
+    amount,
+    [],
+    TOKEN_PROGRAM_ID
+  );
+
+  // Create and send the transaction
+  const { TransactionMessage, VersionedTransaction } = await import(
+    "@solana/web3.js"
+  );
+  const message = new TransactionMessage({
+    payerKey: payer.publicKey,
+    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+    instructions: [mintToIx],
+  }).compileToV0Message();
+
+  const transaction = new VersionedTransaction(message);
+  transaction.sign([payer]);
+
+  const sig = await connection.sendRawTransaction(transaction.serialize(), {
+    skipPreflight: true,
+  });
+  await connection.confirmTransaction(sig);
+
+  return [mint, mintDecimals];
 }

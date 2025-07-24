@@ -14,8 +14,8 @@ pub struct SynchronousTransactionMessage<'info> {
 impl<'info> SynchronousTransactionMessage<'info> {
     pub fn new_validated(
         settings_key: &Pubkey,
-        settings: &Settings,
         smart_account_pubkey: &Pubkey,
+        consensus_account_signers: &[SmartAccountSigner],
         instructions: Vec<SmartAccountCompiledInstruction>,
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
@@ -48,7 +48,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
             } else if account.key == settings_key {
                 // This prevents dangerous re-entrancy
                 account_info.is_writable = false;
-            } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer {
+            } else if consensus_account_signers.iter().any(|signer| &signer.key == account.key) && account.is_signer {
                 // We may want to remove this so that a signer can be a rent
                 // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;

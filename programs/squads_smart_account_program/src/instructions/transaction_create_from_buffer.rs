@@ -43,10 +43,10 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             CreateTransactionArgs::PolicyPayload { .. } => {
                 return Err(SmartAccountError::InvalidInstructionArgs.into())
             }
-            CreateTransactionArgs::TransactionPayload {
+            CreateTransactionArgs::TransactionPayload(TransactionPayload {
                 transaction_message,
                 ..
-            } => {
+            }) => {
                 require!(
                     transaction_message == &vec![0, 0, 0, 0, 0, 0],
                     SmartAccountError::InvalidInstructionArgs
@@ -87,9 +87,12 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         // Calculate the new required length of the transaction account,
         // since it was initialized with an empty transaction message
         let new_len = match &args {
-            CreateTransactionArgs::TransactionPayload {
-                ephemeral_signers, ..
-            } => Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?,
+            CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                ephemeral_signers,
+                ..
+            }) => {
+                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?
+            }
             CreateTransactionArgs::PolicyPayload { .. } => {
                 return Err(SmartAccountError::InvalidInstructionArgs.into())
             }
@@ -118,17 +121,17 @@ impl<'info> CreateTransactionFromBuffer<'info> {
 
         // Create the args for the `create_transaction` instruction
         let create_args = match &args {
-            CreateTransactionArgs::TransactionPayload {
+            CreateTransactionArgs::TransactionPayload(TransactionPayload {
                 account_index,
                 ephemeral_signers,
                 memo,
                 ..
-            } => CreateTransactionArgs::TransactionPayload {
+            }) => CreateTransactionArgs::TransactionPayload(TransactionPayload {
                 account_index: *account_index,
                 ephemeral_signers: *ephemeral_signers,
                 transaction_message: transaction_buffer.buffer.clone(),
                 memo: memo.clone(),
-            },
+            }),
             CreateTransactionArgs::PolicyPayload { .. } => {
                 return Err(SmartAccountError::InvalidInstructionArgs.into())
             }

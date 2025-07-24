@@ -104,12 +104,22 @@ impl<'info> ExecuteTransaction<'info> {
             ConsensusAccountType::Settings => {
                 let settings = consensus_account.settings()?;
                 let transaction_payload = transaction_payload.transaction_payload()?;
-                let smart_account_seeds = &[
+                let mut smart_account_seeds = &[
                     SEED_PREFIX,
                     settings_key.as_ref(),
                     SEED_SMART_ACCOUNT,
                     &transaction_payload.account_index.to_le_bytes(),
-                    &[transaction_payload.account_bump],
+                ];
+
+                let (smart_account_key, smart_account_bump) =
+                    Pubkey::find_program_address(smart_account_seeds, &ctx.program_id);
+
+                let smart_account_signer_seeds = &[
+                    smart_account_seeds[0],
+                    smart_account_seeds[1],
+                    smart_account_seeds[2],
+                    smart_account_seeds[3],
+                    &[smart_account_bump],
                 ];
 
                 let num_lookups = transaction_payload.message.address_table_lookups.len();
@@ -123,9 +133,6 @@ impl<'info> ExecuteTransaction<'info> {
                     .get(..num_lookups)
                     .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-                let smart_account_pubkey =
-                    Pubkey::create_program_address(smart_account_seeds, &ctx.program_id).unwrap();
-
                 let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
                     transaction_key,
                     &transaction_payload.ephemeral_signer_bumps,
@@ -135,7 +142,7 @@ impl<'info> ExecuteTransaction<'info> {
                     transaction_payload.message.clone(),
                     message_account_infos,
                     address_lookup_table_account_infos,
-                    &smart_account_pubkey,
+                    &smart_account_key,
                     &ephemeral_signer_keys,
                 )?;
 
@@ -148,7 +155,7 @@ impl<'info> ExecuteTransaction<'info> {
                 // references or usages of `self.message` should be made to avoid
                 // faulty behavior.
                 executable_message.execute_message(
-                    smart_account_seeds,
+                    smart_account_signer_seeds,
                     &ephemeral_signer_seeds,
                     protected_accounts,
                 )?;
@@ -157,12 +164,14 @@ impl<'info> ExecuteTransaction<'info> {
                 let policy_payload = transaction_payload.policy_payload()?;
                 // Extract the policy from the consensus account and execute using dispatch
                 let policy = consensus_account.policy()?;
-                policy.validate_and_execute(
+                policy.execute(
                     Some(&transaction),
                     Some(&proposal),
                     &policy_payload.payload,
                     &ctx.remaining_accounts,
                 )?;
+
+                // Check the policy invariant
             }
         }
 
@@ -171,6 +180,7 @@ impl<'info> ExecuteTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
+        consensus_account.invariant()?;
         Ok(())
     }
 }

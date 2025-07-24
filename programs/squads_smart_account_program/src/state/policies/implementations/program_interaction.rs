@@ -1,14 +1,17 @@
 use crate::{
     errors::*,
-    utils::{
-        check_pre_balances, derive_ephemeral_signers, AllowedChange, ExecutableTransactionMessage,
+    state::utils::{
+        check_pre_balances, PeriodV2, QuantityConstraints, ResourceLimit, TimeConstraints,
+        UsageState,
     },
-    PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SmartAccountCompiledInstruction,
-    TransactionMessage, TransactionPayloadDetails, SEED_PREFIX, SEED_SMART_ACCOUNT,
+    utils::{
+        derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
+    },
+    CompiledInstruction, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SmallVec,
+    SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage, TransactionPayload,
+    TransactionPayloadDetails, SEED_EPHEMERAL_SIGNER, SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 use anchor_lang::prelude::*;
-
-use super::{PeriodV2, QuantityConstraints, TimeConstraints, UsageState};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct ProgramInteractionPolicy {
@@ -16,7 +19,7 @@ pub struct ProgramInteractionPolicy {
     pub account_index: u8,
     // Constraints evaluated as a logical OR.
     pub instructions_constraints: Vec<InstructionConstraint>,
-    pub balance_constraints: Option<BalanceConstraint>,
+    pub resource_limits: Vec<ResourceLimit>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
@@ -196,6 +199,7 @@ impl AccountConstraint {
 }
 
 impl AccountConstraint {
+    /// Evaluate the account constraint for a given instruction
     pub fn evaluate(
         &self,
         instruction_account_indices: &[u8],
@@ -208,11 +212,13 @@ impl AccountConstraint {
         if self.account_keys.contains(&account.key) {
             return Ok(());
         }
-        Err(SmartAccountError::ProgramInteractionAccountConstraintFailed.into())
+        Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
     }
 }
 
 impl ProgramInteractionPolicy {
+
+    /// Evaluate the instruction constraints for a given instruction
     pub fn evaluate_instruction_constraints<'info>(
         &self,
         instruction_constraint_indices: &[u8],
@@ -242,23 +248,6 @@ impl ProgramInteractionPolicy {
             }
         }
         Ok(())
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct BalanceConstraint {
-    pub mint: Pubkey,
-    pub time_constraint: TimeConstraints,
-    pub quantity_constraint: QuantityConstraints,
-    pub usage_state: UsageState,
-}
-
-impl BalanceConstraint {
-    pub fn size() -> usize {
-        32 + // mint
-        TimeConstraints::INIT_SPACE + // time_constraint
-        QuantityConstraints::INIT_SPACE + // quantity_constraint
-        UsageState::INIT_SPACE // usage_state
     }
 }
 
@@ -294,27 +283,16 @@ impl LimitedQuantityConstraints {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum LimitedPeriodV2 {
-    OneTime,
-    Day,
-}
-
-/// Limited subset of UsageState
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedUsageState {
-    pub remaining_in_period: u64,
-}
 
 /// Limited subset of BalanceConstraint used to create a policy
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedBalanceConstraint {
+pub struct LimitedResourceLimit {
     pub mint: Pubkey,
     pub time_constraint: LimitedTimeConstraints,
     pub quantity_constraint: LimitedQuantityConstraints,
 }
 
-impl LimitedBalanceConstraint {
+impl LimitedResourceLimit {
     pub fn size(&self) -> usize {
         32 + // mint
         self.time_constraint.size() + // time_constraint
@@ -327,38 +305,40 @@ impl LimitedBalanceConstraint {
 pub struct ProgramInteractionPolicyCreationPayload {
     pub account_index: u8,
     pub instructions_constraints: Vec<InstructionConstraint>,
-    pub balance_constraint: Option<LimitedBalanceConstraint>,
+    pub resource_limits: Vec<LimitedResourceLimit>,
 }
 
 impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     type PolicyState = ProgramInteractionPolicy;
 
     fn to_policy_state(self) -> ProgramInteractionPolicy {
+        let mut resource_limits = self.resource_limits.clone();
+        resource_limits.sort_by_key(|c| c.mint);
+
         ProgramInteractionPolicy {
             account_index: self.account_index,
             instructions_constraints: self.instructions_constraints,
-            balance_constraints: if let Some(balance_constraint) = &self.balance_constraint {
-                Some(BalanceConstraint {
-                    mint: balance_constraint.mint,
-                    time_constraint: TimeConstraints {
-                        start: balance_constraint.time_constraint.start,
-                        period: balance_constraint.time_constraint.period,
-                        expiration: balance_constraint.time_constraint.expiration,
+            resource_limits: resource_limits
+                .iter()
+                .map(|resource_limit| ResourceLimit {
+                    mint: resource_limit.mint,
+                    time_constraints: TimeConstraints {
+                        start: resource_limit.time_constraint.start,
+                        period: resource_limit.time_constraint.period,
+                        expiration: resource_limit.time_constraint.expiration,
                         accumulate_unused: false,
                     },
-                    quantity_constraint: QuantityConstraints {
-                        max_per_period: balance_constraint.quantity_constraint.max_per_period,
+                    quantity_constraints: QuantityConstraints {
+                        max_per_period: resource_limit.quantity_constraint.max_per_period,
                         max_per_use: 0,
                         enforce_exact_quantity: false,
                     },
-                    usage_state: UsageState {
-                        remaining_in_period: balance_constraint.quantity_constraint.max_per_period,
-                        last_reset: balance_constraint.time_constraint.start,
+                    usage: UsageState {
+                        remaining_in_period: resource_limit.quantity_constraint.max_per_period,
+                        last_reset: resource_limit.time_constraint.start,
                     },
                 })
-            } else {
-                None
-            },
+                .collect(),
         }
     }
 }
@@ -367,38 +347,88 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + // option discriminator for balance_constraint
-        match &self.balance_constraint {
-            Some(constraint) => constraint.size(),
-            None => 0,
-        }
+        4 + self.resource_limits.iter().map(|constraint| constraint.size()).sum::<usize>()
+        // resource_limits vec
     }
 
     fn policy_state_size(&self) -> usize {
         1 + // account_index (account_scope becomes account_index in policy state)
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + // option discriminator for balance_constraints
-        match &self.balance_constraint {
-            Some(_) => {
-                // In policy state, LimitedBalanceConstraint becomes full BalanceConstraint
-                // Full BalanceConstraint has additional usage_state field
+        4 + self.resource_limits.iter().map(|_| ResourceLimit::INIT_SPACE).sum::<usize>()
+        // resource_limits vec
+    }
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ProgramInteractionPayload {
+    pub instruction_constraint_indices: Option<Vec<u8>>,
+    pub transaction_payload: ProgramInteractionTransactionPayload,
+}
 
-                BalanceConstraint::size()
+impl ProgramInteractionPayload {
+    pub fn get_transaction_payload(
+        &self,
+        settings_key: Pubkey,
+        transaction_key: Pubkey,
+    ) -> Result<TransactionPayloadDetails> {
+        match &self.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
+                // Deserialize the transaction message
+                let transaction_message = TransactionMessage::deserialize(
+                    &mut transaction_payload.transaction_message.as_slice(),
+                )?;
+                // Derive the ephemeral signer bumps
+                let ephemeral_signer_bumps: Vec<u8> = (0..transaction_payload.ephemeral_signers)
+                    .map(|ephemeral_signer_index| {
+                        let ephemeral_signer_seeds = &[
+                            SEED_PREFIX,
+                            transaction_key.as_ref(),
+                            SEED_EPHEMERAL_SIGNER,
+                            &ephemeral_signer_index.to_le_bytes(),
+                        ];
+
+                        let (_, bump) =
+                            Pubkey::find_program_address(ephemeral_signer_seeds, &crate::ID);
+                        bump
+                    })
+                    .collect();
+
+                // Create the transaction payload details
+                Ok(TransactionPayloadDetails {
+                    account_index: transaction_payload.account_index,
+                    ephemeral_signer_bumps,
+                    message: transaction_message.try_into()?,
+                })
             }
-            None => 0,
+            _ => Err(SmartAccountError::InvalidPayload.into()),
+        }
+    }
+
+    pub fn get_sync_transaction_payload(&self) -> Result<&SyncTransactionPayloadDetails> {
+        match &self.transaction_payload {
+            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
+                Ok(sync_transaction_payload)
+            }
+            _ => Err(SmartAccountError::InvalidPayload.into()),
         }
     }
 }
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Eq, PartialEq)]
-pub struct ProgramInteractionPayload {
-    pub instruction_constraint_indices: Option<Vec<u8>>,
-    pub transaction_payload: TransactionPayloadDetails,
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SyncTransactionPayloadDetails {
+    pub account_index: u8,
+    pub instructions: Vec<u8>,
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ProgramInteractionTransactionPayload {
+    AsyncTransaction(TransactionPayload),
+    SyncTransaction(SyncTransactionPayloadDetails),
 }
 
 pub struct ProgramInteractionExecutionArgs {
     pub settings_key: Pubkey,
     pub transaction_key: Pubkey,
     pub proposal_key: Pubkey,
+    pub policy_signers: Vec<SmartAccountSigner>,
 }
 
 impl PolicyTrait for ProgramInteractionPolicy {
@@ -407,14 +437,53 @@ impl PolicyTrait for ProgramInteractionPolicy {
     type UsagePayload = ProgramInteractionPayload;
     type ExecutionArgs = ProgramInteractionExecutionArgs;
 
-    // TODO: Implement invariant
     fn invariant(&self) -> Result<()> {
+        // There can't be duplicate balance constraint for the same mint
+        // Assumes that the balance constraints are sorted by mint
+        let has_duplicate = self
+            .resource_limits
+            .windows(2)
+            .any(|window| window[0].mint == window[1].mint);
+        require!(!has_duplicate, SmartAccountError::ProgramInteractionDuplicateResourceLimit);
+
+        // Each resource limits invariant must be valid
+        for resource_limit in &self.resource_limits {
+            resource_limit.invariant()?;
+        }
+
         Ok(())
     }
 
     fn validate_payload(&self, payload: &Self::UsagePayload) -> Result<()> {
+        let payload_account_index = match &payload.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
+                transaction_payload.account_index
+            }
+            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
+                sync_transaction_payload.account_index
+            }
+        };
+        let instructions_len = match &payload.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
+                // TODO: Inefficient to deserialize the transaction message and
+                // not do anything with it.
+                TransactionMessage::deserialize(
+                    &mut transaction_payload.transaction_message.as_slice(),
+                )?
+                .instructions
+                .len()
+            }
+            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
+                let instructions: SmallVec<u8, CompiledInstruction> =
+                    SmallVec::<u8, CompiledInstruction>::try_from_slice(
+                        &sync_transaction_payload.instructions,
+                    )
+                    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+                instructions.len()
+            }
+        };
         require_eq!(
-            payload.transaction_payload.account_index,
+            payload_account_index,
             self.account_index,
             SmartAccountError::InvalidPayload
         );
@@ -426,7 +495,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
                 // instructions
                 require_eq!(
                     instruction_constraint_indices.len(),
-                    payload.transaction_payload.message.instructions.len(),
+                    instructions_len,
                     SmartAccountError::ProgramInteractionInstructionCountMismatch
                 );
                 // Ensure that the instruction constraint index is within the bounds
@@ -444,17 +513,38 @@ impl PolicyTrait for ProgramInteractionPolicy {
         Ok(())
     }
 
+    // Wrapper method to distinguish between transaction and sync transaction payloads
     fn execute_payload<'info>(
         &mut self,
         args: Self::ExecutionArgs,
         payload: &Self::UsagePayload,
         accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
+        match &payload.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(..) => {
+                self.execute_payload(args, payload, accounts)
+            }
+            ProgramInteractionTransactionPayload::SyncTransaction(..) => {
+                self.execute_payload_sync(args, payload, accounts)
+            }
+        }
+    }
+}
+
+impl ProgramInteractionPolicy {
+    fn execute_payload<'info>(
+        &mut self,
+        args: ProgramInteractionExecutionArgs,
+        payload: &ProgramInteractionPayload,
+        accounts: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        let transaction_payload =
+            payload.get_transaction_payload(args.settings_key, args.transaction_key)?;
         // Evaluate the instruction constraints
         if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
             self.evaluate_instruction_constraints(
                 instruction_constraint_indices,
-                &payload.transaction_payload.message.instructions,
+                &transaction_payload.message.instructions,
                 accounts,
             )?;
         }
@@ -464,14 +554,19 @@ impl PolicyTrait for ProgramInteractionPolicy {
             SEED_PREFIX,
             args.settings_key.as_ref(),
             SEED_SMART_ACCOUNT,
-            &payload.transaction_payload.account_index.to_le_bytes(),
-            &[payload.transaction_payload.account_bump],
+            &transaction_payload.account_index.to_le_bytes(),
         ];
-        let num_lookups = payload
-            .transaction_payload
-            .message
-            .address_table_lookups
-            .len();
+        let (smart_account_pubkey, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+
+        let smart_account_signer_seeds = &[
+            smart_account_seeds[0],
+            smart_account_seeds[1],
+            smart_account_seeds[2],
+            smart_account_seeds[3],
+            &[smart_account_bump],
+        ];
+        let num_lookups = transaction_payload.message.address_table_lookups.len();
 
         let message_account_infos = accounts
             .get(num_lookups..)
@@ -480,16 +575,13 @@ impl PolicyTrait for ProgramInteractionPolicy {
             .get(..num_lookups)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        let smart_account_pubkey =
-            Pubkey::create_program_address(smart_account_seeds, &crate::ID).unwrap();
-
         let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
             args.transaction_key,
-            &payload.transaction_payload.ephemeral_signer_bumps,
+            &transaction_payload.ephemeral_signer_bumps,
         );
 
         let executable_message = ExecutableTransactionMessage::new_validated(
-            payload.transaction_payload.message.clone(),
+            transaction_payload.message.clone(),
             message_account_infos,
             address_lookup_table_account_infos,
             &smart_account_pubkey,
@@ -498,9 +590,14 @@ impl PolicyTrait for ProgramInteractionPolicy {
 
         let protected_accounts = &[args.proposal_key];
 
-        // Evaluate the balance constraints if present
-        if let Some(balance_constraint) = &self.balance_constraints {
-            // TODO: Reset if needed
+        // Update the resource limits if present
+        if !self.resource_limits.is_empty() {
+            let current_timestamp = Clock::get()?.unix_timestamp;
+            // Reset the resource limits if needed
+            for resource_limit in &mut self.resource_limits {
+                resource_limit.reset_if_needed(current_timestamp);
+            }
+
             let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
             // Execute the transaction message instructions one-by-one.
             // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
@@ -509,16 +606,12 @@ impl PolicyTrait for ProgramInteractionPolicy {
             // references or usages of `self.message` should be made to avoid
             // faulty behavior.
             executable_message.execute_message(
-                smart_account_seeds,
+                smart_account_signer_seeds,
                 &ephemeral_signer_seeds,
                 protected_accounts,
             )?;
-            let allowed_balance_change = AllowedChange {
-                mint: balance_constraint.mint,
-                amount: balance_constraint.usage_state.remaining_in_period,
-            };
             // Evaluate the balance changes post-execution
-            tracked_pre_balances.evaluate_balance_changes(allowed_balance_change)?;
+            tracked_pre_balances.evaluate_balance_changes(&mut self.resource_limits)?;
         } else {
             // Execute the transaction message instructions one-by-one.
             // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
@@ -527,11 +620,92 @@ impl PolicyTrait for ProgramInteractionPolicy {
             // references or usages of `self.message` should be made to avoid
             // faulty behavior.
             executable_message.execute_message(
-                smart_account_seeds,
+                smart_account_signer_seeds,
                 &ephemeral_signer_seeds,
                 protected_accounts,
             )?;
         }
+        Ok(())
+    }
+
+    // Synchronous variant of execute_payload
+    fn execute_payload_sync<'info>(
+        &mut self,
+        args: ProgramInteractionExecutionArgs,
+        payload: &ProgramInteractionPayload,
+        accounts: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        // Get the sync transaction payload
+        let sync_transaction_payload = payload.get_sync_transaction_payload()?;
+        // Get the settings key
+        let settings_key = args.settings_key;
+        // Validate the instructions
+        let instructions = SmallVec::<u8, CompiledInstruction>::try_from_slice(
+            &sync_transaction_payload.instructions,
+        )
+        .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+        // Convert to SmartAccountCompiledInstruction
+        let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
+            Vec::from(instructions)
+                .into_iter()
+                .map(SmartAccountCompiledInstruction::from)
+                .collect();
+
+        let smart_account_seeds = &[
+            SEED_PREFIX,
+            settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
+            &sync_transaction_payload.account_index.to_le_bytes(),
+        ];
+
+        let (smart_account_pubkey, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+
+        // Get the signer seeds for the smart account
+        let smart_account_signer_seeds = &[
+            smart_account_seeds[0],
+            smart_account_seeds[1],
+            smart_account_seeds[2],
+            smart_account_seeds[3],
+            &[smart_account_bump],
+        ];
+
+        let executable_message = SynchronousTransactionMessage::new_validated(
+            &settings_key,
+            &smart_account_pubkey,
+            &args.policy_signers,
+            settings_compiled_instructions,
+            accounts,
+        )?;
+
+        // Update the resource limits if present
+        if !self.resource_limits.is_empty() {
+            let current_timestamp = Clock::get()?.unix_timestamp;
+            // Reset the resource limits if needed
+            for resource_limit in &mut self.resource_limits {
+                resource_limit.reset_if_needed(current_timestamp);
+            }
+
+            let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
+            // Execute the transaction message instructions one-by-one.
+            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
+            // which in turn calls `take()` on
+            // `self.message.instructions`, therefore after this point no more
+            // references or usages of `self.message` should be made to avoid
+            // faulty behavior.
+            executable_message.execute(smart_account_signer_seeds)?;
+            // Evaluate the balance changes post-execution
+            tracked_pre_balances.evaluate_balance_changes(&mut self.resource_limits)?;
+        } else {
+            // Execute the transaction message instructions one-by-one.
+            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
+            // which in turn calls `take()` on
+            // `self.message.instructions`, therefore after this point no more
+            // references or usages of `self.message` should be made to avoid
+            // faulty behavior.
+            executable_message.execute(smart_account_signer_seeds)?;
+        }
+
         Ok(())
     }
 }
@@ -809,40 +983,38 @@ mod tests {
     fn test_creation_payload_size_calculation() {
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
-            instructions_constraints: vec![
-                InstructionConstraint {
-                    program_id: Pubkey::new_unique(),
-                    account_constraints: vec![
-                        AccountConstraint {
-                            account_index: 0,
-                            account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
-                        },
-                    ],
-                    data_constraints: vec![
-                        DataConstraint {
-                            data_offset: 0,
-                            data_value: DataValue::U8Slice(vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF]),
-                            operator: DataOperator::Equals,
-                        },
-                        DataConstraint {
-                            data_offset: 12,
-                            data_value: DataValue::U64Le(1000),
-                            operator: DataOperator::LessThanOrEqualTo,
-                        },
-                    ],
-                },
-            ],
-            balance_constraint: Some(LimitedBalanceConstraint {
+            instructions_constraints: vec![InstructionConstraint {
+                program_id: Pubkey::new_unique(),
+                account_constraints: vec![AccountConstraint {
+                    account_index: 0,
+                    account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                }],
+                data_constraints: vec![
+                    DataConstraint {
+                        data_offset: 0,
+                        data_value: DataValue::U8Slice(vec![
+                            0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+                        ]),
+                        operator: DataOperator::Equals,
+                    },
+                    DataConstraint {
+                        data_offset: 12,
+                        data_value: DataValue::U64Le(1000),
+                        operator: DataOperator::LessThanOrEqualTo,
+                    },
+                ],
+            }],
+            resource_limits: vec![LimitedResourceLimit {
                 mint: Pubkey::new_unique(),
                 time_constraint: LimitedTimeConstraints {
-                    start: 1640995200, // Jan 1, 2022
+                    start: 1640995200,            // Jan 1, 2022
                     expiration: Some(1672531200), // Jan 1, 2023
                     period: PeriodV2::Day,
                 },
                 quantity_constraint: LimitedQuantityConstraints {
                     max_per_period: 1000,
                 },
-            }),
+            }],
         };
 
         let calculated_size = payload.creation_payload_size();
@@ -859,30 +1031,28 @@ mod tests {
     fn test_policy_state_size_calculation() {
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
-            instructions_constraints: vec![
-                InstructionConstraint {
-                    program_id: Pubkey::new_unique(),
-                    account_constraints: vec![
-                        AccountConstraint {
-                            account_index: 0,
-                            account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
-                        },
-                    ],
-                    data_constraints: vec![
-                        DataConstraint {
-                            data_offset: 0,
-                            data_value: DataValue::U8Slice(vec![0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF]),
-                            operator: DataOperator::Equals,
-                        },
-                        DataConstraint {
-                            data_offset: 12,
-                            data_value: DataValue::U64Le(1000),
-                            operator: DataOperator::LessThanOrEqualTo,
-                        },
-                    ],
-                },
-            ],
-            balance_constraint: Some(LimitedBalanceConstraint {
+            instructions_constraints: vec![InstructionConstraint {
+                program_id: Pubkey::new_unique(),
+                account_constraints: vec![AccountConstraint {
+                    account_index: 0,
+                    account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                }],
+                data_constraints: vec![
+                    DataConstraint {
+                        data_offset: 0,
+                        data_value: DataValue::U8Slice(vec![
+                            0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+                        ]),
+                        operator: DataOperator::Equals,
+                    },
+                    DataConstraint {
+                        data_offset: 12,
+                        data_value: DataValue::U64Le(1000),
+                        operator: DataOperator::LessThanOrEqualTo,
+                    },
+                ],
+            }],
+            resource_limits: vec![LimitedResourceLimit {
                 mint: Pubkey::new_unique(),
                 time_constraint: LimitedTimeConstraints {
                     start: 1640995200,
@@ -892,7 +1062,7 @@ mod tests {
                 quantity_constraint: LimitedQuantityConstraints {
                     max_per_period: 1000,
                 },
-            }),
+            }],
         };
 
         let policy = payload.clone().to_policy_state();

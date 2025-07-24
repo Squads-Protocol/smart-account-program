@@ -6,6 +6,10 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
+import {
+  TransactionPayload,
+  transactionPayloadBeet,
+} from './TransactionPayload'
 import { PolicyPayload, policyPayloadBeet } from './PolicyPayload'
 /**
  * This type is used to derive the {@link CreateTransactionArgs} type as well as the de/serializer.
@@ -17,12 +21,7 @@ import { PolicyPayload, policyPayloadBeet } from './PolicyPayload'
  * @private
  */
 export type CreateTransactionArgsRecord = {
-  TransactionPayload: {
-    accountIndex: number
-    ephemeralSigners: number
-    transactionMessage: Uint8Array
-    memo: beet.COption<string>
-  }
+  TransactionPayload: { fields: [TransactionPayload] }
   PolicyPayload: { payload: PolicyPayload }
 }
 
@@ -60,12 +59,7 @@ export const createTransactionArgsBeet =
       new beet.FixableBeetArgsStruct<
         CreateTransactionArgsRecord['TransactionPayload']
       >(
-        [
-          ['accountIndex', beet.u8],
-          ['ephemeralSigners', beet.u8],
-          ['transactionMessage', beet.bytes],
-          ['memo', beet.coption(beet.utf8String)],
-        ],
+        [['fields', beet.tuple([transactionPayloadBeet])]],
         'CreateTransactionArgsRecord["TransactionPayload"]'
       ),
     ],

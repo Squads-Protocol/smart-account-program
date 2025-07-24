@@ -11,13 +11,13 @@ import {
   instructionConstraintBeet,
 } from './InstructionConstraint'
 import {
-  LimitedBalanceConstraint,
-  limitedBalanceConstraintBeet,
-} from './LimitedBalanceConstraint'
+  LimitedResourceLimit,
+  limitedResourceLimitBeet,
+} from './LimitedResourceLimit'
 export type ProgramInteractionPolicyCreationPayload = {
   accountIndex: number
   instructionsConstraints: InstructionConstraint[]
-  balanceConstraint: beet.COption<LimitedBalanceConstraint>
+  resourceLimits: LimitedResourceLimit[]
 }
 
 /**
@@ -29,7 +29,7 @@ export const programInteractionPolicyCreationPayloadBeet =
     [
       ['accountIndex', beet.u8],
       ['instructionsConstraints', beet.array(instructionConstraintBeet)],
-      ['balanceConstraint', beet.coption(limitedBalanceConstraintBeet)],
+      ['resourceLimits', beet.array(limitedResourceLimitBeet)],
     ],
     'ProgramInteractionPolicyCreationPayload'
   )

@@ -236,6 +236,7 @@ impl PolicyTrait for InternalFundTransferPolicy {
 
         Ok(())
     }
+
 }
 
 enum ValidatedAccounts<'info> {

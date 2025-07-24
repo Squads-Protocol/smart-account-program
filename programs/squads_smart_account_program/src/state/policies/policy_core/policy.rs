@@ -5,7 +5,8 @@ use crate::{
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     InternalFundTransferExecutionArgs, Permission, ProgramInteractionExecutionArgs,
     ProgramInteractionPolicy, Proposal, Settings, SettingsChangePolicy, SmartAccountSigner,
-    SpendingLimitExecutionArgs, SpendingLimitPolicy, Transaction, SEED_POLICY, SEED_PREFIX,
+    SpendingLimitExecutionArgs, SpendingLimitPolicy, Transaction, TransactionPayload, SEED_POLICY,
+    SEED_PREFIX,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -247,7 +248,7 @@ impl Policy {
         }
     }
     /// Dispatch method for policy execution
-    pub fn validate_and_execute<'info>(
+    pub fn execute<'info>(
         &mut self,
         transaction_account: Option<&Account<'info, Transaction>>,
         proposal_account: Option<&Account<'info, Proposal>>,
@@ -259,7 +260,6 @@ impl Policy {
                 PolicyState::InternalFundTransfer(ref mut policy_state),
                 PolicyPayload::InternalFundTransfer(payload),
             ) => {
-                policy_state.validate_payload(&payload)?;
                 let args = InternalFundTransferExecutionArgs {
                     settings_key: self.settings,
                 };
@@ -269,7 +269,6 @@ impl Policy {
                 PolicyState::SpendingLimit(ref mut policy_state),
                 PolicyPayload::SpendingLimit(payload),
             ) => {
-                policy_state.validate_payload(&payload)?;
                 let args = SpendingLimitExecutionArgs {
                     settings_key: self.settings,
                 };
@@ -279,25 +278,26 @@ impl Policy {
                 PolicyState::ProgramInteraction(ref mut policy_state),
                 PolicyPayload::ProgramInteraction(payload),
             ) => {
-                policy_state.validate_payload(&payload)?;
-                match (transaction_account, proposal_account) {
-                    (Some(transaction), Some(proposal)) => {
-                        let args = ProgramInteractionExecutionArgs {
-                            settings_key: self.settings,
-                            transaction_key: transaction.key(),
-                            proposal_key: proposal.key(),
-                        };
-                        policy_state.execute_payload(args, payload, accounts)
-                    }
-                    (None, None) => !unimplemented!(),
-                    _ => err!(SmartAccountError::InvalidAccount),
-                }
+                let args = ProgramInteractionExecutionArgs {
+                    settings_key: self.settings,
+                    // if the transaction account is not provided, use a default
+                    // pubkey (sync transactions)
+                    transaction_key: transaction_account
+                        .map(|t| t.key())
+                        .unwrap_or(Pubkey::default()),
+                    // if the proposal account is not provided, use a default
+                    // pubkey (sync transactions)
+                    proposal_key: proposal_account
+                        .map(|p| p.key())
+                        .unwrap_or(Pubkey::default()),
+                    policy_signers: self.signers.clone(),
+                };
+                policy_state.execute_payload(args, payload, accounts)
             }
             (
                 PolicyState::SettingsChange(ref mut policy_state),
                 PolicyPayload::SettingsChange(payload),
             ) => {
-                policy_state.validate_payload(&payload)?;
                 policy_state.execute_payload((), payload, accounts)
             }
             _ => err!(SmartAccountError::InvalidPolicyPayload),
@@ -345,7 +345,12 @@ impl Consensus for Policy {
     fn check_derivation(&self, key: Pubkey) -> Result<()> {
         // TODO: Since policies can be closed, we need to make the derivation deterministic.
         let (address, _bump) = Pubkey::find_program_address(
-            &[SEED_PREFIX, self.settings.as_ref(), SEED_POLICY, self.seed.to_le_bytes().as_ref()],
+            &[
+                SEED_PREFIX,
+                self.settings.as_ref(),
+                SEED_POLICY,
+                self.seed.to_le_bytes().as_ref(),
+            ],
             &crate::ID,
         );
         require_keys_eq!(address, key, SmartAccountError::InvalidAccount);

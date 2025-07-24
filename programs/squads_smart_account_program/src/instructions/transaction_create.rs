@@ -6,17 +6,18 @@ use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::state::*;
 use crate::utils::*;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct TransactionPayload {
+    pub account_index: u8,
+    pub ephemeral_signers: u8,
+    pub transaction_message: Vec<u8>,
+    pub memo: Option<String>,
+}
+
+
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum CreateTransactionArgs {
-    TransactionPayload {
-        /// Index of the smart account this transaction belongs to.
-        account_index: u8,
-        /// Number of ephemeral signing PDAs required by the transaction.
-        ephemeral_signers: u8,
-        /// The message of the transaction.
-        transaction_message: Vec<u8>,
-        memo: Option<String>,
-    },
+    TransactionPayload(TransactionPayload),
     PolicyPayload {
         /// The payload of the policy transaction.
         payload: PolicyPayload,
@@ -36,7 +37,7 @@ pub struct CreateTransaction<'info> {
         init,
         payer = rent_payer,
         space = match &args {
-            CreateTransactionArgs::TransactionPayload { ephemeral_signers, transaction_message, .. } => {
+            CreateTransactionArgs::TransactionPayload(TransactionPayload { ephemeral_signers, transaction_message, .. }) => {
                 Transaction::size_for_transaction(*ephemeral_signers, transaction_message)?
             },
             CreateTransactionArgs::PolicyPayload { payload } => {
@@ -88,6 +89,25 @@ impl<'info> CreateTransaction<'info> {
                 match args {
                     CreateTransactionArgs::PolicyPayload { payload } => {
                         policy.validate_payload(payload)?;
+                        // Special case for not allowing sync transaction
+                        // details to be uploaded as a transaction payload
+                        match payload {
+                            PolicyPayload::ProgramInteraction(ProgramInteractionPayload {
+                                instruction_constraint_indices: _,
+                                transaction_payload,
+                            }) => {
+                                require!(
+                                    matches!(
+                                        transaction_payload,
+                                        ProgramInteractionTransactionPayload::AsyncTransaction(
+                                            TransactionPayload { .. }
+                                        )
+                                    ),
+                                    SmartAccountError::InvalidTransactionMessage
+                                );
+                            }
+                            _ => {}
+                        }
                     }
                     _ => {
                         return Err(SmartAccountError::InvalidTransactionMessage.into());
@@ -132,12 +152,12 @@ impl<'info> CreateTransaction<'info> {
         transaction.index = transaction_index;
         match (args, consensus_account.account_type()) {
             (
-                CreateTransactionArgs::TransactionPayload {
+                CreateTransactionArgs::TransactionPayload(TransactionPayload {
                     account_index,
                     ephemeral_signers,
                     transaction_message,
                     memo: _,
-                },
+                }),
                 ConsensusAccountType::Settings,
             ) => {
                 let transaction_message_parsed =
@@ -170,7 +190,6 @@ impl<'info> CreateTransaction<'info> {
 
                 transaction.payload = Payload::TransactionPayload(TransactionPayloadDetails {
                     account_index: account_index,
-                    account_bump: smart_account_bump,
                     ephemeral_signer_bumps,
                     message: transaction_message_parsed.try_into()?,
                 });

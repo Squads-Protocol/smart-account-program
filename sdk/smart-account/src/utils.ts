@@ -3,6 +3,7 @@ import {
   AccountMeta,
   AddressLookupTableAccount,
   Connection,
+  MessageV0,
   PublicKey,
   TransactionInstruction,
   TransactionMessage,
@@ -107,7 +108,10 @@ export function transactionMessageToMultisigTransactionMessageBytes({
   message: TransactionMessage;
   addressLookupTableAccounts?: AddressLookupTableAccount[];
   smartAccountPda: PublicKey;
-}): Uint8Array {
+}): {
+  transactionMessageBytes: Uint8Array;
+  compiledMessage: MessageV0;
+} {
   // // Make sure authority is marked as non-signer in all instructions,
   // // otherwise the message will be serialized in incorrect format.
   // message.instructions.forEach((instruction) => {
@@ -151,7 +155,10 @@ export function transactionMessageToMultisigTransactionMessageBytes({
     addressTableLookups: compiledMessage.addressTableLookups,
   });
 
-  return transactionMessageBytes;
+  return {
+    transactionMessageBytes,
+    compiledMessage,
+  };
 }
 
 export function instructionsToSynchronousTransactionDetails({

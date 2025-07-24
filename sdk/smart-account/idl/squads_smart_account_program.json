@@ -3139,6 +3139,32 @@
       }
     },
     {
+      "name": "TransactionPayload",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSigners",
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "LegacySyncTransactionArgs",
       "type": {
         "kind": "struct",
@@ -3456,10 +3482,10 @@
             }
           },
           {
-            "name": "balanceConstraints",
+            "name": "resourceLimits",
             "type": {
-              "option": {
-                "defined": "BalanceConstraint"
+              "vec": {
+                "defined": "ResourceLimit"
               }
             }
           }
@@ -3543,36 +3569,6 @@
       }
     },
     {
-      "name": "BalanceConstraint",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "timeConstraint",
-            "type": {
-              "defined": "TimeConstraints"
-            }
-          },
-          {
-            "name": "quantityConstraint",
-            "type": {
-              "defined": "QuantityConstraints"
-            }
-          },
-          {
-            "name": "usageState",
-            "type": {
-              "defined": "UsageState"
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "LimitedTimeConstraints",
       "docs": [
         "Limited subset of TimeConstraints."
@@ -3630,7 +3626,7 @@
       }
     },
     {
-      "name": "LimitedBalanceConstraint",
+      "name": "LimitedResourceLimit",
       "docs": [
         "Limited subset of BalanceConstraint used to create a policy"
       ],
@@ -3677,10 +3673,10 @@
             }
           },
           {
-            "name": "balanceConstraint",
+            "name": "resourceLimits",
             "type": {
-              "option": {
-                "defined": "LimitedBalanceConstraint"
+              "vec": {
+                "defined": "LimitedResourceLimit"
               }
             }
           }
@@ -3701,8 +3697,24 @@
           {
             "name": "transactionPayload",
             "type": {
-              "defined": "TransactionPayloadDetails"
+              "defined": "ProgramInteractionTransactionPayload"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SyncTransactionPayloadDetails",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "instructions",
+            "type": "bytes"
           }
         ]
       }
@@ -3751,6 +3763,104 @@
                 "defined": "SettingsChangeActions"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpendingLimitPolicy",
+      "docs": [
+        "Enhanced period enum supporting custom durations",
+        "Main spending limit structure using composition"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "resourceLimit",
+            "docs": [
+              "Resource limit configuration (timing, constraints, usage, mint)"
+            ],
+            "type": {
+              "defined": "ResourceLimit"
+            }
+          },
+          {
+            "name": "sourceAccountIndex",
+            "docs": [
+              "The source account index."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "destinations",
+            "docs": [
+              "The destination addresses the spending limit is allowed to sent funds to.",
+              "If empty, funds can be sent to any address."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpendingLimitPolicyCreationPayload",
+      "docs": [
+        "Setup parameters for creating a spending limit"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "sourceAccountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "timeConstraints",
+            "type": {
+              "defined": "TimeConstraints"
+            }
+          },
+          {
+            "name": "quantityConstraints",
+            "type": {
+              "defined": "QuantityConstraints"
+            }
+          },
+          {
+            "name": "destinations",
+            "type": {
+              "vec": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SpendingLimitPayload",
+      "docs": [
+        "Payload for using a spending limit policy."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination",
+            "type": "publicKey"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
           }
         ]
       }
@@ -3856,9 +3966,9 @@
       }
     },
     {
-      "name": "SpendingLimitPolicy",
+      "name": "ResourceLimit",
       "docs": [
-        "Main spending limit structure using composition"
+        "Shared resource limit structure that combines timing, quantity, usage, and mint"
       ],
       "type": {
         "kind": "struct",
@@ -3866,21 +3976,14 @@
           {
             "name": "mint",
             "docs": [
-              "The token mint the spending limit is for.",
+              "The token mint the resource limit is for.",
               "Pubkey::default() means SOL.",
               "use NATIVE_MINT for Wrapped SOL."
             ],
             "type": "publicKey"
           },
           {
-            "name": "sourceAccountIndex",
-            "docs": [
-              "The source account index."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "timing",
+            "name": "timeConstraints",
             "docs": [
               "Timing configuration"
             ],
@@ -3889,7 +3992,7 @@
             }
           },
           {
-            "name": "constraints",
+            "name": "quantityConstraints",
             "docs": [
               "Amount constraints"
             ],
@@ -3905,76 +4008,6 @@
             "type": {
               "defined": "UsageState"
             }
-          },
-          {
-            "name": "destinations",
-            "docs": [
-              "The destination addresses the spending limit is allowed to sent funds to.",
-              "If empty, funds can be sent to any address."
-            ],
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "SpendingLimitPolicyCreationPayload",
-      "docs": [
-        "Setup parameters for creating a spending limit"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "mint",
-            "type": "publicKey"
-          },
-          {
-            "name": "sourceAccountIndex",
-            "type": "u8"
-          },
-          {
-            "name": "timeConstraints",
-            "type": {
-              "defined": "TimeConstraints"
-            }
-          },
-          {
-            "name": "quantityConstraints",
-            "type": {
-              "defined": "QuantityConstraints"
-            }
-          },
-          {
-            "name": "destinations",
-            "type": {
-              "vec": "publicKey"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "SpendingLimitPayload",
-      "docs": [
-        "Payload for using a spending limit policy."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "destination",
-            "type": "publicKey"
-          },
-          {
-            "name": "decimals",
-            "type": "u8"
           }
         ]
       }
@@ -4021,13 +4054,6 @@
             "name": "accountIndex",
             "docs": [
               "The account index of the smart account this transaction belongs to."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "accountBump",
-            "docs": [
-              "Derivation bump of the smart account PDA this transaction belongs to."
             ],
             "type": "u8"
           },
@@ -4090,31 +4116,7 @@
             "name": "TransactionPayload",
             "fields": [
               {
-                "name": "accountIndex",
-                "docs": [
-                  "Index of the smart account this transaction belongs to."
-                ],
-                "type": "u8"
-              },
-              {
-                "name": "ephemeralSigners",
-                "docs": [
-                  "Number of ephemeral signing PDAs required by the transaction."
-                ],
-                "type": "u8"
-              },
-              {
-                "name": "transactionMessage",
-                "docs": [
-                  "The message of the transaction."
-                ],
-                "type": "bytes"
-              },
-              {
-                "name": "memo",
-                "type": {
-                  "option": "string"
-                }
+                "defined": "TransactionPayload"
               }
             ]
           },
@@ -4256,6 +4258,30 @@
       }
     },
     {
+      "name": "ProgramInteractionTransactionPayload",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AsyncTransaction",
+            "fields": [
+              {
+                "defined": "TransactionPayload"
+              }
+            ]
+          },
+          {
+            "name": "SyncTransaction",
+            "fields": [
+              {
+                "defined": "SyncTransactionPayloadDetails"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "AllowedSettingsChange",
       "docs": [
         "Supports a subset of settings changes that can be done via a policy."
@@ -4358,35 +4384,6 @@
                 "name": "newTimeLock",
                 "type": "u32"
               }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "name": "PeriodV2",
-      "docs": [
-        "Enhanced period enum supporting custom durations"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "OneTime"
-          },
-          {
-            "name": "Day"
-          },
-          {
-            "name": "Week"
-          },
-          {
-            "name": "Month"
-          },
-          {
-            "name": "Custom",
-            "fields": [
-              "i64"
             ]
           }
         ]
@@ -4539,6 +4536,32 @@
               {
                 "defined": "ProgramInteractionPolicy"
               }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "PeriodV2",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "OneTime"
+          },
+          {
+            "name": "Day"
+          },
+          {
+            "name": "Week"
+          },
+          {
+            "name": "Month"
+          },
+          {
+            "name": "Custom",
+            "fields": [
+              "i64"
             ]
           }
         ]
