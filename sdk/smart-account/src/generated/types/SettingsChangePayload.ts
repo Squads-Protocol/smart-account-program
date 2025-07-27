@@ -7,11 +7,12 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import {
-  SettingsChangeActions,
-  settingsChangeActionsBeet,
-} from './SettingsChangeActions'
+  LimitedSettingsAction,
+  limitedSettingsActionBeet,
+} from './LimitedSettingsAction'
 export type SettingsChangePayload = {
-  actions: SettingsChangeActions[]
+  actionIndex: Uint8Array
+  actions: LimitedSettingsAction[]
 }
 
 /**
@@ -20,6 +21,9 @@ export type SettingsChangePayload = {
  */
 export const settingsChangePayloadBeet =
   new beet.FixableBeetArgsStruct<SettingsChangePayload>(
-    [['actions', beet.array(settingsChangeActionsBeet)]],
+    [
+      ['actionIndex', beet.bytes],
+      ['actions', beet.array(limitedSettingsActionBeet)],
+    ],
     'SettingsChangePayload'
   )

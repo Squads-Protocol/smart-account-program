@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    errors::SmartAccountError, policy_core, state::Settings, Permission, Permissions,
+    errors::SmartAccountError, state::Settings, Permissions, PolicyExecutionContext,
     PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction, SmartAccountSigner,
 };
 
@@ -37,17 +37,18 @@ pub struct SettingsChangePolicyCreationPayload {
 impl PolicyPayloadConversionTrait for SettingsChangePolicyCreationPayload {
     type PolicyState = SettingsChangePolicy;
 
-    fn to_policy_state(self) -> SettingsChangePolicy {
+    fn to_policy_state(self) -> Result<SettingsChangePolicy> {
         let mut sorted_actions = self.actions.clone();
+        // Sort the actions to ensure the invariant function can apply.
         sorted_actions.sort_by_key(|action| match action {
             AllowedSettingsChange::AddSigner { new_signer, .. } => (0, new_signer.clone()),
             AllowedSettingsChange::RemoveSigner { old_signer } => (1, old_signer.clone()),
             AllowedSettingsChange::ChangeThreshold => (2, None),
             AllowedSettingsChange::ChangeTimeLock { .. } => (3, None),
         });
-        SettingsChangePolicy {
+        Ok(SettingsChangePolicy {
             actions: sorted_actions,
-        }
+        })
     }
 }
 
@@ -67,33 +68,50 @@ pub struct SettingsChangePolicy {
     pub actions: Vec<AllowedSettingsChange>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-/// Payload used to update the settings.
-pub enum SettingsChangeActions {
-    AddSigner {
-        new_signer: Pubkey,
-        new_signer_permissions: Permissions,
-    },
-    RemoveSigner {
-        old_signer: Pubkey,
-    },
-    ChangeThreshold {
-        new_threshold: u16,
-    },
-    ChangeTimeLock {
-        new_time_lock: u32,
-    },
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+/// Limited subset of settings change actions
+pub enum LimitedSettingsAction {
+    AddSigner { new_signer: SmartAccountSigner },
+    RemoveSigner { old_signer: Pubkey },
+    ChangeThreshold { new_threshold: u16 },
+    SetTimeLock { new_time_lock: u32 },
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+impl From<LimitedSettingsAction> for SettingsAction {
+    fn from(action: LimitedSettingsAction) -> Self {
+        match action {
+            LimitedSettingsAction::AddSigner { new_signer } => {
+                SettingsAction::AddSigner { new_signer }
+            }
+
+            LimitedSettingsAction::RemoveSigner { old_signer } => {
+                SettingsAction::RemoveSigner { old_signer }
+            }
+
+            LimitedSettingsAction::ChangeThreshold { new_threshold } => {
+                SettingsAction::ChangeThreshold { new_threshold }
+            }
+
+            LimitedSettingsAction::SetTimeLock { new_time_lock } => {
+                SettingsAction::SetTimeLock { new_time_lock }
+            }
+        }
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub struct SettingsChangePayload {
-    pub actions: Vec<SettingsChangeActions>,
+    pub action_index: Vec<u8>,
+    pub actions: Vec<LimitedSettingsAction>,
+}
+pub struct SettingsChangeExecutionArgs {
+    pub settings_key: Pubkey,
 }
 impl PolicyTrait for SettingsChangePolicy {
     type PolicyState = Self;
     type CreationPayload = SettingsChangePolicyCreationPayload;
     type UsagePayload = SettingsChangePayload;
-    type ExecutionArgs = ();
+    type ExecutionArgs = SettingsChangeExecutionArgs;
 
     fn invariant(&self) -> Result<()> {
         // AddSigner and RemoveSigner can only be present once with any given
@@ -138,26 +156,100 @@ impl PolicyTrait for SettingsChangePolicy {
         });
 
         if has_duplicate {
-            return Err(SmartAccountError::PlaceholderError.into());
+            return Err(SmartAccountError::SettingsChangePolicyInvariantDuplicateActions.into());
         }
         Ok(())
     }
 
-    fn validate_payload(&self, payload: &Self::UsagePayload) -> Result<()> {
-        // for action in payload {
-        //     match action {
-        //         SettingsChangePayload::AddSigner { new_signer, new_signer_permissions } => {
-        //             if self
-        //         }
-        //         SettingsChangePayload::RemoveSigner { old_signer } => {
-        //             if let Some(old_signer) = old_signer {
-        //                 require_eq!(old_signer, self.settings_change_type.settings_authority);
-        //             }
-        //         }
-        //         SettingsChangePayload::ChangeThreshold => {}
-        //         SettingsChangePayload::ChangeTimeLock { new_time_lock } => {}
-        //     }
-        // }
+    fn validate_payload(
+        &self,
+        // No difference between synchronous and asynchronous execution
+        _context: PolicyExecutionContext,
+        payload: &Self::UsagePayload,
+    ) -> Result<()> {
+        // Actions need to be non-zero
+        require!(
+            !payload.actions.is_empty(),
+            SmartAccountError::SettingsChangePolicyActionsMustBeNonZero
+        );
+        // Action indices must match actions length
+        require!(
+            payload.action_index.len() == payload.actions.len(),
+            SmartAccountError::SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch
+        );
+
+        // This is safe because we checked that the action indices match the actions length
+        for (action_index, action) in payload.action_index.iter().zip(payload.actions.iter()) {
+            // Get the corresponding action from the policy state
+            let allowed_action = if let Some(action) = self.actions.get(*action_index as usize) {
+                action
+            } else {
+                return Err(
+                    SmartAccountError::SettingsChangePolicyInvariantActionIndexOutOfBounds.into(),
+                );
+            };
+            match (allowed_action, action) {
+                (
+                    AllowedSettingsChange::AddSigner {
+                        new_signer: allowed_signer,
+                        new_signer_permissions: allowed_permissions,
+                    },
+                    LimitedSettingsAction::AddSigner { new_signer },
+                ) => {
+                    if let Some(allowed_signer) = allowed_signer {
+                        // If None, any signer can be added
+                        require!(
+                            &new_signer.key == allowed_signer,
+                            SmartAccountError::SettingsChangeAddSignerViolation
+                        );
+                    }
+                    // If None, any permissions can used
+                    if let Some(allowed_permissions) = allowed_permissions {
+                        require!(
+                            &new_signer.permissions == allowed_permissions,
+                            SmartAccountError::SettingsChangeAddSignerPermissionsViolation
+                        );
+                    }
+                }
+                (
+                    AllowedSettingsChange::RemoveSigner {
+                        old_signer: allowed_removal_signer,
+                    },
+                    LimitedSettingsAction::RemoveSigner { old_signer },
+                ) => {
+                    // If None, any signer can be removed
+                    if let Some(allowed_removal_signer) = allowed_removal_signer {
+                        require!(
+                            old_signer == allowed_removal_signer,
+                            SmartAccountError::SettingsChangeRemoveSignerViolation
+                        );
+                    }
+                }
+                (
+                    AllowedSettingsChange::ChangeThreshold,
+                    LimitedSettingsAction::ChangeThreshold { new_threshold: _ },
+                ) => {
+                    continue;
+                }
+                (
+                    AllowedSettingsChange::ChangeTimeLock {
+                        new_time_lock: allowed_time_lock,
+                    },
+                    LimitedSettingsAction::SetTimeLock { new_time_lock },
+                ) => {
+                    // If None, any time lock can be used
+                    if let Some(allowed_time_lock) = allowed_time_lock {
+                        require!(
+                            new_time_lock == allowed_time_lock,
+                            SmartAccountError::SettingsChangeChangeTimelockViolation
+                        );
+                    }
+                }
+                _ => {
+                    return Err(SmartAccountError::SettingsChangeActionMismatch.into());
+                }
+            }
+        }
         Ok(())
     }
 
@@ -167,14 +259,82 @@ impl PolicyTrait for SettingsChangePolicy {
         payload: &Self::UsagePayload,
         accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
+        // Validate and grab the settings account
+        let mut validated_accounts = self.validate_accounts(args.settings_key, accounts)?;
+        for action in payload.actions.iter() {
+            let settings_action = SettingsAction::from(action.clone());
+            validated_accounts.settings.modify_with_action(
+                &args.settings_key,
+                &settings_action,
+                &Rent::get()?,
+                &validated_accounts.rent_payer,
+                &validated_accounts.system_program,
+                // Only polices and spending limits use remaining accounts, and
+                // thos actions are exluded from LimitedSettingsAction
+                &[],
+                &crate::ID,
+            )?;
+        }
         Ok(())
     }
-
-
 }
 
+pub struct ValidatedAccounts<'info> {
+    pub settings: Account<'info, Settings>,
+    // Optional just to comply with later use of Settings::modify_with_action
+    pub rent_payer: Option<Signer<'info>>,
+    // Optional just to comply with later use of Settings::modify_with_action
+    pub system_program: Option<Program<'info, System>>,
+}
+impl SettingsChangePolicy {
+    pub fn validate_accounts<'info>(
+        &self,
+        settings_key: Pubkey,
+        accounts: &'info [AccountInfo<'info>],
+    ) -> Result<ValidatedAccounts<'info>> {
+        let (settings_account_info, rent_payer_info, system_program_info) = if let [settings_account_info, rent_payer_info, system_program_info, _remaining @ ..] =
+            accounts
+        {
+            (settings_account_info, rent_payer_info, system_program_info)
+        } else {
+            return err!(SmartAccountError::InvalidNumberOfAccounts);
+        };
+
+        // Settings account checks
+        require!(
+            settings_account_info.key() == settings_key,
+            SmartAccountError::SettingsChangeInvalidSettingsKey
+        );
+        require!(
+            settings_account_info.is_writable,
+            SmartAccountError::SettingsChangeInvalidSettingsAccount
+        );
+        // Deserialize the settings account
+        let settings: Account<'info, Settings> = Account::try_from(settings_account_info)?;
+
+        // Rent payer
+        let rent_payer = Signer::try_from(rent_payer_info)
+            .map_err(|_| SmartAccountError::SettingsChangeInvalidRentPayer)?;
+        require!(
+            rent_payer.is_writable,
+            SmartAccountError::SettingsChangeInvalidRentPayer
+        );
+
+        // System program checks
+        let system_program: Program<'info, System> = Program::try_from(system_program_info)
+            .map_err(|_| SmartAccountError::SettingsChangeInvalidSystemProgram)?;
+
+        Ok(ValidatedAccounts {
+            settings: settings,
+            rent_payer: Some(rent_payer),
+            system_program: Some(system_program),
+        })
+    }
+}
 #[cfg(test)]
 mod tests {
+    use crate::Permission;
+
     use super::*;
 
     #[test]
@@ -195,7 +355,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.to_policy_state();
+        let policy = payload.to_policy_state().unwrap();
         assert!(policy.invariant().is_ok());
     }
     #[test]
@@ -217,7 +377,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.to_policy_state();
+        let policy = payload.to_policy_state().unwrap();
         assert!(policy.invariant().is_err());
     }
 
@@ -239,7 +399,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.to_policy_state();
+        let policy = payload.to_policy_state().unwrap();
         assert!(policy.invariant().is_err());
     }
 
@@ -260,7 +420,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.to_policy_state();
+        let policy = payload.to_policy_state().unwrap();
         assert!(policy.invariant().is_err());
     }
 
@@ -277,7 +437,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.to_policy_state();
+        let policy = payload.to_policy_state().unwrap();
         assert!(policy.invariant().is_err());
     }
 
@@ -324,7 +484,7 @@ mod tests {
             ],
         };
 
-        let policy = payload.clone().to_policy_state();
+        let policy = payload.clone().to_policy_state().unwrap();
         let calculated_size = payload.policy_state_size();
         let actual_serialized = policy.try_to_vec().unwrap();
         let actual_size = actual_serialized.len();

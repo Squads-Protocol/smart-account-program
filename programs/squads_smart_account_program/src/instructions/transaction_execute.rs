@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::Consensus;
 use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
@@ -9,6 +10,7 @@ use crate::utils::*;
 #[derive(Accounts)]
 pub struct ExecuteTransaction<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
@@ -102,9 +104,8 @@ impl<'info> ExecuteTransaction<'info> {
 
         match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
-                let settings = consensus_account.settings()?;
                 let transaction_payload = transaction_payload.transaction_payload()?;
-                let mut smart_account_seeds = &[
+                let smart_account_seeds = &[
                     SEED_PREFIX,
                     settings_key.as_ref(),
                     SEED_SMART_ACCOUNT,
@@ -164,14 +165,26 @@ impl<'info> ExecuteTransaction<'info> {
                 let policy_payload = transaction_payload.policy_payload()?;
                 // Extract the policy from the consensus account and execute using dispatch
                 let policy = consensus_account.policy()?;
+                // Determine account offset based on policy expiration type
+                let account_offset = policy
+                    .expiration
+                    .as_ref()
+                    .map(|exp| match exp {
+                        // The settings is the first extra remaining account
+                        PolicyExpiration::SettingsState(_) => 1,
+                        _ => 0,
+                    })
+                    .unwrap_or(0);
+
+                let remaining_accounts = &ctx.remaining_accounts[account_offset..];
+
                 policy.execute(
                     Some(&transaction),
                     Some(&proposal),
                     &policy_payload.payload,
-                    &ctx.remaining_accounts,
+                    remaining_accounts,
                 )?;
-
-                // Check the policy invariant
+                msg!("Policy State: {:?}", policy.policy_state);
             }
         }
 
@@ -180,6 +193,7 @@ impl<'info> ExecuteTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
+        // Check the account invariants
         consensus_account.invariant()?;
         Ok(())
     }

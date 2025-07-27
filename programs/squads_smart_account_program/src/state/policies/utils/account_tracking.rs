@@ -1,7 +1,7 @@
 use anchor_lang::{prelude::*, Ids};
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
-use crate::{errors::SmartAccountError, state::utils::ResourceLimit};
+use crate::{errors::SmartAccountError, state::policies::utils::spending_limit::SpendingLimitV2};
 
 pub struct TrackedTokenAccount<'info> {
     pub account: &'info AccountInfo<'info>,
@@ -70,24 +70,20 @@ pub fn check_pre_balances<'info>(
     }
 }
 
-pub struct AllowedChange {
-    pub mint: Pubkey,
-    pub amount: u64,
-}
 impl<'info> Balances<'info> {
     // Evaluates balance changes against the resource limits
-    pub fn evaluate_balance_changes(&self, resource_limits: &mut Vec<ResourceLimit>) -> Result<()> {
+    pub fn evaluate_balance_changes(&self, spending_limits: &mut Vec<SpendingLimitV2>) -> Result<()> {
         // Check the executing accounts lamports
         let current_lamports = self.executing_account.account.lamports();
-        if let Some(resource_limit) = resource_limits
+        if let Some(spending_limit) = spending_limits
             .iter_mut()
-            .find(|resource_limit| resource_limit.mint() == Pubkey::default())
+            .find(|spending_limit| spending_limit.mint() == Pubkey::default())
         {
             // Ensure the executing account doesn't have less lamports than the allowed change
             let minimum_balance = self
                 .executing_account
                 .lamports
-                .saturating_sub(resource_limit.remaining_in_period());
+                .saturating_sub(spending_limit.remaining_in_period());
             require_gte!(
                 current_lamports,
                 minimum_balance,
@@ -95,7 +91,7 @@ impl<'info> Balances<'info> {
             );
             // If the executing account has a lower balance than before, decrement the resource limit
             if current_lamports < self.executing_account.lamports {
-                resource_limit.decrement(self.executing_account.lamports - current_lamports);
+                spending_limit.decrement(self.executing_account.lamports - current_lamports);
             }
         } else {
             // Ensure the executing account doesn't have less lamports than before
@@ -115,16 +111,16 @@ impl<'info> Balances<'info> {
             // Re-deserialize the token account
             let post_token_account =
                 InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
-            if let Some(resource_limit) = resource_limits
+            if let Some(spending_limit) = spending_limits
                 .iter_mut()
-                .find(|resource_limit| resource_limit.mint() == post_token_account.mint)
+                .find(|spending_limit| spending_limit.mint() == post_token_account.mint)
             {
                 {
                     // Saturating subtraction since remaining_amount could be
                     // higher than the balance
                     let minimum_balance = tracked_token_account
                         .balance
-                        .saturating_sub(resource_limit.remaining_in_period());
+                        .saturating_sub(spending_limit.remaining_in_period());
                     // Ensure the token account has no greater difference than the allowed change
                     require_gte!(
                         post_token_account.amount,
@@ -133,7 +129,7 @@ impl<'info> Balances<'info> {
                     );
                     // If the token account has a lower balance than before, decrement the resource limit
                     if post_token_account.amount < tracked_token_account.balance {
-                        resource_limit
+                        spending_limit
                             .decrement(tracked_token_account.balance - post_token_account.amount);
                     }
                 }

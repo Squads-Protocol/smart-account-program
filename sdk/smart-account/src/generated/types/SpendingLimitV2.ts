@@ -14,7 +14,7 @@ import {
   quantityConstraintsBeet,
 } from './QuantityConstraints'
 import { UsageState, usageStateBeet } from './UsageState'
-export type ResourceLimit = {
+export type SpendingLimitV2 = {
   mint: web3.PublicKey
   timeConstraints: TimeConstraints
   quantityConstraints: QuantityConstraints
@@ -25,12 +25,13 @@ export type ResourceLimit = {
  * @category userTypes
  * @category generated
  */
-export const resourceLimitBeet = new beet.FixableBeetArgsStruct<ResourceLimit>(
-  [
-    ['mint', beetSolana.publicKey],
-    ['timeConstraints', timeConstraintsBeet],
-    ['quantityConstraints', quantityConstraintsBeet],
-    ['usage', usageStateBeet],
-  ],
-  'ResourceLimit'
-)
+export const spendingLimitV2Beet =
+  new beet.FixableBeetArgsStruct<SpendingLimitV2>(
+    [
+      ['mint', beetSolana.publicKey],
+      ['timeConstraints', timeConstraintsBeet],
+      ['quantityConstraints', quantityConstraintsBeet],
+      ['usage', usageStateBeet],
+    ],
+    'SpendingLimitV2'
+  )

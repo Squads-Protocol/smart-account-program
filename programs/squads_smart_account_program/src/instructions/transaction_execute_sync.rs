@@ -68,20 +68,22 @@ impl<'info> SyncTransaction<'info> {
         // Check that the consensus account is active (policy)
         consensus_account.is_active(remaining_accounts)?;
 
+        // Validate policy payload if necessary
         if consensus_account.account_type() == ConsensusAccountType::Policy {
             let policy = consensus_account.read_only_policy()?;
             match &args.payload {
                 SyncPayload::Policy(payload) => {
-                    policy.validate_payload(payload)?;
+                    // Validate the payload against the policy state
+                    policy.validate_payload(PolicyExecutionContext::Synchronous, payload)?;
                 }
                 _ => {
-                    return Err(SmartAccountError::PlaceholderError.into());
+                    return Err(SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction.into());
                 }
             }
         }
 
         // Synchronous consensus validation
-        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)
+        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
     }
 }
 
@@ -176,6 +178,18 @@ impl<'info> SyncTransaction<'info> {
                 let payload = args.payload.to_policy_payload()?;
                 let policy = consensus_account.policy()?;
 
+                // Determine account offset based on policy expiration type
+                let account_offset = policy
+                    .expiration
+                    .as_ref()
+                    .map(|exp| match exp {
+                        // The settings is the first extra remaining account
+                        PolicyExpiration::SettingsState(_) => 1,
+                        _ => 0,
+                    })
+                    .unwrap_or(0);
+
+                let remaining_accounts = &ctx.remaining_accounts[account_offset..];
                 // Execute the policy
                 policy.execute(None, None, payload, &remaining_accounts)?;
 

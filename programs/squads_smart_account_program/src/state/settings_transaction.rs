@@ -99,6 +99,21 @@ pub enum SettingsAction {
         /// Policy expiration - either time-based or state-based.
         expiration: Option<PolicyExpiration>,
     },
+    /// Update a policy account.
+    PolicyUpdate {
+        /// The policy account to update.
+        policy: Pubkey,
+        /// Signers attached to the policy with their permissions.
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// The policy update payload containing policy-specific configuration.
+        policy_update_payload: PolicyCreationPayload,
+        /// Policy expiration - either time-based or state-based.
+        expiration: Option<PolicyExpiration>,
+    },
     /// Remove a policy account.
     PolicyRemove {
         /// The policy account to remove.

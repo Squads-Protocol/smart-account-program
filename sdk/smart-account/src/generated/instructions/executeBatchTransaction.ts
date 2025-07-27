@@ -22,7 +22,7 @@ export const executeBatchTransactionStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _executeBatchTransaction_ instruction
  *
- * @property [] consensusAccount
+ * @property [] settings
  * @property [**signer**] signer
  * @property [_writable_] proposal
  * @property [_writable_] batch
@@ -32,7 +32,7 @@ export const executeBatchTransactionStruct = new beet.BeetArgsStruct<{
  * @category generated
  */
 export type ExecuteBatchTransactionInstructionAccounts = {
-  consensusAccount: web3.PublicKey
+  settings: web3.PublicKey
   signer: web3.PublicKey
   proposal: web3.PublicKey
   batch: web3.PublicKey
@@ -61,7 +61,7 @@ export function createExecuteBatchTransactionInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.consensusAccount,
+      pubkey: accounts.settings,
       isWritable: false,
       isSigner: false,
     },

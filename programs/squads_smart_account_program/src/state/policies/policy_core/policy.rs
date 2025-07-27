@@ -4,9 +4,9 @@ use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     InternalFundTransferExecutionArgs, Permission, ProgramInteractionExecutionArgs,
-    ProgramInteractionPolicy, Proposal, Settings, SettingsChangePolicy, SmartAccountSigner,
-    SpendingLimitExecutionArgs, SpendingLimitPolicy, Transaction, TransactionPayload, SEED_POLICY,
-    SEED_PREFIX,
+    ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
+    SettingsChangePolicy, SmartAccountSigner, SpendingLimitExecutionArgs, SpendingLimitPolicy,
+    Transaction, SEED_POLICY, SEED_PREFIX,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -17,7 +17,7 @@ pub enum PolicyExpiration {
     SettingsState([u8; 32]),
 }
 
-use super::{payloads::PolicyPayload, traits::PolicyTrait};
+use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
 use crate::state::policies::implementations::InternalFundTransferPolicy;
 
 #[account]
@@ -185,20 +185,51 @@ impl Policy {
             .unwrap()
     }
 
-    /// Add a new signer to the policy and sort the signers vec.
-    pub fn add_signer(&mut self, new_signer: SmartAccountSigner) {
-        self.signers.push(new_signer);
-        self.signers.sort_by_key(|s| s.key);
+    /// Create policy state safely
+    pub fn create_state(
+        settings: Pubkey,
+        seed: u64,
+        signers: &Vec<SmartAccountSigner>,
+        threshold: u16,
+        time_lock: u32,
+        policy_state: PolicyState,
+        start: i64,
+        expiration: Option<PolicyExpiration>,
+    ) -> Result<Policy> {
+        let mut sorted_signers = signers.clone();
+        sorted_signers.sort_by_key(|s| s.key);
+
+        Ok(Policy {
+            settings,
+            seed,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            signers: sorted_signers,
+            threshold,
+            time_lock,
+            policy_state,
+            start,
+            expiration,
+        })
     }
 
-    /// Remove a signer from the policy.
-    pub fn remove_signer(&mut self, signer_pubkey: Pubkey) -> Result<()> {
-        let signer_index = match self.is_signer(signer_pubkey) {
-            Some(index) => index,
-            None => return err!(SmartAccountError::NotASigner),
-        };
+    /// Update policy state safely. Disallows
+    pub fn update_state(
+        &mut self,
+        signers: &Vec<SmartAccountSigner>,
+        threshold: u16,
+        time_lock: u32,
+        policy_state: PolicyState,
+        expiration: Option<PolicyExpiration>,
+    ) -> Result<()> {
+        let mut sorted_signers = signers.clone();
+        sorted_signers.sort_by_key(|s| s.key);
 
-        self.signers.remove(signer_index);
+        self.signers = sorted_signers;
+        self.threshold = threshold;
+        self.time_lock = time_lock;
+        self.policy_state = policy_state;
+        self.expiration = expiration;
         Ok(())
     }
 }
@@ -228,22 +259,26 @@ impl PolicyState {
 
 impl Policy {
     /// Validate the payload against the policy.
-    pub fn validate_payload(&self, payload: &PolicyPayload) -> Result<()> {
+    pub fn validate_payload(
+        &self,
+        context: PolicyExecutionContext,
+        payload: &PolicyPayload,
+    ) -> Result<()> {
         match (&self.policy_state, payload) {
             (
                 PolicyState::InternalFundTransfer(policy),
                 PolicyPayload::InternalFundTransfer(payload),
-            ) => policy.validate_payload(payload),
+            ) => policy.validate_payload(context, payload),
             (PolicyState::SpendingLimit(policy), PolicyPayload::SpendingLimit(payload)) => {
-                policy.validate_payload(payload)
+                policy.validate_payload(context, payload)
             }
             (PolicyState::SettingsChange(policy), PolicyPayload::SettingsChange(payload)) => {
-                policy.validate_payload(payload)
+                policy.validate_payload(context, payload)
             }
             (
                 PolicyState::ProgramInteraction(policy),
                 PolicyPayload::ProgramInteraction(payload),
-            ) => policy.validate_payload(payload),
+            ) => policy.validate_payload(context, payload),
             _ => err!(SmartAccountError::InvalidPolicyPayload),
         }
     }
@@ -298,7 +333,10 @@ impl Policy {
                 PolicyState::SettingsChange(ref mut policy_state),
                 PolicyPayload::SettingsChange(payload),
             ) => {
-                policy_state.execute_payload((), payload, accounts)
+                let args = SettingsChangeExecutionArgs {
+                    settings_key: self.settings,
+                };
+                policy_state.execute_payload(args, payload, accounts)
             }
             _ => err!(SmartAccountError::InvalidPolicyPayload),
         }
@@ -306,6 +344,7 @@ impl Policy {
 }
 // Implement Consensus for Policy
 impl Consensus for Policy {
+    /// Checks if a given policy is active based on it's start and expiration
     fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
         // Check if the policy is expired
         match self.expiration {
@@ -320,10 +359,7 @@ impl Consensus for Policy {
             }
             Some(PolicyExpiration::SettingsState(stored_hash)) => {
                 // Find the settings account in the accounts list
-                let settings_account_info = accounts
-                    .iter()
-                    .find(|acc| acc.key() == self.settings)
-                    .ok_or(SmartAccountError::InvalidAccount)?;
+                let settings_account_info = &accounts[0];
                 // Deserialize the settings account
                 let account_data = settings_account_info.try_borrow_data()?;
                 let settings = Settings::try_deserialize(&mut &**account_data)?;

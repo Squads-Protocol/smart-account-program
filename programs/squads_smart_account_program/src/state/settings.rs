@@ -440,7 +440,7 @@ impl Settings {
             }
 
             SettingsAction::SetArchivalAuthority {
-                new_archival_authority,
+                new_archival_authority: _,
             } => {
                 // Marked as NotImplemented until archival feature is implemented.
                 return err!(SmartAccountError::NotImplemented);
@@ -515,36 +515,96 @@ impl Settings {
                 // TODO: Get rid of this clone
                 let policy_state = match policy_creation_payload.clone() {
                     PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
-                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state())
+                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
-                        PolicyState::ProgramInteraction(creation_payload.to_policy_state())
+                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::SpendingLimit(creation_payload) => {
-                        PolicyState::SpendingLimit(creation_payload.to_policy_state())
+                        PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::SettingsChange(creation_payload) => {
-                        PolicyState::SettingsChange(creation_payload.to_policy_state())
+                        PolicyState::SettingsChange(creation_payload.to_policy_state()?)
                     }
                 };
 
                 // Create and serialize the policy
-                let policy = Policy {
-                    settings: *self_key,
-                    seed: next_policy_seed,
-                    transaction_index: 0,
-                    stale_transaction_index: 0,
-                    signers: signers.clone(),
-                    threshold: *threshold,
-                    time_lock: *time_lock,
-                    policy_state: policy_state,
-                    start: start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
-                    expiration: expiration.clone(),
-                };
+                let policy = Policy::create_state(
+                    *self_key,
+                    next_policy_seed,
+                    &signers,
+                    *threshold,
+                    *time_lock,
+                    policy_state,
+                    // If no start was submitted, use the current timestamp
+                    start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
+                    expiration.clone(),
+                )?;
 
                 // Check the policy invariant
                 policy.invariant()?;
                 policy.try_serialize(&mut &mut policy_info.data.borrow_mut()[..])?;
+            }
+
+            SettingsAction::PolicyUpdate {
+                policy: policy_key,
+                signers,
+                threshold,
+                time_lock,
+                policy_update_payload,
+                expiration,
+            } => {
+                // Find the policy account
+                let policy_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == policy_key)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                // Verify the policy account is writable
+                require!(policy_info.is_writable, ErrorCode::AccountNotMutable);
+
+                // Deserialize the policy account and verify it belongs to this
+                // settings account
+                let mut policy = Account::<Policy>::try_from(policy_info)?;
+
+                require_keys_eq!(
+                    policy.settings,
+                    self_key.to_owned(),
+                    SmartAccountError::InvalidAccount
+                );
+
+                let new_policy_state = match policy_update_payload.clone() {
+                    PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
+                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::ProgramInteraction(creation_payload) => {
+                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::SpendingLimit(creation_payload) => {
+                        PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::SettingsChange(creation_payload) => {
+                        PolicyState::SettingsChange(creation_payload.to_policy_state()?)
+                    }
+                };
+
+                // Update the policy
+                policy.update_state(
+                    signers,
+                    *threshold,
+                    *time_lock,
+                    new_policy_state,
+                    expiration.clone(),
+                )?;
+
+                // Invalidate prior transaction due to the update
+                policy.invalidate_prior_transactions();
+
+                // Check the policy invariant
+                policy.invariant()?;
+
+                // Exit the policy account
+                policy.exit(program_id)?;
             }
 
             SettingsAction::PolicyRemove { policy: policy_key } => {

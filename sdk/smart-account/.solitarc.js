@@ -24,6 +24,7 @@ const ignoredTypes = new Set([
   "RemoveSpendingLimitEvent",
   "UseSpendingLimitEvent",
   "SmartAccountEvent",
+  "ConsensusAccount",
 ]);
 
 module.exports = {
@@ -57,7 +58,7 @@ module.exports = {
     };
 
     const transformedIdl = transformType(idl);
-    
+
     return {
       ...transformedIdl,
       types: transformedIdl.types.filter((type) => {

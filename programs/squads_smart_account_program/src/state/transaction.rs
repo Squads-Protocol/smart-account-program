@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 
 use crate::errors::*;
-use crate::instructions::{CompiledInstruction, MessageAddressTableLookup, TransactionMessage};
+use crate::instructions::TransactionMessage;
 
 use super::{PolicyPayload, SmartAccountTransactionMessage};
 

@@ -1,8 +1,8 @@
-use crate::{PolicyPayloadConversionTrait, PolicySizeTrait};
 use crate::{
     errors::SmartAccountError, get_smart_account_seeds, state::policies::policy_core::PolicyTrait,
-    Policy, SEED_PREFIX, SEED_SMART_ACCOUNT,
+    SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
+use crate::{PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait};
 use anchor_lang::prelude::InterfaceAccount;
 use anchor_lang::{prelude::*, system_program, Ids};
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
@@ -89,13 +89,13 @@ impl PolicySizeTrait for InternalFundTransferPolicyCreationPayload {
 impl PolicyPayloadConversionTrait for InternalFundTransferPolicyCreationPayload {
     type PolicyState = InternalFundTransferPolicy;
 
-    fn to_policy_state(self) -> InternalFundTransferPolicy {
+    fn to_policy_state(self) -> Result<InternalFundTransferPolicy> {
         // Sort the allowed mints to ensure the invariant function can apply.
         let mut sorted_allowed_mints = self.allowed_mints.clone();
         sorted_allowed_mints.sort_by_key(|mint| mint.clone());
 
         // Create the policy state
-        InternalFundTransferPolicy {
+        Ok(InternalFundTransferPolicy {
             source_account_mask: InternalFundTransferPolicy::indices_to_mask(
                 &self.source_account_indices,
             ),
@@ -103,7 +103,7 @@ impl PolicyPayloadConversionTrait for InternalFundTransferPolicyCreationPayload 
                 &self.destination_account_indices,
             ),
             allowed_mints: sorted_allowed_mints,
-        }
+        })
     }
 }
 
@@ -120,41 +120,50 @@ impl PolicyTrait for InternalFundTransferPolicy {
     fn invariant(&self) -> Result<()> {
         // There can't be duplicate mints. Requires the mints are sorted.
         let has_duplicates = self.allowed_mints.windows(2).any(|win| win[0] == win[1]);
-        require!(!has_duplicates, SmartAccountError::PlaceholderError);
+        require!(
+            !has_duplicates,
+            SmartAccountError::InternalFundTransferPolicyInvariantDuplicateMints
+        );
         Ok(())
     }
 
-    fn validate_payload(&self, payload: &Self::UsagePayload) -> Result<()> {
+    /// Validates a given usage payload.
+    fn validate_payload(
+        &self,
+        // No difference between synchronous and asynchronous execution
+        _context: PolicyExecutionContext,
+        payload: &Self::UsagePayload,
+    ) -> Result<()> {
         // Validate source account index is allowed
         require!(
             self.has_source_account_index(payload.source_index),
-            SmartAccountError::PlaceholderError
+            SmartAccountError::InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed
         );
 
         // Validate destination account index is allowed
         require!(
             self.has_destination_account_index(payload.destination_index),
-            SmartAccountError::PlaceholderError
+            SmartAccountError::InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed
         );
 
         // Validate mint is allowed (empty allowed_mints means all mints are allowed)
         if !self.allowed_mints.is_empty() {
             require!(
                 self.allowed_mints.contains(&payload.mint),
-                SmartAccountError::PlaceholderError
+                SmartAccountError::InternalFundTransferPolicyInvariantMintNotAllowed
             );
         }
 
         // Validate amount is non-zero
         require!(
             payload.amount > 0,
-            SmartAccountError::SpendingLimitInvalidAmount
+            SmartAccountError::InternalFundTransferPolicyInvariantAmountZero
         );
 
         // Validate source and destination are different
         require!(
             payload.source_index != payload.destination_index,
-            SmartAccountError::InvalidAccount
+            SmartAccountError::InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame
         );
 
         Ok(())
@@ -231,12 +240,8 @@ impl PolicyTrait for InternalFundTransferPolicy {
             }
         }
 
-        // Invariant check
-        self.invariant()?;
-
         Ok(())
     }
-
 }
 
 enum ValidatedAccounts<'info> {
@@ -256,8 +261,6 @@ enum ValidatedAccounts<'info> {
     },
 }
 impl InternalFundTransferPolicy {
-
-
     /// Validates the accounts passed in and returns a struct with the accounts
     fn validate_accounts<'info>(
         settings_key: &Pubkey,

@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   PublicKey,
   TransactionMessage,
   VersionedTransaction,
@@ -17,6 +18,7 @@ export function executeSettingsTransactionSync({
   signers,
   settingsActions,
   memo,
+  remainingAccounts,
   programId,
 }: {
   blockhash: string;
@@ -24,6 +26,7 @@ export function executeSettingsTransactionSync({
   settingsPda: PublicKey;
   signers: PublicKey[];
   settingsActions: SettingsAction[];
+  remainingAccounts?: AccountMeta[];
   memo?: string;
   programId?: PublicKey;
 }): VersionedTransaction {
@@ -37,6 +40,7 @@ export function executeSettingsTransactionSync({
         signers,
         actions: settingsActions,
         memo,
+        remainingAccounts,
         programId,
       }),
     ],

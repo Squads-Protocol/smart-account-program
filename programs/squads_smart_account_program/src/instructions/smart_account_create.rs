@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-use std::borrow::Borrow;
 
 use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;

@@ -5,7 +5,7 @@ pub trait PolicyPayloadConversionTrait {
     type PolicyState;
 
     /// Convert the creation payload to the actual policy state
-    fn to_policy_state(self) -> Self::PolicyState;
+    fn to_policy_state(self) -> Result<Self::PolicyState>;
 }
 
 /// Trait for calculating Borsh serialization sizes of policy-related structs
@@ -17,6 +17,13 @@ pub trait PolicySizeTrait {
     fn policy_state_size(&self) -> usize;
 }
 
+/// The context in which the policy is being executed
+pub enum PolicyExecutionContext {
+    /// The policy is being executed synchronously
+    Synchronous,
+    /// The policy is being executed asynchronously
+    Asynchronous,
+}
 /// Core trait for policy execution - implemented by specific policy types
 pub trait PolicyTrait {
     /// The policy state
@@ -36,7 +43,11 @@ pub trait PolicyTrait {
     fn invariant(&self) -> Result<()>;
 
     /// Validate the payload against policy constraints before execution
-    fn validate_payload(&self, payload: &Self::UsagePayload) -> Result<()>;
+    fn validate_payload(
+        &self,
+        context: PolicyExecutionContext,
+        payload: &Self::UsagePayload,
+    ) -> Result<()>;
 
     /// Execute the policy action with the validated payload
     fn execute_payload<'info>(
@@ -45,5 +56,4 @@ pub trait PolicyTrait {
         payload: &Self::UsagePayload,
         accounts: &'info [AccountInfo<'info>],
     ) -> Result<()>;
-
 }

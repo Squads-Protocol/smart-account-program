@@ -923,7 +923,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -957,7 +957,7 @@
       ],
       "accounts": [
         {
-          "name": "consensusAccount",
+          "name": "settings",
           "isMut": true,
           "isSigner": false
         },
@@ -1004,7 +1004,7 @@
       ],
       "accounts": [
         {
-          "name": "consensusAccount",
+          "name": "settings",
           "isMut": false,
           "isSigner": false,
           "docs": [
@@ -1070,7 +1070,7 @@
       ],
       "accounts": [
         {
-          "name": "consensusAccount",
+          "name": "settings",
           "isMut": false,
           "isSigner": false,
           "docs": [
@@ -3482,10 +3482,10 @@
             }
           },
           {
-            "name": "resourceLimits",
+            "name": "spendingLimits",
             "type": {
               "vec": {
-                "defined": "ResourceLimit"
+                "defined": "SpendingLimitV2"
               }
             }
           }
@@ -3611,22 +3611,7 @@
       }
     },
     {
-      "name": "LimitedUsageState",
-      "docs": [
-        "Limited subset of UsageState"
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "remainingInPeriod",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "LimitedResourceLimit",
+      "name": "LimitedSpendingLimit",
       "docs": [
         "Limited subset of BalanceConstraint used to create a policy"
       ],
@@ -3638,13 +3623,13 @@
             "type": "publicKey"
           },
           {
-            "name": "timeConstraint",
+            "name": "timeConstraints",
             "type": {
               "defined": "LimitedTimeConstraints"
             }
           },
           {
-            "name": "quantityConstraint",
+            "name": "quantityConstraints",
             "type": {
               "defined": "LimitedQuantityConstraints"
             }
@@ -3673,10 +3658,10 @@
             }
           },
           {
-            "name": "resourceLimits",
+            "name": "spendingLimits",
             "type": {
               "vec": {
-                "defined": "LimitedResourceLimit"
+                "defined": "LimitedSpendingLimit"
               }
             }
           }
@@ -3757,10 +3742,14 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "actionIndex",
+            "type": "bytes"
+          },
+          {
             "name": "actions",
             "type": {
               "vec": {
-                "defined": "SettingsChangeActions"
+                "defined": "LimitedSettingsAction"
               }
             }
           }
@@ -3777,12 +3766,12 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "resourceLimit",
+            "name": "spendingLimit",
             "docs": [
               "Resource limit configuration (timing, constraints, usage, mint)"
             ],
             "type": {
-              "defined": "ResourceLimit"
+              "defined": "SpendingLimitV2"
             }
           },
           {
@@ -3831,6 +3820,14 @@
             "name": "quantityConstraints",
             "type": {
               "defined": "QuantityConstraints"
+            }
+          },
+          {
+            "name": "usageState",
+            "type": {
+              "option": {
+                "defined": "UsageState"
+              }
             }
           },
           {
@@ -3883,7 +3880,7 @@
           {
             "name": "expiration",
             "docs": [
-              "Optional expiration timestamp (0 means no expiration)"
+              "Optional expiration timestamp"
             ],
             "type": {
               "option": "i64"
@@ -3933,7 +3930,7 @@
           {
             "name": "enforceExactQuantity",
             "docs": [
-              "Whether to enforce exact quantity matching"
+              "Whether to enforce exact quantity matching on max per use."
             ],
             "type": "bool"
           }
@@ -3966,7 +3963,7 @@
       }
     },
     {
-      "name": "ResourceLimit",
+      "name": "SpendingLimitV2",
       "docs": [
         "Shared resource limit structure that combines timing, quantity, usage, and mint"
       ],
@@ -4244,20 +4241,6 @@
       }
     },
     {
-      "name": "LimitedPeriodV2",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "OneTime"
-          },
-          {
-            "name": "Day"
-          }
-        ]
-      }
-    },
-    {
       "name": "ProgramInteractionTransactionPayload",
       "type": {
         "kind": "enum",
@@ -4337,9 +4320,9 @@
       }
     },
     {
-      "name": "SettingsChangeActions",
+      "name": "LimitedSettingsAction",
       "docs": [
-        "Payload used to update the settings."
+        "Limited subset of settings change actions"
       ],
       "type": {
         "kind": "enum",
@@ -4349,12 +4332,8 @@
             "fields": [
               {
                 "name": "newSigner",
-                "type": "publicKey"
-              },
-              {
-                "name": "newSignerPermissions",
                 "type": {
-                  "defined": "Permissions"
+                  "defined": "SmartAccountSigner"
                 }
               }
             ]
@@ -4378,7 +4357,7 @@
             ]
           },
           {
-            "name": "ChangeTimeLock",
+            "name": "SetTimeLock",
             "fields": [
               {
                 "name": "newTimeLock",
@@ -4537,6 +4516,23 @@
                 "defined": "ProgramInteractionPolicy"
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyExecutionContext",
+      "docs": [
+        "The context in which the policy is being executed"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Synchronous"
+          },
+          {
+            "name": "Asynchronous"
           }
         ]
       }
@@ -4840,6 +4836,63 @@
             ]
           },
           {
+            "name": "PolicyUpdate",
+            "fields": [
+              {
+                "name": "policy",
+                "docs": [
+                  "The policy account to update."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "signers",
+                "docs": [
+                  "Signers attached to the policy with their permissions."
+                ],
+                "type": {
+                  "vec": {
+                    "defined": "SmartAccountSigner"
+                  }
+                }
+              },
+              {
+                "name": "threshold",
+                "docs": [
+                  "Threshold for approvals on the policy."
+                ],
+                "type": "u16"
+              },
+              {
+                "name": "timeLock",
+                "docs": [
+                  "How many seconds must pass between approval and execution."
+                ],
+                "type": "u32"
+              },
+              {
+                "name": "policyUpdatePayload",
+                "docs": [
+                  "The policy update payload containing policy-specific configuration."
+                ],
+                "type": {
+                  "defined": "PolicyCreationPayload"
+                }
+              },
+              {
+                "name": "expiration",
+                "docs": [
+                  "Policy expiration - either time-based or state-based."
+                ],
+                "type": {
+                  "option": {
+                    "defined": "PolicyExpiration"
+                  }
+                }
+              }
+            ]
+          },
+          {
             "name": "PolicyRemove",
             "fields": [
               {
@@ -5050,213 +5103,433 @@
     },
     {
       "code": 6029,
-      "name": "SpendingLimitExpired",
-      "msg": "Spending limit is expired"
-    },
-    {
-      "code": 6030,
       "name": "UnknownPermission",
       "msg": "Signer has unknown permission"
     },
     {
-      "code": 6031,
+      "code": 6030,
       "name": "ProtectedAccount",
       "msg": "Account is protected, it cannot be passed into a CPI as writable"
     },
     {
-      "code": 6032,
+      "code": 6031,
       "name": "TimeLockExceedsMaxAllowed",
       "msg": "Time lock exceeds the maximum allowed (90 days)"
     },
     {
-      "code": 6033,
+      "code": 6032,
       "name": "IllegalAccountOwner",
       "msg": "Account is not owned by Smart Account program"
     },
     {
-      "code": 6034,
+      "code": 6033,
       "name": "RentReclamationDisabled",
       "msg": "Rent reclamation is disabled for this smart account"
     },
     {
-      "code": 6035,
+      "code": 6034,
       "name": "InvalidRentCollector",
       "msg": "Invalid rent collector address"
     },
     {
-      "code": 6036,
+      "code": 6035,
       "name": "ProposalForAnotherSmartAccount",
       "msg": "Proposal is for another smart account"
     },
     {
-      "code": 6037,
+      "code": 6036,
       "name": "TransactionForAnotherSmartAccount",
       "msg": "Transaction is for another smart account"
     },
     {
-      "code": 6038,
+      "code": 6037,
       "name": "TransactionNotMatchingProposal",
       "msg": "Transaction doesn't match proposal"
     },
     {
-      "code": 6039,
+      "code": 6038,
       "name": "TransactionNotLastInBatch",
       "msg": "Transaction is not last in batch"
     },
     {
-      "code": 6040,
+      "code": 6039,
       "name": "BatchNotEmpty",
       "msg": "Batch is not empty"
     },
     {
-      "code": 6041,
+      "code": 6040,
       "name": "SpendingLimitInvalidAmount",
       "msg": "Invalid SpendingLimit amount"
     },
     {
-      "code": 6042,
+      "code": 6041,
       "name": "InvalidInstructionArgs",
       "msg": "Invalid Instruction Arguments"
     },
     {
-      "code": 6043,
+      "code": 6042,
       "name": "FinalBufferHashMismatch",
       "msg": "Final message buffer hash doesnt match the expected hash"
     },
     {
-      "code": 6044,
+      "code": 6043,
       "name": "FinalBufferSizeExceeded",
       "msg": "Final buffer size cannot exceed 4000 bytes"
     },
     {
-      "code": 6045,
+      "code": 6044,
       "name": "FinalBufferSizeMismatch",
       "msg": "Final buffer size mismatch"
     },
     {
-      "code": 6046,
+      "code": 6045,
       "name": "SmartAccountCreateDeprecated",
       "msg": "smart_account_create has been deprecated. Use smart_account_create_v2 instead."
     },
     {
-      "code": 6047,
+      "code": 6046,
       "name": "ThresholdNotReached",
       "msg": "Signers do not reach consensus threshold"
     },
     {
-      "code": 6048,
+      "code": 6047,
       "name": "InvalidSignerCount",
       "msg": "Invalid number of signer accounts. Must be greater or equal to the threshold"
     },
     {
-      "code": 6049,
+      "code": 6048,
       "name": "MissingSignature",
       "msg": "Missing signature"
     },
     {
-      "code": 6050,
+      "code": 6049,
       "name": "InsufficientAggregatePermissions",
       "msg": "Insufficient aggregate permissions across signing members"
     },
     {
-      "code": 6051,
+      "code": 6050,
       "name": "InsufficientVotePermissions",
       "msg": "Insufficient vote permissions across signing members"
     },
     {
-      "code": 6052,
+      "code": 6051,
       "name": "TimeLockNotZero",
       "msg": "Smart account must not be time locked"
     },
     {
-      "code": 6053,
+      "code": 6052,
       "name": "NotImplemented",
       "msg": "Feature not implemented"
     },
     {
-      "code": 6054,
+      "code": 6053,
       "name": "SpendingLimitInvalidCadenceConfiguration",
       "msg": "Invalid cadence configuration"
     },
     {
-      "code": 6055,
+      "code": 6054,
       "name": "InvalidDataConstraint",
       "msg": "Invalid data constraint"
     },
     {
-      "code": 6056,
-      "name": "InvalidPolicyPayload",
-      "msg": "Invalid policy payload"
-    },
-    {
-      "code": 6057,
-      "name": "PolicyExpired",
-      "msg": "Policy expired"
-    },
-    {
-      "code": 6058,
-      "name": "ConsensusAccountNotPolicy",
-      "msg": "Consensus account is not a policy"
-    },
-    {
-      "code": 6059,
+      "code": 6055,
       "name": "InvalidPayload",
       "msg": "Invalid payload"
     },
     {
-      "code": 6060,
+      "code": 6056,
       "name": "ProtectedInstruction",
       "msg": "Protected instruction"
     },
     {
-      "code": 6061,
+      "code": 6057,
       "name": "PlaceholderError",
       "msg": "Placeholder error"
     },
     {
+      "code": 6058,
+      "name": "PolicyNotActive",
+      "msg": "Policy is not active"
+    },
+    {
+      "code": 6059,
+      "name": "PolicyExpired",
+      "msg": "Policy is expired"
+    },
+    {
+      "code": 6060,
+      "name": "InvalidPolicyPayload",
+      "msg": "Invalid policy payload"
+    },
+    {
+      "code": 6061,
+      "name": "ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction",
+      "msg": "Program interaction sync payload not allowed with async transaction"
+    },
+    {
       "code": 6062,
+      "name": "ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction",
+      "msg": "Program interaction sync payload not allowed with sync transaction"
+    },
+    {
+      "code": 6063,
       "name": "ProgramInteractionDataTooShort",
       "msg": "Program interaction data constraint failed: instruction data too short"
     },
     {
-      "code": 6063,
+      "code": 6064,
       "name": "ProgramInteractionInvalidNumericValue",
       "msg": "Program interaction data constraint failed: invalid numeric value"
     },
     {
-      "code": 6064,
+      "code": 6065,
       "name": "ProgramInteractionInvalidByteSequence",
       "msg": "Program interaction data constraint failed: invalid byte sequence"
     },
     {
-      "code": 6065,
+      "code": 6066,
       "name": "ProgramInteractionUnsupportedSliceOperator",
       "msg": "Program interaction data constraint failed: unsupported operator for byte slice"
     },
     {
-      "code": 6066,
+      "code": 6067,
       "name": "ProgramInteractionDataParsingError",
       "msg": "Program interaction constraint failed: instruction data parsing error"
     },
     {
-      "code": 6067,
+      "code": 6068,
       "name": "ProgramInteractionProgramIdMismatch",
       "msg": "Program interaction constraint failed: program ID mismatch"
     },
     {
-      "code": 6068,
-      "name": "ProgramInteractionAccountConstraintFailed",
-      "msg": "Program interaction constraint failed: account constraint violation"
-    },
-    {
       "code": 6069,
-      "name": "ProgramInteractionConstraintIndexOutOfBounds",
-      "msg": "Program interaction constraint failed: instruction constraint index out of bounds"
+      "name": "ProgramInteractionAccountConstraintViolated",
+      "msg": "Program interaction constraint violation: account constraint"
     },
     {
       "code": 6070,
+      "name": "ProgramInteractionConstraintIndexOutOfBounds",
+      "msg": "Program interaction constraint violation: instruction constraint index out of bounds"
+    },
+    {
+      "code": 6071,
       "name": "ProgramInteractionInstructionCountMismatch",
-      "msg": "Program interaction constraint failed: instruction count mismatch"
+      "msg": "Program interaction constraint violation: instruction count mismatch"
+    },
+    {
+      "code": 6072,
+      "name": "ProgramInteractionInsufficientLamportAllowance",
+      "msg": "Program interaction constraint violation: insufficient remaining lamport allowance"
+    },
+    {
+      "code": 6073,
+      "name": "ProgramInteractionInsufficientTokenAllowance",
+      "msg": "Program interaction constraint violation: insufficient remaining token allowance"
+    },
+    {
+      "code": 6074,
+      "name": "ProgramInteractionModifiedIllegalBalance",
+      "msg": "Program interaction constraint violation: modified illegal balance"
+    },
+    {
+      "code": 6075,
+      "name": "ProgramInteractionIllegalTokenAccountModification",
+      "msg": "Program interaction constraint violation: illegal token account modification"
+    },
+    {
+      "code": 6076,
+      "name": "ProgramInteractionDuplicateResourceLimit",
+      "msg": "Program interaction invariant violation: duplicate resource limit for the same mint"
+    },
+    {
+      "code": 6077,
+      "name": "SpendingLimitNotActive",
+      "msg": "Spending limit is not active"
+    },
+    {
+      "code": 6078,
+      "name": "SpendingLimitExpired",
+      "msg": "Spending limit is expired"
+    },
+    {
+      "code": 6079,
+      "name": "SpendingLimitPolicyInvariantAccumulateUnused",
+      "msg": "Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true"
+    },
+    {
+      "code": 6080,
+      "name": "SpendingLimitViolatesExactQuantityConstraint",
+      "msg": "Amount violates exact quantity constraint"
+    },
+    {
+      "code": 6081,
+      "name": "SpendingLimitViolatesMaxPerUseConstraint",
+      "msg": "Amount violates max per use constraint"
+    },
+    {
+      "code": 6082,
+      "name": "SpendingLimitInsufficientRemainingAmount",
+      "msg": "Spending limit is insufficient"
+    },
+    {
+      "code": 6083,
+      "name": "SpendingLimitInvariantMaxPerPeriodZero",
+      "msg": "Spending limit invariant violation: max per period must be non-zero"
+    },
+    {
+      "code": 6084,
+      "name": "SpendingLimitInvariantStartTimePositive",
+      "msg": "Spending limit invariant violation: start time must be positive"
+    },
+    {
+      "code": 6085,
+      "name": "SpendingLimitInvariantExpirationSmallerThanStart",
+      "msg": "Spending limit invariant violation: expiration must be greater than start"
+    },
+    {
+      "code": 6086,
+      "name": "SpendingLimitInvariantOverflowEnabledMustHaveExpiration",
+      "msg": "Spending limit invariant violation: overflow enabled must have expiration"
+    },
+    {
+      "code": 6087,
+      "name": "SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled",
+      "msg": "Spending limit invariant violation: one time period cannot have overflow enabled"
+    },
+    {
+      "code": 6088,
+      "name": "SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount",
+      "msg": "Spending limit invariant violation: remaining amount must be less than max amount"
+    },
+    {
+      "code": 6089,
+      "name": "SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod",
+      "msg": "Spending limit invariant violation: remaining amount must be less than or equal to max per period"
+    },
+    {
+      "code": 6090,
+      "name": "SpendingLimitInvariantExactQuantityMaxPerUseZero",
+      "msg": "Spending limit invariant violation: exact quantity must have max per use non-zero"
+    },
+    {
+      "code": 6091,
+      "name": "SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod",
+      "msg": "Spending limit invariant violation: max per use must be less than or equal to max per period"
+    },
+    {
+      "code": 6092,
+      "name": "SpendingLimitInvariantCustomPeriodNegative",
+      "msg": "Spending limit invariant violation: custom period must be positive"
+    },
+    {
+      "code": 6093,
+      "name": "SpendingLimitPolicyInvariantDuplicateDestinations",
+      "msg": "Spending limit policy invariant violation: cannot have duplicate destinations for the same mint"
+    },
+    {
+      "code": 6094,
+      "name": "InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed",
+      "msg": "Internal fund transfer policy invariant violation: source account index is not allowed"
+    },
+    {
+      "code": 6095,
+      "name": "InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed",
+      "msg": "Internal fund transfer policy invariant violation: destination account index is not allowed"
+    },
+    {
+      "code": 6096,
+      "name": "InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame",
+      "msg": "Internal fund transfer policy invariant violation: source and destination cannot be the same"
+    },
+    {
+      "code": 6097,
+      "name": "InternalFundTransferPolicyInvariantMintNotAllowed",
+      "msg": "Internal fund transfer policy invariant violation: mint is not allowed"
+    },
+    {
+      "code": 6098,
+      "name": "InternalFundTransferPolicyInvariantAmountZero",
+      "msg": "Internal fund transfer policy invariant violation: amount must be greater than 0"
+    },
+    {
+      "code": 6099,
+      "name": "InternalFundTransferPolicyInvariantDuplicateMints",
+      "msg": "Internal fund transfer policy invariant violation: cannot have duplicate mints"
+    },
+    {
+      "code": 6100,
+      "name": "ConsensusAccountNotSettings",
+      "msg": "Consensus account is not a settings"
+    },
+    {
+      "code": 6101,
+      "name": "ConsensusAccountNotPolicy",
+      "msg": "Consensus account is not a policy"
+    },
+    {
+      "code": 6102,
+      "name": "SettingsChangePolicyActionsMustBeNonZero",
+      "msg": "Settings change policy invariant violation: actions must be non-zero"
+    },
+    {
+      "code": 6103,
+      "name": "SettingsChangeInvalidSettingsKey",
+      "msg": "Settings change policy violation: submitted settings account must match policy settings key"
+    },
+    {
+      "code": 6104,
+      "name": "SettingsChangeInvalidSettingsAccount",
+      "msg": "Settings change policy violation: submitted settings account must be writable"
+    },
+    {
+      "code": 6105,
+      "name": "SettingsChangeInvalidRentPayer",
+      "msg": "Settings change policy violation: rent payer must be writable and signer"
+    },
+    {
+      "code": 6106,
+      "name": "SettingsChangeInvalidSystemProgram",
+      "msg": "Settings change policy violation: system program must be the system program"
+    },
+    {
+      "code": 6107,
+      "name": "SettingsChangeAddSignerViolation",
+      "msg": "Settings change policy violation: signer does not match allowed signer"
+    },
+    {
+      "code": 6108,
+      "name": "SettingsChangeAddSignerPermissionsViolation",
+      "msg": "Settings change policy violation: signer permissions does not match allowed signer permissions"
+    },
+    {
+      "code": 6109,
+      "name": "SettingsChangeRemoveSignerViolation",
+      "msg": "Settings change policy violation: signer removal does not mach allowed signer removal"
+    },
+    {
+      "code": 6110,
+      "name": "SettingsChangeChangeTimelockViolation",
+      "msg": "Settings change policy violation: time lock does not match allowed time lock"
+    },
+    {
+      "code": 6111,
+      "name": "SettingsChangeActionMismatch",
+      "msg": "Settings change policy violation: action does not match allowed action"
+    },
+    {
+      "code": 6112,
+      "name": "SettingsChangePolicyInvariantDuplicateActions",
+      "msg": "Settings change policy invariant violation: cannot have duplicate actions"
+    },
+    {
+      "code": 6113,
+      "name": "SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch",
+      "msg": "Settings change policy invariant violation: action indices must match actions length"
+    },
+    {
+      "code": 6114,
+      "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
+      "msg": "Settings change policy invariant violation: action index out of bounds"
     }
   ],
   "metadata": {

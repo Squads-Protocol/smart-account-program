@@ -6,8 +6,6 @@ use crate::id;
 use crate::utils;
 use crate::utils::realloc;
 
-use anchor_lang::system_program;
-
 /// Stores the data required for tracking the status of a smart account proposal.
 /// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `Transaction` or a `SettingsTransaction`;
 /// the latter can be executed only after the `Proposal` has been approved and its time lock is released.

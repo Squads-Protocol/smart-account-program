@@ -1,7 +1,7 @@
 use account_events::{AddSpendingLimitEvent, RemoveSpendingLimitEvent};
 use anchor_lang::prelude::*;
 
-use crate::{consensus::ConsensusAccount, consensus_trait::ConsensusAccountType, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
+use crate::{ consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
@@ -42,8 +42,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
         let Self { consensus_account, .. } = self;
-
-        // The context has already validated that its a settings account
+        // Get the settings
         let settings = consensus_account.read_only_settings()?;
 
         // Settings must not be controlled
@@ -57,7 +56,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         validate_settings_actions(&args.actions)?;
 
         // Validates synchronous consensus across the signers
-        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)?;
+        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)?;
 
         Ok(())
     }
@@ -69,10 +68,11 @@ impl<'info> SyncSettingsTransaction<'info> {
     ) -> Result<()> {
         // Wrapper consensus account
         let consensus_account = &mut ctx.accounts.consensus_account;
-        // Get the settings account info
         let settings_key = consensus_account.key();
         let settings_account_info = consensus_account.to_account_info();
+
         let settings = consensus_account.settings()?;
+
         let rent = Rent::get()?;
 
         // Execute the actions one by one

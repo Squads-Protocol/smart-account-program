@@ -2,7 +2,14 @@ use account_events::SynchronousTransactionEvent;
 use anchor_lang::prelude::*;
 
 use crate::{
-    consensus::ConsensusAccount, consensus_trait::ConsensusAccountType, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::{validate_synchronous_consensus, SynchronousTransactionMessage}, SmallVec
+    consensus::ConsensusAccount,
+    consensus_trait::{Consensus, ConsensusAccountType},
+    errors::*,
+    events::*,
+    program::SquadsSmartAccountProgram,
+    state::*,
+    utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
+    SmallVec,
 };
 
 use super::CompiledInstruction;
@@ -21,6 +28,7 @@ pub struct LegacySyncTransactionArgs {
 pub struct LegacySyncTransaction<'info> {
     #[account(
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
+        // Legacy sync transactions only support settings
         constraint = consensus_account.account_type() == ConsensusAccountType::Settings
     )]
     pub consensus_account: Box<InterfaceAccount<'info, ConsensusAccount>>,
@@ -31,14 +39,22 @@ pub struct LegacySyncTransaction<'info> {
 }
 
 impl LegacySyncTransaction<'_> {
-    #[access_control(validate_synchronous_consensus( &ctx.accounts.consensus_account, args.num_signers, &ctx.remaining_accounts))]
+    fn validate(
+        &self,
+        args: &LegacySyncTransactionArgs,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<()> {
+        let Self { consensus_account, .. } = self;
+        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+    }
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
     pub fn sync_transaction(ctx: Context<Self>, args: LegacySyncTransactionArgs) -> Result<()> {
         // Wrapper consensus account
         let consensus_account = &ctx.accounts.consensus_account;
-        // Readonly Accounts
         let settings = consensus_account.read_only_settings()?;
-
         let settings_key = consensus_account.key();
+        let settings_account_info = consensus_account.to_account_info();
+
         // Deserialize the instructions
         let compiled_instructions =
             SmallVec::<u8, CompiledInstruction>::try_from_slice(&args.instructions)
@@ -101,7 +117,7 @@ impl LegacySyncTransaction<'_> {
                 .collect(),
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: consensus_account.to_account_info(),
+            authority: settings_account_info,
             authority_seeds: get_settings_signer_seeds(settings.seed),
             bump: settings.bump,
             program: ctx.accounts.program.to_account_info(),

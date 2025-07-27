@@ -33,7 +33,7 @@ impl PeriodV2 {
 pub struct TimeConstraints {
     /// Optional start timestamp (0 means immediate)
     pub start: i64,
-    /// Optional expiration timestamp (0 means no expiration)
+    /// Optional expiration timestamp
     pub expiration: Option<i64>,
     /// Reset period for the resource limit
     pub period: PeriodV2,
@@ -48,7 +48,7 @@ pub struct QuantityConstraints {
     pub max_per_period: u64,
     /// Maximum quantity per individual use (0 means no per-use limit)
     pub max_per_use: u64,
-    /// Whether to enforce exact quantity matching
+    /// Whether to enforce exact quantity matching on max per use.
     pub enforce_exact_quantity: bool,
 }
 
@@ -63,7 +63,7 @@ pub struct UsageState {
 
 /// Shared resource limit structure that combines timing, quantity, usage, and mint
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
-pub struct ResourceLimit {
+pub struct SpendingLimitV2 {
     /// The token mint the resource limit is for.
     /// Pubkey::default() means SOL.
     /// use NATIVE_MINT for Wrapped SOL.
@@ -79,22 +79,22 @@ pub struct ResourceLimit {
     pub usage: UsageState,
 }
 
-impl ResourceLimit {
+impl SpendingLimitV2 {
     /// Check if the resource limit is currently active
-    pub fn is_active(&self, current_timestamp: i64) -> bool {
+    pub fn is_active(&self, current_timestamp: i64) -> Result<()> {
         // Check start time
         if current_timestamp < self.time_constraints.start {
-            return false;
+            return err!(SmartAccountError::SpendingLimitNotActive);
         }
 
         // Check expiration
-        if self.time_constraints.expiration.is_some()
-            && current_timestamp > self.time_constraints.expiration.unwrap()
-        {
-            return false;
+        if let Some(expiration) = self.time_constraints.expiration {
+            if current_timestamp > expiration {
+                return err!(SmartAccountError::SpendingLimitExpired);
+            }
         }
 
-        true
+        Ok(())
     }
 
     // Returns the mint of the resource limit
@@ -109,30 +109,27 @@ impl ResourceLimit {
 
     /// Check that the amount is less than the remaining amount, and if it complies with the quantity constraints
     pub fn check_amount(&self, amount: u64) -> Result<()> {
-
-        // Exact amount constraint
-        if self.quantity_constraints.enforce_exact_quantity {
-            // Max per use constraint
-            if self.quantity_constraints.max_per_use > 0 {
-                require_eq!(
-                    amount,
-                    self.quantity_constraints.max_per_use,
-                    SmartAccountError::SpendingLimitInvalidAmount
-                );
-            } else {
-                // Max per period constraint
-                require_eq!(
-                    amount,
-                    self.quantity_constraints.max_per_period,
-                    SmartAccountError::SpendingLimitInvalidAmount
-                );
-            }
-        }
-
         // Remaining amount constraint
         if amount > self.usage.remaining_in_period {
-            return err!(SmartAccountError::PlaceholderError);
+            return err!(SmartAccountError::SpendingLimitInsufficientRemainingAmount);
         }
+        // Max per use constraint
+        if self.quantity_constraints.max_per_use > 0 {
+            require!(
+                amount <= self.quantity_constraints.max_per_use,
+                SmartAccountError::SpendingLimitViolatesMaxPerUseConstraint
+            );
+        }
+        // Exact amount constraint
+        if self.quantity_constraints.enforce_exact_quantity {
+            // Exact max per use constraint
+            require_eq!(
+                amount,
+                self.quantity_constraints.max_per_use,
+                SmartAccountError::SpendingLimitViolatesExactQuantityConstraint
+            );
+        }
+
         Ok(())
     }
 
@@ -183,13 +180,13 @@ impl ResourceLimit {
         require_neq!(
             self.quantity_constraints.max_per_period,
             0,
-            SmartAccountError::SpendingLimitInvalidAmount
+            SmartAccountError::SpendingLimitInvariantMaxPerPeriodZero
         );
 
         // If start time is set, it must be positive
         require!(
             self.time_constraints.start >= 0,
-            SmartAccountError::SpendingLimitInvalidCadenceConfiguration
+            SmartAccountError::SpendingLimitInvariantStartTimePositive
         );
 
         // If expiration is set, it must be positive
@@ -198,21 +195,21 @@ impl ResourceLimit {
             // we can skip the check for expiration being positive.
             require!(
                 self.time_constraints.expiration.unwrap() > self.time_constraints.start,
-                SmartAccountError::SpendingLimitInvalidCadenceConfiguration
+                SmartAccountError::SpendingLimitInvariantExpirationSmallerThanStart
             );
         }
 
         // If overflow is enabled, must have expiration. This is to prevent
-        // users from shooting themselves in the foot.
+        // footguns
         if self.time_constraints.accumulate_unused {
             // OneTime period cannot have overflow enabled
             require!(
                 self.time_constraints.period != PeriodV2::OneTime,
-                SmartAccountError::PlaceholderError
+                SmartAccountError::SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled
             );
             require!(
                 self.time_constraints.expiration.is_some(),
-                SmartAccountError::SpendingLimitInvalidCadenceConfiguration
+                SmartAccountError::SpendingLimitInvariantOverflowEnabledMustHaveExpiration
             );
             // Remaining amount must always be less than expiration - start /
             // period + 1 * max per period
@@ -237,13 +234,13 @@ impl ResourceLimit {
             // Remaining amount must always be less than max amount
             require!(
                 self.usage.remaining_in_period <= max_amount,
-                SmartAccountError::SpendingLimitInvalidAmount
+                SmartAccountError::SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount
             );
         } else {
             // If overflow is disabled, remaining in period must be less than or equal to max per period
             require!(
                 self.usage.remaining_in_period <= self.quantity_constraints.max_per_period,
-                SmartAccountError::SpendingLimitInvalidAmount
+                SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
             );
         }
 
@@ -251,7 +248,7 @@ impl ResourceLimit {
         if self.quantity_constraints.enforce_exact_quantity {
             require!(
                 self.quantity_constraints.max_per_use > 0,
-                SmartAccountError::SpendingLimitInvalidAmount
+                SmartAccountError::SpendingLimitInvariantExactQuantityMaxPerUseZero
             );
         }
 
@@ -259,7 +256,7 @@ impl ResourceLimit {
         if self.quantity_constraints.max_per_use > 0 {
             require!(
                 self.quantity_constraints.max_per_use <= self.quantity_constraints.max_per_period,
-                SmartAccountError::SpendingLimitInvalidAmount
+                SmartAccountError::SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod
             );
         }
 
@@ -267,23 +264,23 @@ impl ResourceLimit {
         if let PeriodV2::Custom(seconds) = self.time_constraints.period {
             require!(
                 seconds > 0,
-                SmartAccountError::SpendingLimitInvalidCadenceConfiguration
+                SmartAccountError::SpendingLimitInvariantCustomPeriodNegative
             );
         }
 
-        // If overflow is disabled, remaining in period must be less than or equal to max per period
-        if !self.time_constraints.accumulate_unused {
+        // Last reset must be between start and expiration
+        if let Some(expiration) = self.time_constraints.expiration {
             require!(
-                self.usage.remaining_in_period <= self.quantity_constraints.max_per_period,
-                SmartAccountError::SpendingLimitInvalidAmount
+                self.usage.last_reset >= self.time_constraints.start
+                    && self.usage.last_reset <= expiration,
+                SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
+            );
+        } else {
+            require!(
+                self.usage.last_reset >= self.time_constraints.start,
+                SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
             );
         }
-
-        // Last reset must be positive
-        require!(
-            self.usage.last_reset >= 0,
-            SmartAccountError::SpendingLimitInvalidCadenceConfiguration
-        );
 
         Ok(())
     }
@@ -332,7 +329,7 @@ mod tests {
         // 2.5 days in seconds
         let now = 216_000;
         let one_and_a_half_days_ago = now - 129_600;
-        let mut policy = ResourceLimit {
+        let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(PeriodV2::Day, false, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
@@ -348,7 +345,7 @@ mod tests {
         // 2.5 days in seconds
         let now = 216_000;
         let one_and_a_half_days_ago = now - 129_600;
-        let mut policy = ResourceLimit {
+        let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(PeriodV2::Day, true, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
@@ -363,7 +360,7 @@ mod tests {
     fn test_reset_amount_accumulate_unused_2() {
         // 2.5 days in seconds
         let now = 216_000;
-        let mut policy = ResourceLimit {
+        let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(PeriodV2::Day, true, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
@@ -376,7 +373,7 @@ mod tests {
 
     #[test]
     fn test_decrement_amount() {
-        let mut policy = ResourceLimit {
+        let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(PeriodV2::Day, false, 1_000_000, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
@@ -389,7 +386,7 @@ mod tests {
     #[test]
     fn test_is_active() {
         let now = 1_000_000;
-        let policy = ResourceLimit {
+        let policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(
                 PeriodV2::Day,
@@ -400,8 +397,8 @@ mod tests {
             quantity_constraints: make_quantity_constraints(100, 0, false),
             usage: make_usage_state(100, now - 10),
         };
-        assert!(policy.is_active(now));
-        assert!(!policy.is_active(now - 100_000)); // before start
-        assert!(!policy.is_active(now + 200_000)); // after expiration
+        assert!(policy.is_active(now).is_ok());
+        assert!(policy.is_active(now - 100_000).is_err()); // before start
+        assert!(policy.is_active(now + 200_000).is_err()); // after expiration
     }
 }

@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { SettingsAction, createExecuteSettingsTransactionSyncInstruction, PROGRAM_ID } from "../generated";
 
 export function executeSettingsTransactionSync({
@@ -7,12 +7,14 @@ export function executeSettingsTransactionSync({
     actions,
     feePayer,
     memo,
+    remainingAccounts,
     programId = PROGRAM_ID,
 }: {
     settingsPda: PublicKey;
     signers: PublicKey[];
     actions: SettingsAction[];
     feePayer: PublicKey;
+    remainingAccounts?: AccountMeta[];
     memo?: string;
     programId?: PublicKey;
 }) {
@@ -39,5 +41,8 @@ export function executeSettingsTransactionSync({
         isSigner: true,
         isWritable: false,
     })));
+    if (remainingAccounts) {
+        ix.keys.push(...remainingAccounts);
+    }
     return ix;
 }

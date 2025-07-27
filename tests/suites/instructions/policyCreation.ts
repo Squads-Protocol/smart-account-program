@@ -12,7 +12,7 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / policy_settings_actions", () => {
+describe("Flows / Policy Creation", () => {
   let members: TestMembers;
 
   before(async () => {
@@ -116,6 +116,12 @@ describe("Instructions / policy_settings_actions", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
+    // Check settings counter incremented
+    const settingsAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+    assert.strictEqual(settingsAccount.policySeed?.toString(), "1");
 
     const policyAccount = await Policy.fromAccountAddress(
       connection,
@@ -156,7 +162,7 @@ describe("Instructions / policy_settings_actions", () => {
                 accountConstraints: [],
               },
             ],
-            resourceLimits: [], // No balance constraints
+            spendingLimits: [], // No balance constraints
           },
         ],
       };
@@ -230,6 +236,13 @@ describe("Instructions / policy_settings_actions", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
+
+    // Check settings counter incremented
+    const settingsAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+    assert.strictEqual(settingsAccount.policySeed?.toString(), "1");
 
     const policyAccount = await Policy.fromAccountAddress(
       connection,
@@ -275,6 +288,7 @@ describe("Instructions / policy_settings_actions", () => {
               enforceExactQuantity: false,
             },
             destinations: [], // Empty array means any destination allowed
+            usageState: null,
           },
         ],
       };
@@ -348,6 +362,13 @@ describe("Instructions / policy_settings_actions", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
+
+    // Check settings counter incremented
+    const settingsAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+    assert.strictEqual(settingsAccount.policySeed?.toString(), "1");
 
     const policyAccount = await Policy.fromAccountAddress(
       connection,
@@ -453,6 +474,13 @@ describe("Instructions / policy_settings_actions", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
+
+    // Check settings counter incremented
+    const settingsAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+    assert.strictEqual(settingsAccount.policySeed?.toString(), "1");
 
     const policyAccount = await Policy.fromAccountAddress(
       connection,

@@ -1,6 +1,4 @@
-use anchor_lang::{prelude::Pubkey, AnchorSerialize};
-
-use super::Settings;
+use anchor_lang::prelude::Pubkey;
 
 pub const SEED_PREFIX: &[u8] = b"smart_account";
 pub const SEED_PROGRAM_CONFIG: &[u8] = b"program_config";

@@ -41,16 +41,6 @@ export async function executePolicyPayloadSync({
   programId?: PublicKey;
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
-
-  if (signers) {
-    signers.map((signer) => {
-      instruction_accounts.unshift({
-        pubkey: signer.publicKey,
-        isWritable: false,
-        isSigner: true,
-      });
-    });
-  }
   const tx = transactions.executePolicyPayloadSync({
     blockhash,
     feePayer: feePayer.publicKey,

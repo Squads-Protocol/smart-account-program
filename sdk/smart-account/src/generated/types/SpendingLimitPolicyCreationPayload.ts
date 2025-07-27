@@ -6,18 +6,20 @@
  */
 
 import * as web3 from '@solana/web3.js'
-import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { TimeConstraints, timeConstraintsBeet } from './TimeConstraints'
 import {
   QuantityConstraints,
   quantityConstraintsBeet,
 } from './QuantityConstraints'
+import { UsageState, usageStateBeet } from './UsageState'
 export type SpendingLimitPolicyCreationPayload = {
   mint: web3.PublicKey
   sourceAccountIndex: number
   timeConstraints: TimeConstraints
   quantityConstraints: QuantityConstraints
+  usageState: beet.COption<UsageState>
   destinations: web3.PublicKey[]
 }
 
@@ -32,6 +34,7 @@ export const spendingLimitPolicyCreationPayloadBeet =
       ['sourceAccountIndex', beet.u8],
       ['timeConstraints', timeConstraintsBeet],
       ['quantityConstraints', quantityConstraintsBeet],
+      ['usageState', beet.coption(usageStateBeet)],
       ['destinations', beet.array(beetSolana.publicKey)],
     ],
     'SpendingLimitPolicyCreationPayload'

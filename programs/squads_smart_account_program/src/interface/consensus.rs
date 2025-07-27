@@ -1,24 +1,25 @@
 use anchor_lang::{
-    prelude::{AccountInfo, Interface, InterfaceAccount, Pubkey}, AccountDeserialize, AccountSerialize, Discriminator, Key, Owners, Result
+    prelude::{AccountInfo, Pubkey},
+    AccountDeserialize, AccountSerialize, Discriminator, Owners, Result,
 };
-use solana_program::msg;
 
 use crate::{
     errors::SmartAccountError,
     state::{Policy, Settings},
-    PolicyPayload, SmartAccountSigner,
+    SmartAccountSigner,
 };
 
 use super::consensus_trait::{Consensus, ConsensusAccountType};
 
 #[derive(Clone)]
-pub(crate) enum ConsensusAccount {
+pub enum ConsensusAccount {
     Settings(Settings),
     Policy(Policy),
 }
 
 static OWNERS: [Pubkey; 1] = [crate::ID];
 
+// Implemented for InterfaceAccount
 impl Owners for ConsensusAccount {
     // Just our own program ID, since the interface account is just to wrap the trait
     fn owners() -> &'static [Pubkey] {
@@ -26,6 +27,7 @@ impl Owners for ConsensusAccount {
     }
 }
 
+// Implemented for InterfaceAccount
 impl AccountSerialize for ConsensusAccount {
     fn try_serialize<W: std::io::Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
         match self {
@@ -35,6 +37,7 @@ impl AccountSerialize for ConsensusAccount {
     }
 }
 
+// Implemented for InterfaceAccount
 impl AccountDeserialize for ConsensusAccount {
     fn try_deserialize(reader: &mut &[u8]) -> anchor_lang::Result<Self> {
         let discriminator: [u8; 8] = reader[..8].try_into().unwrap();
@@ -64,12 +67,20 @@ impl AccountDeserialize for ConsensusAccount {
         }
     }
 }
+
 impl ConsensusAccount {
+    /// Returns the number of signers in the consensus account.
+    pub fn signers_len(&self) -> usize {
+        self.signers().len()
+    }
+
     /// Returns the settings if the consensus account is a settings.
     pub fn settings(&mut self) -> Result<&mut Settings> {
         match self {
             ConsensusAccount::Settings(settings) => Ok(settings),
-            ConsensusAccount::Policy(_) => Err(SmartAccountError::PlaceholderError.into()),
+            ConsensusAccount::Policy(_) => {
+                Err(SmartAccountError::ConsensusAccountNotSettings.into())
+            }
         }
     }
 
@@ -77,9 +88,12 @@ impl ConsensusAccount {
     pub fn read_only_settings(&self) -> Result<&Settings> {
         match self {
             ConsensusAccount::Settings(settings) => Ok(settings),
-            ConsensusAccount::Policy(_) => Err(SmartAccountError::PlaceholderError.into()),
+            ConsensusAccount::Policy(_) => {
+                Err(SmartAccountError::ConsensusAccountNotSettings.into())
+            }
         }
     }
+
     /// Returns the policy if the consensus account is a policy.
     pub fn policy(&mut self) -> Result<&mut Policy> {
         match self {
@@ -90,7 +104,7 @@ impl ConsensusAccount {
         }
     }
 
-    ///
+    /// Returns the policy if the consensus account is a policy.
     pub fn read_only_policy(&self) -> Result<&Policy> {
         match self {
             ConsensusAccount::Settings(_) => {
@@ -100,145 +114,91 @@ impl ConsensusAccount {
         }
     }
 
-    /// Checks if the consensus account is active.
-    pub fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+    /// Helper method to delegate to the underlying consensus implementation
+    fn as_consensus(&self) -> &dyn Consensus {
         match self {
-            ConsensusAccount::Settings(settings) => settings.is_active(accounts),
-            ConsensusAccount::Policy(policy) => policy.is_active(accounts),
+            ConsensusAccount::Settings(settings) => settings,
+            ConsensusAccount::Policy(policy) => policy,
         }
     }
 
-    pub fn check_derivation(&self, key: Pubkey) -> Result<()> {
+    /// Helper method to delegate to the underlying consensus implementation (mutable)
+    fn as_consensus_mut(&mut self) -> &mut dyn Consensus {
         match self {
-            ConsensusAccount::Settings(settings) => {
-                settings.check_derivation(key)?
-            }
-            ConsensusAccount::Policy(policy) => policy.check_derivation(key)?,
-        }
-        Ok(())
-    }
-
-    // Helper methods that delegate to the underlying consensus implementations
-    pub fn account_type(&self) -> ConsensusAccountType {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.account_type(),
-            ConsensusAccount::Policy(policy) => policy.account_type(),
+            ConsensusAccount::Settings(settings) => settings,
+            ConsensusAccount::Policy(policy) => policy,
         }
     }
+}
 
-    pub fn signers_len(&self) -> usize {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.signers().len(),
-            ConsensusAccount::Policy(policy) => policy.signers().len(),
-        }
+impl Consensus for ConsensusAccount {
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        self.as_consensus().is_active(accounts)
     }
 
-    pub fn signers(&self) -> &[SmartAccountSigner] {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.signers(),
-            ConsensusAccount::Policy(policy) => policy.signers(),
-        }
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        self.as_consensus().check_derivation(key)
     }
 
-    pub fn threshold(&self) -> u16 {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.threshold(),
-            ConsensusAccount::Policy(policy) => policy.threshold(),
-        }
+    fn account_type(&self) -> ConsensusAccountType {
+        self.as_consensus().account_type()
     }
 
-    pub fn time_lock(&self) -> u32 {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.time_lock(),
-            ConsensusAccount::Policy(policy) => policy.time_lock(),
-        }
+    fn signers(&self) -> &[SmartAccountSigner] {
+        self.as_consensus().signers()
     }
 
-    pub fn transaction_index(&self) -> u64 {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.transaction_index(),
-            ConsensusAccount::Policy(policy) => policy.transaction_index(),
-        }
+    fn threshold(&self) -> u16 {
+        self.as_consensus().threshold()
     }
 
-    pub fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
-        match self {
-            ConsensusAccount::Settings(settings) => {
-                settings.set_transaction_index(transaction_index)
-            }
-            ConsensusAccount::Policy(policy) => policy.set_transaction_index(transaction_index),
-        }
+    fn time_lock(&self) -> u32 {
+        self.as_consensus().time_lock()
     }
 
-    pub fn stale_transaction_index(&self) -> u64 {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.stale_transaction_index(),
-            ConsensusAccount::Policy(policy) => policy.stale_transaction_index(),
-        }
+    fn transaction_index(&self) -> u64 {
+        self.as_consensus().transaction_index()
     }
 
-    pub fn invalidate_prior_transactions(&mut self) {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.invalidate_prior_transactions(),
-            ConsensusAccount::Policy(policy) => policy.invalidate_prior_transactions(),
-        }
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.as_consensus_mut()
+            .set_transaction_index(transaction_index)
     }
 
-    // Delegate consensus helper methods
-    pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.is_signer(signer_pubkey),
-            ConsensusAccount::Policy(policy) => policy.is_signer(signer_pubkey),
-        }
+    fn stale_transaction_index(&self) -> u64 {
+        self.as_consensus().stale_transaction_index()
     }
 
-    pub fn signer_has_permission(
-        &self,
-        signer_pubkey: Pubkey,
-        permission: crate::Permission,
-    ) -> bool {
-        match self {
-            ConsensusAccount::Settings(settings) => {
-                settings.signer_has_permission(signer_pubkey, permission)
-            }
-            ConsensusAccount::Policy(policy) => {
-                policy.signer_has_permission(signer_pubkey, permission)
-            }
-        }
+    fn invalidate_prior_transactions(&mut self) {
+        self.as_consensus_mut().invalidate_prior_transactions()
     }
 
-    pub fn num_voters(&self) -> usize {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.num_voters(),
-            ConsensusAccount::Policy(policy) => policy.num_voters(),
-        }
+    fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
+        self.as_consensus().is_signer(signer_pubkey)
     }
 
-    pub fn num_proposers(&self) -> usize {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.num_proposers(),
-            ConsensusAccount::Policy(policy) => policy.num_proposers(),
-        }
+    fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: crate::Permission) -> bool {
+        self.as_consensus()
+            .signer_has_permission(signer_pubkey, permission)
     }
 
-    pub fn num_executors(&self) -> usize {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.num_executors(),
-            ConsensusAccount::Policy(policy) => policy.num_executors(),
-        }
+    fn num_voters(&self) -> usize {
+        self.as_consensus().num_voters()
     }
 
-    pub fn cutoff(&self) -> usize {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.cutoff(),
-            ConsensusAccount::Policy(policy) => policy.cutoff(),
-        }
+    fn num_proposers(&self) -> usize {
+        self.as_consensus().num_proposers()
     }
 
-    pub fn invariant(&self) -> anchor_lang::Result<()> {
-        match self {
-            ConsensusAccount::Settings(settings) => settings.invariant(),
-            ConsensusAccount::Policy(policy) => policy.invariant(),
-        }
+    fn num_executors(&self) -> usize {
+        self.as_consensus().num_executors()
+    }
+
+    fn cutoff(&self) -> usize {
+        self.as_consensus().cutoff()
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.as_consensus().invariant()
     }
 }

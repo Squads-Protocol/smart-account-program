@@ -62,7 +62,7 @@ describe("Instructions / policy_settings_actions", () => {
       connection,
       members.voter,
       sourceSmartAccountPda,
-      1_000_000_000
+      1_500_000_000
     );
 
     let sourceTokenAccount = await getAssociatedTokenAddressSync(
@@ -112,15 +112,16 @@ describe("Instructions / policy_settings_actions", () => {
                 ],
               },
             ],
-            resourceLimits: [
+            spendingLimits: [
               {
                 mint,
-                timeConstraint: {
+                timeConstraints: {
                   start: 0,
                   expiration: null,
-                  period: { __kind: "Day" },
+                  // 10 Second spending limit
+                  period: { __kind: "Custom", fields: [5] },
                 },
-                quantityConstraint: {
+                quantityConstraints: {
                   maxPerPeriod: 1_000_000_000,
                 },
               },
@@ -202,10 +203,21 @@ describe("Instructions / policy_settings_actions", () => {
     });
     await connection.confirmTransaction(signature);
 
+    // Check the policy state
     const policyAccount = await Policy.fromAccountAddress(
       connection,
       policyPda
     );
+    let policyState = policyAccount.policyState;
+    let programInteractionPolicy = policyState
+      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    let spendingLimit = programInteractionPolicy.spendingLimits[0];
+    assert.equal(
+      spendingLimit.usage.remainingInPeriod.toString(),
+      "1000000000"
+    );
+    let lastReset = spendingLimit.usage.lastReset.toString();
+
     assert.strictEqual(
       policyAccount.settings.toString(),
       settingsPda.toString()
@@ -338,15 +350,25 @@ describe("Instructions / policy_settings_actions", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Check the balances
+    // Check the balances & policy state
     let sourceBalance = await connection.getTokenAccountBalance(
       sourceTokenAccount
     );
     let destinationBalance = await connection.getTokenAccountBalance(
       destinationTokenAccount
     );
-    assert.strictEqual(sourceBalance.value.amount, "500000000");
+    assert.strictEqual(sourceBalance.value.amount, "1000000000");
     assert.strictEqual(destinationBalance.value.amount, "500000000");
+
+    // Policy state
+    let policyData = await Policy.fromAccountAddress(connection, policyPda, {
+      commitment: "processed",
+    });
+    policyState = policyData.policyState;
+    programInteractionPolicy = policyState
+      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    spendingLimit = programInteractionPolicy.spendingLimits[0];
+    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "500000000");
 
     let modifiedTokenTransfer = tokenTransferIxn;
     modifiedTokenTransfer.keys[2].isWritable = true;
@@ -392,27 +414,84 @@ describe("Instructions / policy_settings_actions", () => {
     });
     await connection.confirmTransaction(signature);
 
-    // Check the balances
+    // Check the balances & policy state
     sourceBalance = await connection.getTokenAccountBalance(sourceTokenAccount);
     destinationBalance = await connection.getTokenAccountBalance(
       destinationTokenAccount
     );
-    assert.strictEqual(sourceBalance.value.amount, "0");
+    assert.strictEqual(sourceBalance.value.amount, "500000000");
     assert.strictEqual(destinationBalance.value.amount, "1000000000");
 
+    // Check the policy state
+    policyData = await Policy.fromAccountAddress(connection, policyPda, {
+      commitment: "processed",
+    });
+    policyState = policyData.policyState;
+    assert.strictEqual(policyState.__kind, "ProgramInteraction");
+    programInteractionPolicy = policyState
+      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    spendingLimit = programInteractionPolicy.spendingLimits[0];
+    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "0");
+    assert.equal(spendingLimit.usage.lastReset.toString(), lastReset);
+
     // Try to transfer more than the policy allows
-    assert.rejects(
+    await assert.rejects(
       smartAccount.rpc.executePolicyPayloadSync({
         connection,
         feePayer: members.voter,
         policy: policyPda,
         accountIndex: 0,
         numSigners: 1,
-        policyPayload: policyPayload,
-        instruction_accounts: remainingAccounts,
+        policyPayload: syncPolicyPayload,
+        instruction_accounts: synchronousPayload.accounts,
         signers: [members.voter],
         programId,
-      })
+      }),
+      (err: any) => {
+        assert.ok(
+          err
+            .toString()
+            .includes("ProgramInteractionInsufficientTokenAllowance")
+        );
+        return true;
+      }
     );
+    // Wait 6 seconds and retry to get the spending limit to reset
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    let signatureAfter = await smartAccount.rpc.executePolicyPayloadSync({
+      connection,
+      feePayer: members.voter,
+      policy: policyPda,
+      accountIndex: 0,
+      numSigners: 1,
+      policyPayload: syncPolicyPayload,
+      instruction_accounts: synchronousPayload.accounts,
+      signers: [members.voter],
+      sendOptions: {
+        skipPreflight: true,
+      },
+      programId,
+    });
+    await connection.confirmTransaction(signatureAfter);
+
+    // Check the balances & policy state
+    sourceBalance = await connection.getTokenAccountBalance(sourceTokenAccount);
+    destinationBalance = await connection.getTokenAccountBalance(
+      destinationTokenAccount
+    );
+    assert.strictEqual(sourceBalance.value.amount, "0");
+    assert.strictEqual(destinationBalance.value.amount, "1500000000");
+
+    // Policy state
+    policyData = await Policy.fromAccountAddress(connection, policyPda, {
+      commitment: "processed",
+    });
+    policyState = policyData.policyState;
+    programInteractionPolicy = policyState
+      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    spendingLimit = programInteractionPolicy.spendingLimits[0];
+    // Should have reset
+    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "500000000");
   });
 });

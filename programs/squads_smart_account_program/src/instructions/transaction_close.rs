@@ -12,9 +12,9 @@
 use anchor_lang::prelude::*;
 
 use crate::consensus::ConsensusAccount;
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
-use crate::utils;
 
 #[derive(Accounts)]
 pub struct CloseSettingsTransaction<'info> {

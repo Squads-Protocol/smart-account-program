@@ -6,15 +6,19 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-export type LimitedUsageState = {
-  remainingInPeriod: beet.bignum
+/**
+ * @category enums
+ * @category generated
+ */
+export enum PolicyExecutionContext {
+  Synchronous,
+  Asynchronous,
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const limitedUsageStateBeet = new beet.BeetArgsStruct<LimitedUsageState>(
-  [['remainingInPeriod', beet.u64]],
-  'LimitedUsageState'
-)
+export const policyExecutionContextBeet = beet.fixedScalarEnum(
+  PolicyExecutionContext
+) as beet.FixedSizeBeet<PolicyExecutionContext, PolicyExecutionContext>

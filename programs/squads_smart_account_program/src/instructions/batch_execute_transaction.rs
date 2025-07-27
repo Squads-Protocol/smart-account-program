@@ -1,8 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
-use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 use crate::utils::*;
 
@@ -10,11 +8,10 @@ use crate::utils::*;
 pub struct ExecuteBatchTransaction<'info> {
     /// Consensus account this batch belongs to.
     #[account(
-        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
-        // Batches currenlty don't support policies
-        constraint = consensus_account.account_type() == ConsensusAccountType::Settings
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump
     )]
-    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
+    pub settings: Account<'info, Settings>,
 
     /// Signer of the settings.
     pub signer: Signer<'info>,
@@ -25,7 +22,7 @@ pub struct ExecuteBatchTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -38,7 +35,7 @@ pub struct ExecuteBatchTransaction<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
         ],
@@ -50,7 +47,7 @@ pub struct ExecuteBatchTransaction<'info> {
     #[account(
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_BATCH_TRANSACTION,
@@ -67,24 +64,21 @@ pub struct ExecuteBatchTransaction<'info> {
 }
 
 impl ExecuteBatchTransaction<'_> {
-    fn validate(&self, ctx: &Context<Self>) -> Result<()> {
+    fn validate(&self, _ctx: &Context<Self>) -> Result<()> {
         let Self {
-            consensus_account,
+            settings,
             signer,
             proposal,
             ..
         } = self;
 
-        // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
-
         // `signer`
         require!(
-            consensus_account.is_signer(signer.key()).is_some(),
+            settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
         );
         require!(
-            consensus_account.signer_has_permission(signer.key(), Permission::Execute),
+            settings.signer_has_permission(signer.key(), Permission::Execute),
             SmartAccountError::Unauthorized
         );
 
@@ -92,7 +86,7 @@ impl ExecuteBatchTransaction<'_> {
         match proposal.status {
             ProposalStatus::Approved { timestamp } => {
                 require!(
-                    Clock::get()?.unix_timestamp - timestamp >= i64::from(consensus_account.time_lock()),
+                    Clock::get()?.unix_timestamp - timestamp >= i64::from(settings.time_lock),
                     SmartAccountError::TimeLockNotReleased
                 );
             }
@@ -111,7 +105,7 @@ impl ExecuteBatchTransaction<'_> {
     /// Execute a transaction from the batch.
     #[access_control(ctx.accounts.validate(&ctx))]
     pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
-        let consensus_account = &mut ctx.accounts.consensus_account;
+        let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
         let batch = &mut ctx.accounts.batch;
 
@@ -121,12 +115,12 @@ impl ExecuteBatchTransaction<'_> {
         // Instead only make use of the returned `transaction` value.
         let transaction = ctx.accounts.transaction.take();
 
-        let consensus_account_key = consensus_account.key();
+        let settings_key = settings.key();
         let batch_key = batch.key();
 
         let smart_account_seeds = &[
             SEED_PREFIX,
-            consensus_account_key.as_ref(),
+            settings_key.as_ref(),
             SEED_SMART_ACCOUNT,
             &batch.account_index.to_le_bytes(),
             &[batch.account_bump],

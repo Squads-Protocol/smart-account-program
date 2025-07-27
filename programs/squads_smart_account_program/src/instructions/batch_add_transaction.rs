@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
-
-use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
-use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 use crate::TransactionMessage;
 
@@ -18,17 +15,16 @@ pub struct AddTransactionToBatchArgs {
 pub struct AddTransactionToBatch<'info> {
     /// Consensus account this batch belongs to.
     #[account(
-        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
-        // Batches currenlty don't support policies
-        constraint = consensus_account.account_type() == ConsensusAccountType::Settings
+        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
+        bump
     )]
-    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
+    pub settings: Account<'info, Settings>,
 
     /// The proposal account associated with the batch.
     #[account(
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -41,7 +37,7 @@ pub struct AddTransactionToBatch<'info> {
         mut,
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
         ],
@@ -56,7 +52,7 @@ pub struct AddTransactionToBatch<'info> {
         space = BatchTransaction::size(args.ephemeral_signers, &args.transaction_message)?,
         seeds = [
             SEED_PREFIX,
-            consensus_account.key().as_ref(),
+            settings.key().as_ref(),
             SEED_TRANSACTION,
             &batch.index.to_le_bytes(),
             SEED_BATCH_TRANSACTION,
@@ -77,25 +73,22 @@ pub struct AddTransactionToBatch<'info> {
 }
 
 impl AddTransactionToBatch<'_> {
-    fn validate(&self, ctx: &Context<Self>) -> Result<()> {
+    fn validate(&self, _ctx: &Context<Self>) -> Result<()> {
         let Self {
-            consensus_account,
+            settings,
             signer,
             proposal,
             batch,
             ..
         } = self;
 
-        // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
-
         // `signer`
         require!(
-            consensus_account.is_signer(signer.key()).is_some(),
+            settings.is_signer(signer.key()).is_some(),
             SmartAccountError::NotASigner
         );
         require!(
-            consensus_account.signer_has_permission(signer.key(), Permission::Initiate),
+            settings.signer_has_permission(signer.key(), Permission::Initiate),
             SmartAccountError::Unauthorized
         );
         // Only batch creator can add transactions to it.

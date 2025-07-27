@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::interface::consensus_trait::ConsensusAccountType;
@@ -13,7 +14,6 @@ pub struct TransactionPayload {
     pub transaction_message: Vec<u8>,
     pub memo: Option<String>,
 }
-
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub enum CreateTransactionArgs {
@@ -88,26 +88,8 @@ impl<'info> CreateTransaction<'info> {
                 // Validate that the args match the policy type
                 match args {
                     CreateTransactionArgs::PolicyPayload { payload } => {
-                        policy.validate_payload(payload)?;
-                        // Special case for not allowing sync transaction
-                        // details to be uploaded as a transaction payload
-                        match payload {
-                            PolicyPayload::ProgramInteraction(ProgramInteractionPayload {
-                                instruction_constraint_indices: _,
-                                transaction_payload,
-                            }) => {
-                                require!(
-                                    matches!(
-                                        transaction_payload,
-                                        ProgramInteractionTransactionPayload::AsyncTransaction(
-                                            TransactionPayload { .. }
-                                        )
-                                    ),
-                                    SmartAccountError::InvalidTransactionMessage
-                                );
-                            }
-                            _ => {}
-                        }
+                        // Validate the policy payload against the policy state
+                        policy.validate_payload(PolicyExecutionContext::Asynchronous, payload)?;
                     }
                     _ => {
                         return Err(SmartAccountError::InvalidTransactionMessage.into());
@@ -136,7 +118,6 @@ impl<'info> CreateTransaction<'info> {
         let creator = &mut ctx.accounts.creator;
         let rent_payer = &mut ctx.accounts.rent_payer;
 
-        let settings_key = consensus_account.key();
         let transaction_key = transaction.key();
 
         // Increment the transaction index.
@@ -162,16 +143,6 @@ impl<'info> CreateTransaction<'info> {
             ) => {
                 let transaction_message_parsed =
                     TransactionMessage::deserialize(&mut transaction_message.as_slice())?;
-
-                // Proceed with normal transaction creation.
-                let smart_account_seeds = &[
-                    SEED_PREFIX,
-                    settings_key.as_ref(),
-                    SEED_SMART_ACCOUNT,
-                    &account_index.to_le_bytes(),
-                ];
-                let (_, smart_account_bump) =
-                    Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
                 let ephemeral_signer_bumps: Vec<u8> = (0..ephemeral_signers)
                     .map(|ephemeral_signer_index| {

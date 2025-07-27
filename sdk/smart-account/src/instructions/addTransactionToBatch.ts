@@ -71,7 +71,7 @@ export function addTransactionToBatch({
 
   return createAddTransactionToBatchInstruction(
     {
-      consensusAccount: settingsPda,
+      settings: settingsPda,
       signer,
       proposal: proposalPda,
       rentPayer: rentPayer ?? signer,

@@ -2,8 +2,7 @@ use anchor_lang::{prelude::*, system_program, Ids};
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
-    errors::*, get_smart_account_seeds, state::utils::{PeriodV2, QuantityConstraints, ResourceLimit, TimeConstraints, UsageState}, PolicyPayloadConversionTrait,
-    PolicySizeTrait, PolicyTrait, SEED_PREFIX, SEED_SMART_ACCOUNT,
+    errors::*, get_smart_account_seeds, state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState}, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SEED_PREFIX, SEED_SMART_ACCOUNT
 };
 
 /// Enhanced period enum supporting custom durations
@@ -12,7 +11,7 @@ use crate::{
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SpendingLimitPolicy {
     /// Resource limit configuration (timing, constraints, usage, mint)
-    pub resource_limit: ResourceLimit,
+    pub spending_limit: SpendingLimitV2,
 
     /// The source account index.
     pub source_account_index: u8,
@@ -29,27 +28,52 @@ pub struct SpendingLimitPolicyCreationPayload {
     pub source_account_index: u8,
     pub time_constraints: TimeConstraints,
     pub quantity_constraints: QuantityConstraints,
+    // Optionally this can be submitted to update a spending limit policy.
+    // Cannot be Some() if accumulate_unused is true, to avoid invariant
+    // behavior
+    pub usage_state: Option<UsageState>,
     pub destinations: Vec<Pubkey>,
 }
 
 impl PolicyPayloadConversionTrait for SpendingLimitPolicyCreationPayload {
     type PolicyState = SpendingLimitPolicy;
 
-    fn to_policy_state(self) -> SpendingLimitPolicy {
+    // Used by Settings.modify_with_action() to instantiate policy state
+    fn to_policy_state(self) -> Result<SpendingLimitPolicy> {
         let now = Clock::get().unwrap().unix_timestamp;
-        SpendingLimitPolicy {
-            resource_limit: ResourceLimit {
+        // Sort the destinations
+        let mut destinations = self.destinations;
+        destinations.sort_by_key(|d| d.to_bytes());
+
+        // Modify time constraints to start at the current timestamp if set to 0
+        let mut modified_time_constraints = self.time_constraints;
+        if self.time_constraints.start == 0 {
+            modified_time_constraints.start = now;
+        }
+        // Determine usage state based on surrounding constraints
+        let usage_state = if let Some(usage_state) = self.usage_state {
+            // This is the only invariant that needs to be checked on the arg level
+            require!(
+                !self.time_constraints.accumulate_unused,
+                SmartAccountError::SpendingLimitPolicyInvariantAccumulateUnused
+            );
+            usage_state
+        } else {
+            UsageState {
+                remaining_in_period: self.quantity_constraints.max_per_period,
+                last_reset: modified_time_constraints.start,
+            }
+        };
+        Ok(SpendingLimitPolicy {
+            spending_limit: SpendingLimitV2 {
                 mint: self.mint,
                 time_constraints: self.time_constraints,
                 quantity_constraints: self.quantity_constraints,
-                usage: UsageState {
-                    remaining_in_period: self.quantity_constraints.max_per_period,
-                    last_reset: now,
-                },
+                usage: usage_state,
             },
             source_account_index: self.source_account_index,
-            destinations: self.destinations,
-        }
+            destinations,
+        })
     }
 }
 
@@ -90,13 +114,26 @@ impl PolicyTrait for SpendingLimitPolicy {
     type UsagePayload = SpendingLimitPayload;
     type ExecutionArgs = SpendingLimitExecutionArgs;
 
-
     fn invariant(&self) -> Result<()> {
-        self.resource_limit.invariant()?;
+        // Check that the destinations are not duplicated. Assumes sorted
+        // destinations.
+        let has_duplicates = self.destinations.windows(2).any(|w| w[0] == w[1]);
+        require!(
+            !has_duplicates,
+            SmartAccountError::SpendingLimitPolicyInvariantDuplicateDestinations
+        );
+
+        // Check the spending limit invariant
+        self.spending_limit.invariant()?;
         Ok(())
     }
 
-    fn validate_payload(&self, payload: &Self::UsagePayload) -> Result<()> {
+    fn validate_payload(
+        &self,
+        // No difference between synchronous and asynchronous execution
+        _context: PolicyExecutionContext,
+        payload: &Self::UsagePayload,
+    ) -> Result<()> {
         // Check that the destination is in the list of allowed destinations
         require!(
             self.destinations.contains(&payload.destination),
@@ -115,10 +152,10 @@ impl PolicyTrait for SpendingLimitPolicy {
         let current_timestamp = Clock::get()?.unix_timestamp;
 
         // Reset the period & amount
-        self.resource_limit.reset_if_needed(current_timestamp);
+        self.spending_limit.reset_if_needed(current_timestamp);
 
         // Check that the amount complies with the resource limit
-        self.resource_limit.check_amount(payload.amount)?;
+        self.spending_limit.check_amount(payload.amount)?;
 
         // Validate the accounts
         let validated_accounts = self.validate_accounts(&args.settings_key, &payload, accounts)?;
@@ -183,15 +220,13 @@ impl PolicyTrait for SpendingLimitPolicy {
         }
 
         // Decrement the amount
-        self.resource_limit.decrement(payload.amount);
+        self.spending_limit.decrement(payload.amount);
 
         // Invariant check
         self.invariant()?;
 
         Ok(())
     }
-
-
 }
 
 enum ValidatedAccounts<'info> {
@@ -228,7 +263,7 @@ impl SpendingLimitPolicy {
             Pubkey::find_program_address(source_account_seeds.as_slice(), &crate::ID);
 
         // Mint specific logic
-        match self.resource_limit.mint {
+        match self.spending_limit.mint {
             // Native SOL transfer
             mint if mint == Pubkey::default() => {
                 // Parse out the accounts
@@ -298,17 +333,17 @@ impl SpendingLimitPolicy {
                 let destination_token_account =
                     InterfaceAccount::<TokenAccount>::try_from(destination_token_account_info)?;
                 // Check the mint against the policy state
-                require_eq!(self.resource_limit.mint, mint.key());
+                require_eq!(self.spending_limit.mint, mint.key());
 
                 // Assert the ownership and mint of the token accounts
                 require!(
                     source_token_account.owner == source_account_key
-                        && source_token_account.mint == self.resource_limit.mint,
+                        && source_token_account.mint == self.spending_limit.mint,
                     SmartAccountError::InvalidAccount
                 );
                 require!(
                     destination_token_account.owner == args.destination
-                        && destination_token_account.mint == self.resource_limit.mint,
+                        && destination_token_account.mint == self.spending_limit.mint,
                     SmartAccountError::InvalidAccount
                 );
                 // Check the token program
@@ -326,5 +361,3 @@ impl SpendingLimitPolicy {
         }
     }
 }
-
-

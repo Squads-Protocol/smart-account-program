@@ -53,6 +53,14 @@ export type SettingsActionRecord = {
     startTimestamp: beet.COption<beet.bignum>
     expiration: beet.COption<PolicyExpiration>
   }
+  PolicyUpdate: {
+    policy: web3.PublicKey
+    signers: SmartAccountSigner[]
+    threshold: number
+    timeLock: number
+    policyUpdatePayload: PolicyCreationPayload
+    expiration: beet.COption<PolicyExpiration>
+  }
   PolicyRemove: { policy: web3.PublicKey }
 }
 
@@ -99,6 +107,10 @@ export const isSettingsActionPolicyCreate = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'PolicyCreate' } =>
   x.__kind === 'PolicyCreate'
+export const isSettingsActionPolicyUpdate = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyUpdate' } =>
+  x.__kind === 'PolicyUpdate'
 export const isSettingsActionPolicyRemove = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'PolicyRemove' } =>
@@ -189,6 +201,21 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
         ['expiration', beet.coption(policyExpirationBeet)],
       ],
       'SettingsActionRecord["PolicyCreate"]'
+    ),
+  ],
+
+  [
+    'PolicyUpdate',
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyUpdate']>(
+      [
+        ['policy', beetSolana.publicKey],
+        ['signers', beet.array(smartAccountSignerBeet)],
+        ['threshold', beet.u16],
+        ['timeLock', beet.u32],
+        ['policyUpdatePayload', policyCreationPayloadBeet],
+        ['expiration', beet.coption(policyExpirationBeet)],
+      ],
+      'SettingsActionRecord["PolicyUpdate"]'
     ),
   ],
 

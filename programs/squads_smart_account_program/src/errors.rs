@@ -60,8 +60,6 @@ pub enum SmartAccountError {
     SpendingLimitExceeded,
     #[msg("Decimals don't match the mint")]
     DecimalsMismatch,
-    #[msg("Spending limit is expired")]
-    SpendingLimitExpired,
     #[msg("Signer has unknown permission")]
     UnknownPermission,
     #[msg("Account is protected, it cannot be passed into a CPI as writable")]
@@ -114,12 +112,8 @@ pub enum SmartAccountError {
     SpendingLimitInvalidCadenceConfiguration,
     #[msg("Invalid data constraint")]
     InvalidDataConstraint,
-    #[msg("Invalid policy payload")]
-    InvalidPolicyPayload,
-    #[msg("Policy expired")]
-    PolicyExpired,
-    #[msg("Consensus account is not a policy")]
-    ConsensusAccountNotPolicy,
+
+
     #[msg("Invalid payload")]
     InvalidPayload,
     #[msg("Protected instruction")]
@@ -128,8 +122,21 @@ pub enum SmartAccountError {
     PlaceholderError,
 
     // ===============================================
+    // Overall Policy Errors
+    // ===============================================
+    #[msg("Policy is not active")]
+    PolicyNotActive,
+    #[msg("Policy is expired")]
+    PolicyExpired,
+    #[msg("Invalid policy payload")]
+    InvalidPolicyPayload,
+    // ===============================================
     // Program Interaction Policy Errors
     // ===============================================
+    #[msg("Program interaction sync payload not allowed with async transaction")]
+    ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction,
+    #[msg("Program interaction sync payload not allowed with sync transaction")]
+    ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction,
     #[msg("Program interaction data constraint failed: instruction data too short")]
     ProgramInteractionDataTooShort,
     #[msg("Program interaction data constraint failed: invalid numeric value")]
@@ -158,4 +165,97 @@ pub enum SmartAccountError {
     ProgramInteractionIllegalTokenAccountModification,
     #[msg("Program interaction invariant violation: duplicate resource limit for the same mint")]
     ProgramInteractionDuplicateResourceLimit,
+
+    // ===============================================
+    // Spending Limit Policy Errors
+    // ===============================================
+    #[msg("Spending limit is not active")]
+    SpendingLimitNotActive,
+    #[msg("Spending limit is expired")]
+    SpendingLimitExpired,
+    #[msg("Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true")]
+    SpendingLimitPolicyInvariantAccumulateUnused,
+    #[msg("Amount violates exact quantity constraint")]
+    SpendingLimitViolatesExactQuantityConstraint,
+    #[msg("Amount violates max per use constraint")]
+    SpendingLimitViolatesMaxPerUseConstraint,
+    #[msg("Spending limit is insufficient")]
+    SpendingLimitInsufficientRemainingAmount,
+    #[msg("Spending limit invariant violation: max per period must be non-zero")]
+    SpendingLimitInvariantMaxPerPeriodZero,
+    #[msg("Spending limit invariant violation: start time must be positive")]
+    SpendingLimitInvariantStartTimePositive,
+    #[msg("Spending limit invariant violation: expiration must be greater than start")]
+    SpendingLimitInvariantExpirationSmallerThanStart,
+    #[msg("Spending limit invariant violation: overflow enabled must have expiration")]
+    SpendingLimitInvariantOverflowEnabledMustHaveExpiration,
+    #[msg("Spending limit invariant violation: one time period cannot have overflow enabled")]
+    SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled,
+    #[msg("Spending limit invariant violation: remaining amount must be less than max amount")]
+    SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount,
+    #[msg("Spending limit invariant violation: remaining amount must be less than or equal to max per period")]
+    SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod,
+    #[msg("Spending limit invariant violation: exact quantity must have max per use non-zero")]
+    SpendingLimitInvariantExactQuantityMaxPerUseZero,
+    #[msg("Spending limit invariant violation: max per use must be less than or equal to max per period")]
+    SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod,
+    #[msg("Spending limit invariant violation: custom period must be positive")]
+    SpendingLimitInvariantCustomPeriodNegative,
+    #[msg("Spending limit policy invariant violation: cannot have duplicate destinations for the same mint")]
+    SpendingLimitPolicyInvariantDuplicateDestinations,
+
+    // ===============================================
+    // Internal Fund Transfer Policy Errors
+    // ===============================================
+    #[msg("Internal fund transfer policy invariant violation: source account index is not allowed")]
+    InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed,
+    #[msg("Internal fund transfer policy invariant violation: destination account index is not allowed")]
+    InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed,
+    #[msg("Internal fund transfer policy invariant violation: source and destination cannot be the same")]
+    InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame,
+    #[msg("Internal fund transfer policy invariant violation: mint is not allowed")]
+    InternalFundTransferPolicyInvariantMintNotAllowed,
+    #[msg("Internal fund transfer policy invariant violation: amount must be greater than 0")]
+    InternalFundTransferPolicyInvariantAmountZero,
+    #[msg("Internal fund transfer policy invariant violation: cannot have duplicate mints")]
+    InternalFundTransferPolicyInvariantDuplicateMints,
+
+    // ===============================================
+    // Consensus Account Errors
+    // ===============================================
+    #[msg("Consensus account is not a settings")]
+    ConsensusAccountNotSettings,
+    #[msg("Consensus account is not a policy")]
+    ConsensusAccountNotPolicy,
+
+    // ===============================================
+    // Settings Change Policy Errors
+    // ===============================================
+    #[msg("Settings change policy invariant violation: actions must be non-zero")]
+    SettingsChangePolicyActionsMustBeNonZero,
+    #[msg("Settings change policy violation: submitted settings account must match policy settings key")]
+    SettingsChangeInvalidSettingsKey,
+    #[msg("Settings change policy violation: submitted settings account must be writable")]
+    SettingsChangeInvalidSettingsAccount,
+    #[msg("Settings change policy violation: rent payer must be writable and signer")]
+    SettingsChangeInvalidRentPayer,
+    #[msg("Settings change policy violation: system program must be the system program")]
+    SettingsChangeInvalidSystemProgram,
+    #[msg("Settings change policy violation: signer does not match allowed signer")]
+    SettingsChangeAddSignerViolation,
+    #[msg("Settings change policy violation: signer permissions does not match allowed signer permissions")]
+    SettingsChangeAddSignerPermissionsViolation,
+    #[msg("Settings change policy violation: signer removal does not mach allowed signer removal")]
+    SettingsChangeRemoveSignerViolation,
+    #[msg("Settings change policy violation: time lock does not match allowed time lock")]
+    SettingsChangeChangeTimelockViolation,
+    #[msg("Settings change policy violation: action does not match allowed action")]
+    SettingsChangeActionMismatch,
+    #[msg("Settings change policy invariant violation: cannot have duplicate actions")]
+    SettingsChangePolicyInvariantDuplicateActions,
+    #[msg("Settings change policy invariant violation: action indices must match actions length")]
+    SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch,
+    #[msg("Settings change policy invariant violation: action index out of bounds")]
+    SettingsChangePolicyInvariantActionIndexOutOfBounds,
+
 }

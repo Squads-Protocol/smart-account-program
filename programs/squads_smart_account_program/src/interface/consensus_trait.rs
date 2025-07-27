@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::SmartAccountError, Permission, Permissions, SmartAccountSigner};
+use crate::{errors::SmartAccountError, Permission, SmartAccountSigner};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum ConsensusAccountType {

@@ -1,8 +1,8 @@
-use crate::{consensus::ConsensusAccount, errors::*, state::*};
+use crate::{consensus::ConsensusAccount, consensus_trait::Consensus, errors::*, state::*};
 use anchor_lang::prelude::*;
 
-pub fn validate_synchronous_consensus<'info>(
-    consensus_account: &InterfaceAccount<'info, ConsensusAccount>,
+pub fn validate_synchronous_consensus(
+    consensus_account: &ConsensusAccount,
     num_signers: u8,
     remaining_accounts: &[AccountInfo],
 ) -> Result<()> {
