@@ -3,6 +3,8 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -44,6 +46,7 @@ pub struct CreateProposal<'info> {
     pub rent_payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CreateProposal<'_> {
@@ -111,6 +114,24 @@ impl CreateProposal<'_> {
         proposal.approved = vec![];
         proposal.rejected = vec![];
         proposal.cancelled = vec![];
+
+        // Log the event
+        let event = ProposalEvent {
+            event_type: ProposalEventType::Create,
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: args.transaction_index,
+            signer: Some(ctx.accounts.creator.key()),
+            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+            memo: None,
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::ProposalEvent(event).log(&log_authority_info)?;
 
         Ok(())
     }

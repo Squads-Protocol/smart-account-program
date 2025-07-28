@@ -15,7 +15,13 @@ use anchor_lang::system_program;
 use crate::consensus::ConsensusAccount;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::utils;
+use crate::LogAuthorityInfo;
+use crate::SmartAccountEvent;
+use crate::TransactionEvent;
+use crate::TransactionEventType;
 
 #[derive(Accounts)]
 pub struct CloseSettingsTransaction<'info> {
@@ -62,6 +68,7 @@ pub struct CloseSettingsTransaction<'info> {
     pub transaction_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CloseSettingsTransaction<'_> {
@@ -113,11 +120,18 @@ impl CloseSettingsTransaction<'_> {
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
         // Close the `proposal` account if exists.
         Proposal::close_if_exists(
             proposal_account,
             proposal.to_account_info(),
             proposal_rent_collector.clone(),
+            &log_authority_info,
         )?;
 
         // Anchor will close the `transaction` account for us.
@@ -169,6 +183,7 @@ pub struct CloseTransaction<'info> {
     pub transaction_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CloseTransaction<'_> {
@@ -220,13 +235,31 @@ impl CloseTransaction<'_> {
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
         // Close the `proposal` account if exists.
         Proposal::close_if_exists(
             proposal_account,
             proposal.to_account_info(),
             proposal_rent_collector.clone(),
+            &log_authority_info,
         )?;
 
+        let event = TransactionEvent {
+            event_type: TransactionEventType::Close,
+            settings_pubkey: settings.key(),
+            transaction_pubkey: transaction.key(),
+            transaction_index: transaction.index,
+            signer: None,
+            transaction: None,
+            memo: None,
+        };
+
+        SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;
         // Anchor will close the `transaction` account for us.
         Ok(())
     }
@@ -404,6 +437,7 @@ pub struct CloseBatch<'info> {
     pub batch_rent_collector: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CloseBatch<'_> {
@@ -459,11 +493,18 @@ impl CloseBatch<'_> {
         // Batch must be empty.
         require_eq!(batch.size, 0, SmartAccountError::BatchNotEmpty);
 
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
         // Close the `proposal` account if exists.
         Proposal::close_if_exists(
             proposal_account,
             proposal.to_account_info(),
             proposal_rent_collector.clone(),
+            &log_authority_info,
         )?;
 
         // Anchor will close the `batch` account for us.

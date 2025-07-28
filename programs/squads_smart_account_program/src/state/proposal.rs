@@ -5,6 +5,10 @@ use crate::errors::*;
 use crate::id;
 use crate::utils;
 use crate::utils::realloc;
+use crate::LogAuthorityInfo;
+use crate::ProposalEvent;
+use crate::ProposalEventType;
+use crate::SmartAccountEvent;
 
 /// Stores the data required for tracking the status of a smart account proposal.
 /// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `Transaction` or a `SettingsTransaction`;
@@ -163,16 +167,28 @@ impl Proposal {
         proposal_account: Option<Proposal>,
         proposal_info: AccountInfo<'info>,
         proposal_rent_collector: AccountInfo<'info>,
+        log_authority_info: &LogAuthorityInfo<'info>,
     ) -> Result<()> {
         if let Some(proposal) = proposal_account {
             require!(
                 proposal_rent_collector.key() == proposal.rent_collector,
                 SmartAccountError::InvalidRentCollector
             );
+            let proposal_key = proposal_info.key();
             utils::close(
                 proposal_info,
                 proposal_rent_collector,
             )?;
+            let event = ProposalEvent {
+                event_type: ProposalEventType::Close,
+                settings_pubkey: log_authority_info.authority.key(),
+                proposal_pubkey: proposal_key,
+                transaction_index: proposal.transaction_index,
+                signer: None,
+                memo: None,
+                proposal: None,
+            };
+            SmartAccountEvent::ProposalEvent(event).log(&log_authority_info)?;
         }
         Ok(())
     }

@@ -35,6 +35,7 @@ export function createProposal({
       rentPayer: rentPayer ?? creator,
       consensusAccount: settingsPda,
       proposal: proposalPda,
+      program: programId,
     },
     { args: { transactionIndex: Number(transactionIndex), draft: isDraft } },
     programId

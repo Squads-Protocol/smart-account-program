@@ -43,6 +43,7 @@ export const createProposalStruct = new beet.BeetArgsStruct<
  * @property [_writable_] proposal
  * @property [**signer**] creator
  * @property [_writable_, **signer**] rentPayer
+ * @property [] program
  * @category Instructions
  * @category CreateProposal
  * @category generated
@@ -53,6 +54,7 @@ export type CreateProposalInstructionAccounts = {
   creator: web3.PublicKey
   rentPayer: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -102,6 +104,11 @@ export function createCreateProposalInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

@@ -241,6 +241,7 @@ describe("Examples / Transaction Buffers", () => {
           transactionCreateItemSystemProgram: SystemProgram.programId,
           transactionBuffer: transactionBuffer,
           creator: members.almighty.publicKey,
+          transactionCreateItemProgram: programId,
         },
         {
           args: {

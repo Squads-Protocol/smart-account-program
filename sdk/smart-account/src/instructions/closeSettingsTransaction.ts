@@ -36,6 +36,7 @@ export function closeSettingsTransaction({
       proposal: proposalPda,
       proposalRentCollector,
       transaction: transactionPda,
+      program: programId,
     },
     programId
   );

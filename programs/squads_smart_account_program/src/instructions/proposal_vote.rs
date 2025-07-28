@@ -3,6 +3,9 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
+
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -35,6 +38,7 @@ pub struct VoteOnProposal<'info> {
 
     // Only required for cancelling a proposal.
     pub system_program: Option<Program<'info, System>>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl VoteOnProposal<'_> {
@@ -89,10 +93,29 @@ impl VoteOnProposal<'_> {
     #[access_control(ctx.accounts.validate(&ctx, Vote::Approve))]
     pub fn approve_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
+
         let proposal = &mut ctx.accounts.proposal;
         let signer = &mut ctx.accounts.signer;
 
         proposal.approve(signer.key(), usize::from(consensus_account.threshold()))?;
+
+        // Log the vote event with proposal state
+        let vote_event = ProposalEvent {
+            event_type: ProposalEventType::Approve,
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: proposal.transaction_index,
+            signer: Some(signer.key()),
+            memo: args.memo,
+            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
 
         Ok(())
     }
@@ -108,6 +131,24 @@ impl VoteOnProposal<'_> {
         let cutoff = consensus_account.cutoff();
 
         proposal.reject(signer.key(), cutoff)?;
+
+        // Log the vote event with proposal state
+        let vote_event = ProposalEvent {
+            event_type: ProposalEventType::Reject,
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: proposal.transaction_index,
+            signer: Some(signer.key()),
+            memo: args.memo,
+            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
 
         Ok(())
     }
@@ -137,6 +178,24 @@ impl VoteOnProposal<'_> {
             Some(signer.to_account_info().clone()),
             Some(system_program.to_account_info().clone()),
         )?;
+
+        // Log the vote event with proposal state
+        let vote_event = ProposalEvent {
+            event_type: ProposalEventType::Cancel,
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: proposal.transaction_index,
+            signer: Some(signer.key()),
+            memo: args.memo,
+            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
 
         Ok(())
     }

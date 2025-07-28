@@ -4,6 +4,8 @@ use crate::consensus_trait::Consensus;
 use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 use crate::utils::*;
 
@@ -42,6 +44,7 @@ pub struct ExecuteTransaction<'info> {
     pub transaction: Account<'info, Transaction>,
 
     pub signer: Signer<'info>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. AddressLookupTable accounts in the order they appear in `message.address_table_lookups`.
     // 2. Accounts in the order they appear in `message.account_keys`.
@@ -193,8 +196,40 @@ impl<'info> ExecuteTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
+<<<<<<< HEAD
         // Check the account invariants
         consensus_account.invariant()?;
+=======
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        // Log the execution event
+        let execute_event = TransactionExecuteEvent {
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_pubkey: ctx.accounts.transaction.key(),
+            transaction_index: transaction.index,
+            executor: ctx.accounts.signer.key(),
+            account_index: transaction.account_index,
+        };
+
+        // Log the proposal vote event with execution state
+        let vote_event = ProposalEvent {
+            event_type: ProposalEventType::Execute,
+            settings_pubkey: settings.key(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: transaction.index,
+            signer: Some(ctx.accounts.signer.key()),
+            memo: None,
+            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+        };
+        SmartAccountEvent::TransactionExecuteEvent(execute_event).log(&log_authority_info)?;
+        SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
+
+>>>>>>> async-program-logging
         Ok(())
     }
 }

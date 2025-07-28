@@ -27,6 +27,7 @@ export const closeBatchStruct = new beet.BeetArgsStruct<{
  * @property [_writable_] batch
  * @property [_writable_] proposalRentCollector
  * @property [_writable_] batchRentCollector
+ * @property [] program
  * @category Instructions
  * @category CloseBatch
  * @category generated
@@ -38,6 +39,7 @@ export type CloseBatchInstructionAccounts = {
   proposalRentCollector: web3.PublicKey
   batchRentCollector: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -88,6 +90,11 @@ export function createCloseBatchInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

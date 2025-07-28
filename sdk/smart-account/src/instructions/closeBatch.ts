@@ -40,6 +40,7 @@ export function closeBatch({
       proposalRentCollector,
       proposal: proposalPda,
       batch: batchPda,
+      program: programId,
     },
     programId
   );

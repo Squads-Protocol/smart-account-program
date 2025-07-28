@@ -284,6 +284,7 @@ describe("Instructions / batch_accounts_close", () => {
           transactionIndex: 1n,
           programId,
         })[0],
+        program: programId,
       },
       programId
     );

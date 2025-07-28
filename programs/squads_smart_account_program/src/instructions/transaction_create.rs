@@ -4,6 +4,8 @@ use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::interface::consensus_trait::ConsensusAccountType;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 use crate::utils::*;
 
@@ -62,6 +64,7 @@ pub struct CreateTransaction<'info> {
     pub rent_payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl<'info> CreateTransaction<'info> {
@@ -178,6 +181,24 @@ impl<'info> CreateTransaction<'info> {
         consensus_account.set_transaction_index(transaction_index)?;
 
         consensus_account.invariant()?;
+
+        // Log the event
+        let event = TransactionEvent {
+            event_type: TransactionEventType::Create,
+            settings_pubkey: settings.key(),
+            transaction_pubkey: transaction.key(),
+            transaction_index,
+            signer: Some(creator.key()),
+            transaction: Some(Transaction::try_from_slice(&transaction.try_to_vec()?)?),
+            memo: args.memo,
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;
 
         Ok(())
     }

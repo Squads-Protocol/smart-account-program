@@ -407,6 +407,8 @@ impl Settings {
                 // 1 (First policy is being created)
                 let next_policy_seed = if let Some(policy_seed) = self.policy_seed {
                     let next_policy_seed = policy_seed.checked_add(1).unwrap();
+
+                    // Increment the policy seed
                     self.policy_seed = Some(next_policy_seed);
                     next_policy_seed
                 } else {

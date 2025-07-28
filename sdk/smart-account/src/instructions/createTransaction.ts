@@ -58,6 +58,7 @@ export function createTransaction({
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
+      program: programId,
     },
     {
       args: {

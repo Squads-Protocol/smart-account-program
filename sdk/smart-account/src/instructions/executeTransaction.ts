@@ -74,6 +74,7 @@ export async function executeTransaction({
         signer,
         proposal: proposalPda,
         transaction: transactionPda,
+        program: programId,
         anchorRemainingAccounts: accountMetas,
       },
       programId

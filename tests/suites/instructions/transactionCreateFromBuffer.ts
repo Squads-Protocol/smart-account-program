@@ -264,6 +264,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
           transactionCreateItemSystemProgram: SystemProgram.programId,
           transactionBuffer: transactionBuffer,
           creator: members.proposer.publicKey,
+          transactionCreateItemProgram: programId,
         },
         {
           args: {
@@ -419,6 +420,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
           transactionCreateItemSystemProgram: SystemProgram.programId,
           creator: members.proposer.publicKey,
           transactionBuffer: transactionBuffer,
+          transactionCreateItemProgram: programId,
         },
         {
           args: {

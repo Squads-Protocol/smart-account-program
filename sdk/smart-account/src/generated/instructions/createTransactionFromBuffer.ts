@@ -44,6 +44,7 @@ export const createTransactionFromBufferStruct = new beet.FixableBeetArgsStruct<
  * @property [**signer**] transactionCreateItemCreator
  * @property [_writable_, **signer**] transactionCreateItemRentPayer
  * @property [] transactionCreateItemSystemProgram
+ * @property [] transactionCreateItemProgram
  * @property [_writable_] transactionBuffer
  * @property [_writable_, **signer**] creator
  * @category Instructions
@@ -56,6 +57,7 @@ export type CreateTransactionFromBufferInstructionAccounts = {
   transactionCreateItemCreator: web3.PublicKey
   transactionCreateItemRentPayer: web3.PublicKey
   transactionCreateItemSystemProgram: web3.PublicKey
+  transactionCreateItemProgram: web3.PublicKey
   transactionBuffer: web3.PublicKey
   creator: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -108,6 +110,11 @@ export function createCreateTransactionFromBufferInstruction(
     },
     {
       pubkey: accounts.transactionCreateItemSystemProgram,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.transactionCreateItemProgram,
       isWritable: false,
       isSigner: false,
     },

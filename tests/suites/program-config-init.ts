@@ -224,7 +224,7 @@ describe("Initialize Global ProgramConfig", () => {
 
     assert.ok(smartAccount.errors.isErrorWithLogs(err));
     assert.ok(
-      err.logs.find((line) => {
+      err.logs.find((line: string) => {
         return line.includes("already in use");
       })
     );

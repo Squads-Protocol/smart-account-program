@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
-
-use crate::{state::SettingsAction, Settings, SmartAccountCompiledInstruction, SpendingLimit};
+use crate::{state::SettingsAction, Proposal, Settings, SmartAccountCompiledInstruction, SpendingLimit, Transaction};
 
 
 #[derive(BorshSerialize, BorshDeserialize)]
@@ -70,4 +69,53 @@ pub struct AuthorityChangeEvent {
     pub settings_pubkey: Pubkey,
     pub authority: Pubkey,
     pub new_authority: Option<Pubkey>
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct TransactionEvent {
+    pub settings_pubkey: Pubkey,
+    pub event_type: TransactionEventType,
+    pub transaction_pubkey: Pubkey,
+    pub transaction_index: u64,
+    pub signer: Option<Pubkey>,
+    pub memo: Option<String>,
+    pub transaction: Option<Transaction>,
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum TransactionEventType {
+    Create,
+    Execute,
+    Close
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct ProposalEvent {
+    pub settings_pubkey: Pubkey,
+    pub event_type: ProposalEventType,
+    pub proposal_pubkey: Pubkey,
+    pub transaction_index: u64,
+    pub signer: Option<Pubkey>,
+    pub memo: Option<String>,
+    pub proposal: Option<Proposal>,
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum ProposalEventType {
+    Create,
+    Approve,
+    Reject,
+    Cancel,
+    Execute,
+    Close
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct TransactionExecuteEvent {
+    pub settings_pubkey: Pubkey,
+    pub proposal_pubkey: Pubkey,
+    pub transaction_pubkey: Pubkey,
+    pub transaction_index: u64,
+    pub executor: Pubkey,
+    pub account_index: u8,
 }
