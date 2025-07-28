@@ -21,7 +21,8 @@ pub trait Consensus {
     fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()>;
     fn stale_transaction_index(&self) -> u64;
 
-    // Signer validation methods (ported from Settings)
+    // Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
+    /// `None` otherwise.
     fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
         self.signers()
             .binary_search_by_key(&signer_pubkey, |s| s.key)
@@ -35,7 +36,7 @@ pub trait Consensus {
         }
     }
 
-    // Permission counting methods (ported from Settings)
+    // Permission counting methods
     fn num_voters(&self) -> usize {
         self.signers()
             .iter()
@@ -57,7 +58,9 @@ pub trait Consensus {
             .count()
     }
 
-    // Rejection cutoff calculation (ported from Settings)
+    /// How many "reject" votes are enough to make the transaction "Rejected".
+    /// The cutoff must be such that it is impossible for the remaining voters to reach the approval threshold.
+    /// For example: total voters = 7, threshold = 3, cutoff = 5.
     fn cutoff(&self) -> usize {
         self.num_voters()
             .checked_sub(usize::from(self.threshold()))
@@ -70,44 +73,5 @@ pub trait Consensus {
     fn invalidate_prior_transactions(&mut self);
 
     // Consensus validation (ported from Settings invariant)
-    fn invariant(&self) -> Result<()> {
-        // Max number of signers is u16::MAX
-        require!(
-            self.signers().len() <= usize::from(u16::MAX),
-            SmartAccountError::TooManySigners
-        );
-
-        // No duplicate signers (assumes sorted)
-        let has_duplicates = self
-            .signers()
-            .windows(2)
-            .any(|win| win[0].key == win[1].key);
-        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
-
-        // Signers must not have unknown permissions
-        require!(
-            self.signers().iter().all(|s| s.permissions.mask < 8),
-            SmartAccountError::UnknownPermission
-        );
-
-        // Must have at least one signer with each permission
-        require!(self.num_proposers() > 0, SmartAccountError::NoProposers);
-        require!(self.num_executors() > 0, SmartAccountError::NoExecutors);
-        require!(self.num_voters() > 0, SmartAccountError::NoVoters);
-
-        // Threshold validation
-        require!(self.threshold() > 0, SmartAccountError::InvalidThreshold);
-        require!(
-            usize::from(self.threshold()) <= self.num_voters(),
-            SmartAccountError::InvalidThreshold
-        );
-
-        // Stale transaction index validation
-        require!(
-            self.stale_transaction_index() <= self.transaction_index(),
-            SmartAccountError::InvalidStaleTransactionIndex
-        );
-
-        Ok(())
-    }
+    fn invariant(&self) -> Result<()>;
 }

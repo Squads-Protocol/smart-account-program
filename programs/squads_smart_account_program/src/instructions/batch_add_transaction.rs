@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
 use crate::TransactionMessage;

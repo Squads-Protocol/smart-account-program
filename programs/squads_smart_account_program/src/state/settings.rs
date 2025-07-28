@@ -147,26 +147,6 @@ impl Settings {
         1 // _reserved_2
     }
 
-    pub fn num_voters(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Vote))
-            .count()
-    }
-
-    pub fn num_proposers(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Initiate))
-            .count()
-    }
-
-    pub fn num_executors(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Execute))
-            .count()
-    }
 
     /// Check if the settings account space needs to be reallocated to accommodate `signers_length`.
     /// Returns `true` if the account was reallocated.
@@ -226,15 +206,15 @@ impl Settings {
         );
 
         // There must be at least one signer with Initiate permission.
-        let num_proposers = Self::num_proposers(signers);
+        let num_proposers = Self::num_proposers(&self);
         require!(num_proposers > 0, SmartAccountError::NoProposers);
 
         // There must be at least one signer with Execute permission.
-        let num_executors = Self::num_executors(signers);
+        let num_executors = Self::num_executors(&self);
         require!(num_executors > 0, SmartAccountError::NoExecutors);
 
         // There must be at least one signer with Vote permission.
-        let num_voters = Self::num_voters(signers);
+        let num_voters = Self::num_voters(&self);
         require!(num_voters > 0, SmartAccountError::NoVoters);
 
         // Threshold must be greater than 0.
@@ -259,38 +239,6 @@ impl Settings {
         );
 
         Ok(())
-    }
-
-    /// Makes the transactions created up until this moment stale.
-    /// Should be called whenever any settings parameter related to the voting consensus is changed.
-    pub fn invalidate_prior_transactions(&mut self) {
-        self.stale_transaction_index = self.transaction_index;
-    }
-
-    /// Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
-    /// `None` otherwise.
-    pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
-        self.signers
-            .binary_search_by_key(&signer_pubkey, |m| m.key)
-            .ok()
-    }
-
-    pub fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
-        match self.is_signer(signer_pubkey) {
-            Some(index) => self.signers[index].permissions.has(permission),
-            _ => false,
-        }
-    }
-
-    /// How many "reject" votes are enough to make the transaction "Rejected".
-    /// The cutoff must be such that it is impossible for the remaining voters to reach the approval threshold.
-    /// For example: total voters = 7, threshold = 3, cutoff = 5.
-    pub fn cutoff(&self) -> usize {
-        Self::num_voters(&self.signers)
-            .checked_sub(usize::from(self.threshold))
-            .unwrap()
-            .checked_add(1)
-            .unwrap()
     }
 
     /// Add `new_signer` to the settings `signers` vec and sort the vec.
@@ -759,5 +707,9 @@ impl Consensus for Settings {
 
     fn invalidate_prior_transactions(&mut self) {
         self.stale_transaction_index = self.transaction_index;
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.invariant()
     }
 }

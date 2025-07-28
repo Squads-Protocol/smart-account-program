@@ -264,6 +264,8 @@ pub enum SmartAccountError {
     // ===============================================
     #[msg("Policy is not active yet")]
     PolicyNotActiveYet,
+    #[msg("Policy invariant violation: invalid policy expiration")]
+    PolicyInvariantInvalidExpiration,
     #[msg("Policy expiration violation: submitted settings key does not match policy settings key")]
     PolicyExpirationViolationPolicySettingsKeyMismatch,
     #[msg("Policy expiration violation: state expiration requires the settings to be submitted")]

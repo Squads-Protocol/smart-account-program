@@ -78,27 +78,6 @@ impl Policy {
         1  + 32 // expiration (discriminator + max data size)
     }
 
-    pub fn num_voters(&self) -> usize {
-        self.signers
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Vote))
-            .count()
-    }
-
-    pub fn num_proposers(&self) -> usize {
-        self.signers
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Initiate))
-            .count()
-    }
-
-    pub fn num_executors(&self) -> usize {
-        self.signers
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Execute))
-            .count()
-    }
-
     /// Check if the policy account space needs to be reallocated.
     pub fn realloc_if_needed<'a>(
         policy: AccountInfo<'a>,
@@ -159,38 +138,19 @@ impl Policy {
             SmartAccountError::InvalidStaleTransactionIndex
         );
 
-        // Policy state must be valid as well
+        // If policy has expiration, it must be valid
+        if let Some(expiration) = &self.expiration {
+            match expiration {
+                PolicyExpiration::Timestamp(timestamp) => {
+                    require!(*timestamp > self.start, SmartAccountError::PolicyInvariantInvalidExpiration);
+                }
+                _ => {}
+            }
+        }
+        // Policy state must be valid
         self.policy_state.invariant()?;
 
         Ok(())
-    }
-
-    /// Makes transactions created up until this moment stale.
-    pub fn invalidate_prior_transactions(&mut self) {
-        self.stale_transaction_index = self.transaction_index;
-    }
-
-    /// Returns `Some(index)` if `signer_pubkey` is a signer.
-    pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
-        self.signers
-            .binary_search_by_key(&signer_pubkey, |s| s.key)
-            .ok()
-    }
-
-    pub fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
-        match self.is_signer(signer_pubkey) {
-            Some(index) => self.signers[index].permissions.has(permission),
-            _ => false,
-        }
-    }
-
-    /// How many "reject" votes are needed to make a transaction "Rejected".
-    pub fn cutoff(&self) -> usize {
-        self.num_voters()
-            .checked_sub(usize::from(self.threshold))
-            .unwrap()
-            .checked_add(1)
-            .unwrap()
     }
 
     /// Create policy state safely
@@ -380,6 +340,7 @@ impl Consensus for Policy {
 
                 // Generate the current core state hash
                 let current_hash = settings.generate_core_state_hash()?;
+
                 require!(
                     current_hash == stored_hash,
                     SmartAccountError::PolicyExpirationViolationHashExpired
@@ -435,5 +396,9 @@ impl Consensus for Policy {
 
     fn invalidate_prior_transactions(&mut self) {
         self.stale_transaction_index = self.transaction_index;
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.invariant()
     }
 }
