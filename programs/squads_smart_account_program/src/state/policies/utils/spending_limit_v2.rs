@@ -7,11 +7,11 @@ pub enum PeriodV2 {
     /// The spending limit can only be used once
     OneTime,
     /// The spending limit is reset every day
-    Day,
+    Daily,
     /// The spending limit is reset every week (7 days)
-    Week,
+    Weekly,
     /// The spending limit is reset every month (30 days)
-    Month,
+    Monthly,
     /// Custom period in seconds
     Custom(i64),
 }
@@ -20,9 +20,9 @@ impl PeriodV2 {
     pub fn to_seconds(&self) -> Option<i64> {
         match self {
             PeriodV2::OneTime => None,
-            PeriodV2::Day => Some(24 * 60 * 60),
-            PeriodV2::Week => Some(7 * 24 * 60 * 60),
-            PeriodV2::Month => Some(30 * 24 * 60 * 60),
+            PeriodV2::Daily => Some(24 * 60 * 60),
+            PeriodV2::Weekly => Some(7 * 24 * 60 * 60),
+            PeriodV2::Monthly => Some(30 * 24 * 60 * 60),
             PeriodV2::Custom(seconds) => Some(*seconds),
         }
     }
@@ -35,13 +35,13 @@ pub struct TimeConstraints {
     pub start: i64,
     /// Optional expiration timestamp
     pub expiration: Option<i64>,
-    /// Reset period for the resource limit
+    /// Reset period for the spending limit
     pub period: PeriodV2,
     /// Whether unused allowances accumulate across periods
     pub accumulate_unused: bool,
 }
 
-/// Quantity constraints for resource limits
+/// Quantity constraints for spending limits
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
 pub struct QuantityConstraints {
     /// Maximum quantity per period
@@ -61,10 +61,10 @@ pub struct UsageState {
     pub last_reset: i64,
 }
 
-/// Shared resource limit structure that combines timing, quantity, usage, and mint
+/// Shared spending limit structure that combines timing, quantity, usage, and mint
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
 pub struct SpendingLimitV2 {
-    /// The token mint the resource limit is for.
+    /// The token mint the spending limit is for.
     /// Pubkey::default() means SOL.
     /// use NATIVE_MINT for Wrapped SOL.
     pub mint: Pubkey,
@@ -80,7 +80,7 @@ pub struct SpendingLimitV2 {
 }
 
 impl SpendingLimitV2 {
-    /// Check if the resource limit is currently active
+    /// Check if the spending limit is currently active
     pub fn is_active(&self, current_timestamp: i64) -> Result<()> {
         // Check start time
         if current_timestamp < self.time_constraints.start {
@@ -97,12 +97,12 @@ impl SpendingLimitV2 {
         Ok(())
     }
 
-    // Returns the mint of the resource limit
+    // Returns the mint of the spending limit
     pub fn mint(&self) -> Pubkey {
         self.mint
     }
 
-    // Returns the remaining amount in the period for the resource limit
+    // Returns the remaining amount in the period for the spending limit
     pub fn remaining_in_period(&self) -> u64 {
         self.usage.remaining_in_period
     }
@@ -140,8 +140,13 @@ impl SpendingLimitV2 {
 
     /// Reset amounts if period boundary has been crossed
     pub fn reset_if_needed(&mut self, current_timestamp: i64) {
-        // Apply same reset logic as in use_spending_limit.rs lines 161-175
+        // Reset logic for spending limits
         if let Some(reset_period) = self.time_constraints.period.to_seconds() {
+            // Check that the spending limit is active
+            if self.is_active(current_timestamp).is_err() {
+                return;
+            }
+
             let passed_since_last_reset = current_timestamp
                 .checked_sub(self.usage.last_reset)
                 .unwrap();
@@ -331,7 +336,7 @@ mod tests {
         let one_and_a_half_days_ago = now - 129_600;
         let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
-            time_constraints: make_time_constraints(PeriodV2::Day, false, 0, None),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
             usage: make_usage_state(50, one_and_a_half_days_ago), // last reset was 1 day ago
         };
@@ -347,7 +352,7 @@ mod tests {
         let one_and_a_half_days_ago = now - 129_600;
         let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
-            time_constraints: make_time_constraints(PeriodV2::Day, true, 0, None),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
             usage: make_usage_state(50, one_and_a_half_days_ago), // last reset was 1.5 days ago
         };
@@ -362,7 +367,7 @@ mod tests {
         let now = 216_000;
         let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
-            time_constraints: make_time_constraints(PeriodV2::Day, true, 0, None),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, 0, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
             usage: make_usage_state(50, 0), // last reset was 1.5 days ago
         };
@@ -375,7 +380,7 @@ mod tests {
     fn test_decrement_amount() {
         let mut policy = SpendingLimitV2 {
             mint: Pubkey::default(),
-            time_constraints: make_time_constraints(PeriodV2::Day, false, 1_000_000, None),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, 1_000_000, None),
             quantity_constraints: make_quantity_constraints(100, 0, false),
             usage: make_usage_state(100, 1_000_000),
         };
@@ -389,7 +394,7 @@ mod tests {
         let policy = SpendingLimitV2 {
             mint: Pubkey::default(),
             time_constraints: make_time_constraints(
-                PeriodV2::Day,
+                PeriodV2::Daily,
                 false,
                 now - 10,
                 Some(now + 100),

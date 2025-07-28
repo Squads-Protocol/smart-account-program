@@ -453,7 +453,7 @@ impl Settings {
                 threshold,
                 time_lock,
                 start_timestamp,
-                expiration,
+                expiration_args,
             } => {
                 // Increment the policy seed if it exists, otherwise set it to
                 // 1 (First policy is being created)
@@ -528,6 +528,22 @@ impl Settings {
                     }
                 };
 
+                let expiration: Option<PolicyExpiration> =
+                    if let Some(expiration_args) = expiration_args {
+                        match expiration_args {
+                            // Use the provided timestamp
+                            PolicyExpirationArgs::Timestamp(timestamp) => {
+                                Some(PolicyExpiration::Timestamp(*timestamp))
+                            }
+                            // Generate the core state hash and use it
+                            PolicyExpirationArgs::SettingsState => Some(
+                                PolicyExpiration::SettingsState(self.generate_core_state_hash()?),
+                            ),
+                        }
+                    } else {
+                        None
+                    };
+
                 // Create and serialize the policy
                 let policy = Policy::create_state(
                     *self_key,
@@ -552,7 +568,7 @@ impl Settings {
                 threshold,
                 time_lock,
                 policy_update_payload,
-                expiration,
+                expiration_args,
             } => {
                 // Find the policy account
                 let policy_info = remaining_accounts
@@ -588,6 +604,24 @@ impl Settings {
                     }
                 };
 
+                // Determine the new expiration
+                let expiration: Option<PolicyExpiration> =
+                    if let Some(expiration_args) = expiration_args {
+                        match expiration_args {
+                            // Use the provided timestamp
+                            PolicyExpirationArgs::Timestamp(timestamp) => {
+                                Some(PolicyExpiration::Timestamp(*timestamp))
+                            }
+                            // Generate the core state hash and use it
+                            PolicyExpirationArgs::SettingsState => Some(
+                                PolicyExpiration::SettingsState(self.generate_core_state_hash()?),
+                            ),
+                        }
+                    } else {
+                        None
+                    };
+
+                msg!("Expiration: {:?}", expiration);
                 // Update the policy
                 policy.update_state(
                     signers,

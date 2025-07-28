@@ -14,23 +14,33 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+// =============================================================================
+// CORE POLICY STRUCTURES
+// =============================================================================
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct ProgramInteractionPolicy {
     /// The account index of the account that will be used to execute the policy
     pub account_index: u8,
-    // Constraints evaluated as a logical OR.
+    /// Constraints evaluated as a logical OR
     pub instructions_constraints: Vec<InstructionConstraint>,
+    /// Spending limits applied during policy execution
     pub spending_limits: Vec<SpendingLimitV2>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct InstructionConstraint {
+    /// The program that this constraint applies to
     pub program_id: Pubkey,
-    /// Constraints will be evaluated as a logical AND.
+    /// Account constraints (evaluated as logical AND)
     pub account_constraints: Vec<AccountConstraint>,
-    /// Constraints will be evaluated as a logical AND.
+    /// Data constraints (evaluated as logical AND)
     pub data_constraints: Vec<DataConstraint>,
 }
+
+// =============================================================================
+// CONSTRAINT TYPES AND OPERATORS
+// =============================================================================
 
 impl InstructionConstraint {
     pub fn size(&self) -> usize {
@@ -85,6 +95,17 @@ pub struct DataConstraint {
     pub data_value: DataValue,
     pub operator: DataOperator,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub struct AccountConstraint {
+    pub account_index: u8,
+    pub account_keys: Vec<Pubkey>,
+}
+
+// =============================================================================
+// SIZE CALCULATIONS
+// =============================================================================
+
 impl DataConstraint {
     pub fn size(&self) -> usize {
         8 + // data_offset
@@ -92,6 +113,17 @@ impl DataConstraint {
         1 // operator
     }
 }
+
+impl AccountConstraint {
+    pub fn size(&self) -> usize {
+        1 + // account_index
+        4 + self.account_keys.len() * 32 // account_keys vec
+    }
+}
+
+// =============================================================================
+// CONSTRAINT EVALUATION LOGIC
+// =============================================================================
 
 impl DataConstraint {
     /// Evaluate constraint against instruction data
@@ -174,6 +206,7 @@ impl DataConstraint {
         }
     }
 
+    /// Compare two values using the specified operator
     fn compare<T: PartialOrd + PartialEq>(&self, actual: T, expected: T) -> Result<bool> {
         Ok(match self.operator {
             DataOperator::Equals => actual == expected,
@@ -183,19 +216,6 @@ impl DataConstraint {
             DataOperator::LessThan => actual < expected,
             DataOperator::LessThanOrEqualTo => actual <= expected,
         })
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct AccountConstraint {
-    pub account_index: u8,
-    pub account_keys: Vec<Pubkey>,
-}
-
-impl AccountConstraint {
-    pub fn size(&self) -> usize {
-        1 + // account_index
-        4 + self.account_keys.len() * 32 // account_keys vec
     }
 }
 
@@ -216,6 +236,72 @@ impl AccountConstraint {
         Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
     }
 }
+
+// =============================================================================
+// CREATION PAYLOAD TYPES
+// =============================================================================
+
+/// Limited subset of TimeConstraints
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct LimitedTimeConstraints {
+    pub start: i64,
+    pub expiration: Option<i64>,
+    pub period: PeriodV2,
+}
+
+/// Limited subset of QuantityConstraints
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct LimitedQuantityConstraints {
+    pub max_per_period: u64,
+}
+
+/// Limited subset of BalanceConstraint used to create a policy
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct LimitedSpendingLimit {
+    pub mint: Pubkey,
+    pub time_constraints: LimitedTimeConstraints,
+    pub quantity_constraints: LimitedQuantityConstraints,
+}
+
+/// Payload used to create a program interaction policy
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct ProgramInteractionPolicyCreationPayload {
+    pub account_index: u8,
+    pub instructions_constraints: Vec<InstructionConstraint>,
+    pub spending_limits: Vec<LimitedSpendingLimit>,
+}
+
+// =============================================================================
+// TRANSACTION PAYLOAD TYPES
+// =============================================================================
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ProgramInteractionPayload {
+    pub instruction_constraint_indices: Option<Vec<u8>>,
+    pub transaction_payload: ProgramInteractionTransactionPayload,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub enum ProgramInteractionTransactionPayload {
+    AsyncTransaction(TransactionPayload),
+    SyncTransaction(SyncTransactionPayloadDetails),
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SyncTransactionPayloadDetails {
+    pub account_index: u8,
+    pub instructions: Vec<u8>,
+}
+
+pub struct ProgramInteractionExecutionArgs {
+    pub settings_key: Pubkey,
+    pub transaction_key: Pubkey,
+    pub proposal_key: Pubkey,
+    pub policy_signers: Vec<SmartAccountSigner>,
+}
+
+// =============================================================================
+// CORE POLICY IMPLEMENTATION
+// =============================================================================
 
 impl ProgramInteractionPolicy {
     /// Evaluate the instruction constraints for a given instruction
@@ -251,13 +337,9 @@ impl ProgramInteractionPolicy {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-/// Limited subset of TimeConstraints.
-pub struct LimitedTimeConstraints {
-    pub start: i64,
-    pub expiration: Option<i64>,
-    pub period: PeriodV2,
-}
+// =============================================================================
+// SIZE IMPLEMENTATIONS FOR CREATION PAYLOAD TYPES
+// =============================================================================
 
 impl LimitedTimeConstraints {
     pub fn size(&self) -> usize {
@@ -271,24 +353,10 @@ impl LimitedTimeConstraints {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-/// Limited subset of QuantityConstraints
-pub struct LimitedQuantityConstraints {
-    pub max_per_period: u64,
-}
-
 impl LimitedQuantityConstraints {
     pub fn size(&self) -> usize {
         8 // max_per_period
     }
-}
-
-/// Limited subset of BalanceConstraint used to create a policy
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedSpendingLimit {
-    pub mint: Pubkey,
-    pub time_constraints: LimitedTimeConstraints,
-    pub quantity_constraints: LimitedQuantityConstraints,
 }
 
 impl LimitedSpendingLimit {
@@ -299,13 +367,9 @@ impl LimitedSpendingLimit {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-/// Payload used to create a program interaction policy
-pub struct ProgramInteractionPolicyCreationPayload {
-    pub account_index: u8,
-    pub instructions_constraints: Vec<InstructionConstraint>,
-    pub spending_limits: Vec<LimitedSpendingLimit>,
-}
+// =============================================================================
+// PAYLOAD CONVERSION IMPLEMENTATIONS
+// =============================================================================
 
 impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     type PolicyState = ProgramInteractionPolicy;
@@ -366,14 +430,12 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
         // spending_limits vec
     }
 }
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ProgramInteractionPayload {
-    pub instruction_constraint_indices: Option<Vec<u8>>,
-    pub transaction_payload: ProgramInteractionTransactionPayload,
-}
 
+// =============================================================================
+// TRANSACTION PAYLOAD IMPLEMENTATIONS
+// =============================================================================
 impl ProgramInteractionPayload {
-    /// Get the asycn transaction payload details for the policy
+    /// Get the async transaction payload details for the policy
     pub fn get_transaction_payload(
         &self,
         transaction_key: Pubkey,
@@ -422,18 +484,8 @@ impl ProgramInteractionPayload {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SyncTransactionPayloadDetails {
-    pub account_index: u8,
-    pub instructions: Vec<u8>,
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ProgramInteractionTransactionPayload {
-    AsyncTransaction(TransactionPayload),
-    SyncTransaction(SyncTransactionPayloadDetails),
-}
-
 impl ProgramInteractionTransactionPayload {
+    /// Get the account index for the transaction payload
     pub fn get_account_index(&self) -> u8 {
         match self {
             ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
@@ -445,6 +497,7 @@ impl ProgramInteractionTransactionPayload {
         }
     }
 
+    /// Get the number of instructions for the transaction payload
     pub fn instructions_len(&self) -> Result<usize> {
         match self {
             ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
@@ -465,12 +518,10 @@ impl ProgramInteractionTransactionPayload {
         }
     }
 }
-pub struct ProgramInteractionExecutionArgs {
-    pub settings_key: Pubkey,
-    pub transaction_key: Pubkey,
-    pub proposal_key: Pubkey,
-    pub policy_signers: Vec<SmartAccountSigner>,
-}
+
+// =============================================================================
+// POLICY TRAIT IMPLEMENTATION
+// =============================================================================
 
 impl PolicyTrait for ProgramInteractionPolicy {
     type PolicyState = Self;
@@ -478,6 +529,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
     type UsagePayload = ProgramInteractionPayload;
     type ExecutionArgs = ProgramInteractionExecutionArgs;
 
+    /// Validate the policy invariant
     fn invariant(&self) -> Result<()> {
         // There can't be duplicate balance constraint for the same mint
         // Assumes that the balance constraints are sorted by mint
@@ -487,7 +539,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
             .any(|window| window[0].mint == window[1].mint);
         require!(
             !has_duplicate,
-            SmartAccountError::ProgramInteractionDuplicateResourceLimit
+            SmartAccountError::ProgramInteractionDuplicateSpendingLimit
         );
 
         // Each spending limits invariant must be valid
@@ -498,6 +550,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
         Ok(())
     }
 
+    /// Validate the payload for the policy
     fn validate_payload(
         &self,
         context: PolicyExecutionContext,
@@ -597,7 +650,12 @@ impl PolicyTrait for ProgramInteractionPolicy {
     }
 }
 
+// =============================================================================
+// ASYNC TRANSACTION EXECUTION
+// =============================================================================
+
 impl ProgramInteractionPolicy {
+    /// Execute an async transaction through the policy
     fn execute_payload<'info>(
         &mut self,
         args: ProgramInteractionExecutionArgs,
@@ -657,10 +715,10 @@ impl ProgramInteractionPolicy {
 
         let protected_accounts = &[args.proposal_key];
 
-        // Update the resource limits if present
+        // Update the spending limits if present
         if !self.spending_limits.is_empty() {
             let current_timestamp = Clock::get()?.unix_timestamp;
-            // Reset the resource limits if needed
+            // Reset the spending limits if needed
             for spending_limit in &mut self.spending_limits {
                 spending_limit.reset_if_needed(current_timestamp);
             }
@@ -679,6 +737,7 @@ impl ProgramInteractionPolicy {
             )?;
             // Evaluate the balance changes post-execution
             tracked_pre_balances.evaluate_balance_changes(&mut self.spending_limits)?;
+
         } else {
             // Execute the transaction message instructions one-by-one.
             // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
@@ -695,7 +754,11 @@ impl ProgramInteractionPolicy {
         Ok(())
     }
 
-    // Synchronous variant of execute_payload
+// =============================================================================
+// SYNC TRANSACTION EXECUTION
+// =============================================================================
+
+    /// Execute a synchronous transaction through the policy
     fn execute_payload_sync<'info>(
         &mut self,
         args: ProgramInteractionExecutionArgs,
@@ -746,10 +809,10 @@ impl ProgramInteractionPolicy {
             accounts,
         )?;
 
-        // Update the resource limits if present
+        // Update the spending limits if present
         if !self.spending_limits.is_empty() {
             let current_timestamp = Clock::get()?.unix_timestamp;
-            // Reset the resource limits if needed
+            // Reset the spending limits if needed
             for spending_limit in &mut self.spending_limits {
                 spending_limit.reset_if_needed(current_timestamp);
             }
@@ -777,6 +840,10 @@ impl ProgramInteractionPolicy {
         Ok(())
     }
 }
+
+// =============================================================================
+// TESTS
+// =============================================================================
 
 #[cfg(test)]
 mod tests {
@@ -1077,7 +1144,7 @@ mod tests {
                 time_constraints: LimitedTimeConstraints {
                     start: 1640995200,            // Jan 1, 2022
                     expiration: Some(1672531200), // Jan 1, 2023
-                    period: PeriodV2::Day,
+                    period: PeriodV2::Daily,
                 },
                 quantity_constraints: LimitedQuantityConstraints {
                     max_per_period: 1000,
@@ -1125,7 +1192,7 @@ mod tests {
                 time_constraints: LimitedTimeConstraints {
                     start: 1640995200,
                     expiration: Some(1672531200),
-                    period: PeriodV2::Day,
+                    period: PeriodV2::Daily,
                 },
                 quantity_constraints: LimitedQuantityConstraints {
                     max_per_period: 1000,

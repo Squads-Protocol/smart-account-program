@@ -259,10 +259,12 @@ pub mod squads_smart_account_program {
     }
 
     /// Use a spending limit to transfer tokens from a smart account vault to a destination account.
+    #[deprecated(note = "Use the spending limit policy instead")]
     pub fn use_spending_limit(
         ctx: Context<UseSpendingLimit>,
         args: UseSpendingLimitArgs,
     ) -> Result<()> {
+        msg!("Method is being deprecated. Use the new spending limit policy instead");
         UseSpendingLimit::use_spending_limit(ctx, args)
     }
 
@@ -280,6 +282,12 @@ pub mod squads_smart_account_program {
     /// - the `proposal` is stale and not `Approved`.
     pub fn close_transaction(ctx: Context<CloseTransaction>) -> Result<()> {
         CloseTransaction::close_transaction(ctx)
+    }
+
+    /// Closes a `Transaction` and the corresponding `Proposal` for
+    /// empty/deleted policies.
+    pub fn close_empty_policy_transaction(ctx: Context<CloseEmptyPolicyTransaction>) -> Result<()> {
+        CloseEmptyPolicyTransaction::close_empty_policy_transaction(ctx)
     }
 
     /// Closes a `BatchTransaction` belonging to the `batch` and `proposal`.
@@ -301,10 +309,12 @@ pub mod squads_smart_account_program {
     }
 
     /// Synchronously execute a transaction
+    #[deprecated(note = "Use `execute_transaction_sync_v2` instead")]
     pub fn execute_transaction_sync(
         ctx: Context<LegacySyncTransaction>,
         args: LegacySyncTransactionArgs,
     ) -> Result<()> {
+        msg!("Method is being deprecated. Use `execute_transaction_sync_v2` instead");
         LegacySyncTransaction::sync_transaction(ctx, args)
     }
 
@@ -326,7 +336,7 @@ pub mod squads_smart_account_program {
     /// Log an event
     pub fn log_event<'info>(
         ctx: Context<'_, '_, 'info, 'info, LogEvent<'info>>,
-        args: LogEventArgs,
+        args: LogEventArgsV2,
     ) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }

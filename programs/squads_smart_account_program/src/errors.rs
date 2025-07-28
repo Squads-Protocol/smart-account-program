@@ -124,12 +124,13 @@ pub enum SmartAccountError {
     // ===============================================
     // Overall Policy Errors
     // ===============================================
-    #[msg("Policy is not active")]
-    PolicyNotActive,
-    #[msg("Policy is expired")]
-    PolicyExpired,
     #[msg("Invalid policy payload")]
     InvalidPolicyPayload,
+    #[msg("Invalid empty policy")]
+    InvalidEmptyPolicy,
+    #[msg("Transaction is for another policy")]
+    TransactionForAnotherPolicy,
+
     // ===============================================
     // Program Interaction Policy Errors
     // ===============================================
@@ -163,8 +164,8 @@ pub enum SmartAccountError {
     ProgramInteractionModifiedIllegalBalance,
     #[msg("Program interaction constraint violation: illegal token account modification")]
     ProgramInteractionIllegalTokenAccountModification,
-    #[msg("Program interaction invariant violation: duplicate resource limit for the same mint")]
-    ProgramInteractionDuplicateResourceLimit,
+    #[msg("Program interaction invariant violation: duplicate spending limit for the same mint")]
+    ProgramInteractionDuplicateSpendingLimit,
 
     // ===============================================
     // Spending Limit Policy Errors
@@ -258,4 +259,17 @@ pub enum SmartAccountError {
     #[msg("Settings change policy invariant violation: action index out of bounds")]
     SettingsChangePolicyInvariantActionIndexOutOfBounds,
 
+    // ===============================================
+    // Policy Expiration Errors
+    // ===============================================
+    #[msg("Policy is not active yet")]
+    PolicyNotActiveYet,
+    #[msg("Policy expiration violation: submitted settings key does not match policy settings key")]
+    PolicyExpirationViolationPolicySettingsKeyMismatch,
+    #[msg("Policy expiration violation: state expiration requires the settings to be submitted")]
+    PolicyExpirationViolationSettingsAccountNotPresent,
+    #[msg("Policy expiration violation: state hash has expired")]
+    PolicyExpirationViolationHashExpired,
+    #[msg("Policy expiration violation: timestamp has expired")]
+    PolicyExpirationViolationTimestampExpired,
 }

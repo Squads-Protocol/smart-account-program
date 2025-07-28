@@ -75,7 +75,7 @@ describe("Flows / Policy Creation", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -195,7 +195,7 @@ describe("Flows / Policy Creation", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: Date.now(),
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -277,7 +277,7 @@ describe("Flows / Policy Creation", () => {
             mint: web3.PublicKey.default, // Native SOL
             sourceAccountIndex: 0,
             timeConstraints: {
-              period: { __kind: "Day" },
+              period: { __kind: "Daily" },
               start: Date.now(),
               expiration: null,
               accumulateUnused: false,
@@ -321,7 +321,7 @@ describe("Flows / Policy Creation", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: Date.now(),
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -433,7 +433,7 @@ describe("Flows / Policy Creation", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: Date.now(),
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -492,4 +492,6 @@ describe("Flows / Policy Creation", () => {
     );
     assert.strictEqual(policyAccount.threshold, 1);
   });
+
+
 });

@@ -108,11 +108,11 @@ describe("Examples / Transaction Buffers", () => {
 
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Slice the message buffer into two parts.
-    const firstSlice = messageBuffer.slice(0, 400);
+    const firstSlice = messageBuffer.transactionMessageBytes.slice(0, 400);
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
@@ -128,7 +128,7 @@ describe("Examples / Transaction Buffers", () => {
           bufferIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
           buffer: firstSlice,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
@@ -171,7 +171,7 @@ describe("Examples / Transaction Buffers", () => {
     // First chunk uploaded. Check that length is as expected.
     assert.equal(txBufferDeser1.buffer.length, 400);
 
-    const secondSlice = messageBuffer.slice(400, messageBuffer.byteLength);
+    const secondSlice = messageBuffer.transactionMessageBytes.slice(400, messageBuffer.transactionMessageBytes.byteLength);
 
     // Extned the buffer.
     const secondIx =
@@ -216,7 +216,7 @@ describe("Examples / Transaction Buffers", () => {
       );
 
     // Full buffer uploaded. Check that length is as expected.
-    assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
+    assert.equal(txBufferDeser2.buffer.length, messageBuffer.transactionMessageBytes.byteLength);
 
     // Derive transaction PDA.
     const [transactionPda] = smartAccount.getTransactionPda({
@@ -245,10 +245,14 @@ describe("Examples / Transaction Buffers", () => {
         {
           args: {
             __kind: "TransactionPayload",
-            accountIndex: 0,
-            transactionMessage: new Uint8Array(6).fill(0),
-            ephemeralSigners: 0,
-            memo: null,
+            fields: [
+              {
+                accountIndex: 0,
+                transactionMessage: new Uint8Array(6).fill(0),
+                ephemeralSigners: 0,
+                memo: null,
+              }
+            ],
           } as CreateTransactionArgs,
         } as CreateTransactionFromBufferInstructionArgs,
         programId

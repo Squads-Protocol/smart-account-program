@@ -24,7 +24,7 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / spending_limit_policy", () => {
+describe("Flow / SpendingLimitPolicy", () => {
   let members: TestMembers;
 
   before(async () => {
@@ -96,14 +96,15 @@ describe("Instructions / spending_limit_policy", () => {
             timeConstraints: {
               start: 0,
               expiration: null,
-              period: { __kind: "Day" },
+              period: { __kind: "Daily" },
               accumulateUnused: false,
             },
             quantityConstraints: {
-              maxPerPeriod: 750_000_000,
+              maxPerPeriod: 1_000_000_000,
               maxPerUse: 250_000_000,
               enforceExactQuantity: true,
             },
+            usageState: null,
           },
         ],
       };
@@ -136,7 +137,7 @@ describe("Instructions / spending_limit_policy", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -245,6 +246,7 @@ describe("Instructions / spending_limit_policy", () => {
     await connection.confirmTransaction(signature);
 
     let remainingAccounts: AccountMeta[] = [];
+
     remainingAccounts.push({
       pubkey: sourceSmartAccountPda,
       isWritable: false,
@@ -279,9 +281,6 @@ describe("Instructions / spending_limit_policy", () => {
       transactionIndex: policyTransactionIndex,
       signer: members.voter.publicKey,
       anchorRemainingAccounts: remainingAccounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
       programId,
     });
     await connection.confirmTransaction(signature);
@@ -308,6 +307,13 @@ describe("Instructions / spending_limit_policy", () => {
     };
 
     // Attempt to do the same with a synchronous instruction
+    let syncRemainingAccounts = remainingAccounts;
+    // Sync instruction expects the voter to be a part of the remaining accounts
+    syncRemainingAccounts.unshift({
+      pubkey: members.voter.publicKey,
+      isWritable: false,
+      isSigner: true,
+    });
     signature = await smartAccount.rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
@@ -315,10 +321,7 @@ describe("Instructions / spending_limit_policy", () => {
       accountIndex: 0,
       numSigners: 1,
       policyPayload: syncPolicyPayload,
-      instruction_accounts: remainingAccounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
+      instruction_accounts: syncRemainingAccounts,
       signers: [members.voter],
       programId,
     });
@@ -342,22 +345,22 @@ describe("Instructions / spending_limit_policy", () => {
         },
       ],
     };
-    // Attempt to do the same with a synchronous instruction
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
-      connection,
-      feePayer: members.voter,
-      policy: policyPda,
-      accountIndex: 0,
-      numSigners: 1,
-      policyPayload: invalidPayload,
-      instruction_accounts: remainingAccounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
-      //signers: [members.voter],
-      programId,
-    });
-    await connection.confirmTransaction(signature);
-    console.log(signature);
+    // Attempt to use non-exact amount
+    assert.rejects(
+      smartAccount.rpc.executePolicyPayloadSync({
+        connection,
+        feePayer: members.voter,
+        policy: policyPda,
+        accountIndex: 0,
+        numSigners: 1,
+        policyPayload: invalidPayload,
+        instruction_accounts: syncRemainingAccounts,
+        signers: [members.voter],
+        programId,
+      }),
+      (error: any) => {
+        error.toString().includes("SpendingLimitViolatesMaxPerUseConstraint");
+      }
+    );
   });
 });

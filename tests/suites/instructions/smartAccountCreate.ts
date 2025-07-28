@@ -534,7 +534,7 @@ describe("Instructions / smart_account_create", () => {
     await connection.confirmTransaction(signature);
 
     const creatorBalancePost = await connection.getBalance(creator.publicKey);
-    const rentAndNetworkFee = 2698520;
+    const rentAndNetworkFee = 2754200;
 
     assert.strictEqual(
       creatorBalancePost,

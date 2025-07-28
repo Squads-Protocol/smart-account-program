@@ -17,6 +17,14 @@ pub enum PolicyExpiration {
     SettingsState([u8; 32]),
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+pub enum PolicyExpirationArgs {
+    /// Policy expires at a specific timestamp
+    Timestamp(i64),
+    /// Policy expires when the core settings hash mismatches the stored hash.
+    SettingsState,
+}
+
 use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
 use crate::state::policies::implementations::InternalFundTransferPolicy;
 
@@ -353,20 +361,28 @@ impl Consensus for Policy {
                 let current_timestamp = Clock::get()?.unix_timestamp;
                 require!(
                     current_timestamp < expiration_timestamp,
-                    SmartAccountError::PolicyExpired
+                    SmartAccountError::PolicyExpirationViolationTimestampExpired
                 );
                 Ok(())
             }
             Some(PolicyExpiration::SettingsState(stored_hash)) => {
                 // Find the settings account in the accounts list
-                let settings_account_info = &accounts[0];
+                let settings_account_info = &accounts
+                    .get(0)
+                    .ok_or(SmartAccountError::PolicyExpirationViolationSettingsAccountNotPresent)?;
+                require!(
+                    settings_account_info.key() == self.settings,
+                    SmartAccountError::PolicyExpirationViolationPolicySettingsKeyMismatch
+                );
                 // Deserialize the settings account
                 let account_data = settings_account_info.try_borrow_data()?;
                 let settings = Settings::try_deserialize(&mut &**account_data)?;
+
+                // Generate the current core state hash
                 let current_hash = settings.generate_core_state_hash()?;
                 require!(
-                    current_hash != stored_hash,
-                    SmartAccountError::PolicyExpired
+                    current_hash == stored_hash,
+                    SmartAccountError::PolicyExpirationViolationHashExpired
                 );
                 Ok(())
             }

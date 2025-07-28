@@ -8,6 +8,7 @@ use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::solana_program::program::invoke_signed;
 
 use crate::errors::*;
+use crate::LogEvent;
 use crate::state::*;
 
 /// Sanitized and validated combination of a `MsTransactionMessage` and `AccountInfo`s it references.
@@ -208,16 +209,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     SmartAccountError::ProtectedAccount
                 );
             }
-            // Make sure we're not calling self logging instruction
-            if ix.program_id == crate::ID {
-                if let Some(discriminator) = ix.data.get(0..8) {
-                    // Check if the discriminator is the log event discriminator
-                    require!(
-                        discriminator != [0x05, 0x09, 0x5a, 0x8d, 0xdf, 0x86, 0x39, 0xd9],
-                        SmartAccountError::ProtectedInstruction
-                    );
-                }
-            }
+            LogEvent::check_instruction(ix)?;
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
         }
         Ok(())

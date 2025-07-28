@@ -1,7 +1,7 @@
 use anchor_lang::{prelude::*, Ids};
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
-use crate::{errors::SmartAccountError, state::policies::utils::spending_limit::SpendingLimitV2};
+use crate::{errors::SmartAccountError, state::policies::utils::spending_limit_v2::SpendingLimitV2};
 
 pub struct TrackedTokenAccount<'info> {
     pub account: &'info AccountInfo<'info>,
@@ -26,10 +26,14 @@ pub fn check_pre_balances<'info>(
     accounts: &'info [AccountInfo<'info>],
 ) -> Balances<'info> {
     let mut tracked_token_accounts = Vec::with_capacity(accounts.len());
+
+    // Get the executing account info
     let executing_account_info = accounts
         .iter()
         .find(|account| account.key() == executing_account)
         .unwrap();
+
+    // Track the executing account
     let tracked_executing_account = TrackedExecutingAccount {
         account: executing_account_info,
         lamports: executing_account_info.lamports(),
@@ -39,8 +43,10 @@ pub fn check_pre_balances<'info>(
     // owned by the executing account
     let token_program_ids = TokenInterface::ids();
     for account in accounts {
+
         // Only track accounts owned by a token program and that are writable
         if token_program_ids.contains(&account.owner) && account.is_writable {
+
             // This may fail for accounts that are not token accounts, so skip if it does
             let Ok(token_account) = InterfaceAccount::<TokenAccount>::try_from(account) else {
                 continue;
@@ -54,6 +60,8 @@ pub fn check_pre_balances<'info>(
                     None
                 };
                 let authority = token_account.owner;
+
+                // Add the token account to the tracked token accounts
                 tracked_token_accounts.push(TrackedTokenAccount {
                     account,
                     balance,
@@ -71,14 +79,22 @@ pub fn check_pre_balances<'info>(
 }
 
 impl<'info> Balances<'info> {
-    // Evaluates balance changes against the resource limits
-    pub fn evaluate_balance_changes(&self, spending_limits: &mut Vec<SpendingLimitV2>) -> Result<()> {
+    /// Evaluate balance changes against the spending limits
+    pub fn evaluate_balance_changes(
+        &self,
+        spending_limits: &mut Vec<SpendingLimitV2>,
+    ) -> Result<()> {
+        // Get the current timestamp
+        let current_timestamp = Clock::get()?.unix_timestamp;
+
         // Check the executing accounts lamports
         let current_lamports = self.executing_account.account.lamports();
-        if let Some(spending_limit) = spending_limits
-            .iter_mut()
-            .find(|spending_limit| spending_limit.mint() == Pubkey::default())
-        {
+
+        // Check the SOL spending limit
+        if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
+            spending_limit.mint() == Pubkey::default()
+                && spending_limit.is_active(current_timestamp).is_ok()
+        }) {
             // Ensure the executing account doesn't have less lamports than the allowed change
             let minimum_balance = self
                 .executing_account
@@ -89,7 +105,7 @@ impl<'info> Balances<'info> {
                 minimum_balance,
                 SmartAccountError::ProgramInteractionInsufficientLamportAllowance
             );
-            // If the executing account has a lower balance than before, decrement the resource limit
+            // If the executing account has a lower balance than before, decrement the spending limit
             if current_lamports < self.executing_account.lamports {
                 spending_limit.decrement(self.executing_account.lamports - current_lamports);
             }
@@ -106,28 +122,34 @@ impl<'info> Balances<'info> {
         for tracked_token_account in &self.token_accounts {
             // Ensure that any tracked token account is not closed
             if tracked_token_account.account.data_is_empty() {
-                return Err(SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into());
+                return Err(
+                    SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
+                );
             }
             // Re-deserialize the token account
             let post_token_account =
                 InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
-            if let Some(spending_limit) = spending_limits
-                .iter_mut()
-                .find(|spending_limit| spending_limit.mint() == post_token_account.mint)
-            {
+
+            // Find the spending limit for the token account if it exists and is active
+            if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
+                spending_limit.mint() == post_token_account.mint
+                    && spending_limit.is_active(current_timestamp).is_ok()
+            }) {
                 {
                     // Saturating subtraction since remaining_amount could be
                     // higher than the balance
                     let minimum_balance = tracked_token_account
                         .balance
                         .saturating_sub(spending_limit.remaining_in_period());
+
                     // Ensure the token account has no greater difference than the allowed change
                     require_gte!(
                         post_token_account.amount,
                         minimum_balance,
                         SmartAccountError::ProgramInteractionInsufficientTokenAllowance
                     );
-                    // If the token account has a lower balance than before, decrement the resource limit
+
+                    // If the token account has a lower balance than before, decrement the spending limit
                     if post_token_account.amount < tracked_token_account.balance {
                         spending_limit
                             .decrement(tracked_token_account.balance - post_token_account.amount);
@@ -142,6 +164,7 @@ impl<'info> Balances<'info> {
                     SmartAccountError::ProgramInteractionModifiedIllegalBalance
                 );
             }
+
             // Ensure the delegate and authority have not changed
             let post_delegate = Option::from(post_token_account.delegate);
             require!(

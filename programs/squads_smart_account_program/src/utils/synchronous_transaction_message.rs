@@ -4,6 +4,7 @@ use anchor_lang::solana_program::program::invoke_signed;
 
 use crate::errors::*;
 use crate::state::*;
+use crate::LogEvent;
 
 /// Sanitized and validated combination of transaction instructions and accounts
 pub struct SynchronousTransactionMessage<'info> {
@@ -19,8 +20,10 @@ impl<'info> SynchronousTransactionMessage<'info> {
         instructions: Vec<SmartAccountCompiledInstruction>,
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
+
         // Validate instruction indices first
         for instruction in &instructions {
+            
             require!(
                 (instruction.program_id_index as usize) < remaining_accounts.len(),
                 SmartAccountError::InvalidTransactionMessage
@@ -88,6 +91,9 @@ impl<'info> SynchronousTransactionMessage<'info> {
                 accounts: account_metas,
                 data: instruction.data.clone(),
             };
+
+            // Check that we're not calling our self logging instruction
+            LogEvent::check_instruction(&ix)?;
 
             let accounts_slice: Vec<AccountInfo> = instruction
                 .account_indexes

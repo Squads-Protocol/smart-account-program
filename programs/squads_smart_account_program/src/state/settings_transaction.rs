@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 
 use super::*;
-use crate::state::policies::policy_core::{PolicyCreationPayload, PolicyExpiration};
+use crate::state::policies::policy_core::{PolicyCreationPayload};
 
 /// Stores data required for execution of a settings configuration transaction.
 /// Settings transactions can perform a predefined set of actions on the Settings PDA, such as adding/removing members,
@@ -97,7 +97,7 @@ pub enum SettingsAction {
         /// Timestamp when the policy becomes active.
         start_timestamp: Option<i64>,
         /// Policy expiration - either time-based or state-based.
-        expiration: Option<PolicyExpiration>,
+        expiration_args: Option<PolicyExpirationArgs>,
     },
     /// Update a policy account.
     PolicyUpdate {
@@ -112,7 +112,7 @@ pub enum SettingsAction {
         /// The policy update payload containing policy-specific configuration.
         policy_update_payload: PolicyCreationPayload,
         /// Policy expiration - either time-based or state-based.
-        expiration: Option<PolicyExpiration>,
+        expiration_args: Option<PolicyExpirationArgs>,
     },
     /// Remove a policy account.
     PolicyRemove {

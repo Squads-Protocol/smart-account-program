@@ -30,3 +30,4 @@ export * from "./createPolicyTransaction.js";
 export * from "./executePolicyTransaction.js";
 export * from "./executeTransactionSyncV2.js";
 export * from "./executePolicyPayloadSync.js";
+export * from "./closeEmptyPolicyTransaction.js";

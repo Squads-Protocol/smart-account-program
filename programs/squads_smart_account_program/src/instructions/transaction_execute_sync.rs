@@ -66,7 +66,7 @@ impl<'info> SyncTransaction<'info> {
         } = self;
 
         // Check that the consensus account is active (policy)
-        consensus_account.is_active(remaining_accounts)?;
+        consensus_account.is_active(&remaining_accounts[args.num_signers as usize..])?;
 
         // Validate policy payload if necessary
         if consensus_account.account_type() == ConsensusAccountType::Policy {
@@ -97,6 +97,7 @@ impl<'info> SyncTransaction<'info> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         // Remove the signers from the remaining accounts
         let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize..];
+
         let consensus_account_key = consensus_account.key();
         match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
@@ -189,10 +190,11 @@ impl<'info> SyncTransaction<'info> {
                     })
                     .unwrap_or(0);
 
-                let remaining_accounts = &ctx.remaining_accounts[account_offset..];
+                // Potentially remove the settings account for expiration from
+                // the remaining accounts
+                let remaining_accounts = &remaining_accounts[account_offset..];
                 // Execute the policy
                 policy.execute(None, None, payload, &remaining_accounts)?;
-
             }
         }
 
@@ -202,4 +204,3 @@ impl<'info> SyncTransaction<'info> {
         Ok(())
     }
 }
-

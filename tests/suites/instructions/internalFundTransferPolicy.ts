@@ -21,7 +21,7 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / policy_settings_actions", () => {
+describe("Flow / InternalFundTransferPolicy", () => {
   let members: TestMembers;
 
   before(async () => {
@@ -84,7 +84,7 @@ describe("Instructions / policy_settings_actions", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -246,6 +246,13 @@ describe("Instructions / policy_settings_actions", () => {
     assert.strictEqual(sourceBalance, 1_000_000_000);
     assert.strictEqual(destinationBalance, 1_000_000_000);
 
+    // Sync instruction expects the voter to be a part of the remaining accounts
+    let syncRemainingAccounts = remainingAccounts;
+    syncRemainingAccounts.unshift({
+      pubkey: members.voter.publicKey,
+      isWritable: false,
+      isSigner: true,
+    });
     // Attempt to do the same with a synchronous instruction
     signature = await smartAccount.rpc.executePolicyPayloadSync({
       connection,
@@ -254,10 +261,7 @@ describe("Instructions / policy_settings_actions", () => {
       accountIndex: 0,
       numSigners: 1,
       policyPayload: policyPayload,
-      instruction_accounts: remainingAccounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
+      instruction_accounts: syncRemainingAccounts,
       signers: [members.voter],
       programId,
     });
@@ -292,7 +296,7 @@ describe("Instructions / policy_settings_actions", () => {
         accountIndex: 0,
         numSigners: 1,
         policyPayload: invalidPayload,
-        instruction_accounts: remainingAccounts,
+        instruction_accounts: syncRemainingAccounts,
         signers: [members.voter],
         programId,
       })
@@ -374,7 +378,7 @@ describe("Instructions / policy_settings_actions", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -458,6 +462,12 @@ describe("Instructions / policy_settings_actions", () => {
     );
 
     let remainingAccounts: AccountMeta[] = [];
+
+    remainingAccounts.push({
+      pubkey: members.voter.publicKey,
+      isWritable: false,
+      isSigner: true,
+    });
     remainingAccounts.push({
       pubkey: sourceSmartAccountPda,
       isWritable: false,

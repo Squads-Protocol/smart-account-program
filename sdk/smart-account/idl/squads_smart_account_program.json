@@ -1507,6 +1507,58 @@
       "args": []
     },
     {
+      "name": "closeEmptyPolicyTransaction",
+      "docs": [
+        "Closes a `Transaction` and the corresponding `Proposal` for",
+        "empty/deleted policies."
+      ],
+      "accounts": [
+        {
+          "name": "emptyPolicy",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "the logic within `transaction_close` does the rest of the checks."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Transaction corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "proposalRentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector for the proposal account."
+          ]
+        },
+        {
+          "name": "transactionRentCollector",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The rent collector."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeBatchTransaction",
       "docs": [
         "Closes a `BatchTransaction` belonging to the `batch` and `proposal`.",
@@ -1728,7 +1780,7 @@
         {
           "name": "args",
           "type": {
-            "defined": "LogEventArgs"
+            "defined": "LogEventArgsV2"
           }
         }
       ]
@@ -2862,6 +2914,18 @@
       }
     },
     {
+      "name": "LogEventArgsV2",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "event",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
       "name": "ProgramConfigSetAuthorityArgs",
       "type": {
         "kind": "struct",
@@ -3768,7 +3832,7 @@
           {
             "name": "spendingLimit",
             "docs": [
-              "Resource limit configuration (timing, constraints, usage, mint)"
+              "Spending limit configuration (timing, constraints, usage, mint)"
             ],
             "type": {
               "defined": "SpendingLimitV2"
@@ -3889,7 +3953,7 @@
           {
             "name": "period",
             "docs": [
-              "Reset period for the resource limit"
+              "Reset period for the spending limit"
             ],
             "type": {
               "defined": "PeriodV2"
@@ -3908,7 +3972,7 @@
     {
       "name": "QuantityConstraints",
       "docs": [
-        "Quantity constraints for resource limits"
+        "Quantity constraints for spending limits"
       ],
       "type": {
         "kind": "struct",
@@ -3965,7 +4029,7 @@
     {
       "name": "SpendingLimitV2",
       "docs": [
-        "Shared resource limit structure that combines timing, quantity, usage, and mint"
+        "Shared spending limit structure that combines timing, quantity, usage, and mint"
       ],
       "type": {
         "kind": "struct",
@@ -3973,7 +4037,7 @@
           {
             "name": "mint",
             "docs": [
-              "The token mint the resource limit is for.",
+              "The token mint the spending limit is for.",
               "Pubkey::default() means SOL.",
               "use NATIVE_MINT for Wrapped SOL."
             ],
@@ -4481,6 +4545,23 @@
       }
     },
     {
+      "name": "PolicyExpirationArgs",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Timestamp",
+            "fields": [
+              "i64"
+            ]
+          },
+          {
+            "name": "SettingsState"
+          }
+        ]
+      }
+    },
+    {
       "name": "PolicyState",
       "type": {
         "kind": "enum",
@@ -4546,13 +4627,13 @@
             "name": "OneTime"
           },
           {
-            "name": "Day"
+            "name": "Daily"
           },
           {
-            "name": "Week"
+            "name": "Weekly"
           },
           {
-            "name": "Month"
+            "name": "Monthly"
           },
           {
             "name": "Custom",
@@ -4823,13 +4904,13 @@
                 }
               },
               {
-                "name": "expiration",
+                "name": "expirationArgs",
                 "docs": [
                   "Policy expiration - either time-based or state-based."
                 ],
                 "type": {
                   "option": {
-                    "defined": "PolicyExpiration"
+                    "defined": "PolicyExpirationArgs"
                   }
                 }
               }
@@ -4880,13 +4961,13 @@
                 }
               },
               {
-                "name": "expiration",
+                "name": "expirationArgs",
                 "docs": [
                   "Policy expiration - either time-based or state-based."
                 ],
                 "type": {
                   "option": {
-                    "defined": "PolicyExpiration"
+                    "defined": "PolicyExpirationArgs"
                   }
                 }
               }
@@ -5248,18 +5329,18 @@
     },
     {
       "code": 6058,
-      "name": "PolicyNotActive",
-      "msg": "Policy is not active"
+      "name": "InvalidPolicyPayload",
+      "msg": "Invalid policy payload"
     },
     {
       "code": 6059,
-      "name": "PolicyExpired",
-      "msg": "Policy is expired"
+      "name": "InvalidEmptyPolicy",
+      "msg": "Invalid empty policy"
     },
     {
       "code": 6060,
-      "name": "InvalidPolicyPayload",
-      "msg": "Invalid policy payload"
+      "name": "TransactionForAnotherPolicy",
+      "msg": "Transaction is for another policy"
     },
     {
       "code": 6061,
@@ -5338,8 +5419,8 @@
     },
     {
       "code": 6076,
-      "name": "ProgramInteractionDuplicateResourceLimit",
-      "msg": "Program interaction invariant violation: duplicate resource limit for the same mint"
+      "name": "ProgramInteractionDuplicateSpendingLimit",
+      "msg": "Program interaction invariant violation: duplicate spending limit for the same mint"
     },
     {
       "code": 6077,
@@ -5530,6 +5611,31 @@
       "code": 6114,
       "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
       "msg": "Settings change policy invariant violation: action index out of bounds"
+    },
+    {
+      "code": 6115,
+      "name": "PolicyNotActiveYet",
+      "msg": "Policy is not active yet"
+    },
+    {
+      "code": 6116,
+      "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
+      "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
+    },
+    {
+      "code": 6117,
+      "name": "PolicyExpirationViolationSettingsAccountNotPresent",
+      "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
+    },
+    {
+      "code": 6118,
+      "name": "PolicyExpirationViolationHashExpired",
+      "msg": "Policy expiration violation: state hash has expired"
+    },
+    {
+      "code": 6119,
+      "name": "PolicyExpirationViolationTimestampExpired",
+      "msg": "Policy expiration violation: timestamp has expired"
     }
   ],
   "metadata": {

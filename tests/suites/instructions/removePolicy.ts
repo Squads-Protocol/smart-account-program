@@ -13,14 +13,14 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flows / Policy Update", () => {
+describe("Flows / Remove Policy", () => {
   let members: TestMembers;
 
   before(async () => {
     members = await generateSmartAccountSigners(connection);
   });
 
-  it("update policy: InternalFundTransfer", async () => {
+  it("remove policy: InternalFundTransfer", async () => {
     // Create new autonomous smart account with 1/1 threshold for easy testing
     const settingsPda = (
       await createAutonomousMultisig({
@@ -158,7 +158,7 @@ describe("Flows / Policy Update", () => {
     assert.strictEqual(policyAccount.transactionIndex.toString(), "1");
     assert.strictEqual(policyAccount.staleTransactionIndex?.toString(), "0");
 
-    // Update the policy
+    // Remove the policy
     let remainingAccounts: AccountMeta[] = [];
     remainingAccounts.push({
       pubkey: policyPda,
@@ -166,34 +166,15 @@ describe("Flows / Policy Update", () => {
       isSigner: false,
     });
 
-    let updateSignature = await smartAccount.rpc.executeSettingsTransactionSync(
+    let removeSignature = await smartAccount.rpc.executeSettingsTransactionSync(
       {
         connection,
         feePayer: members.almighty,
         settingsPda,
         actions: [
           {
-            __kind: "PolicyUpdate",
+            __kind: "PolicyRemove",
             policy: policyPda,
-            signers: [
-              {
-                key: members.voter.publicKey,
-                permissions: { mask: 7 },
-              },
-            ],
-            threshold: 1,
-            timeLock: 0,
-            policyUpdatePayload: {
-              __kind: "InternalFundTransfer",
-              fields: [
-                {
-                  sourceAccountIndices: new Uint8Array([0, 1]), // Allow transfers from account indices 0 and 1
-                  destinationAccountIndices: new Uint8Array([2, 3]), // Allow transfers to account indices 2 and 3
-                  allowedMints: [members.voter.publicKey], // Change the mint
-                },
-              ],
-            },
-            expirationArgs: null,
           },
         ],
         signers: [members.almighty],
@@ -201,21 +182,34 @@ describe("Flows / Policy Update", () => {
         programId,
       }
     );
-    await connection.confirmTransaction(updateSignature);
+    await connection.confirmTransaction(removeSignature);
+    // Check the policy is closed
+    let transactionPda = smartAccount.getTransactionPda({
+      settingsPda: policyPda,
+      transactionIndex: BigInt(1),
+      programId,
+    })[0];
+    let transactionAccount = await connection.getAccountInfo(transactionPda);
+    assert.strictEqual(
+      transactionAccount?.owner.toString(),
+      programId.toString()
+    );
 
-    // Check the policy stale tx index increased
-    policyAccount = await Policy.fromAccountAddress(connection, policyPda);
-    assert.strictEqual(policyAccount.transactionIndex.toString(), "1");
-    assert.strictEqual(policyAccount.staleTransactionIndex?.toString(), "1");
+    let closeSignature = await smartAccount.rpc.closeEmptyPolicyTransaction({
+      connection,
+      feePayer: members.almighty,
+      emptyPolicy: policyPda,
+      transactionRentCollector: members.voter.publicKey,
+      transactionIndex: BigInt(1),
+      programId,
+    });
+    await connection.confirmTransaction(closeSignature);
 
-    // Check the policy state updated
-    let policyState = policyAccount.policyState;
-    let programInteractionPolicy = policyState
-      .fields[0] as smartAccount.generated.InternalFundTransferPolicy;
-    let allowedMints = programInteractionPolicy.allowedMints;
-    assert.equal(
-      allowedMints[0].toString(),
-      members.voter.publicKey.toString()
+    transactionAccount = await connection.getAccountInfo(transactionPda);
+    assert.strictEqual(
+      transactionAccount,
+      null,
+      "Transaction account should be closed"
     );
   });
 });

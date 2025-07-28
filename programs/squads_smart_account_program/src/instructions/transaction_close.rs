@@ -10,6 +10,7 @@
 //! allows adding the `close` attribute only to `Account<'info, XXX>` types, which forces us
 //! into having 3 different `Accounts` structs.
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 use crate::consensus::ConsensusAccount;
 use crate::consensus_trait::Consensus;
@@ -469,4 +470,81 @@ impl CloseBatch<'_> {
         Ok(())
     }
 }
-//endregion
+
+#[derive(Accounts)]
+pub struct CloseEmptyPolicyTransaction<'info> {
+    /// CHECK: We only need to validate the address.
+    #[account(
+        constraint = empty_policy.data_is_empty() @ SmartAccountError::InvalidEmptyPolicy,
+        constraint = empty_policy.owner == &system_program::ID @ SmartAccountError::InvalidEmptyPolicy,
+    )]
+    pub empty_policy: AccountInfo<'info>,
+
+    /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
+    ///         the logic within `transaction_close` does the rest of the checks.
+    #[account(
+        mut,
+        seeds = [
+            SEED_PREFIX,
+            empty_policy.key().as_ref(),
+            SEED_TRANSACTION,
+            &transaction.index.to_le_bytes(),
+            SEED_PROPOSAL,
+        ],
+        bump,
+    )]
+    pub proposal: AccountInfo<'info>,
+
+    /// Transaction corresponding to the `proposal`.
+    #[account(
+        mut,
+        constraint = transaction.consensus_account == empty_policy.key() @ SmartAccountError::TransactionForAnotherPolicy,
+        close = transaction_rent_collector
+    )]
+    pub transaction: Account<'info, Transaction>,
+
+    /// The rent collector for the proposal account.
+    /// CHECK: validated later inside of `close_empty_policy_transaction`.
+    #[account(mut)]
+    pub proposal_rent_collector: AccountInfo<'info>,
+
+    /// The rent collector.
+    /// CHECK: We only need to validate the address.
+    #[account(
+        mut,
+        address = transaction.rent_collector @ SmartAccountError::InvalidRentCollector,
+    )]
+    pub transaction_rent_collector: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+impl CloseEmptyPolicyTransaction<'_> {
+    /// Closes a `Transaction` and the corresponding `Proposal` for
+    /// empty/deleted policies.
+    ///
+    /// Since a policy can never exist at the same address again after being
+    /// closed, any transaction & proposal associated with it can be closed.
+    pub fn close_empty_policy_transaction(ctx: Context<Self>) -> Result<()> {
+        let proposal = &mut ctx.accounts.proposal;
+        let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;
+
+        let proposal_account = if proposal.data.borrow().is_empty() {
+            None
+        } else {
+            Some(Proposal::try_deserialize(
+                &mut &**proposal.data.borrow_mut(),
+            )?)
+        };
+
+        // Close the `proposal` account if exists.
+        Proposal::close_if_exists(
+            proposal_account,
+            proposal.to_account_info(),
+            proposal_rent_collector.clone(),
+        )?;
+
+        // Anchor will close the `transaction` account for us.
+        Ok(())
+    }
+}

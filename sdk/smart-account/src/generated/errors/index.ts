@@ -1349,56 +1349,13 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * PolicyNotActive: 'Policy is not active'
- *
- * @category Errors
- * @category generated
- */
-export class PolicyNotActiveError extends Error {
-  readonly code: number = 0x17aa
-  readonly name: string = 'PolicyNotActive'
-  constructor() {
-    super('Policy is not active')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, PolicyNotActiveError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x17aa, () => new PolicyNotActiveError())
-createErrorFromNameLookup.set(
-  'PolicyNotActive',
-  () => new PolicyNotActiveError()
-)
-
-/**
- * PolicyExpired: 'Policy is expired'
- *
- * @category Errors
- * @category generated
- */
-export class PolicyExpiredError extends Error {
-  readonly code: number = 0x17ab
-  readonly name: string = 'PolicyExpired'
-  constructor() {
-    super('Policy is expired')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, PolicyExpiredError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x17ab, () => new PolicyExpiredError())
-createErrorFromNameLookup.set('PolicyExpired', () => new PolicyExpiredError())
-
-/**
  * InvalidPolicyPayload: 'Invalid policy payload'
  *
  * @category Errors
  * @category generated
  */
 export class InvalidPolicyPayloadError extends Error {
-  readonly code: number = 0x17ac
+  readonly code: number = 0x17aa
   readonly name: string = 'InvalidPolicyPayload'
   constructor() {
     super('Invalid policy payload')
@@ -1408,10 +1365,59 @@ export class InvalidPolicyPayloadError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17ac, () => new InvalidPolicyPayloadError())
+createErrorFromCodeLookup.set(0x17aa, () => new InvalidPolicyPayloadError())
 createErrorFromNameLookup.set(
   'InvalidPolicyPayload',
   () => new InvalidPolicyPayloadError()
+)
+
+/**
+ * InvalidEmptyPolicy: 'Invalid empty policy'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidEmptyPolicyError extends Error {
+  readonly code: number = 0x17ab
+  readonly name: string = 'InvalidEmptyPolicy'
+  constructor() {
+    super('Invalid empty policy')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidEmptyPolicyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17ab, () => new InvalidEmptyPolicyError())
+createErrorFromNameLookup.set(
+  'InvalidEmptyPolicy',
+  () => new InvalidEmptyPolicyError()
+)
+
+/**
+ * TransactionForAnotherPolicy: 'Transaction is for another policy'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class TransactionForAnotherPolicyError extends Error {
+  readonly code: number = 0x17ac
+  readonly name: string = 'TransactionForAnotherPolicy'
+  constructor() {
+    super('Transaction is for another policy')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, TransactionForAnotherPolicyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17ac,
+  () => new TransactionForAnotherPolicyError()
+)
+createErrorFromNameLookup.set(
+  'TransactionForAnotherPolicy',
+  () => new TransactionForAnotherPolicyError()
 )
 
 /**
@@ -1853,22 +1859,22 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * ProgramInteractionDuplicateResourceLimit: 'Program interaction invariant violation: duplicate resource limit for the same mint'
+ * ProgramInteractionDuplicateSpendingLimit: 'Program interaction invariant violation: duplicate spending limit for the same mint'
  *
  * @category Errors
  * @category generated
  */
-export class ProgramInteractionDuplicateResourceLimitError extends Error {
+export class ProgramInteractionDuplicateSpendingLimitError extends Error {
   readonly code: number = 0x17bc
-  readonly name: string = 'ProgramInteractionDuplicateResourceLimit'
+  readonly name: string = 'ProgramInteractionDuplicateSpendingLimit'
   constructor() {
     super(
-      'Program interaction invariant violation: duplicate resource limit for the same mint'
+      'Program interaction invariant violation: duplicate spending limit for the same mint'
     )
     if (typeof Error.captureStackTrace === 'function') {
       Error.captureStackTrace(
         this,
-        ProgramInteractionDuplicateResourceLimitError
+        ProgramInteractionDuplicateSpendingLimitError
       )
     }
   }
@@ -1876,11 +1882,11 @@ export class ProgramInteractionDuplicateResourceLimitError extends Error {
 
 createErrorFromCodeLookup.set(
   0x17bc,
-  () => new ProgramInteractionDuplicateResourceLimitError()
+  () => new ProgramInteractionDuplicateSpendingLimitError()
 )
 createErrorFromNameLookup.set(
-  'ProgramInteractionDuplicateResourceLimit',
-  () => new ProgramInteractionDuplicateResourceLimitError()
+  'ProgramInteractionDuplicateSpendingLimit',
+  () => new ProgramInteractionDuplicateSpendingLimitError()
 )
 
 /**
@@ -3013,6 +3019,146 @@ createErrorFromCodeLookup.set(
 createErrorFromNameLookup.set(
   'SettingsChangePolicyInvariantActionIndexOutOfBounds',
   () => new SettingsChangePolicyInvariantActionIndexOutOfBoundsError()
+)
+
+/**
+ * PolicyNotActiveYet: 'Policy is not active yet'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyNotActiveYetError extends Error {
+  readonly code: number = 0x17e3
+  readonly name: string = 'PolicyNotActiveYet'
+  constructor() {
+    super('Policy is not active yet')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PolicyNotActiveYetError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17e3, () => new PolicyNotActiveYetError())
+createErrorFromNameLookup.set(
+  'PolicyNotActiveYet',
+  () => new PolicyNotActiveYetError()
+)
+
+/**
+ * PolicyExpirationViolationPolicySettingsKeyMismatch: 'Policy expiration violation: submitted settings key does not match policy settings key'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyExpirationViolationPolicySettingsKeyMismatchError extends Error {
+  readonly code: number = 0x17e4
+  readonly name: string = 'PolicyExpirationViolationPolicySettingsKeyMismatch'
+  constructor() {
+    super(
+      'Policy expiration violation: submitted settings key does not match policy settings key'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        PolicyExpirationViolationPolicySettingsKeyMismatchError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17e4,
+  () => new PolicyExpirationViolationPolicySettingsKeyMismatchError()
+)
+createErrorFromNameLookup.set(
+  'PolicyExpirationViolationPolicySettingsKeyMismatch',
+  () => new PolicyExpirationViolationPolicySettingsKeyMismatchError()
+)
+
+/**
+ * PolicyExpirationViolationSettingsAccountNotPresent: 'Policy expiration violation: state expiration requires the settings to be submitted'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyExpirationViolationSettingsAccountNotPresentError extends Error {
+  readonly code: number = 0x17e5
+  readonly name: string = 'PolicyExpirationViolationSettingsAccountNotPresent'
+  constructor() {
+    super(
+      'Policy expiration violation: state expiration requires the settings to be submitted'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        PolicyExpirationViolationSettingsAccountNotPresentError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17e5,
+  () => new PolicyExpirationViolationSettingsAccountNotPresentError()
+)
+createErrorFromNameLookup.set(
+  'PolicyExpirationViolationSettingsAccountNotPresent',
+  () => new PolicyExpirationViolationSettingsAccountNotPresentError()
+)
+
+/**
+ * PolicyExpirationViolationHashExpired: 'Policy expiration violation: state hash has expired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyExpirationViolationHashExpiredError extends Error {
+  readonly code: number = 0x17e6
+  readonly name: string = 'PolicyExpirationViolationHashExpired'
+  constructor() {
+    super('Policy expiration violation: state hash has expired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PolicyExpirationViolationHashExpiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17e6,
+  () => new PolicyExpirationViolationHashExpiredError()
+)
+createErrorFromNameLookup.set(
+  'PolicyExpirationViolationHashExpired',
+  () => new PolicyExpirationViolationHashExpiredError()
+)
+
+/**
+ * PolicyExpirationViolationTimestampExpired: 'Policy expiration violation: timestamp has expired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyExpirationViolationTimestampExpiredError extends Error {
+  readonly code: number = 0x17e7
+  readonly name: string = 'PolicyExpirationViolationTimestampExpired'
+  constructor() {
+    super('Policy expiration violation: timestamp has expired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(
+        this,
+        PolicyExpirationViolationTimestampExpiredError
+      )
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17e7,
+  () => new PolicyExpirationViolationTimestampExpiredError()
+)
+createErrorFromNameLookup.set(
+  'PolicyExpirationViolationTimestampExpired',
+  () => new PolicyExpirationViolationTimestampExpiredError()
 )
 
 /**

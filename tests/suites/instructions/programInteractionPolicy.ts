@@ -24,7 +24,7 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / policy_settings_actions", () => {
+describe("Flow / ProgramInteractionPolicy", () => {
   let members: TestMembers;
 
   before(async () => {
@@ -158,7 +158,7 @@ describe("Instructions / policy_settings_actions", () => {
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
-          expiration: null,
+          expirationArgs: null,
         },
       ],
       programId,
@@ -373,11 +373,12 @@ describe("Instructions / policy_settings_actions", () => {
     let modifiedTokenTransfer = tokenTransferIxn;
     modifiedTokenTransfer.keys[2].isWritable = true;
 
-    let synchronousPayload = utils.instructionsToSynchronousTransactionDetails({
-      vaultPda: sourceSmartAccountPda,
-      members: [members.voter.publicKey],
-      transaction_instructions: [tokenTransferIxn],
-    });
+    let synchronousPayload =
+      utils.instructionsToSynchronousTransactionDetailsV2({
+        vaultPda: sourceSmartAccountPda,
+        members: [members.voter.publicKey],
+        transaction_instructions: [tokenTransferIxn],
+      });
 
     let syncPolicyPayload: smartAccount.generated.PolicyPayload = {
       __kind: "ProgramInteraction",
@@ -406,9 +407,6 @@ describe("Instructions / policy_settings_actions", () => {
       numSigners: 1,
       policyPayload: syncPolicyPayload,
       instruction_accounts: synchronousPayload.accounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
       signers: [members.voter],
       programId,
     });

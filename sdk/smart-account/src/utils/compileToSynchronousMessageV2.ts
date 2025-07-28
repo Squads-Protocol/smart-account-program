@@ -5,7 +5,7 @@ import {
 } from "@solana/web3.js";
 import { CompiledKeys } from "./compiled-keys";
 
-export function compileToSynchronousMessageAndAccounts({
+export function compileToSynchronousMessageAndAccountsV2({
   vaultPda,
   members,
   instructions,
@@ -26,14 +26,6 @@ export function compileToSynchronousMessageAndAccounts({
   // Mark the vault as non-signer if it exists
   // Create remaining accounts array starting with vault
   const remainingAccounts: AccountMeta[] = [];
-  // Add the members as signers
-  members.forEach((member) => {
-    remainingAccounts.unshift({
-      pubkey: member,
-      isSigner: true,
-      isWritable: false,
-    });
-  });
 
   // Add all other accounts
   staticAccountKeys.forEach((key, index) => {
@@ -91,6 +83,15 @@ export function compileToSynchronousMessageAndAccounts({
 
     // Concatenate the serialized instruction to the buffer
     args_buffer = Buffer.concat([args_buffer, serialized_ix]);
+
+    // Add the members as signers
+    members.forEach((member) => {
+      remainingAccounts.unshift({
+        pubkey: member,
+        isSigner: true,
+        isWritable: false,
+      });
+    });
   });
 
   return {

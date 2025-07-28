@@ -7,6 +7,14 @@ use anchor_lang::prelude::InterfaceAccount;
 use anchor_lang::{prelude::*, system_program, Ids};
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
 
+/// == InternalFundTransferPolicy ==
+/// This policy allows for the transfer of SOL and SPL tokens between
+/// a set of source and destination accounts.
+///
+/// The policy is defined by a set of source and destination account indices
+/// and a set of allowed mints.
+///===============================================
+///
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct InternalFundTransferPolicy {
     // Using bitmasks here not only saves space, but it also prevents us from
@@ -19,6 +27,7 @@ pub struct InternalFundTransferPolicy {
 }
 
 impl InternalFundTransferPolicy {
+    /// Convert a bitmask to a list of indices
     pub fn mask_to_indices(mask: &[u8; 32]) -> Vec<u8> {
         let mut indices = Vec::new();
         for i in 0..32 {
@@ -31,6 +40,7 @@ impl InternalFundTransferPolicy {
         indices
     }
 
+    /// Convert a list of indices to a bitmask
     pub fn indices_to_mask(indices: &[u8]) -> [u8; 32] {
         let mut mask = [0u8; 32];
         for index in indices {

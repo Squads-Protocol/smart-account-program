@@ -2,7 +2,7 @@ use anchor_lang::{
     prelude::borsh::*, prelude::*, solana_program::program::invoke_signed, Discriminator,
 };
 
-use crate::LogEventArgs;
+use crate::{LogEventArgsV2};
 
 pub mod account_events;
 pub use account_events::*;
@@ -34,13 +34,11 @@ impl SmartAccountEvent {
         let bump_slice = &[authority_info.bump];
         signer_seeds.push(bump_slice);
 
-        let data = LogEventArgs {
-            account_seeds: authority_info.authority_seeds.clone(),
-            bump: authority_info.bump,
+        let data = LogEventArgsV2 {
             event: self.try_to_vec()?,
         };
         let mut instruction_data =
-            Vec::with_capacity(8 + 4 + authority_info.authority_seeds.len() + 4 + data.event.len());
+            Vec::with_capacity(8 + 4 + data.event.len());
         instruction_data.extend_from_slice(&crate::instruction::LogEvent::DISCRIMINATOR);
         instruction_data.extend_from_slice(&data.try_to_vec()?);
 

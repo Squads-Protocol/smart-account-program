@@ -91,7 +91,7 @@ describe("Instructions / transaction_buffer_close", () => {
     );
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     const createIx =
@@ -108,9 +108,9 @@ describe("Instructions / transaction_buffer_close", () => {
             accountIndex: 0,
             bufferIndex: Number(bufferIndex),
             finalBufferHash: Array.from(messageHash),
-            finalBufferSize: messageBuffer.length,
-            buffer: messageBuffer,
-          } as CreateTransactionBufferArgs,
+            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            buffer: messageBuffer.transactionMessageBytes,
+          },
         } as CreateTransactionBufferInstructionArgs,
         programId
       );

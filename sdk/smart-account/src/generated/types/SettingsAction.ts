@@ -17,7 +17,10 @@ import {
   PolicyCreationPayload,
   policyCreationPayloadBeet,
 } from './PolicyCreationPayload'
-import { PolicyExpiration, policyExpirationBeet } from './PolicyExpiration'
+import {
+  PolicyExpirationArgs,
+  policyExpirationArgsBeet,
+} from './PolicyExpirationArgs'
 /**
  * This type is used to derive the {@link SettingsAction} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link SettingsAction} type instead.
@@ -51,7 +54,7 @@ export type SettingsActionRecord = {
     threshold: number
     timeLock: number
     startTimestamp: beet.COption<beet.bignum>
-    expiration: beet.COption<PolicyExpiration>
+    expirationArgs: beet.COption<PolicyExpirationArgs>
   }
   PolicyUpdate: {
     policy: web3.PublicKey
@@ -59,7 +62,7 @@ export type SettingsActionRecord = {
     threshold: number
     timeLock: number
     policyUpdatePayload: PolicyCreationPayload
-    expiration: beet.COption<PolicyExpiration>
+    expirationArgs: beet.COption<PolicyExpirationArgs>
   }
   PolicyRemove: { policy: web3.PublicKey }
 }
@@ -198,7 +201,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['startTimestamp', beet.coption(beet.i64)],
-        ['expiration', beet.coption(policyExpirationBeet)],
+        ['expirationArgs', beet.coption(policyExpirationArgsBeet)],
       ],
       'SettingsActionRecord["PolicyCreate"]'
     ),
@@ -213,7 +216,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['policyUpdatePayload', policyCreationPayloadBeet],
-        ['expiration', beet.coption(policyExpirationBeet)],
+        ['expirationArgs', beet.coption(policyExpirationArgsBeet)],
       ],
       'SettingsActionRecord["PolicyUpdate"]'
     ),

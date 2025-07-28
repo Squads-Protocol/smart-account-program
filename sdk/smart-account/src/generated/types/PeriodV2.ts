@@ -17,9 +17,9 @@ import * as beet from '@metaplex-foundation/beet'
  */
 export type PeriodV2Record = {
   OneTime: void /* scalar variant */
-  Day: void /* scalar variant */
-  Week: void /* scalar variant */
-  Month: void /* scalar variant */
+  Daily: void /* scalar variant */
+  Weekly: void /* scalar variant */
+  Monthly: void /* scalar variant */
   Custom: { fields: [beet.bignum] }
 }
 
@@ -39,14 +39,15 @@ export type PeriodV2 = beet.DataEnumKeyAsKind<PeriodV2Record>
 export const isPeriodV2OneTime = (
   x: PeriodV2
 ): x is PeriodV2 & { __kind: 'OneTime' } => x.__kind === 'OneTime'
-export const isPeriodV2Day = (x: PeriodV2): x is PeriodV2 & { __kind: 'Day' } =>
-  x.__kind === 'Day'
-export const isPeriodV2Week = (
+export const isPeriodV2Daily = (
   x: PeriodV2
-): x is PeriodV2 & { __kind: 'Week' } => x.__kind === 'Week'
-export const isPeriodV2Month = (
+): x is PeriodV2 & { __kind: 'Daily' } => x.__kind === 'Daily'
+export const isPeriodV2Weekly = (
   x: PeriodV2
-): x is PeriodV2 & { __kind: 'Month' } => x.__kind === 'Month'
+): x is PeriodV2 & { __kind: 'Weekly' } => x.__kind === 'Weekly'
+export const isPeriodV2Monthly = (
+  x: PeriodV2
+): x is PeriodV2 & { __kind: 'Monthly' } => x.__kind === 'Monthly'
 export const isPeriodV2Custom = (
   x: PeriodV2
 ): x is PeriodV2 & { __kind: 'Custom' } => x.__kind === 'Custom'
@@ -57,9 +58,9 @@ export const isPeriodV2Custom = (
  */
 export const periodV2Beet = beet.dataEnum<PeriodV2Record>([
   ['OneTime', beet.unit],
-  ['Day', beet.unit],
-  ['Week', beet.unit],
-  ['Month', beet.unit],
+  ['Daily', beet.unit],
+  ['Weekly', beet.unit],
+  ['Monthly', beet.unit],
   [
     'Custom',
     new beet.BeetArgsStruct<PeriodV2Record['Custom']>(

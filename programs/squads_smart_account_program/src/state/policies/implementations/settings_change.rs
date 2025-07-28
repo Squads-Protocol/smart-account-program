@@ -5,33 +5,103 @@ use crate::{
     PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction, SmartAccountSigner,
 };
 
-/// Supports a subset of settings changes that can be done via a policy.
+
+
+/// == SettingsChangePolicy ==
+/// This policy allows for the modification of the settings of a smart account.
+///
+/// The policy is defined by a set of allowed settings changes.
+///===============================================
+
+// =============================================================================
+// CORE POLICY STRUCTURES
+// =============================================================================
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub struct SettingsChangePolicy {
+    pub actions: Vec<AllowedSettingsChange>,
+}
+/// Defines which settings changes are allowed by the policy
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug, InitSpace)]
 pub enum AllowedSettingsChange {
     AddSigner {
-        // Some() - add a specific signer
-        // None - add any signer
+        /// Some() - add a specific signer, None - add any signer
         new_signer: Option<Pubkey>,
-        // Some() - only allow certain permissions
-        // None - allow all permissions
+        /// Some() - only allow certain permissions, None - allow all permissions
         new_signer_permissions: Option<Permissions>,
     },
     RemoveSigner {
-        // Some() - remove a specific signer
-        // None - remove any signer
+        /// Some() - remove a specific signer, None - remove any signer
         old_signer: Option<Pubkey>,
     },
     ChangeThreshold,
     ChangeTimeLock {
-        // Some() - change timelock to a specific value
-        // None - change timelock to any value
+        /// Some() - change timelock to a specific value, None - change timelock to any value
         new_time_lock: Option<u32>,
     },
 }
 
+
+// =============================================================================
+// CREATION PAYLOAD TYPES
+// =============================================================================
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct SettingsChangePolicyCreationPayload {
     pub actions: Vec<AllowedSettingsChange>,
+}
+
+// =============================================================================
+// EXECUTION PAYLOAD TYPES
+// =============================================================================
+
+/// Limited subset of settings change actions for execution
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum LimitedSettingsAction {
+    AddSigner { new_signer: SmartAccountSigner },
+    RemoveSigner { old_signer: Pubkey },
+    ChangeThreshold { new_threshold: u16 },
+    SetTimeLock { new_time_lock: u32 },
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct SettingsChangePayload {
+    pub action_index: Vec<u8>,
+    pub actions: Vec<LimitedSettingsAction>,
+}
+
+pub struct SettingsChangeExecutionArgs {
+    pub settings_key: Pubkey,
+}
+
+pub struct ValidatedAccounts<'info> {
+    pub settings: Account<'info, Settings>,
+    /// Optional just to comply with later use of Settings::modify_with_action
+    pub rent_payer: Option<Signer<'info>>,
+    /// Optional just to comply with later use of Settings::modify_with_action
+    pub system_program: Option<Program<'info, System>>,
+}
+
+// =============================================================================
+// CONVERSION IMPLEMENTATIONS
+// =============================================================================
+
+impl From<LimitedSettingsAction> for SettingsAction {
+    fn from(action: LimitedSettingsAction) -> Self {
+        match action {
+            LimitedSettingsAction::AddSigner { new_signer } => {
+                SettingsAction::AddSigner { new_signer }
+            }
+            LimitedSettingsAction::RemoveSigner { old_signer } => {
+                SettingsAction::RemoveSigner { old_signer }
+            }
+            LimitedSettingsAction::ChangeThreshold { new_threshold } => {
+                SettingsAction::ChangeThreshold { new_threshold }
+            }
+            LimitedSettingsAction::SetTimeLock { new_time_lock } => {
+                SettingsAction::SetTimeLock { new_time_lock }
+            }
+        }
+    }
 }
 
 impl PolicyPayloadConversionTrait for SettingsChangePolicyCreationPayload {
@@ -39,7 +109,7 @@ impl PolicyPayloadConversionTrait for SettingsChangePolicyCreationPayload {
 
     fn to_policy_state(self) -> Result<SettingsChangePolicy> {
         let mut sorted_actions = self.actions.clone();
-        // Sort the actions to ensure the invariant function can apply.
+        // Sort the actions to ensure the invariant function can apply
         sorted_actions.sort_by_key(|action| match action {
             AllowedSettingsChange::AddSigner { new_signer, .. } => (0, new_signer.clone()),
             AllowedSettingsChange::RemoveSigner { old_signer } => (1, old_signer.clone()),
@@ -63,69 +133,21 @@ impl PolicySizeTrait for SettingsChangePolicyCreationPayload {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct SettingsChangePolicy {
-    pub actions: Vec<AllowedSettingsChange>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-/// Limited subset of settings change actions
-pub enum LimitedSettingsAction {
-    AddSigner { new_signer: SmartAccountSigner },
-    RemoveSigner { old_signer: Pubkey },
-    ChangeThreshold { new_threshold: u16 },
-    SetTimeLock { new_time_lock: u32 },
-}
-
-impl From<LimitedSettingsAction> for SettingsAction {
-    fn from(action: LimitedSettingsAction) -> Self {
-        match action {
-            LimitedSettingsAction::AddSigner { new_signer } => {
-                SettingsAction::AddSigner { new_signer }
-            }
-
-            LimitedSettingsAction::RemoveSigner { old_signer } => {
-                SettingsAction::RemoveSigner { old_signer }
-            }
-
-            LimitedSettingsAction::ChangeThreshold { new_threshold } => {
-                SettingsAction::ChangeThreshold { new_threshold }
-            }
-
-            LimitedSettingsAction::SetTimeLock { new_time_lock } => {
-                SettingsAction::SetTimeLock { new_time_lock }
-            }
-        }
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct SettingsChangePayload {
-    pub action_index: Vec<u8>,
-    pub actions: Vec<LimitedSettingsAction>,
-}
-pub struct SettingsChangeExecutionArgs {
-    pub settings_key: Pubkey,
-}
+// =============================================================================
+// POLICY TRAIT IMPLEMENTATION
+// =============================================================================
 impl PolicyTrait for SettingsChangePolicy {
     type PolicyState = Self;
     type CreationPayload = SettingsChangePolicyCreationPayload;
     type UsagePayload = SettingsChangePayload;
     type ExecutionArgs = SettingsChangeExecutionArgs;
 
+    /// Validate policy invariants - no duplicate actions
     fn invariant(&self) -> Result<()> {
-        // AddSigner and RemoveSigner can only be present once with any given
-        // pubkey.
-        // ChangeThreshold and ChangeTimeLock can only each be present once.
-        // Assumes sorted actions by enum and pubkey.
-
-        // There must be no duplicate signers.
-        // AddSigner and RemoveSigner can only be present once with any given
-        // pubkey.
-        // ChangeThreshold and ChangeTimeLock can only each be present once.
-        // Assumes sorted actions by enum and pubkey.
-
-        // Check for adjacent duplicates
+        // Check for adjacent duplicates (assumes sorted actions by enum and pubkey)
+        // Rules:
+        // - AddSigner and RemoveSigner can only be present once with any given pubkey
+        // - ChangeThreshold and ChangeTimeLock can only each be present once
         let has_duplicate = self.actions.windows(2).any(|win| match (&win[0], &win[1]) {
             (
                 AllowedSettingsChange::AddSigner {
@@ -161,6 +183,7 @@ impl PolicyTrait for SettingsChangePolicy {
         Ok(())
     }
 
+    /// Validate that the payload actions match allowed policy actions
     fn validate_payload(
         &self,
         // No difference between synchronous and asynchronous execution
@@ -253,6 +276,7 @@ impl PolicyTrait for SettingsChangePolicy {
         Ok(())
     }
 
+    /// Execute the settings change actions
     fn execute_payload<'info>(
         &mut self,
         args: Self::ExecutionArgs,
@@ -269,8 +293,8 @@ impl PolicyTrait for SettingsChangePolicy {
                 &Rent::get()?,
                 &validated_accounts.rent_payer,
                 &validated_accounts.system_program,
-                // Only polices and spending limits use remaining accounts, and
-                // thos actions are exluded from LimitedSettingsAction
+                // Only policies and spending limits use remaining accounts, and
+                // those actions are excluded from LimitedSettingsAction
                 &[],
                 &crate::ID,
             )?;
@@ -279,14 +303,12 @@ impl PolicyTrait for SettingsChangePolicy {
     }
 }
 
-pub struct ValidatedAccounts<'info> {
-    pub settings: Account<'info, Settings>,
-    // Optional just to comply with later use of Settings::modify_with_action
-    pub rent_payer: Option<Signer<'info>>,
-    // Optional just to comply with later use of Settings::modify_with_action
-    pub system_program: Option<Program<'info, System>>,
-}
+// =============================================================================
+// ACCOUNT VALIDATION
+// =============================================================================
+
 impl SettingsChangePolicy {
+    /// Validate the accounts needed for settings change execution
     pub fn validate_accounts<'info>(
         &self,
         settings_key: Pubkey,
@@ -300,7 +322,7 @@ impl SettingsChangePolicy {
             return err!(SmartAccountError::InvalidNumberOfAccounts);
         };
 
-        // Settings account checks
+        // Settings account validation
         require!(
             settings_account_info.key() == settings_key,
             SmartAccountError::SettingsChangeInvalidSettingsKey
@@ -309,10 +331,9 @@ impl SettingsChangePolicy {
             settings_account_info.is_writable,
             SmartAccountError::SettingsChangeInvalidSettingsAccount
         );
-        // Deserialize the settings account
         let settings: Account<'info, Settings> = Account::try_from(settings_account_info)?;
 
-        // Rent payer
+        // Rent payer validation
         let rent_payer = Signer::try_from(rent_payer_info)
             .map_err(|_| SmartAccountError::SettingsChangeInvalidRentPayer)?;
         require!(
@@ -320,17 +341,21 @@ impl SettingsChangePolicy {
             SmartAccountError::SettingsChangeInvalidRentPayer
         );
 
-        // System program checks
+        // System program validation
         let system_program: Program<'info, System> = Program::try_from(system_program_info)
             .map_err(|_| SmartAccountError::SettingsChangeInvalidSystemProgram)?;
 
         Ok(ValidatedAccounts {
-            settings: settings,
+            settings,
             rent_payer: Some(rent_payer),
             system_program: Some(system_program),
         })
     }
 }
+
+// =============================================================================
+// TESTS
+// =============================================================================
 #[cfg(test)]
 mod tests {
     use crate::Permission;

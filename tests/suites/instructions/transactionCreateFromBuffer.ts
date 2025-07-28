@@ -113,11 +113,11 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Slice the message buffer into two parts.
-    const firstSlice = messageBuffer.slice(0, 700);
+    const firstSlice = messageBuffer.transactionMessageBytes.slice(0, 700);
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
@@ -134,7 +134,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
           accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
           buffer: firstSlice,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
@@ -177,7 +177,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
     // First chunk uploaded. Check that length is as expected.
     assert.equal(txBufferDeser1.buffer.length, 700);
 
-    const secondSlice = messageBuffer.slice(700, messageBuffer.byteLength);
+    const secondSlice = messageBuffer.transactionMessageBytes.slice(
+      700,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Extned the buffer.
     const secondIx =
@@ -223,7 +226,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     // Final chunk uploaded. Check that length is as expected.
 
-    assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
+    assert.equal(
+      txBufferDeser2.buffer.length,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Derive transaction PDA.
     const [transactionPda] = smartAccount.getTransactionPda({
@@ -262,10 +268,14 @@ describe("Instructions / transaction_create_from_buffer", () => {
         {
           args: {
             __kind: "TransactionPayload",
-            accountIndex: 0,
-            ephemeralSigners: 0,
-            transactionMessage: new Uint8Array(6).fill(0),
-            memo: null,
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: new Uint8Array(6).fill(0),
+                memo: null,
+              },
+            ],
           } as CreateTransactionArgs,
         } as CreateTransactionInstructionArgs,
         programId
@@ -367,8 +377,8 @@ describe("Instructions / transaction_create_from_buffer", () => {
             bufferIndex,
             accountIndex: 0,
             finalBufferHash: Array.from(dummyHash),
-            finalBufferSize: messageBuffer.length,
-            buffer: messageBuffer,
+            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            buffer: messageBuffer.transactionMessageBytes,
           } as CreateTransactionBufferArgs,
         } as CreateTransactionBufferInstructionArgs,
         programId
@@ -413,11 +423,14 @@ describe("Instructions / transaction_create_from_buffer", () => {
         {
           args: {
             __kind: "TransactionPayload",
-            accountIndex: 0,
-            ephemeralSigners: 0,
-            transactionMessage: new Uint8Array(6).fill(0),
-            memo: null,
-            anchorRemainingAccounts: [transactionBufferMeta],
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: new Uint8Array(6).fill(0),
+                memo: null,
+              },
+            ],
           } as CreateTransactionArgs,
         } as CreateTransactionInstructionArgs,
         programId

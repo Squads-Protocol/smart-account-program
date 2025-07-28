@@ -5,21 +5,35 @@ use crate::{
     errors::*, get_smart_account_seeds, state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState}, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SEED_PREFIX, SEED_SMART_ACCOUNT
 };
 
-/// Enhanced period enum supporting custom durations
+/// == SpendingLimitPolicy ==
+/// This policy allows for the transfer of SOL and SPL tokens between
+/// a source account and a set of destination accounts.
+///
+/// The policy is defined by a spending limit configuration and a source account index.
+/// The spending limit configuration includes a mint, time constraints, quantity constraints,
+/// and usage state.
+///===============================================
 
-/// Main spending limit structure using composition
+
+// =============================================================================
+// CORE POLICY STRUCTURES
+// =============================================================================
+
+/// Main spending limit policy structure
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SpendingLimitPolicy {
-    /// Resource limit configuration (timing, constraints, usage, mint)
-    pub spending_limit: SpendingLimitV2,
-
-    /// The source account index.
+    /// The source account index
     pub source_account_index: u8,
-
-    /// The destination addresses the spending limit is allowed to sent funds to.
-    /// If empty, funds can be sent to any address.
+    /// The destination addresses the spending limit is allowed to send funds to
+    /// If empty, funds can be sent to any address
     pub destinations: Vec<Pubkey>,
+    /// Spending limit configuration (timing, constraints, usage, mint)
+    pub spending_limit: SpendingLimitV2,
 }
+
+// =============================================================================
+// CREATION PAYLOAD TYPES
+// =============================================================================
 
 /// Setup parameters for creating a spending limit
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -28,17 +42,55 @@ pub struct SpendingLimitPolicyCreationPayload {
     pub source_account_index: u8,
     pub time_constraints: TimeConstraints,
     pub quantity_constraints: QuantityConstraints,
-    // Optionally this can be submitted to update a spending limit policy.
-    // Cannot be Some() if accumulate_unused is true, to avoid invariant
-    // behavior
+    /// Optionally this can be submitted to update a spending limit policy
+    /// Cannot be Some() if accumulate_unused is true, to avoid invariant behavior
     pub usage_state: Option<UsageState>,
     pub destinations: Vec<Pubkey>,
 }
 
+// =============================================================================
+// EXECUTION PAYLOAD TYPES
+// =============================================================================
+
+/// Payload for using a spending limit policy
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+pub struct SpendingLimitPayload {
+    pub amount: u64,
+    pub destination: Pubkey,
+    pub decimals: u8,
+}
+
+pub struct SpendingLimitExecutionArgs {
+    pub settings_key: Pubkey,
+}
+
+/// Validated account information for different transfer types
+enum ValidatedAccounts<'info> {
+    NativeTransfer {
+        source_account_info: &'info AccountInfo<'info>,
+        source_account_bump: u8,
+        destination_account_info: &'info AccountInfo<'info>,
+        system_program: &'info AccountInfo<'info>,
+    },
+    TokenTransfer {
+        source_account_info: &'info AccountInfo<'info>,
+        source_account_bump: u8,
+        source_token_account_info: &'info AccountInfo<'info>,
+        destination_token_account_info: &'info AccountInfo<'info>,
+        mint: &'info AccountInfo<'info>,
+        token_program: &'info AccountInfo<'info>,
+    },
+}
+
+// =============================================================================
+// PAYLOAD CONVERSION IMPLEMENTATIONS
+// =============================================================================
+
 impl PolicyPayloadConversionTrait for SpendingLimitPolicyCreationPayload {
     type PolicyState = SpendingLimitPolicy;
 
-    // Used by Settings.modify_with_action() to instantiate policy state
+    /// Convert creation payload to policy state
+    /// Used by Settings.modify_with_action() to instantiate policy state
     fn to_policy_state(self) -> Result<SpendingLimitPolicy> {
         let now = Clock::get().unwrap().unix_timestamp;
         // Sort the destinations
@@ -50,6 +102,7 @@ impl PolicyPayloadConversionTrait for SpendingLimitPolicyCreationPayload {
         if self.time_constraints.start == 0 {
             modified_time_constraints.start = now;
         }
+
         // Determine usage state based on surrounding constraints
         let usage_state = if let Some(usage_state) = self.usage_state {
             // This is the only invariant that needs to be checked on the arg level
@@ -64,6 +117,7 @@ impl PolicyPayloadConversionTrait for SpendingLimitPolicyCreationPayload {
                 last_reset: modified_time_constraints.start,
             }
         };
+
         Ok(SpendingLimitPolicy {
             spending_limit: SpendingLimitV2 {
                 mint: self.mint,
@@ -87,26 +141,18 @@ impl PolicySizeTrait for SpendingLimitPolicyCreationPayload {
     }
 
     fn policy_state_size(&self) -> usize {
-        32 + // mint (in ResourceLimit)
-        TimeConstraints::INIT_SPACE + // timing (in ResourceLimit)
-        QuantityConstraints::INIT_SPACE + // constraints (in ResourceLimit)
-        UsageState::INIT_SPACE + // usage (in ResourceLimit)
+        32 + // mint (in SpendingLimitV2)
+        TimeConstraints::INIT_SPACE + // time_constraints (in SpendingLimitV2)
+        QuantityConstraints::INIT_SPACE + // quantity_constraints (in SpendingLimitV2)
+        UsageState::INIT_SPACE + // usage (in SpendingLimitV2)
         1 + // source_account_index
         4 + self.destinations.len() * 32 // destinations vec
     }
 }
 
-/// Payload for using a spending limit policy.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
-pub struct SpendingLimitPayload {
-    pub amount: u64,
-    pub destination: Pubkey,
-    pub decimals: u8,
-}
-
-pub struct SpendingLimitExecutionArgs {
-    pub settings_key: Pubkey,
-}
+// =============================================================================
+// POLICY TRAIT IMPLEMENTATION
+// =============================================================================
 
 impl PolicyTrait for SpendingLimitPolicy {
     type PolicyState = Self;
@@ -114,9 +160,9 @@ impl PolicyTrait for SpendingLimitPolicy {
     type UsagePayload = SpendingLimitPayload;
     type ExecutionArgs = SpendingLimitExecutionArgs;
 
+    /// Validate policy invariants - no duplicate destinations and valid spending limit
     fn invariant(&self) -> Result<()> {
-        // Check that the destinations are not duplicated. Assumes sorted
-        // destinations.
+        // Check that the destinations are not duplicated (assumes sorted destinations)
         let has_duplicates = self.destinations.windows(2).any(|w| w[0] == w[1]);
         require!(
             !has_duplicates,
@@ -128,6 +174,7 @@ impl PolicyTrait for SpendingLimitPolicy {
         Ok(())
     }
 
+    /// Validate that the destination is allowed
     fn validate_payload(
         &self,
         // No difference between synchronous and asynchronous execution
@@ -143,6 +190,7 @@ impl PolicyTrait for SpendingLimitPolicy {
         Ok(())
     }
 
+    /// Execute the spending limit transfer
     fn execute_payload<'info>(
         &mut self,
         args: Self::ExecutionArgs,
@@ -151,10 +199,13 @@ impl PolicyTrait for SpendingLimitPolicy {
     ) -> Result<()> {
         let current_timestamp = Clock::get()?.unix_timestamp;
 
+        // Check that the spending limit is active
+        self.spending_limit.is_active(current_timestamp)?;
+
         // Reset the period & amount
         self.spending_limit.reset_if_needed(current_timestamp);
 
-        // Check that the amount complies with the resource limit
+        // Check that the amount complies with the spending limit
         self.spending_limit.check_amount(payload.amount)?;
 
         // Validate the accounts
@@ -229,24 +280,12 @@ impl PolicyTrait for SpendingLimitPolicy {
     }
 }
 
-enum ValidatedAccounts<'info> {
-    NativeTransfer {
-        source_account_info: &'info AccountInfo<'info>,
-        source_account_bump: u8,
-        destination_account_info: &'info AccountInfo<'info>,
-        system_program: &'info AccountInfo<'info>,
-    },
-    TokenTransfer {
-        source_account_info: &'info AccountInfo<'info>,
-        source_account_bump: u8,
-        source_token_account_info: &'info AccountInfo<'info>,
-        destination_token_account_info: &'info AccountInfo<'info>,
-        mint: &'info AccountInfo<'info>,
-        token_program: &'info AccountInfo<'info>,
-    },
-}
+// =============================================================================
+// ACCOUNT VALIDATION
+// =============================================================================
+
 impl SpendingLimitPolicy {
-    /// Validates the accounts passed in and returns a struct with the accounts
+    /// Validate the accounts needed for transfer execution
     fn validate_accounts<'info>(
         &self,
         settings_key: &Pubkey,
@@ -326,12 +365,14 @@ impl SpendingLimitPolicy {
                 } else {
                     return err!(SmartAccountError::InvalidNumberOfAccounts);
                 };
+
                 // Deserialize the source and destination token accounts. Either
                 // T22 or TokenKeg accounts
                 let source_token_account =
                     InterfaceAccount::<'info, TokenAccount>::try_from(source_token_account_info)?;
                 let destination_token_account =
                     InterfaceAccount::<TokenAccount>::try_from(destination_token_account_info)?;
+
                 // Check the mint against the policy state
                 require_eq!(self.spending_limit.mint, mint.key());
 

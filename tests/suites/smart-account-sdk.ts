@@ -1349,7 +1349,6 @@ describe("Smart Account SDK", () => {
         transactionIndex.toString()
       );
 
-      assert.strictEqual(transactionPayloadDetails.accountBump, vaultBump);
       assert.deepEqual(
         transactionPayloadDetails.ephemeralSignerBumps,
         new Uint8Array()

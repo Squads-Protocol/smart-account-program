@@ -775,7 +775,6 @@ __metadata:
     "@metaplex-foundation/solita": 0.20.0
     "@solana/spl-token": ^0.3.6
     "@solana/web3.js": ^1.70.3
-    "@types/bn.js": ^5.1.1
     "@types/invariant": 2.2.35
     "@types/node": 24.0.15
     assert: ^2.0.0
@@ -794,15 +793,6 @@ __metadata:
   dependencies:
     tslib: ^2.8.0
   checksum: 085e13b536323945dfc3a270debf270bda6dfc80a1c68fd2ed08f7cbdfcbdaeead402650b5b10722e54e4a24193afc8a3c6f63d3d6d719974e7470557fb415bd
-  languageName: node
-  linkType: hard
-
-"@types/bn.js@npm:^5.1.1":
-  version: 5.2.0
-  resolution: "@types/bn.js@npm:5.2.0"
-  dependencies:
-    "@types/node": "*"
-  checksum: 38fb5512e51edd8386d560ac60d9489014cfcea41d8c383ec9070b176f8ea640189afc1b57fe8cbbe570dec8909d8e05fa129097f0dd4e2a34ebdd69cec4b790
   languageName: node
   linkType: hard
 

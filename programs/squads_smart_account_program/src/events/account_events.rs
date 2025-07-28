@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{state::SettingsAction, Settings, SmartAccountCompiledInstruction, SmartAccountSigner, SpendingLimit};
+use crate::{state::SettingsAction, Settings, SmartAccountCompiledInstruction, SpendingLimit};
 
 
 #[derive(BorshSerialize, BorshDeserialize)]
