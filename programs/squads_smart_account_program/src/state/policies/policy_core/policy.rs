@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
 
+use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
+use crate::state::policies::implementations::InternalFundTransferPolicy;
 use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
-    InternalFundTransferExecutionArgs, Permission, ProgramInteractionExecutionArgs,
+    InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
     ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
     SettingsChangePolicy, SmartAccountSigner, SpendingLimitExecutionArgs, SpendingLimitPolicy,
     Transaction, SEED_POLICY, SEED_PREFIX,
@@ -24,9 +26,6 @@ pub enum PolicyExpirationArgs {
     /// Policy expires when the core settings hash mismatches the stored hash.
     SettingsState,
 }
-
-use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
-use crate::state::policies::implementations::InternalFundTransferPolicy;
 
 #[account]
 pub struct Policy {

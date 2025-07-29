@@ -51,7 +51,11 @@ pub struct SyncTransaction<'info> {
     pub program: Program<'info, SquadsSmartAccountProgram>,
     // `remaining_accounts` must include the following accounts in the exact order:
     // 1. The exact amount of signers required to reach the threshold
-    // 2. Any remaining accounts associated with the instructions
+    // 2. For transaction execution:
+    //   2.1. Any remaining accounts associated with the instructions
+    // 3. For policy execution:
+    //   3.1 Settings account if the policy has a settings state expiration
+    //   3.2 Any remaining accounts associated with the policy
 }
 
 impl<'info> SyncTransaction<'info> {
@@ -189,7 +193,7 @@ impl<'info> SyncTransaction<'info> {
                 // Potentially remove the settings account for expiration from
                 // the remaining accounts
                 let remaining_accounts = &remaining_accounts[account_offset..];
-                
+
                 // Execute the policy
                 policy.execute(None, None, payload, &remaining_accounts)?;
 

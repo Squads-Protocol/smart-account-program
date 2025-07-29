@@ -18,10 +18,8 @@ use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
-use crate::utils;
 use crate::LogAuthorityInfo;
 use crate::SmartAccountEvent;
-use crate::TransactionContent;
 use crate::TransactionEvent;
 use crate::TransactionEventType;
 
@@ -534,7 +532,7 @@ pub struct CloseEmptyPolicyTransaction<'info> {
     pub empty_policy: AccountInfo<'info>,
 
     /// CHECK: `seeds` and `bump` verify that the account is the canonical Proposal,
-    ///         the logic within `transaction_close` does the rest of the checks.
+    ///         the logic within `close_empty_policy_transaction` does the rest of the checks.
     #[account(
         mut,
         seeds = [
@@ -579,7 +577,7 @@ impl CloseEmptyPolicyTransaction<'_> {
     /// empty/deleted policies.
     ///
     /// Since a policy can never exist at the same address again after being
-    /// closed, any transaction & proposal associated with it can be closed.
+    /// closed, any transaction & proposal associated with it can be closed safely.
     pub fn close_empty_policy_transaction(ctx: Context<Self>) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
         let proposal_rent_collector = &ctx.accounts.proposal_rent_collector;

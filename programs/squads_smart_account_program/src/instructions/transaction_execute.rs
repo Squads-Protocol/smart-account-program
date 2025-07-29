@@ -45,10 +45,16 @@ pub struct ExecuteTransaction<'info> {
 
     pub signer: Signer<'info>,
     pub program: Program<'info, SquadsSmartAccountProgram>,
-    // `remaining_accounts` must include the following accounts in the exact order:
+    // `remaining_accounts` must include the following accounts in the exact
+    // order:
+    // For transaction execution:
     // 1. AddressLookupTable accounts in the order they appear in `message.address_table_lookups`.
     // 2. Accounts in the order they appear in `message.account_keys`.
     // 3. Accounts in the order they appear in `message.address_table_lookups`.
+    //
+    // For policy execution:
+    // 1. Settings account if the policy has a settings state expiration
+    // 2. Any remaining accounts associated with the policy
 }
 
 impl<'info> ExecuteTransaction<'info> {
