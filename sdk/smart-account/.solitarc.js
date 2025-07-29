@@ -23,8 +23,15 @@ const ignoredTypes = new Set([
   "AddSpendingLimitEvent",
   "RemoveSpendingLimitEvent",
   "UseSpendingLimitEvent",
+  "TransactionEvent",
+  "ProposalEvent",
+  "SettingsChangePolicyEvent",
   "SmartAccountEvent",
   "ConsensusAccount",
+  "SynchronousTransactionEventV2",
+  "AuthoritySettingsEvent",
+  "AuthorityChangeEvent",
+  "TransactionContent"
 ]);
 
 module.exports = {

@@ -3045,13 +3045,39 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * PolicyInvariantInvalidExpiration: 'Policy invariant violation: invalid policy expiration'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PolicyInvariantInvalidExpirationError extends Error {
+  readonly code: number = 0x17e4
+  readonly name: string = 'PolicyInvariantInvalidExpiration'
+  constructor() {
+    super('Policy invariant violation: invalid policy expiration')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PolicyInvariantInvalidExpirationError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17e4,
+  () => new PolicyInvariantInvalidExpirationError()
+)
+createErrorFromNameLookup.set(
+  'PolicyInvariantInvalidExpiration',
+  () => new PolicyInvariantInvalidExpirationError()
+)
+
+/**
  * PolicyExpirationViolationPolicySettingsKeyMismatch: 'Policy expiration violation: submitted settings key does not match policy settings key'
  *
  * @category Errors
  * @category generated
  */
 export class PolicyExpirationViolationPolicySettingsKeyMismatchError extends Error {
-  readonly code: number = 0x17e4
+  readonly code: number = 0x17e5
   readonly name: string = 'PolicyExpirationViolationPolicySettingsKeyMismatch'
   constructor() {
     super(
@@ -3067,7 +3093,7 @@ export class PolicyExpirationViolationPolicySettingsKeyMismatchError extends Err
 }
 
 createErrorFromCodeLookup.set(
-  0x17e4,
+  0x17e5,
   () => new PolicyExpirationViolationPolicySettingsKeyMismatchError()
 )
 createErrorFromNameLookup.set(
@@ -3082,7 +3108,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationSettingsAccountNotPresentError extends Error {
-  readonly code: number = 0x17e5
+  readonly code: number = 0x17e6
   readonly name: string = 'PolicyExpirationViolationSettingsAccountNotPresent'
   constructor() {
     super(
@@ -3098,7 +3124,7 @@ export class PolicyExpirationViolationSettingsAccountNotPresentError extends Err
 }
 
 createErrorFromCodeLookup.set(
-  0x17e5,
+  0x17e6,
   () => new PolicyExpirationViolationSettingsAccountNotPresentError()
 )
 createErrorFromNameLookup.set(
@@ -3113,7 +3139,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationHashExpiredError extends Error {
-  readonly code: number = 0x17e6
+  readonly code: number = 0x17e7
   readonly name: string = 'PolicyExpirationViolationHashExpired'
   constructor() {
     super('Policy expiration violation: state hash has expired')
@@ -3124,7 +3150,7 @@ export class PolicyExpirationViolationHashExpiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e6,
+  0x17e7,
   () => new PolicyExpirationViolationHashExpiredError()
 )
 createErrorFromNameLookup.set(
@@ -3139,7 +3165,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationTimestampExpiredError extends Error {
-  readonly code: number = 0x17e7
+  readonly code: number = 0x17e8
   readonly name: string = 'PolicyExpirationViolationTimestampExpired'
   constructor() {
     super('Policy expiration violation: timestamp has expired')
@@ -3153,7 +3179,7 @@ export class PolicyExpirationViolationTimestampExpiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e7,
+  0x17e8,
   () => new PolicyExpirationViolationTimestampExpiredError()
 )
 createErrorFromNameLookup.set(

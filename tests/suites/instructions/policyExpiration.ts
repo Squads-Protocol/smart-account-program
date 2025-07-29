@@ -116,6 +116,9 @@ describe("Flows / Policy Expiration", () => {
       rentPayer: members.almighty,
       policies: [policyPda],
       programId,
+      sendOptions: {
+        skipPreflight: true,
+      },
     });
     await connection.confirmTransaction(signature);
     // Check settings counter incremented

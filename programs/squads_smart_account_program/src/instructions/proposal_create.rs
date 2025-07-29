@@ -118,17 +118,18 @@ impl CreateProposal<'_> {
         // Log the event
         let event = ProposalEvent {
             event_type: ProposalEventType::Create,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: args.transaction_index,
             signer: Some(ctx.accounts.creator.key()),
-            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+            proposal: Some(proposal.clone().into_inner()),
             memo: None,
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::ProposalEvent(event).log(&log_authority_info)?;

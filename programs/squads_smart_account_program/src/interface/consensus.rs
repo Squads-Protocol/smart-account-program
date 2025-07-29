@@ -4,9 +4,7 @@ use anchor_lang::{
 };
 
 use crate::{
-    errors::SmartAccountError,
-    state::{Policy, Settings},
-    SmartAccountSigner,
+    errors::SmartAccountError, get_policy_signer_seeds, get_settings_signer_seeds, state::{Policy, Settings}, SmartAccountSigner
 };
 
 use super::consensus_trait::{Consensus, ConsensusAccountType};
@@ -74,6 +72,20 @@ impl ConsensusAccount {
         self.signers().len()
     }
 
+    /// Returns the bump for the consensus account.
+    pub fn bump(&self) -> u8 {
+        match self {
+            ConsensusAccount::Settings(settings) => settings.bump,
+            ConsensusAccount::Policy(policy) => policy.bump,
+        }
+    }
+    /// Returns the signer seeds for the consensus account.
+    pub fn get_signer_seeds(&self) -> Vec<Vec<u8>> {
+        match self {
+            ConsensusAccount::Settings(settings) => get_settings_signer_seeds(settings.seed),
+            ConsensusAccount::Policy(policy) => get_policy_signer_seeds(&policy.settings, policy.seed),
+        }
+    }
     /// Returns the settings if the consensus account is a settings.
     pub fn settings(&mut self) -> Result<&mut Settings> {
         match self {

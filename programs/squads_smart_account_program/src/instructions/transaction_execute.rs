@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
-use crate::interface::consensus::ConsensusAccount;
 use crate::events::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 use crate::utils::*;
@@ -196,40 +196,42 @@ impl<'info> ExecuteTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
-<<<<<<< HEAD
         // Check the account invariants
         consensus_account.invariant()?;
-=======
+
+        // Log the execution event
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         // Log the execution event
-        let execute_event = TransactionExecuteEvent {
-            settings_pubkey: settings.key(),
-            proposal_pubkey: proposal.key(),
+        let execute_event = TransactionEvent {
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
+            event_type: TransactionEventType::Execute,
             transaction_pubkey: ctx.accounts.transaction.key(),
             transaction_index: transaction.index,
-            executor: ctx.accounts.signer.key(),
-            account_index: transaction.account_index,
+            signer: Some(ctx.accounts.signer.key()),
+            memo: None,
+            transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
         };
 
         // Log the proposal vote event with execution state
-        let vote_event = ProposalEvent {
+        let proposal_event = ProposalEvent {
             event_type: ProposalEventType::Execute,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: transaction.index,
             signer: Some(ctx.accounts.signer.key()),
             memo: None,
-            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+            proposal: Some(proposal.clone().into_inner()),
         };
-        SmartAccountEvent::TransactionExecuteEvent(execute_event).log(&log_authority_info)?;
-        SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
+        SmartAccountEvent::TransactionEvent(execute_event).log(&log_authority_info)?;
+        SmartAccountEvent::ProposalEvent(proposal_event).log(&log_authority_info)?;
 
->>>>>>> async-program-logging
         Ok(())
     }
 }

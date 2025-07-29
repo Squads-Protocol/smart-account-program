@@ -623,6 +623,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -692,6 +697,11 @@
           "docs": [
             "We might need it in case reallocation is needed."
           ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -730,6 +740,11 @@
         },
         {
           "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
           "isMut": false,
           "isSigner": false
         }
@@ -891,6 +906,11 @@
               "name": "systemProgram",
               "isMut": false,
               "isSigner": false
+            },
+            {
+              "name": "program",
+              "isMut": false,
+              "isSigner": false
             }
           ]
         },
@@ -946,6 +966,11 @@
           "name": "signer",
           "isMut": false,
           "isSigner": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -1146,6 +1171,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1208,6 +1238,11 @@
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1246,6 +1281,11 @@
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1284,6 +1324,11 @@
           "isMut": false,
           "isSigner": false,
           "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": [
@@ -1448,6 +1493,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -1502,6 +1552,11 @@
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []
@@ -1513,6 +1568,15 @@
         "empty/deleted policies."
       ],
       "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Global program config account. (Just using this for logging purposes,",
+            "since we no longer have the consensus account)"
+          ]
+        },
         {
           "name": "emptyPolicy",
           "isMut": false,
@@ -1552,6 +1616,11 @@
         },
         {
           "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
           "isMut": false,
           "isSigner": false
         }
@@ -1660,6 +1729,11 @@
         },
         {
           "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
           "isMut": false,
           "isSigner": false
         }
@@ -2017,6 +2091,13 @@
               "The seed of the policy."
             ],
             "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Bump for the policy."
+            ],
+            "type": "u8"
           },
           {
             "name": "transactionIndex",
@@ -3445,6 +3526,16 @@
     },
     {
       "name": "InternalFundTransferPolicy",
+      "docs": [
+        "== InternalFundTransferPolicy ==",
+        "This policy allows for the transfer of SOL and SPL tokens between",
+        "a set of source and destination accounts.",
+        "",
+        "The policy is defined by a set of source and destination account indices",
+        "and a set of allowed mints.",
+        "===============================================",
+        ""
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3539,6 +3630,9 @@
           },
           {
             "name": "instructionsConstraints",
+            "docs": [
+              "Constraints evaluated as a logical OR"
+            ],
             "type": {
               "vec": {
                 "defined": "InstructionConstraint"
@@ -3547,6 +3641,9 @@
           },
           {
             "name": "spendingLimits",
+            "docs": [
+              "Spending limits applied during policy execution"
+            ],
             "type": {
               "vec": {
                 "defined": "SpendingLimitV2"
@@ -3563,12 +3660,15 @@
         "fields": [
           {
             "name": "programId",
+            "docs": [
+              "The program that this constraint applies to"
+            ],
             "type": "publicKey"
           },
           {
             "name": "accountConstraints",
             "docs": [
-              "Constraints will be evaluated as a logical AND."
+              "Account constraints (evaluated as logical AND)"
             ],
             "type": {
               "vec": {
@@ -3579,7 +3679,7 @@
           {
             "name": "dataConstraints",
             "docs": [
-              "Constraints will be evaluated as a logical AND."
+              "Data constraints (evaluated as logical AND)"
             ],
             "type": {
               "vec": {
@@ -3635,7 +3735,7 @@
     {
       "name": "LimitedTimeConstraints",
       "docs": [
-        "Limited subset of TimeConstraints."
+        "Limited subset of TimeConstraints"
       ],
       "type": {
         "kind": "struct",
@@ -3769,7 +3869,14 @@
       }
     },
     {
-      "name": "SettingsChangePolicyCreationPayload",
+      "name": "SettingsChangePolicy",
+      "docs": [
+        "== SettingsChangePolicy ==",
+        "This policy allows for the modification of the settings of a smart account.",
+        "",
+        "The policy is defined by a set of allowed settings changes.",
+        "==============================================="
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3785,7 +3892,7 @@
       }
     },
     {
-      "name": "SettingsChangePolicy",
+      "name": "SettingsChangePolicyCreationPayload",
       "type": {
         "kind": "struct",
         "fields": [
@@ -3823,12 +3930,36 @@
     {
       "name": "SpendingLimitPolicy",
       "docs": [
-        "Enhanced period enum supporting custom durations",
-        "Main spending limit structure using composition"
+        "== SpendingLimitPolicy ==",
+        "This policy allows for the transfer of SOL and SPL tokens between",
+        "a source account and a set of destination accounts.",
+        "",
+        "The policy is defined by a spending limit configuration and a source account index.",
+        "The spending limit configuration includes a mint, time constraints, quantity constraints,",
+        "and usage state.",
+        "===============================================",
+        "Main spending limit policy structure"
       ],
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "sourceAccountIndex",
+            "docs": [
+              "The source account index"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "destinations",
+            "docs": [
+              "The destination addresses the spending limit is allowed to send funds to",
+              "If empty, funds can be sent to any address"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
           {
             "name": "spendingLimit",
             "docs": [
@@ -3836,23 +3967,6 @@
             ],
             "type": {
               "defined": "SpendingLimitV2"
-            }
-          },
-          {
-            "name": "sourceAccountIndex",
-            "docs": [
-              "The source account index."
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "destinations",
-            "docs": [
-              "The destination addresses the spending limit is allowed to sent funds to.",
-              "If empty, funds can be sent to any address."
-            ],
-            "type": {
-              "vec": "publicKey"
             }
           }
         ]
@@ -3888,6 +4002,10 @@
           },
           {
             "name": "usageState",
+            "docs": [
+              "Optionally this can be submitted to update a spending limit policy",
+              "Cannot be Some() if accumulate_unused is true, to avoid invariant behavior"
+            ],
             "type": {
               "option": {
                 "defined": "UsageState"
@@ -3906,7 +4024,7 @@
     {
       "name": "SpendingLimitPayload",
       "docs": [
-        "Payload for using a spending limit policy."
+        "Payload for using a spending limit policy"
       ],
       "type": {
         "kind": "struct",
@@ -4152,6 +4270,85 @@
       }
     },
     {
+      "name": "SynchronousTransactionEventPayload",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "TransactionPayload",
+            "fields": [
+              {
+                "name": "accountIndex",
+                "type": "u8"
+              },
+              {
+                "name": "instructions",
+                "type": {
+                  "vec": {
+                    "defined": "SmartAccountCompiledInstruction"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "PolicyPayload",
+            "fields": [
+              {
+                "name": "policyPayload",
+                "type": {
+                  "defined": "PolicyPayload"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionEventType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Create"
+          },
+          {
+            "name": "Execute"
+          },
+          {
+            "name": "Close"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProposalEventType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Create"
+          },
+          {
+            "name": "Approve"
+          },
+          {
+            "name": "Reject"
+          },
+          {
+            "name": "Cancel"
+          },
+          {
+            "name": "Execute"
+          },
+          {
+            "name": "Close"
+          }
+        ]
+      }
+    },
+    {
       "name": "Vote",
       "type": {
         "kind": "enum",
@@ -4331,7 +4528,7 @@
     {
       "name": "AllowedSettingsChange",
       "docs": [
-        "Supports a subset of settings changes that can be done via a policy."
+        "Defines which settings changes are allowed by the policy"
       ],
       "type": {
         "kind": "enum",
@@ -4341,12 +4538,18 @@
             "fields": [
               {
                 "name": "newSigner",
+                "docs": [
+                  "Some() - add a specific signer, None - add any signer"
+                ],
                 "type": {
                   "option": "publicKey"
                 }
               },
               {
                 "name": "newSignerPermissions",
+                "docs": [
+                  "Some() - only allow certain permissions, None - allow all permissions"
+                ],
                 "type": {
                   "option": {
                     "defined": "Permissions"
@@ -4360,6 +4563,9 @@
             "fields": [
               {
                 "name": "oldSigner",
+                "docs": [
+                  "Some() - remove a specific signer, None - remove any signer"
+                ],
                 "type": {
                   "option": "publicKey"
                 }
@@ -4374,6 +4580,9 @@
             "fields": [
               {
                 "name": "newTimeLock",
+                "docs": [
+                  "Some() - change timelock to a specific value, None - change timelock to any value"
+                ],
                 "type": {
                   "option": "u32"
                 }
@@ -4386,7 +4595,7 @@
     {
       "name": "LimitedSettingsAction",
       "docs": [
-        "Limited subset of settings change actions"
+        "Limited subset of settings change actions for execution"
       ],
       "type": {
         "kind": "enum",
@@ -5619,21 +5828,26 @@
     },
     {
       "code": 6116,
+      "name": "PolicyInvariantInvalidExpiration",
+      "msg": "Policy invariant violation: invalid policy expiration"
+    },
+    {
+      "code": 6117,
       "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
       "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
     },
     {
-      "code": 6117,
+      "code": 6118,
       "name": "PolicyExpirationViolationSettingsAccountNotPresent",
       "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
     },
     {
-      "code": 6118,
+      "code": 6119,
       "name": "PolicyExpirationViolationHashExpired",
       "msg": "Policy expiration violation: state hash has expired"
     },
     {
-      "code": 6119,
+      "code": 6120,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
     }

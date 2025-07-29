@@ -4,7 +4,7 @@ import {
   createCloseTransactionInstruction,
   PROGRAM_ID,
 } from "../generated";
-import { getProposalPda, getTransactionPda } from "../pda";
+import { getProgramConfigPda, getProposalPda, getTransactionPda } from "../pda";
 
 export function closeEmptyPolicyTransaction({
   emptyPolicy,
@@ -29,6 +29,10 @@ export function closeEmptyPolicyTransaction({
     programId,
   });
 
+  const [programConfigPda] = getProgramConfigPda({
+    programId,
+  });
+
   return createCloseEmptyPolicyTransactionInstruction(
     {
       emptyPolicy,
@@ -36,6 +40,8 @@ export function closeEmptyPolicyTransaction({
       proposalRentCollector: transactionRentCollector,
       transaction: transactionPda,
       transactionRentCollector,
+      programConfig: programConfigPda,
+      program: programId,
     },
     programId
   );

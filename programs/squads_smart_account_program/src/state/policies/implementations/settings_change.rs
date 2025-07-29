@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    errors::SmartAccountError, state::Settings, Permissions, PolicyExecutionContext,
-    PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction, SmartAccountSigner,
+    errors::SmartAccountError, get_settings_signer_seeds, program::SquadsSmartAccountProgram,
+    state::Settings, LogAuthorityInfo, Permissions, PolicyExecutionContext,
+    PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction,
+    SettingsChangePolicyEvent, SmartAccountEvent, SmartAccountSigner,
 };
-
-
 
 /// == SettingsChangePolicy ==
 /// This policy allows for the modification of the settings of a smart account.
@@ -39,7 +39,6 @@ pub enum AllowedSettingsChange {
         new_time_lock: Option<u32>,
     },
 }
-
 
 // =============================================================================
 // CREATION PAYLOAD TYPES
@@ -79,6 +78,8 @@ pub struct ValidatedAccounts<'info> {
     pub rent_payer: Option<Signer<'info>>,
     /// Optional just to comply with later use of Settings::modify_with_action
     pub system_program: Option<Program<'info, System>>,
+    /// Program account used for logging
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 // =============================================================================
@@ -297,8 +298,29 @@ impl PolicyTrait for SettingsChangePolicy {
                 // those actions are excluded from LimitedSettingsAction
                 &[],
                 &crate::ID,
+                None,
             )?;
+
+            // Run settings invariant
+            validated_accounts.settings.invariant()?;
+
+            let log_authority_info = LogAuthorityInfo {
+                authority: validated_accounts.settings.to_account_info().clone(),
+                authority_seeds: get_settings_signer_seeds(validated_accounts.settings.seed),
+                bump: validated_accounts.settings.bump,
+                program: validated_accounts.program.to_account_info(),
+            };
+
+            // Log the event since we're modifying the settings state
+            let event = SettingsChangePolicyEvent {
+                settings_pubkey: validated_accounts.settings.key(),
+                settings: validated_accounts.settings.clone().into_inner(),
+                changes: payload.actions.clone(),
+            };
+            SmartAccountEvent::SettingsChangePolicyEvent(event).log(&log_authority_info)?;
         }
+
+        // Run settings invariant
         Ok(())
     }
 }
@@ -314,10 +336,15 @@ impl SettingsChangePolicy {
         settings_key: Pubkey,
         accounts: &'info [AccountInfo<'info>],
     ) -> Result<ValidatedAccounts<'info>> {
-        let (settings_account_info, rent_payer_info, system_program_info) = if let [settings_account_info, rent_payer_info, system_program_info, _remaining @ ..] =
+        let (settings_account_info, rent_payer_info, system_program_info, program_info) = if let [settings_account_info, rent_payer_info, system_program_info, program_info, _remaining @ ..] =
             accounts
         {
-            (settings_account_info, rent_payer_info, system_program_info)
+            (
+                settings_account_info,
+                rent_payer_info,
+                system_program_info,
+                program_info,
+            )
         } else {
             return err!(SmartAccountError::InvalidNumberOfAccounts);
         };
@@ -345,10 +372,15 @@ impl SettingsChangePolicy {
         let system_program: Program<'info, System> = Program::try_from(system_program_info)
             .map_err(|_| SmartAccountError::SettingsChangeInvalidSystemProgram)?;
 
+        // Program validation
+        let program: Program<'info, SquadsSmartAccountProgram> =
+            Program::try_from(program_info).map_err(|_| SmartAccountError::InvalidAccount)?;
+
         Ok(ValidatedAccounts {
             settings,
             rent_payer: Some(rent_payer),
             system_program: Some(system_program),
+            program: program,
         })
     }
 }

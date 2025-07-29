@@ -40,6 +40,7 @@ export function createSettingsTransaction({
       creator,
       rentPayer: rentPayer ?? creator,
       anchorRemainingAccounts: remainingAccounts,
+      program: programId,
     },
     { args: { actions, memo: memo ?? null } },
     programId

@@ -9,7 +9,7 @@ use crate::{
     Transaction, SEED_POLICY, SEED_PREFIX,
 };
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
 pub enum PolicyExpiration {
     /// Policy expires at a specific timestamp
     Timestamp(i64),
@@ -35,6 +35,9 @@ pub struct Policy {
 
     /// The seed of the policy.
     pub seed: u64,
+
+    /// Bump for the policy.
+    pub bump: u8,
 
     /// Transaction index for stale transaction protection.
     pub transaction_index: u64,
@@ -66,16 +69,16 @@ impl Policy {
         8  + // anchor discriminator
         32 + // settings
         8  + // seed
+        1 + // bump
         8  + // transaction_index
         8  + // stale_transaction_index
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE + // signers
         2  + // threshold
         4  + // time_lock
-        1  + // policy_type discriminator
-        policy_data_length + // policy_type data
+        1  + policy_data_length + // discriminator + policy_data_length
         8  + // start_timestamp
-        1  + 32 // expiration (discriminator + max data size)
+        1  + PolicyExpiration::INIT_SPACE // expiration (discriminator + max data size)
     }
 
     /// Check if the policy account space needs to be reallocated.
@@ -142,7 +145,10 @@ impl Policy {
         if let Some(expiration) = &self.expiration {
             match expiration {
                 PolicyExpiration::Timestamp(timestamp) => {
-                    require!(*timestamp > self.start, SmartAccountError::PolicyInvariantInvalidExpiration);
+                    require!(
+                        *timestamp > self.start,
+                        SmartAccountError::PolicyInvariantInvalidExpiration
+                    );
                 }
                 _ => {}
             }
@@ -157,6 +163,7 @@ impl Policy {
     pub fn create_state(
         settings: Pubkey,
         seed: u64,
+        bump: u8,
         signers: &Vec<SmartAccountSigner>,
         threshold: u16,
         time_lock: u32,
@@ -170,6 +177,7 @@ impl Policy {
         Ok(Policy {
             settings,
             seed,
+            bump,
             transaction_index: 0,
             stale_transaction_index: 0,
             signers: sorted_signers,

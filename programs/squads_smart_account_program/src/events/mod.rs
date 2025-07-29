@@ -19,7 +19,9 @@ pub enum SmartAccountEvent {
     AuthorityChangeEvent(AuthorityChangeEvent),
     TransactionEvent(TransactionEvent),
     ProposalEvent(ProposalEvent),
-    TransactionExecuteEvent(TransactionExecuteEvent)
+    SynchronousTransactionEventV2(SynchronousTransactionEventV2),
+    SettingsChangePolicyEvent(SettingsChangePolicyEvent),
+    PolicyEvent(PolicyEvent),
 }
 pub struct LogAuthorityInfo<'info> {
     pub authority: AccountInfo<'info>,

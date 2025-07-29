@@ -164,6 +164,12 @@ describe("Flow / SettingsChangePolicy", () => {
         isWritable: false,
         isSigner: false,
       },
+      // Program
+      {
+        pubkey: programId,
+        isWritable: false,
+        isSigner: false,
+      },
     ];
     // Try to add the new signer to the policy
     signature = await smartAccount.rpc.executePolicyPayloadSync({

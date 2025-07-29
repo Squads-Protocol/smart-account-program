@@ -43,6 +43,7 @@ export const createSettingsTransactionStruct = new beet.FixableBeetArgsStruct<
  * @property [_writable_] transaction
  * @property [**signer**] creator
  * @property [_writable_, **signer**] rentPayer
+ * @property [] program
  * @category Instructions
  * @category CreateSettingsTransaction
  * @category generated
@@ -53,6 +54,7 @@ export type CreateSettingsTransactionInstructionAccounts = {
   creator: web3.PublicKey
   rentPayer: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -102,6 +104,11 @@ export function createCreateSettingsTransactionInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

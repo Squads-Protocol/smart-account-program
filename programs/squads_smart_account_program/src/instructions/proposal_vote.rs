@@ -91,7 +91,7 @@ impl VoteOnProposal<'_> {
     /// Approve a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(&ctx, Vote::Approve))]
-    pub fn approve_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+    pub fn approve_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
 
         let proposal = &mut ctx.accounts.proposal;
@@ -102,7 +102,8 @@ impl VoteOnProposal<'_> {
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
             event_type: ProposalEventType::Approve,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
             signer: Some(signer.key()),
@@ -110,9 +111,9 @@ impl VoteOnProposal<'_> {
             proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
@@ -123,7 +124,7 @@ impl VoteOnProposal<'_> {
     /// Reject a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
     #[access_control(ctx.accounts.validate(&ctx, Vote::Reject))]
-    pub fn reject_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+    pub fn reject_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
         let signer = &mut ctx.accounts.signer;
@@ -135,17 +136,18 @@ impl VoteOnProposal<'_> {
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
             event_type: ProposalEventType::Reject,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
             signer: Some(signer.key()),
             memo: args.memo,
-            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+            proposal: Some(proposal.clone().into_inner()),
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;
@@ -156,7 +158,7 @@ impl VoteOnProposal<'_> {
     /// Cancel a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Approved`.
     #[access_control(ctx.accounts.validate(&ctx, Vote::Cancel))]
-    pub fn cancel_proposal(ctx: Context<Self>, _args: VoteOnProposalArgs) -> Result<()> {
+    pub fn cancel_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
         let signer = &mut ctx.accounts.signer;
@@ -182,17 +184,18 @@ impl VoteOnProposal<'_> {
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
             event_type: ProposalEventType::Cancel,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
             signer: Some(signer.key()),
             memo: args.memo,
-            proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
+            proposal: Some(proposal.clone().into_inner()),
         };
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::ProposalEvent(vote_event).log(&log_authority_info)?;

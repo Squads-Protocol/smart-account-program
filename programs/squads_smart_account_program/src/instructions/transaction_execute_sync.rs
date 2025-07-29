@@ -1,4 +1,3 @@
-use account_events::SynchronousTransactionEvent;
 use anchor_lang::prelude::*;
 
 use crate::{
@@ -99,7 +98,7 @@ impl<'info> SyncTransaction<'info> {
         let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize..];
 
         let consensus_account_key = consensus_account.key();
-        match consensus_account.account_type() {
+        let event = match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
                 // Get the payload
                 let payload = args.payload.to_transaction_payload()?;
@@ -152,28 +151,25 @@ impl<'info> SyncTransaction<'info> {
                 // faulty behavior.
                 executable_message.execute(smart_account_signer_seeds)?;
 
-                // Log the event
-                let event = SynchronousTransactionEvent {
-                    settings_pubkey: settings_key,
+                // Create the event
+                let event = SynchronousTransactionEventV2 {
+                    consensus_account: settings_key,
+                    consensus_account_type: ConsensusAccountType::Settings,
+                    payload: SynchronousTransactionEventPayload::TransactionPayload {
+                        account_index: args.account_index,
+                        instructions: executable_message.instructions,
+                    },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()
                         .map(|acc| acc.key.clone())
                         .collect(),
-                    account_index: args.account_index,
-                    instructions: executable_message.instructions,
                     instruction_accounts: executable_message
                         .accounts
                         .iter()
                         .map(|a| a.key.clone())
                         .collect(),
                 };
-                let log_authority_info = LogAuthorityInfo {
-                    authority: consensus_account.to_account_info(),
-                    authority_seeds: get_settings_signer_seeds(settings.seed),
-                    bump: settings.bump,
-                    program: ctx.accounts.program.to_account_info(),
-                };
-                SmartAccountEvent::SynchronousTransactionEvent(event).log(&log_authority_info)?;
+                event
             }
             ConsensusAccountType::Policy => {
                 let payload = args.payload.to_policy_payload()?;
@@ -193,13 +189,41 @@ impl<'info> SyncTransaction<'info> {
                 // Potentially remove the settings account for expiration from
                 // the remaining accounts
                 let remaining_accounts = &remaining_accounts[account_offset..];
+                
                 // Execute the policy
                 policy.execute(None, None, payload, &remaining_accounts)?;
+
+                // Create the event
+                let event = SynchronousTransactionEventV2 {
+                    consensus_account: consensus_account_key,
+                    consensus_account_type: ConsensusAccountType::Policy,
+                    payload: SynchronousTransactionEventPayload::PolicyPayload {
+                        policy_payload: payload.clone(),
+                    },
+                    signers: ctx.remaining_accounts[..args.num_signers as usize]
+                        .iter()
+                        .map(|acc| acc.key.clone())
+                        .collect(),
+                    instruction_accounts: remaining_accounts
+                        .iter()
+                        .map(|acc| acc.key.clone())
+                        .collect(),
+                };
+                event
             }
-        }
+        };
 
         // Check the policy invariant
         consensus_account.invariant()?;
+
+        // Log the event
+        let log_authority_info = LogAuthorityInfo {
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::SynchronousTransactionEventV2(event).log(&log_authority_info)?;
 
         Ok(())
     }

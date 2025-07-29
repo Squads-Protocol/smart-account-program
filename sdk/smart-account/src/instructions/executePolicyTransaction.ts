@@ -40,6 +40,7 @@ export function executePolicyTransaction({
       proposal: proposalPda,
       transaction: transactionPda,
       anchorRemainingAccounts,
+      program: programId,
     },
     programId
   );

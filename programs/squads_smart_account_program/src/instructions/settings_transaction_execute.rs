@@ -1,8 +1,17 @@
 use anchor_lang::prelude::*;
 
 use crate::consensus_trait::Consensus;
+use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::LogAuthorityInfo;
+use crate::ProposalEvent;
+use crate::ProposalEventType;
+use crate::SmartAccountEvent;
+use crate::TransactionContent;
+use crate::TransactionEvent;
+use crate::TransactionEventType;
 
 #[derive(Accounts)]
 pub struct ExecuteSettingsTransaction<'info> {
@@ -51,6 +60,9 @@ pub struct ExecuteSettingsTransaction<'info> {
 
     /// We might need it in case reallocation is needed.
     pub system_program: Option<Program<'info, System>>,
+
+    pub program: Program<'info, SquadsSmartAccountProgram>,
+
     // In case the transaction contains Add(Remove)SpendingLimit actions,
     // `remaining_accounts` must contain the SpendingLimit accounts to be initialized/closed.
     // remaining_accounts
@@ -118,6 +130,14 @@ impl<'info> ExecuteSettingsTransaction<'info> {
 
         let rent = Rent::get()?;
 
+        // Log event authority info
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info().clone(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+
         // Execute the actions one by one.
         for action in transaction.actions.iter() {
             settings.modify_with_action(
@@ -128,6 +148,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                 &ctx.accounts.system_program,
                 &ctx.remaining_accounts,
                 &ctx.program_id,
+                Some(&log_authority_info),
             )?;
         }
 
@@ -152,6 +173,37 @@ impl<'info> ExecuteSettingsTransaction<'info> {
         proposal.status = ProposalStatus::Executed {
             timestamp: Clock::get()?.unix_timestamp,
         };
+
+        // Transaction event
+        let event = TransactionEvent {
+            event_type: TransactionEventType::Execute,
+            consensus_account: settings.key(),
+            consensus_account_type: ConsensusAccountType::Settings,
+            transaction_pubkey: transaction.key(),
+            transaction_index: transaction.index,
+            signer: Some(ctx.accounts.signer.key()),
+            transaction_content: Some(TransactionContent::SettingsTransaction {
+                settings: settings.clone().into_inner(),
+                transaction: transaction.clone().into_inner(),
+                changes: transaction.actions.clone(),
+            }),
+            memo: None,
+        };
+
+        // Proposal event
+        let proposal_event = ProposalEvent {
+            event_type: ProposalEventType::Execute,
+            consensus_account: settings.key(),
+            consensus_account_type: ConsensusAccountType::Settings,
+            proposal_pubkey: proposal.key(),
+            transaction_index: transaction.index,
+            signer: Some(ctx.accounts.signer.key()),
+            memo: None,
+            proposal: Some(proposal.clone().into_inner()),
+        };
+
+        SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;
+        SmartAccountEvent::ProposalEvent(proposal_event).log(&log_authority_info)?;
 
         Ok(())
     }

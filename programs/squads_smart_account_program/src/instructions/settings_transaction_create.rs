@@ -1,9 +1,11 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::Consensus;
-use crate::errors::*;
-use crate::state::*;
+use crate::consensus_trait::{Consensus, ConsensusAccountType};
+use crate::program::SquadsSmartAccountProgram;
+use crate::{state::*, SmartAccountEvent};
 use crate::utils::validate_settings_actions;
+use crate::LogAuthorityInfo;
+use crate::{errors::*, TransactionContent, TransactionEvent, TransactionEventType};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSettingsTransactionArgs {
@@ -43,6 +45,8 @@ pub struct CreateSettingsTransaction<'info> {
     pub rent_payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CreateSettingsTransaction<'_> {
@@ -92,16 +96,37 @@ impl CreateSettingsTransaction<'_> {
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
-        transaction.actions = args.actions;
+        transaction.actions = args.actions.clone();
 
         // Updated last transaction index in the settings account.
         settings.transaction_index = transaction_index;
 
         settings.invariant()?;
 
-        // Logs for indexing.
-        msg!("transaction index: {}", transaction_index);
+        // Log event authority info
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info().clone(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
 
+        // Log the event
+        let event = TransactionEvent {
+            event_type: TransactionEventType::Create,
+            consensus_account: settings.key(),
+            consensus_account_type: ConsensusAccountType::Settings,
+            transaction_pubkey: transaction.key(),
+            transaction_index,
+            signer: Some(creator.key()),
+            transaction_content: Some(TransactionContent::SettingsTransaction {
+                settings: settings.clone().into_inner(),
+                transaction: transaction.clone().into_inner(),
+                changes: args.actions,
+            }),
+            memo: None,
+        };
+        SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;
         Ok(())
     }
 }

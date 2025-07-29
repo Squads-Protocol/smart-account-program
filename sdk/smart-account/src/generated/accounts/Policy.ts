@@ -26,6 +26,7 @@ import {
 export type PolicyArgs = {
   settings: web3.PublicKey
   seed: beet.bignum
+  bump: number
   transactionIndex: beet.bignum
   staleTransactionIndex: beet.bignum
   signers: SmartAccountSigner[]
@@ -48,6 +49,7 @@ export class Policy implements PolicyArgs {
   private constructor(
     readonly settings: web3.PublicKey,
     readonly seed: beet.bignum,
+    readonly bump: number,
     readonly transactionIndex: beet.bignum,
     readonly staleTransactionIndex: beet.bignum,
     readonly signers: SmartAccountSigner[],
@@ -65,6 +67,7 @@ export class Policy implements PolicyArgs {
     return new Policy(
       args.settings,
       args.seed,
+      args.bump,
       args.transactionIndex,
       args.staleTransactionIndex,
       args.signers,
@@ -193,6 +196,7 @@ export class Policy implements PolicyArgs {
         }
         return x
       })(),
+      bump: this.bump,
       transactionIndex: (() => {
         const x = <{ toNumber: () => number }>this.transactionIndex
         if (typeof x.toNumber === 'function') {
@@ -249,6 +253,7 @@ export const policyBeet = new beet.FixableBeetStruct<
     ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
     ['settings', beetSolana.publicKey],
     ['seed', beet.u64],
+    ['bump', beet.u8],
     ['transactionIndex', beet.u64],
     ['staleTransactionIndex', beet.u64],
     ['signers', beet.array(smartAccountSignerBeet)],

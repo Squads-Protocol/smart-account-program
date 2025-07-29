@@ -1,5 +1,5 @@
 import { getProposalPda } from "../pda";
-import { createApproveProposalInstruction } from "../generated";
+import { createApproveProposalInstruction, PROGRAM_ID } from "../generated";
 import { PublicKey } from "@solana/web3.js";
 
 export function approveProposal({
@@ -7,7 +7,7 @@ export function approveProposal({
   transactionIndex,
   signer,
   memo,
-  programId,
+  programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
   transactionIndex: bigint;
@@ -22,7 +22,7 @@ export function approveProposal({
   });
 
   return createApproveProposalInstruction(
-    { consensusAccount: settingsPda, proposal: proposalPda, signer },
+    { consensusAccount: settingsPda, proposal: proposalPda, signer, program: programId },
     { args: { memo: memo ?? null } },
     programId
   );

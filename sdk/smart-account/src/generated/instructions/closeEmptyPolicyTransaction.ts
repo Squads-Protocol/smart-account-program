@@ -22,22 +22,26 @@ export const closeEmptyPolicyTransactionStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _closeEmptyPolicyTransaction_ instruction
  *
+ * @property [_writable_] programConfig
  * @property [] emptyPolicy
  * @property [_writable_] proposal
  * @property [_writable_] transaction
  * @property [_writable_] proposalRentCollector
  * @property [_writable_] transactionRentCollector
+ * @property [] program
  * @category Instructions
  * @category CloseEmptyPolicyTransaction
  * @category generated
  */
 export type CloseEmptyPolicyTransactionInstructionAccounts = {
+  programConfig: web3.PublicKey
   emptyPolicy: web3.PublicKey
   proposal: web3.PublicKey
   transaction: web3.PublicKey
   proposalRentCollector: web3.PublicKey
   transactionRentCollector: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -62,6 +66,11 @@ export function createCloseEmptyPolicyTransactionInstruction(
       closeEmptyPolicyTransactionInstructionDiscriminator,
   })
   const keys: web3.AccountMeta[] = [
+    {
+      pubkey: accounts.programConfig,
+      isWritable: true,
+      isSigner: false,
+    },
     {
       pubkey: accounts.emptyPolicy,
       isWritable: false,
@@ -89,6 +98,11 @@ export function createCloseEmptyPolicyTransactionInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

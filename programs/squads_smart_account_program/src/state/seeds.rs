@@ -20,6 +20,15 @@ pub fn get_settings_signer_seeds(settings_seed: u128) -> Vec<Vec<u8>> {
     ]
 }
 
+pub fn get_policy_signer_seeds(settings_key: &Pubkey, policy_seed: u64) -> Vec<Vec<u8>> {
+    vec![
+        SEED_PREFIX.to_vec(),
+        settings_key.as_ref().to_vec(),
+        SEED_POLICY.to_vec(),
+        policy_seed.to_le_bytes().to_vec(),
+    ]
+}
+
 /// Derives the account seeds for a given smart account based on the settings key and account index
 pub fn get_smart_account_seeds<'a>(
     settings_key: &'a Pubkey,

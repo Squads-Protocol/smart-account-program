@@ -40,6 +40,7 @@ export function createPolicyTransaction({
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
+      program: programId,
     },
     {
       args: {

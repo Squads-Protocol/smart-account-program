@@ -1,5 +1,6 @@
 import {
   AccountMeta,
+  ComputeBudgetProgram,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -171,7 +172,10 @@ describe("Examples / Transaction Buffers", () => {
     // First chunk uploaded. Check that length is as expected.
     assert.equal(txBufferDeser1.buffer.length, 400);
 
-    const secondSlice = messageBuffer.transactionMessageBytes.slice(400, messageBuffer.transactionMessageBytes.byteLength);
+    const secondSlice = messageBuffer.transactionMessageBytes.slice(
+      400,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Extned the buffer.
     const secondIx =
@@ -216,7 +220,10 @@ describe("Examples / Transaction Buffers", () => {
       );
 
     // Full buffer uploaded. Check that length is as expected.
-    assert.equal(txBufferDeser2.buffer.length, messageBuffer.transactionMessageBytes.byteLength);
+    assert.equal(
+      txBufferDeser2.buffer.length,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Derive transaction PDA.
     const [transactionPda] = smartAccount.getTransactionPda({
@@ -252,7 +259,7 @@ describe("Examples / Transaction Buffers", () => {
                 transactionMessage: new Uint8Array(6).fill(0),
                 ephemeralSigners: 0,
                 memo: null,
-              }
+              },
             ],
           } as CreateTransactionArgs,
         } as CreateTransactionFromBufferInstructionArgs,
@@ -284,7 +291,9 @@ describe("Examples / Transaction Buffers", () => {
       );
 
     // Ensure final transaction has 23 instructions
-    let transactionPayloadDetails = extractTransactionPayloadDetails(transactionInfo.payload)
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
     assert.equal(transactionPayloadDetails.message.instructions.length, 23);
   });
 
@@ -305,7 +314,9 @@ describe("Examples / Transaction Buffers", () => {
       );
 
     // Check that we're dealing with the same account from last test.
-    let transactionPayloadDetails = extractTransactionPayloadDetails(transactionInfo.payload)
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
     assert.equal(transactionPayloadDetails.message.instructions.length, 23);
 
     const [proposalPda] = smartAccount.getProposalPda({
@@ -350,7 +361,11 @@ describe("Examples / Transaction Buffers", () => {
       programId,
     });
 
-    const tx = new Transaction().add(ix.instruction);
+    let heapFrameIx = ComputeBudgetProgram.requestHeapFrame({
+      bytes: 256_000,
+    });
+
+    const tx = new Transaction().add(heapFrameIx).add(ix.instruction);
     const signature4 = await connection.sendTransaction(
       tx,
       [members.almighty],

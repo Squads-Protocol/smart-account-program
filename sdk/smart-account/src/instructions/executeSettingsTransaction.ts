@@ -58,6 +58,7 @@ export function executeSettingsTransaction({
       rentPayer: rentPayer ?? signer,
       systemProgram: SystemProgram.programId,
       anchorRemainingAccounts: remainingAccounts,
+      program: programId,
     },
     programId
   );

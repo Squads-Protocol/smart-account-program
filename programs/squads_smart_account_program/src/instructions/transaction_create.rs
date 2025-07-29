@@ -182,20 +182,23 @@ impl<'info> CreateTransaction<'info> {
 
         consensus_account.invariant()?;
 
-        // Log the event
+        // Transaction event
         let event = TransactionEvent {
             event_type: TransactionEventType::Create,
-            settings_pubkey: settings.key(),
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
             transaction_pubkey: transaction.key(),
             transaction_index,
             signer: Some(creator.key()),
-            transaction: Some(Transaction::try_from_slice(&transaction.try_to_vec()?)?),
-            memo: args.memo,
+            transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
+            memo: None,
         };
+
+        // Log event authority info
         let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;

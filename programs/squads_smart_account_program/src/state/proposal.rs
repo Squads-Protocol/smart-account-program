@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::id;
 use crate::utils;
@@ -168,6 +169,7 @@ impl Proposal {
         proposal_info: AccountInfo<'info>,
         proposal_rent_collector: AccountInfo<'info>,
         log_authority_info: &LogAuthorityInfo<'info>,
+        consensus_account_type: ConsensusAccountType,
     ) -> Result<()> {
         if let Some(proposal) = proposal_account {
             require!(
@@ -181,7 +183,8 @@ impl Proposal {
             )?;
             let event = ProposalEvent {
                 event_type: ProposalEventType::Close,
-                settings_pubkey: log_authority_info.authority.key(),
+                consensus_account: log_authority_info.authority.key(),
+                consensus_account_type,
                 proposal_pubkey: proposal_key,
                 transaction_index: proposal.transaction_index,
                 signer: None,

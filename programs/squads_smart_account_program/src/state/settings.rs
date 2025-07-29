@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 use solana_program::hash::hash;
 
+use crate::AddSpendingLimitEvent;
+use crate::LogAuthorityInfo;
+use crate::PolicyEvent;
+use crate::PolicyEventType;
+use crate::RemoveSpendingLimitEvent;
+use crate::SmartAccountEvent;
 use crate::{
     errors::*,
     id,
@@ -147,7 +153,6 @@ impl Settings {
         1 // _reserved_2
     }
 
-
     /// Check if the settings account space needs to be reallocated to accommodate `signers_length`.
     /// Returns `true` if the account was reallocated.
     pub fn realloc_if_needed<'a>(
@@ -271,6 +276,7 @@ impl Settings {
         system_program: &Option<Program<'info, System>>,
         remaining_accounts: &'info [AccountInfo<'info>],
         program_id: &Pubkey,
+        log_authority_info: Option<&LogAuthorityInfo<'info>>,
     ) -> Result<()> {
         match action {
             SettingsAction::AddSigner { new_signer } => {
@@ -362,6 +368,16 @@ impl Settings {
                 spending_limit.invariant()?;
                 spending_limit
                     .try_serialize(&mut &mut spending_limit_info.data.borrow_mut()[..])?;
+
+                // Log the event
+                let event = AddSpendingLimitEvent {
+                    settings_pubkey: self_key.to_owned(),
+                    spending_limit_pubkey: spending_limit_key,
+                    spending_limit: spending_limit.clone(),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::AddSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::RemoveSpendingLimit {
@@ -385,6 +401,15 @@ impl Settings {
                 );
 
                 spending_limit.close(rent_payer.to_account_info())?;
+
+                // Log the closing event
+                let event = RemoveSpendingLimitEvent {
+                    settings_pubkey: self_key.to_owned(),
+                    spending_limit_pubkey: *spending_limit_key,
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::RemoveSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::SetArchivalAuthority {
@@ -498,6 +523,7 @@ impl Settings {
                 let policy = Policy::create_state(
                     *self_key,
                     next_policy_seed,
+                    policy_bump,
                     &signers,
                     *threshold,
                     *time_lock,
@@ -510,6 +536,17 @@ impl Settings {
                 // Check the policy invariant
                 policy.invariant()?;
                 policy.try_serialize(&mut &mut policy_info.data.borrow_mut()[..])?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Create,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: policy_pubkey,
+                    policy: Some(policy),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::PolicyUpdate {
@@ -538,6 +575,18 @@ impl Settings {
                     self_key.to_owned(),
                     SmartAccountError::InvalidAccount
                 );
+
+                // Calculate policy data size based on the creation payload
+                let policy_specific_data_size = policy_update_payload.policy_state_size();
+                let policy_size = Policy::size(signers.len(), policy_specific_data_size);
+
+                // Get the rent payer and system program
+                let rent_payer = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+                let system_program = system_program
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
 
                 let new_policy_state = match policy_update_payload.clone() {
                     PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
@@ -571,7 +620,6 @@ impl Settings {
                         None
                     };
 
-                msg!("Expiration: {:?}", expiration);
                 // Update the policy
                 policy.update_state(
                     signers,
@@ -587,8 +635,28 @@ impl Settings {
                 // Check the policy invariant
                 policy.invariant()?;
 
+                // Realloc the policy account if needed
+                Policy::realloc_if_needed(
+                    policy_info.clone(),
+                    signers.len(),
+                    policy_size,
+                    Some(rent_payer.to_account_info()),
+                    Some(system_program.to_account_info()),
+                )?;
+
                 // Exit the policy account
                 policy.exit(program_id)?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Update,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: *policy_key,
+                    policy: Some(policy.clone().into_inner()),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::PolicyRemove { policy: policy_key } => {
@@ -611,6 +679,17 @@ impl Settings {
                 );
 
                 policy.close(rent_payer.to_account_info())?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Remove,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: *policy_key,
+                    policy: None,
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
             }
         }
 
