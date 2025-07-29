@@ -204,6 +204,10 @@ pub enum SmartAccountError {
     SpendingLimitInvariantCustomPeriodNegative,
     #[msg("Spending limit policy invariant violation: cannot have duplicate destinations for the same mint")]
     SpendingLimitPolicyInvariantDuplicateDestinations,
+    #[msg("Spending limit invariant violation: last reset must be between start and expiration")]
+    SpendingLimitInvariantLastResetOutOfBounds,
+    #[msg("Spending limit invariant violation: last reset must be greater than start")]
+    SpendingLimitInvariantLastResetSmallerThanStart,
 
     // ===============================================
     // Internal Fund Transfer Policy Errors

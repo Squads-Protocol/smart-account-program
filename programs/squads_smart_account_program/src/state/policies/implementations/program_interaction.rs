@@ -641,7 +641,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
     ) -> Result<()> {
         match &payload.transaction_payload {
             ProgramInteractionTransactionPayload::AsyncTransaction(..) => {
-                self.execute_payload(args, payload, accounts)
+                self.execute_payload_async(args, payload, accounts)
             }
             ProgramInteractionTransactionPayload::SyncTransaction(..) => {
                 self.execute_payload_sync(args, payload, accounts)
@@ -656,7 +656,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
 
 impl ProgramInteractionPolicy {
     /// Execute an async transaction through the policy
-    fn execute_payload<'info>(
+    fn execute_payload_async<'info>(
         &mut self,
         args: ProgramInteractionExecutionArgs,
         payload: &ProgramInteractionPayload,

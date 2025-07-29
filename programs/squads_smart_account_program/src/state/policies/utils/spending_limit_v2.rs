@@ -278,12 +278,12 @@ impl SpendingLimitV2 {
             require!(
                 self.usage.last_reset >= self.time_constraints.start
                     && self.usage.last_reset <= expiration,
-                SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
+                SmartAccountError::SpendingLimitInvariantLastResetOutOfBounds
             );
         } else {
             require!(
                 self.usage.last_reset >= self.time_constraints.start,
-                SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
+                SmartAccountError::SpendingLimitInvariantLastResetSmallerThanStart
             );
         }
 

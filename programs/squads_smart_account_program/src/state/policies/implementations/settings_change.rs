@@ -227,7 +227,7 @@ impl PolicyTrait for SettingsChangePolicy {
                             SmartAccountError::SettingsChangeAddSignerViolation
                         );
                     }
-                    // If None, any permissions can used
+                    // If None, any permissions can be used
                     if let Some(allowed_permissions) = allowed_permissions {
                         require!(
                             &new_signer.permissions == allowed_permissions,
@@ -380,7 +380,7 @@ impl SettingsChangePolicy {
             settings,
             rent_payer: Some(rent_payer),
             system_program: Some(system_program),
-            program: program,
+            program,
         })
     }
 }
