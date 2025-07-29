@@ -9,5 +9,8 @@ node_modules
 test-ledger
 .yarn-error
 
+# Yarn - ignore entire yarn directories
+.yarn/
+
 lib
 .crates
