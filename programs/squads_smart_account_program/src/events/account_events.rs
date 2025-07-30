@@ -1,5 +1,7 @@
 use crate::{
-    consensus_trait::ConsensusAccountType, state::SettingsAction, LimitedSettingsAction, Policy, PolicyPayload, Proposal, Settings, SettingsTransaction, SmartAccountCompiledInstruction, SpendingLimit, Transaction
+    consensus_trait::ConsensusAccountType, state::SettingsAction, LimitedSettingsAction, Policy,
+    PolicyPayload, Proposal, Settings, SettingsTransaction, SmartAccountCompiledInstruction,
+    SpendingLimit, Transaction,
 };
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -68,12 +70,12 @@ pub struct PolicyEvent {
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
-pub enum PolicyEventType{
+pub enum PolicyEventType {
     Create,
     Update,
+    UpdateDuringExecution,
     Remove,
 }
-
 
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct UseSpendingLimitEvent {
@@ -128,7 +130,6 @@ pub enum TransactionContent {
     },
 }
 
-
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum TransactionEventType {
     Create,
@@ -164,4 +165,3 @@ pub struct SettingsChangePolicyEvent {
     pub settings: Settings,
     pub changes: Vec<LimitedSettingsAction>,
 }
-

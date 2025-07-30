@@ -107,16 +107,24 @@ impl<'info> ExecuteTransaction<'info> {
 
         let transaction = &ctx.accounts.transaction;
 
-        let settings_key = consensus_account.key();
+        let consensus_account_key = consensus_account.key();
         let transaction_key = transaction.key();
         let transaction_payload = &transaction.payload;
+
+        // Log authority info
+        let log_authority_info = LogAuthorityInfo {
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
+            program: ctx.accounts.program.to_account_info(),
+        };
 
         match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
                 let transaction_payload = transaction_payload.transaction_payload()?;
                 let smart_account_seeds = &[
                     SEED_PREFIX,
-                    settings_key.as_ref(),
+                    consensus_account_key.as_ref(),
                     SEED_SMART_ACCOUNT,
                     &transaction_payload.account_index.to_le_bytes(),
                 ];
@@ -193,7 +201,15 @@ impl<'info> ExecuteTransaction<'info> {
                     &policy_payload.payload,
                     remaining_accounts,
                 )?;
-                msg!("Policy State: {:?}", policy.policy_state);
+
+                // Policy may updated during execution, log the event
+                let policy_event = PolicyEvent {
+                    event_type: PolicyEventType::UpdateDuringExecution,
+                    settings_pubkey: policy.settings,
+                    policy_pubkey: consensus_account_key,
+                    policy: Some(policy.clone()),
+                };
+                SmartAccountEvent::PolicyEvent(policy_event).log(&log_authority_info)?;
             }
         }
 
@@ -205,13 +221,7 @@ impl<'info> ExecuteTransaction<'info> {
         // Check the account invariants
         consensus_account.invariant()?;
 
-        // Log the execution event
-        let log_authority_info = LogAuthorityInfo {
-            authority: consensus_account.to_account_info(),
-            authority_seeds: consensus_account.get_signer_seeds(),
-            bump: consensus_account.bump(),
-            program: ctx.accounts.program.to_account_info(),
-        };
+
         // Log the execution event
         let execute_event = TransactionEvent {
             consensus_account: consensus_account.key(),

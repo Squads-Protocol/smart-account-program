@@ -120,7 +120,7 @@ impl<'info> SyncSettingsTransaction<'info> {
                 .iter()
                 .map(|acc| acc.key.clone())
                 .collect::<Vec<_>>(),
-            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings: settings.clone(),
             changes: args.actions.clone(),
         };
 
