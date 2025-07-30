@@ -7,7 +7,7 @@ use crate::utils::*;
 
 #[derive(Accounts)]
 pub struct ExecuteBatchTransaction<'info> {
-    /// Consensus account this batch belongs to.
+    /// Settings account this batch belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump
@@ -65,7 +65,7 @@ pub struct ExecuteBatchTransaction<'info> {
 }
 
 impl ExecuteBatchTransaction<'_> {
-    fn validate(&self, _ctx: &Context<Self>) -> Result<()> {
+    fn validate(&self) -> Result<()> {
         let Self {
             settings,
             signer,
@@ -104,7 +104,7 @@ impl ExecuteBatchTransaction<'_> {
     }
 
     /// Execute a transaction from the batch.
-    #[access_control(ctx.accounts.validate(&ctx))]
+    #[access_control(ctx.accounts.validate())]
     pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;

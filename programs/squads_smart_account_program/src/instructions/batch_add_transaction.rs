@@ -14,7 +14,7 @@ pub struct AddTransactionToBatchArgs {
 #[derive(Accounts)]
 #[instruction(args: AddTransactionToBatchArgs)]
 pub struct AddTransactionToBatch<'info> {
-    /// Consensus account this batch belongs to.
+    /// Settings account this batch belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump
@@ -74,7 +74,7 @@ pub struct AddTransactionToBatch<'info> {
 }
 
 impl AddTransactionToBatch<'_> {
-    fn validate(&self, _ctx: &Context<Self>) -> Result<()> {
+    fn validate(&self) -> Result<()> {
         let Self {
             settings,
             signer,
@@ -110,7 +110,7 @@ impl AddTransactionToBatch<'_> {
     }
 
     /// Add a transaction to the batch.
-    #[access_control(ctx.accounts.validate(&ctx))]
+    #[access_control(ctx.accounts.validate())]
     pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
         let transaction = &mut ctx.accounts.transaction;

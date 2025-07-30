@@ -45,7 +45,7 @@ pub struct CreateBatch<'info> {
 }
 
 impl CreateBatch<'_> {
-    fn validate(&self, _ctx: &Context<Self>) -> Result<()> {
+    fn validate(&self) -> Result<()> {
         let Self {
             settings,
             creator,
@@ -66,7 +66,7 @@ impl CreateBatch<'_> {
     }
 
     /// Create a new batch.
-    #[access_control(ctx.accounts.validate(&ctx))]
+    #[access_control(ctx.accounts.validate())]
     pub fn create_batch(ctx: Context<Self>, args: CreateBatchArgs) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let creator = &mut ctx.accounts.creator;
