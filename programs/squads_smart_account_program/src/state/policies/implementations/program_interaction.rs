@@ -375,6 +375,17 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     type PolicyState = ProgramInteractionPolicy;
 
     fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
+        // For sanity sake, we limit the number of instruction constraints and
+        // spending limits
+        require!(
+            self.instructions_constraints.len() <= 20,
+            SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+        );
+        require!(
+            self.spending_limits.len() <= 10,
+            SmartAccountError::ProgramInteractionTooManySpendingLimits
+        );
+
         let mut spending_limits = self.spending_limits.clone();
         spending_limits.sort_by_key(|c| c.mint);
 

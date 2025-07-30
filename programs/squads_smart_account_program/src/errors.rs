@@ -166,6 +166,10 @@ pub enum SmartAccountError {
     ProgramInteractionIllegalTokenAccountModification,
     #[msg("Program interaction invariant violation: duplicate spending limit for the same mint")]
     ProgramInteractionDuplicateSpendingLimit,
+    #[msg("Program interaction constraint violation: too many instruction constraints. Max is 20")]
+    ProgramInteractionTooManyInstructionConstraints,
+    #[msg("Program interaction constraint violation: too many spending limits. Max is 10")]
+    ProgramInteractionTooManySpendingLimits,
 
     // ===============================================
     // Spending Limit Policy Errors
