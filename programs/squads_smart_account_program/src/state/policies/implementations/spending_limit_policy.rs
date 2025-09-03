@@ -2,7 +2,11 @@ use anchor_lang::{prelude::*, system_program, Ids};
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
-    errors::*, get_smart_account_seeds, state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState}, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SEED_PREFIX, SEED_SMART_ACCOUNT
+    errors::*,
+    get_smart_account_seeds,
+    state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState},
+    PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait,
+    SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 
 /// == SpendingLimitPolicy ==
@@ -13,7 +17,6 @@ use crate::{
 /// The spending limit configuration includes a mint, time constraints, quantity constraints,
 /// and usage state.
 ///===============================================
-
 
 // =============================================================================
 // CORE POLICY STRUCTURES
@@ -181,12 +184,13 @@ impl PolicyTrait for SpendingLimitPolicy {
         _context: PolicyExecutionContext,
         payload: &Self::UsagePayload,
     ) -> Result<()> {
-        // Check that the destination is in the list of allowed destinations
-        require!(
-            self.destinations.contains(&payload.destination),
-            SmartAccountError::InvalidDestination
-        );
-
+        // If destinations are set, check that the destination is in the list of allowed destinations
+        if !self.destinations.is_empty() {
+            require!(
+                self.destinations.contains(&payload.destination),
+                SmartAccountError::InvalidDestination
+            );
+        }
         Ok(())
     }
 
