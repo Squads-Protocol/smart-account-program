@@ -481,7 +481,7 @@ impl Settings {
                         crate::SEED_PREFIX.to_vec(),
                         self_key.as_ref().to_vec(),
                         SEED_POLICY.to_vec(),
-                        seed.to_le_bytes().to_vec(),
+                        next_policy_seed.to_le_bytes().to_vec(),
                         vec![policy_bump],
                     ],
                 )?;
