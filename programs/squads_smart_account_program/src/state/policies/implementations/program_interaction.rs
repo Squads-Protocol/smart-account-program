@@ -748,7 +748,6 @@ impl ProgramInteractionPolicy {
             )?;
             // Evaluate the balance changes post-execution
             tracked_pre_balances.evaluate_balance_changes(&mut self.spending_limits)?;
-
         } else {
             // Execute the transaction message instructions one-by-one.
             // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
@@ -765,9 +764,9 @@ impl ProgramInteractionPolicy {
         Ok(())
     }
 
-// =============================================================================
-// SYNC TRANSACTION EXECUTION
-// =============================================================================
+    // =============================================================================
+    // SYNC TRANSACTION EXECUTION
+    // =============================================================================
 
     /// Execute a synchronous transaction through the policy
     fn execute_payload_sync<'info>(
@@ -793,6 +792,14 @@ impl ProgramInteractionPolicy {
                 .map(SmartAccountCompiledInstruction::from)
                 .collect();
 
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
+            )?;
+        }
         let smart_account_seeds = &[
             SEED_PREFIX,
             settings_key.as_ref(),
