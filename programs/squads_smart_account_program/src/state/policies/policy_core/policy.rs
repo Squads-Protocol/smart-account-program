@@ -321,6 +321,13 @@ impl Policy {
 impl Consensus for Policy {
     /// Checks if a given policy is active based on it's start and expiration
     fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        // Get the current timestamp
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        // Check if the policy has started
+        require!(
+            current_timestamp >= self.start,
+            SmartAccountError::PolicyNotActiveYet
+        );
         // Check if the policy is expired
         match self.expiration {
             Some(PolicyExpiration::Timestamp(expiration_timestamp)) => {
