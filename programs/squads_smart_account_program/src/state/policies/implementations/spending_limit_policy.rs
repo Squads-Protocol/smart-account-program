@@ -370,6 +370,12 @@ impl SpendingLimitPolicy {
                     return err!(SmartAccountError::InvalidNumberOfAccounts);
                 };
 
+                // Check the source account key
+                require!(
+                    source_account_key == source_account_info.key(),
+                    SmartAccountError::InvalidAccount
+                );
+
                 // Deserialize the source and destination token accounts. Either
                 // T22 or TokenKeg accounts
                 let source_token_account =
