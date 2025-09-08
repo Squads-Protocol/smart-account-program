@@ -49,7 +49,7 @@ impl InternalFundTransferPolicy {
         mask
     }
     /// Checks if the given index is in the given mask
-    pub fn has_account_index(&self, index: u8, mask: &[u8; 32]) -> bool {
+    pub fn has_account_index(index: u8, mask: &[u8; 32]) -> bool {
         let byte_idx = (index / 8) as usize;
         let bit_idx = index % 8;
         (mask[byte_idx] & (1 << bit_idx)) != 0
@@ -57,12 +57,12 @@ impl InternalFundTransferPolicy {
 
     /// Checks if the given index is in the source account mask
     pub fn has_source_account_index(&self, index: u8) -> bool {
-        self.has_account_index(index, &self.source_account_mask)
+        Self::has_account_index(index, &self.source_account_mask)
     }
 
     /// Checks if the given index is in the destination account mask
     pub fn has_destination_account_index(&self, index: u8) -> bool {
-        self.has_account_index(index, &self.destination_account_mask)
+        Self::has_account_index(index, &self.destination_account_mask)
     }
 }
 
@@ -420,10 +420,10 @@ mod tests {
             allowed_mints: vec![],
         };
         for &idx in &indices {
-            assert!(policy.has_account_index(idx, &policy.source_account_mask));
+            assert!(InternalFundTransferPolicy::has_account_index(idx, &policy.source_account_mask));
         }
-        assert!(!policy.has_account_index(3, &policy.source_account_mask));
-        assert!(!policy.has_account_index(0, &policy.destination_account_mask));
+        assert!(!InternalFundTransferPolicy::has_account_index(3, &policy.source_account_mask));
+        assert!(!InternalFundTransferPolicy::has_account_index(0, &policy.destination_account_mask));
     }
 
     #[test]

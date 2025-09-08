@@ -381,8 +381,8 @@ impl Consensus for Policy {
         let (address, _bump) = Pubkey::find_program_address(
             &[
                 SEED_PREFIX,
-                self.settings.as_ref(),
                 SEED_POLICY,
+                self.settings.as_ref(),
                 self.seed.to_le_bytes().as_ref(),
             ],
             &crate::ID,

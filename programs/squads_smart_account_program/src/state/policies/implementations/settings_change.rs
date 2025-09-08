@@ -252,9 +252,7 @@ impl PolicyTrait for SettingsChangePolicy {
                 (
                     AllowedSettingsChange::ChangeThreshold,
                     LimitedSettingsAction::ChangeThreshold { new_threshold: _ },
-                ) => {
-                    continue;
-                }
+                ) => {}
                 (
                     AllowedSettingsChange::ChangeTimeLock {
                         new_time_lock: allowed_time_lock,
