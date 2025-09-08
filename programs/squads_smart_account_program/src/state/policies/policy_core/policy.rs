@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
 use crate::state::policies::implementations::InternalFundTransferPolicy;
+use crate::MAX_TIME_LOCK;
 use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
@@ -152,6 +153,12 @@ impl Policy {
                 _ => {}
             }
         }
+
+        // Time Lock must not exceed the maximum allowed to prevent bricking the policy.
+        require!(
+            self.time_lock <= MAX_TIME_LOCK,
+            SmartAccountError::TimeLockExceedsMaxAllowed
+        );
         // Policy state must be valid
         self.policy_state.invariant()?;
 
