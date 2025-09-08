@@ -319,8 +319,17 @@ impl PolicyTrait for SettingsChangePolicy {
             };
             SmartAccountEvent::SettingsChangePolicyEvent(event).log(&log_authority_info)?;
         }
-
-        // Run settings invariant
+        // Reallocate the settings account if needed
+        Settings::realloc_if_needed(
+            validated_accounts.settings.to_account_info(),
+            validated_accounts.settings.signers.len(),
+            validated_accounts
+                .rent_payer
+                .map(|rent_payer| rent_payer.to_account_info()),
+            validated_accounts
+                .system_program
+                .map(|system_program| system_program.to_account_info()),
+        )?;
         Ok(())
     }
 }
