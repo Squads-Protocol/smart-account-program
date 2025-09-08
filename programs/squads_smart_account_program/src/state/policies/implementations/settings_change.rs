@@ -367,6 +367,12 @@ impl SettingsChangePolicy {
         );
         let settings: Account<'info, Settings> = Account::try_from(settings_account_info)?;
 
+        // Settings authority validation
+        require!(
+            settings.settings_authority == Pubkey::default(),
+            SmartAccountError::NotSupportedForControlled
+        );
+       
         // Rent payer validation
         let rent_payer = Signer::try_from(rent_payer_info)
             .map_err(|_| SmartAccountError::SettingsChangeInvalidRentPayer)?;
