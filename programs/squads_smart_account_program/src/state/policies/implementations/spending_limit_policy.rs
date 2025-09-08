@@ -331,6 +331,10 @@ impl SpendingLimitPolicy {
                     args.destination == destination_account_info.key(),
                     SmartAccountError::InvalidAccount
                 );
+
+                // Check that the source account is not the same as the destination account
+                require!(source_account_info.key() != destination_account_info.key(), SmartAccountError::InvalidAccount);
+
                 // Check the system program
                 require!(
                     system_program.key() == system_program::ID,
