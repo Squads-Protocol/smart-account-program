@@ -80,7 +80,7 @@ describe("Flow / SettingsChangePolicy", () => {
           ],
           threshold: 1,
           timeLock: 0,
-          startTimestamp: Date.now(),
+          startTimestamp: Date.now() / 1000,
           expirationArgs: null,
         },
       ],
