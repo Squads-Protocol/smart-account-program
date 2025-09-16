@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
-use crate::interface::consensus::ConsensusAccount;
 use crate::events::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
 
 use crate::state::*;
