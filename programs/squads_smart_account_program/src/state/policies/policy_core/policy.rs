@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 use super::{payloads::PolicyPayload, traits::PolicyTrait, PolicyExecutionContext};
 use crate::state::policies::implementations::InternalFundTransferPolicy;
+use crate::MAX_TIME_LOCK;
 use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
@@ -152,6 +153,12 @@ impl Policy {
                 _ => {}
             }
         }
+
+        // Time Lock must not exceed the maximum allowed to prevent bricking the policy.
+        require!(
+            self.time_lock <= MAX_TIME_LOCK,
+            SmartAccountError::TimeLockExceedsMaxAllowed
+        );
         // Policy state must be valid
         self.policy_state.invariant()?;
 
@@ -321,6 +328,13 @@ impl Policy {
 impl Consensus for Policy {
     /// Checks if a given policy is active based on it's start and expiration
     fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        // Get the current timestamp
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        // Check if the policy has started
+        require!(
+            current_timestamp >= self.start,
+            SmartAccountError::PolicyNotActiveYet
+        );
         // Check if the policy is expired
         match self.expiration {
             Some(PolicyExpiration::Timestamp(expiration_timestamp)) => {
@@ -367,8 +381,8 @@ impl Consensus for Policy {
         let (address, _bump) = Pubkey::find_program_address(
             &[
                 SEED_PREFIX,
-                self.settings.as_ref(),
                 SEED_POLICY,
+                self.settings.as_ref(),
                 self.seed.to_le_bytes().as_ref(),
             ],
             &crate::ID,

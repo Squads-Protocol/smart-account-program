@@ -20,17 +20,6 @@ pub enum PolicyCreationPayload {
 }
 
 impl PolicyCreationPayload {
-    /// Get the size of the serialized policy creation payload for space allocation
-    pub fn size(&self) -> usize {
-        // 1 for the Wrapper enum type
-        1 + match self {
-            PolicyCreationPayload::InternalFundTransfer(payload) => payload.creation_payload_size(),
-            PolicyCreationPayload::SpendingLimit(payload) => payload.creation_payload_size(),
-            PolicyCreationPayload::SettingsChange(payload) => payload.creation_payload_size(),
-            PolicyCreationPayload::ProgramInteraction(payload) => payload.creation_payload_size(),
-        }
-    }
-
     /// Calculate the size of the resulting policy data after creation
     pub fn policy_state_size(&self) -> usize {
         // 1 for the Wrapper enum type

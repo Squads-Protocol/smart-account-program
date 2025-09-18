@@ -2,7 +2,11 @@ use anchor_lang::{prelude::*, system_program, Ids};
 use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, TransferChecked};
 
 use crate::{
-    errors::*, get_smart_account_seeds, state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState}, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SEED_PREFIX, SEED_SMART_ACCOUNT
+    errors::*,
+    get_smart_account_seeds,
+    state::policies::utils::{QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState},
+    PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait,
+    SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 
 /// == SpendingLimitPolicy ==
@@ -13,7 +17,6 @@ use crate::{
 /// The spending limit configuration includes a mint, time constraints, quantity constraints,
 /// and usage state.
 ///===============================================
-
 
 // =============================================================================
 // CORE POLICY STRUCTURES
@@ -181,12 +184,13 @@ impl PolicyTrait for SpendingLimitPolicy {
         _context: PolicyExecutionContext,
         payload: &Self::UsagePayload,
     ) -> Result<()> {
-        // Check that the destination is in the list of allowed destinations
-        require!(
-            self.destinations.contains(&payload.destination),
-            SmartAccountError::InvalidDestination
-        );
-
+        // If destinations are set, check that the destination is in the list of allowed destinations
+        if !self.destinations.is_empty() {
+            require!(
+                self.destinations.contains(&payload.destination),
+                SmartAccountError::InvalidDestination
+            );
+        }
         Ok(())
     }
 
@@ -327,6 +331,10 @@ impl SpendingLimitPolicy {
                     args.destination == destination_account_info.key(),
                     SmartAccountError::InvalidAccount
                 );
+
+                // Check that the source account is not the same as the destination account
+                require!(source_account_info.key() != destination_account_info.key(), SmartAccountError::InvalidAccount);
+
                 // Check the system program
                 require!(
                     system_program.key() == system_program::ID,
@@ -365,6 +373,12 @@ impl SpendingLimitPolicy {
                 } else {
                     return err!(SmartAccountError::InvalidNumberOfAccounts);
                 };
+
+                // Check the source account key
+                require!(
+                    source_account_key == source_account_info.key(),
+                    SmartAccountError::InvalidAccount
+                );
 
                 // Deserialize the source and destination token accounts. Either
                 // T22 or TokenKeg accounts
