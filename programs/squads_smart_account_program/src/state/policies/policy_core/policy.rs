@@ -209,7 +209,7 @@ impl Policy {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum PolicyState {
     /// Internal fund transfer policy.
     InternalFundTransfer(InternalFundTransferPolicy),

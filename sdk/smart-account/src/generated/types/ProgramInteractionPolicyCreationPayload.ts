@@ -10,6 +10,7 @@ import {
   InstructionConstraint,
   instructionConstraintBeet,
 } from './InstructionConstraint'
+import { Hook, hookBeet } from './Hook'
 import {
   LimitedSpendingLimit,
   limitedSpendingLimitBeet,
@@ -17,6 +18,8 @@ import {
 export type ProgramInteractionPolicyCreationPayload = {
   accountIndex: number
   instructionsConstraints: InstructionConstraint[]
+  preHook: beet.COption<Hook>
+  postHook: beet.COption<Hook>
   spendingLimits: LimitedSpendingLimit[]
 }
 
@@ -29,6 +32,8 @@ export const programInteractionPolicyCreationPayloadBeet =
     [
       ['accountIndex', beet.u8],
       ['instructionsConstraints', beet.array(instructionConstraintBeet)],
+      ['preHook', beet.coption(hookBeet)],
+      ['postHook', beet.coption(hookBeet)],
       ['spendingLimits', beet.array(limitedSpendingLimitBeet)],
     ],
     'ProgramInteractionPolicyCreationPayload'

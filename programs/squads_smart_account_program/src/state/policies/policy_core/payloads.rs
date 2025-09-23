@@ -11,7 +11,7 @@ use super::PolicySizeTrait;
 
 /// Unified enum for all policy creation payloads
 /// These are used in SettingsAction::PolicyCreate to specify which type of policy to create
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub enum PolicyCreationPayload {
     InternalFundTransfer(InternalFundTransferPolicyCreationPayload),
     SpendingLimit(SpendingLimitPolicyCreationPayload),
