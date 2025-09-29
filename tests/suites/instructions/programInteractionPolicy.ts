@@ -577,6 +577,8 @@ describe("Flow / ProgramInteractionPolicy", () => {
         fields: [
           {
             accountIndex: 0,
+            preHook: null,
+            postHook: null,
             instructionsConstraints: [
               {
                 programId: TOKEN_PROGRAM_ID,
@@ -593,25 +595,28 @@ describe("Flow / ProgramInteractionPolicy", () => {
                   {
                     // Destination of the transfer
                     accountIndex: 1,
-                    accountKeys: [destinationTokenAccount],
+                    accountConstraint: {
+                      __kind: "AccountData",
+                      fields: [
+                        [
+                          // Owner of the destination token account must be the destination smart account
+                          {
+                            dataOffset: 32,
+                            dataValue: {
+                              __kind: "U8Slice",
+                              fields: [destinationSmartAccountPda.toBuffer()],
+                            },
+                            operator: generated.DataOperator.Equals,
+                          },
+                        ],
+                      ],
+                    },
+                    owner: TOKEN_PROGRAM_ID,
                   },
                 ],
               },
             ],
-            spendingLimits: [
-              {
-                mint,
-                timeConstraints: {
-                  start: 0,
-                  expiration: null,
-                  // 10 Second spending limit
-                  period: { __kind: "Custom", fields: [5] },
-                },
-                quantityConstraints: {
-                  maxPerPeriod: 1_000_000_000,
-                },
-              },
-            ],
+            spendingLimits: [],
           },
         ],
       };
@@ -697,12 +702,16 @@ describe("Flow / ProgramInteractionPolicy", () => {
     let policyState = policyAccount.policyState;
     let programInteractionPolicy = policyState
       .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
-    let spendingLimit = programInteractionPolicy.spendingLimits[0];
-    assert.equal(
-      spendingLimit.usage.remainingInPeriod.toString(),
-      "1000000000"
+    let instructionConstraint =
+      programInteractionPolicy.instructionsConstraints[0];
+    let accountConstraint = instructionConstraint.accountConstraints[0];
+    let dataConstraint = instructionConstraint.dataConstraints[0];
+
+    assert.strictEqual(accountConstraint.accountIndex, 1);
+    assert.strictEqual(
+      accountConstraint.accountConstraint.__kind,
+      "AccountData"
     );
-    let lastReset = spendingLimit.usage.lastReset.toString();
 
     assert.strictEqual(
       policyAccount.settings.toString(),
@@ -736,19 +745,23 @@ describe("Flow / ProgramInteractionPolicy", () => {
         smartAccountPda: sourceSmartAccountPda,
       });
 
+    let syncPayload = utils.instructionsToSynchronousTransactionDetailsV2({
+      vaultPda: sourceSmartAccountPda,
+      members: [members.voter.publicKey],
+      transaction_instructions: [tokenTransferIxn],
+    });
+
     const policyPayload: smartAccount.generated.PolicyPayload = {
       __kind: "ProgramInteraction",
       fields: [
         {
           instructionConstraintIndices: new Uint8Array([0]),
           transactionPayload: {
-            __kind: "AsyncTransaction",
+            __kind: "SyncTransaction",
             fields: [
               {
                 accountIndex: 0,
-                ephemeralSigners: 0,
-                transactionMessage: transactionMessageBytes,
-                memo: null,
+                instructions: syncPayload.instructions,
               },
             ],
           },
@@ -756,85 +769,29 @@ describe("Flow / ProgramInteractionPolicy", () => {
       ],
     };
 
-    // Create a transaction
-    signature = await smartAccount.rpc.createPolicyTransaction({
+    // Attempt to do the same with a synchronous instruction
+    signature = await smartAccount.rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
       accountIndex: 0,
-      transactionIndex: policyTransactionIndex,
-      creator: members.voter.publicKey,
-      policyPayload,
-      sendOptions: {
-        skipPreflight: true,
-      },
+      numSigners: 1,
+      policyPayload: policyPayload,
+      instruction_accounts: syncPayload.accounts,
+      signers: [members.voter],
       programId,
     });
     await connection.confirmTransaction(signature);
 
-    // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
-      connection,
-      feePayer: members.voter,
-      settingsPda: policyPda,
-      transactionIndex: policyTransactionIndex,
-      creator: members.voter,
-      programId,
-    });
-    await connection.confirmTransaction(signature);
-
-    // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
-      connection,
-      feePayer: members.voter,
-      settingsPda: policyPda,
-      transactionIndex: policyTransactionIndex,
-      signer: members.voter,
-      programId,
-    });
-    await connection.confirmTransaction(signature);
-
-    let remainingAccounts: AccountMeta[] = [];
-
-    for (const [
-      index,
-      accountKey,
-    ] of compiledMessage.staticAccountKeys.entries()) {
-      if (accountKey.equals(sourceSmartAccountPda)) {
-        remainingAccounts.push({
-          pubkey: accountKey,
-          isWritable: compiledMessage.isAccountWritable(index),
-          isSigner: false,
-        });
-      } else {
-        remainingAccounts.push({
-          pubkey: accountKey,
-          isWritable: compiledMessage.isAccountWritable(index),
-          isSigner: false,
-        });
-      }
-    }
+    //
     // Airdrop SOL to the source smart account
+    let airdropAmount = 2_000_000_000;
     let airdropSignature = await connection.requestAirdrop(
       sourceSmartAccountPda,
       2_000_000_000
     );
     await connection.confirmTransaction(airdropSignature);
 
-    // Execute the transaction
-    signature = await smartAccount.rpc.executePolicyTransaction({
-      connection,
-      feePayer: members.voter,
-      policy: policyPda,
-      transactionIndex: policyTransactionIndex,
-      signer: members.voter.publicKey,
-      anchorRemainingAccounts: remainingAccounts,
-      sendOptions: {
-        skipPreflight: true,
-      },
-      programId,
-    });
-    await connection.confirmTransaction(signature);
 
     // Check the balances & policy state
     let sourceBalance = await connection.getTokenAccountBalance(
@@ -853,8 +810,6 @@ describe("Flow / ProgramInteractionPolicy", () => {
     policyState = policyData.policyState;
     programInteractionPolicy = policyState
       .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
-    spendingLimit = programInteractionPolicy.spendingLimits[0];
-    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "500000000");
 
     let modifiedTokenTransfer = tokenTransferIxn;
     modifiedTokenTransfer.keys[2].isWritable = true;
