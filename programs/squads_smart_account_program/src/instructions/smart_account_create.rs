@@ -126,7 +126,6 @@ impl<'info> CreateSmartAccount<'info> {
                 ),
                 creation_fee,
             )?;
-            msg!("Creation fee: {}", creation_fee / LAMPORTS_PER_SOL);
         }
 
         // Increment the smart account index.
