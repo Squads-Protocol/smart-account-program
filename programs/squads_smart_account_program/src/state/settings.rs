@@ -495,7 +495,16 @@ impl Settings {
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
                         PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
                     }
-                    PolicyCreationPayload::SpendingLimit(creation_payload) => {
+                    PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
+                        // If accumulate unused is true, and the policy has a
+                        // start date in the past, set it to the current
+                        // timestamp to avoid unintended accumulated usage
+                        let current_timestamp = Clock::get()?.unix_timestamp;
+                        if creation_payload.time_constraints.accumulate_unused
+                            && creation_payload.time_constraints.start < current_timestamp
+                        {
+                            creation_payload.time_constraints.start = current_timestamp;
+                        }
                         PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::SettingsChange(creation_payload) => {
