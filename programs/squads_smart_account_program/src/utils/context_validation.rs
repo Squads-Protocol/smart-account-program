@@ -7,7 +7,11 @@ pub fn validate_synchronous_consensus(
     remaining_accounts: &[AccountInfo],
 ) -> Result<()> {
     // Settings must not be time locked
-    require_eq!(consensus_account.time_lock(), 0, SmartAccountError::TimeLockNotZero);
+    require_eq!(
+        consensus_account.time_lock(),
+        0,
+        SmartAccountError::TimeLockNotZero
+    );
 
     // Get signers from remaining accounts using threshold
     let required_signer_count = consensus_account.threshold() as usize;
@@ -54,7 +58,7 @@ pub fn validate_synchronous_consensus(
 
     // Check if we have all required permissions (Initiate | Vote | Execute = 7)
     require!(
-        aggregated_permissions.mask == 7,
+        aggregated_permissions.mask == Permissions::all().mask,
         SmartAccountError::InsufficientAggregatePermissions
     );
 
