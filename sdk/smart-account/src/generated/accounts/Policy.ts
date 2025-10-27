@@ -35,6 +35,7 @@ export type PolicyArgs = {
   policyState: PolicyState
   start: beet.bignum
   expiration: beet.COption<PolicyExpiration>
+  rentCollector: web3.PublicKey
 }
 
 export const policyDiscriminator = [222, 135, 7, 163, 235, 177, 33, 68]
@@ -57,7 +58,8 @@ export class Policy implements PolicyArgs {
     readonly timeLock: number,
     readonly policyState: PolicyState,
     readonly start: beet.bignum,
-    readonly expiration: beet.COption<PolicyExpiration>
+    readonly expiration: beet.COption<PolicyExpiration>,
+    readonly rentCollector: web3.PublicKey
   ) {}
 
   /**
@@ -75,7 +77,8 @@ export class Policy implements PolicyArgs {
       args.timeLock,
       args.policyState,
       args.start,
-      args.expiration
+      args.expiration,
+      args.rentCollector
     )
   }
 
@@ -235,6 +238,7 @@ export class Policy implements PolicyArgs {
         return x
       })(),
       expiration: this.expiration,
+      rentCollector: this.rentCollector.toBase58(),
     }
   }
 }
@@ -262,6 +266,7 @@ export const policyBeet = new beet.FixableBeetStruct<
     ['policyState', policyStateBeet],
     ['start', beet.i64],
     ['expiration', beet.coption(policyExpirationBeet)],
+    ['rentCollector', beetSolana.publicKey],
   ],
   Policy.fromArgs,
   'Policy'

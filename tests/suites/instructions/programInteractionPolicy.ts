@@ -91,6 +91,8 @@ describe("Flow / ProgramInteractionPolicy", () => {
         fields: [
           {
             accountIndex: 0,
+            preHook: null,
+            postHook: null,
             instructionsConstraints: [
               {
                 programId: TOKEN_PROGRAM_ID,
@@ -107,7 +109,11 @@ describe("Flow / ProgramInteractionPolicy", () => {
                   {
                     // Destination of the transfer
                     accountIndex: 1,
-                    accountKeys: [destinationTokenAccount],
+                    accountConstraint: {
+                      __kind: "Pubkey",
+                      fields: [[destinationTokenAccount]],
+                    },
+                    owner: null,
                   },
                 ],
               },
@@ -792,7 +798,6 @@ describe("Flow / ProgramInteractionPolicy", () => {
     );
     await connection.confirmTransaction(airdropSignature);
 
-
     // Check the balances & policy state
     let sourceBalance = await connection.getTokenAccountBalance(
       sourceTokenAccount
@@ -869,9 +874,9 @@ describe("Flow / ProgramInteractionPolicy", () => {
     assert.strictEqual(policyState.__kind, "ProgramInteraction");
     programInteractionPolicy = policyState
       .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
-    spendingLimit = programInteractionPolicy.spendingLimits[0];
+    let spendingLimit = programInteractionPolicy.spendingLimits[0];
     assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "0");
-    assert.equal(spendingLimit.usage.lastReset.toString(), lastReset);
+    assert.equal(spendingLimit.usage.lastReset.toString(), "0");
 
     // Try to transfer more than the policy allows
     await assert.rejects(

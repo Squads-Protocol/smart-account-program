@@ -11,6 +11,15 @@ pub const SEED_EPHEMERAL_SIGNER: &[u8] = b"ephemeral_signer";
 pub const SEED_SPENDING_LIMIT: &[u8] = b"spending_limit";
 pub const SEED_TRANSACTION_BUFFER: &[u8] = b"transaction_buffer";
 pub const SEED_POLICY: &[u8] = b"policy";
+// Seed is slightly different, to allow for off curve key without bump
+pub const SEED_HOOK_AUTHORITY: &[u8] = b"hook_authority_seeds";
+
+// Hook authority 2MTRji19YQupkpha1Rki8xvoMtEQUfMn9FB1m93DaHj8. Off curve
+// without bump
+pub const HOOK_AUTHORITY_PUBKEY: Pubkey = Pubkey::new_from_array([
+    20, 25, 47, 2, 155, 124, 59, 36, 196, 168, 29, 160, 133, 182, 125, 32, 178, 251, 180, 88, 79,
+    213, 209, 149, 172, 177, 71, 224, 215, 197, 110, 243,
+]);
 
 pub fn get_settings_signer_seeds(settings_seed: u128) -> Vec<Vec<u8>> {
     vec![

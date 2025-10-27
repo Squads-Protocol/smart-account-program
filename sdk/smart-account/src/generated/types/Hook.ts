@@ -5,15 +5,16 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
-import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
+import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { AccountConstraint, accountConstraintBeet } from './AccountConstraint'
 export type Hook = {
-  signed: boolean
-  instructionDiscriminator: Uint8Array
-  accounts: beet.COption<AccountConstraint>[]
+  numAccounts: number
+  accountConstraints: AccountConstraint[]
+  instructionData: Uint8Array
   programId: web3.PublicKey
+  passInnerInstructions: boolean
 }
 
 /**
@@ -22,10 +23,11 @@ export type Hook = {
  */
 export const hookBeet = new beet.FixableBeetArgsStruct<Hook>(
   [
-    ['signed', beet.bool],
-    ['instructionDiscriminator', beet.bytes],
-    ['accounts', beet.array(beet.coption(accountConstraintBeet))],
+    ['numAccounts', beet.u8],
+    ['accountConstraints', beet.array(accountConstraintBeet)],
+    ['instructionData', beet.bytes],
     ['programId', beetSolana.publicKey],
+    ['passInnerInstructions', beet.bool],
   ],
   'Hook'
 )

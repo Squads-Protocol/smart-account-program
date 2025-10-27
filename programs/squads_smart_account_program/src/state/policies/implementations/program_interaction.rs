@@ -9,8 +9,8 @@ use crate::{
     },
     CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
     PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage,
-    TransactionPayload, TransactionPayloadDetails, SEED_EPHEMERAL_SIGNER, SEED_PREFIX,
-    SEED_SMART_ACCOUNT,
+    TransactionPayload, TransactionPayloadDetails, HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER,
+    SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
@@ -45,23 +45,26 @@ pub struct InstructionConstraint {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Hook {
-    // Dictates if the hook execution will be signed or not
-    pub signed: bool,
-    // Dictates which instruction on the program will be invoked
-    pub instruction_discriminator: Vec<u8>,
-    // Dictates how many, and which accounts are additionally required for the
-    // hook. Any None entries, just mean that no requirements are enforced on it.
-    pub accounts: Vec<Option<AccountConstraint>>,
+    // Dictates how many accounts are required for the hook
+    pub num_accounts: u8,
+    // Dictates constraints for the hook accounts
+    pub account_constraints: Vec<AccountConstraint>,
+    // Dictates which instruction data will be invoked
+    pub instruction_data: Vec<u8>,
     // The program that will be invoked
     pub program_id: Pubkey,
+    // Dictates if inner instruction data & account will be passed to the
+    // instruction on top of the instruction data
+    pub pass_inner_instructions: bool,
 }
 
 impl Hook {
     pub fn size(&self) -> usize {
-        1 + // signed
-        8 + 4 + self.instruction_discriminator.len() + // instruction_discriminator
-        4 + self.accounts.iter().map(|c| 1 + c.as_ref().map(|c| c.size()).unwrap_or(0)).sum::<usize>() + // accounts vec
-        32 // program_id
+        1 + // num_accounts
+        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
+        4 + self.instruction_data.len() + // instruction_data
+        32 + // program_id
+        1 // pass_inner_instructions
     }
 
     // Get the accounts for the hook
@@ -70,7 +73,7 @@ impl Hook {
         offset: usize,
         accounts: &'info [AccountInfo<'info>],
     ) -> &'info [AccountInfo<'info>] {
-        let accounts_len = self.accounts.len();
+        let accounts_len = self.num_accounts as usize;
         accounts.get(offset..offset + accounts_len).unwrap()
     }
 }
@@ -308,6 +311,40 @@ impl AccountConstraint {
         }
         Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
     }
+
+    pub fn evaluate_account_infos<'info>(
+        &self,
+        account_infos: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        let account_info_to_evalute = account_infos
+            .get(self.account_index as usize)
+            .ok_or(SmartAccountError::ProgramInteractionAccountConstraintViolated)
+            .unwrap();
+
+        // Evaluate the owner constraint
+        if let Some(owner) = self.owner {
+            require_eq!(
+                account_info_to_evalute.owner,
+                &owner,
+                SmartAccountError::IllegalAccountOwner
+            );
+        };
+        // Evaluate the account constraint
+        match &self.account_constraint {
+            AccountConstraintType::Pubkey(keys) => {
+                if keys.contains(&account_info_to_evalute.key) {
+                    return Ok(());
+                }
+            }
+            AccountConstraintType::AccountData(constraints) => {
+                let data = account_info_to_evalute.try_borrow_data()?;
+                for constraint in constraints {
+                    constraint.evaluate(&data)?;
+                }
+            }
+        }
+        Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
+    }
 }
 
 // =============================================================================
@@ -381,58 +418,73 @@ pub struct ProgramInteractionExecutionArgs {
 impl Hook {
     pub fn execute<'info>(
         &self,
-        signer_seeds: &[&[&[u8]]],
+        hook_accounts: &'info [AccountInfo<'info>],
         instructions: &[SmartAccountCompiledInstruction],
         instruction_accounts: &[AccountInfo<'info>],
-        hook_accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         use borsh::BorshSerialize;
 
-        let mut account_metas =
-            Vec::with_capacity(hook_accounts.len() + instruction_accounts.len());
-
-        hook_accounts
-            .iter()
-            .map(|account| match account.is_writable {
-                true => AccountMeta::new(*account.key, account.is_signer),
-                false => AccountMeta::new_readonly(*account.key, account.is_signer),
-            })
-            .for_each(|meta| account_metas.push(meta));
-
-        instruction_accounts
-            .iter()
-            .map(|account| match account.is_writable {
-                true => AccountMeta::new(*account.key, account.is_signer),
-                false => AccountMeta::new_readonly(*account.key, account.is_signer),
-            })
-            .for_each(|meta| account_metas.push(meta));
-
-        // Serialize the instruction data
-        let mut instruction_data = Vec::new();
-        instruction_data.extend_from_slice(&self.instruction_discriminator);
-        for ix in instructions {
-            ix.serialize(&mut instruction_data)
-                .map_err(|_| SmartAccountError::ProgramInteractionTemplateHookError)?;
+        // Evaluate the hook accounts
+        for account_constraint in self.account_constraints.iter() {
+            account_constraint.evaluate_account_infos(hook_accounts)?;
         }
 
+        // Build the necessary account metas
+        let mut account_metas =
+            Vec::with_capacity(1 + hook_accounts.len() + instruction_accounts.len());
+
+        // Add the hook accounts to the account metas
+        for account in hook_accounts.iter() {
+            let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                AccountMeta::new_readonly(*account.key, true)
+            } else if account.is_writable {
+                AccountMeta::new(*account.key, account.is_signer)
+            } else {
+                AccountMeta::new_readonly(*account.key, account.is_signer)
+            };
+            account_metas.push(meta);
+        }
+
+        // Build the instruction data
+        let mut instruction_data = self.instruction_data.clone();
+
+        if self.pass_inner_instructions {
+            // Serialized Vec represenation of the instructions length
+            instruction_data.extend_from_slice(&(instructions.len() as u32).to_le_bytes());
+
+            // Serialize the instructions
+            for ix in instructions {
+                ix.serialize(&mut instruction_data)
+                    .map_err(|_| SmartAccountError::ProgramInteractionTemplateHookError)?;
+            }
+
+            // Add the instruction accounts
+            for account in instruction_accounts.iter() {
+                // Allow the hook authority, as long as it is readonly
+                let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                    AccountMeta::new_readonly(*account.key, true)
+                } else if account.is_writable {
+                    AccountMeta::new(*account.key, account.is_signer)
+                } else {
+                    AccountMeta::new_readonly(*account.key, account.is_signer)
+                };
+                account_metas.push(meta);
+            }
+        }
+
+        // Build the instruction
         let instruction = Instruction {
             program_id: self.program_id,
             accounts: account_metas,
             data: instruction_data,
         };
-        // Invoke based on if the hook is signed or not
-        match self.signed {
-            true => {
-                anchor_lang::solana_program::program::invoke_signed(
-                    &instruction,
-                    hook_accounts,
-                    signer_seeds,
-                )?;
-            }
-            false => {
-                anchor_lang::solana_program::program::invoke(&instruction, hook_accounts)?;
-            }
-        }
+
+        // Invoke the instruction
+        anchor_lang::solana_program::program::invoke_signed(
+            &instruction,
+            hook_accounts,
+            &[&[SEED_HOOK_AUTHORITY]],
+        )?;
         Ok(())
     }
 }
@@ -810,7 +862,7 @@ impl ProgramInteractionPolicy {
         &mut self,
         args: ProgramInteractionExecutionArgs,
         payload: &ProgramInteractionPayload,
-        accounts: &'info [AccountInfo<'info>],
+        mut accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         // Get the transaction payload
         let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
@@ -843,15 +895,42 @@ impl ProgramInteractionPolicy {
         ];
         let num_lookups = transaction_payload.message.address_table_lookups.len();
 
+        // Split all accounts into pre hook accounts, post_hook accounts and
+        // transaction related accounts
+        let (pre_hook_accounts, post_hook_accounts) = {
+            let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+            let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+            let mut transaction_accounts = accounts;
+
+            if self.pre_hook.is_some() {
+                let (pre_hook_accounts, remaining_accounts) = transaction_accounts
+                    .split_at(self.pre_hook.as_ref().unwrap().num_accounts as usize);
+                pre_hook_accounts_intermediate = pre_hook_accounts;
+                transaction_accounts = remaining_accounts;
+            };
+            if self.post_hook.is_some() {
+                let (post_hook_accounts, remaining_accounts) = transaction_accounts
+                    .split_at(self.post_hook.as_ref().unwrap().num_accounts as usize);
+                post_hook_accounts_intermediate = post_hook_accounts;
+                transaction_accounts = remaining_accounts;
+            }
+
+            // Re-set transaction accounts
+            accounts = transaction_accounts;
+
+            (pre_hook_accounts_intermediate, post_hook_accounts_intermediate)
+        };
+
+        // Execute the pre hook
         if let Some(pre_hook) = &self.pre_hook {
-            let hook_accounts = pre_hook.get_accounts(0, accounts);
             pre_hook.execute(
-                &[smart_account_signer_seeds],
+                pre_hook_accounts,
                 &transaction_payload.message.instructions,
                 accounts,
-                hook_accounts,
             )?;
         }
+
+        // Execute the transaction
         let message_account_infos = accounts
             .get(num_lookups..)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
@@ -909,18 +988,13 @@ impl ProgramInteractionPolicy {
                 protected_accounts,
             )?;
         }
+
+        // Execute post hook
         if let Some(post_hook) = &self.post_hook {
-            let offset = if let Some(pre_hook) = &self.pre_hook {
-                pre_hook.accounts.len()
-            } else {
-                0
-            };
-            let hook_accounts = post_hook.get_accounts(offset, accounts);
             post_hook.execute(
-                &[smart_account_signer_seeds],
+                post_hook_accounts,
                 &transaction_payload.message.instructions,
                 accounts,
-                hook_accounts,
             )?;
         }
         Ok(())
