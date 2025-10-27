@@ -91,6 +91,7 @@ impl<'info> Balances<'info> {
         let current_lamports = self.executing_account.account.lamports();
 
         // Check the SOL spending limit
+        // Note: Assumes spending limits have been deduplicated, and no two spending limits can have the same mint
         if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
             spending_limit.mint() == Pubkey::default()
                 && spending_limit.is_active(current_timestamp).is_ok()
