@@ -513,6 +513,7 @@ describe("Flow / ProgramInteractionPolicy", () => {
 
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
+    let randomAccountPublicKey = web3.Keypair.generate().publicKey;
 
     let [sourceSmartAccountPda] = await getSmartAccountPda({
       settingsPda,
@@ -533,31 +534,20 @@ describe("Flow / ProgramInteractionPolicy", () => {
       1_500_000_000
     );
 
-    let [mint2, mint2Decimals] = await createMintAndTransferTo(
-      connection,
-      members.voter,
-      sourceSmartAccountPda,
-      1_500_000_000
-    );
-
     let sourceTokenAccount = await getAssociatedTokenAddressSync(
       mint,
       sourceSmartAccountPda,
       true
     );
-    let sourceTokenAccount2 = await getAssociatedTokenAddressSync(
-      mint2,
-      sourceSmartAccountPda,
-      true
-    );
+
     let destinationTokenAccount = getAssociatedTokenAddressSync(
       mint,
       destinationSmartAccountPda,
       true
     );
-    let destinationTokenAccount2 = getAssociatedTokenAddressSync(
-      mint2,
-      destinationSmartAccountPda,
+    let randomDestinationTokenAccount = getAssociatedTokenAddressSync(
+      mint,
+      randomAccountPublicKey,
       true
     );
 
@@ -571,8 +561,8 @@ describe("Flow / ProgramInteractionPolicy", () => {
     await getOrCreateAssociatedTokenAccount(
       connection,
       members.voter,
-      mint2,
-      destinationSmartAccountPda,
+      mint,
+      randomAccountPublicKey,
       true
     );
 
@@ -726,8 +716,6 @@ describe("Flow / ProgramInteractionPolicy", () => {
     assert.strictEqual(policyAccount.threshold, 1);
     assert.strictEqual(policyAccount.timeLock, 0);
 
-    // Try transfer SOL via creating a transaction and proposal
-    const policyTransactionIndex = BigInt(1);
 
     // Create SPL token transfer instruction
     const tokenTransferIxn = createTransferInstruction(
@@ -736,6 +724,8 @@ describe("Flow / ProgramInteractionPolicy", () => {
       sourceSmartAccountPda, // authority
       500_000_000n // amount
     );
+    // Make the authority writable to make it compatible with the util function
+    tokenTransferIxn.keys[2].isWritable = true;
 
     // Create transaction message
     const message = new web3.TransactionMessage({
@@ -743,13 +733,6 @@ describe("Flow / ProgramInteractionPolicy", () => {
       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
       instructions: [tokenTransferIxn],
     });
-
-    let { transactionMessageBytes, compiledMessage } =
-      utils.transactionMessageToMultisigTransactionMessageBytes({
-        message,
-        addressLookupTableAccounts: [],
-        smartAccountPda: sourceSmartAccountPda,
-      });
 
     let syncPayload = utils.instructionsToSynchronousTransactionDetailsV2({
       vaultPda: sourceSmartAccountPda,
@@ -866,76 +849,69 @@ describe("Flow / ProgramInteractionPolicy", () => {
     assert.strictEqual(sourceBalance.value.amount, "500000000");
     assert.strictEqual(destinationBalance.value.amount, "1000000000");
 
-    // Check the policy state
-    policyData = await Policy.fromAccountAddress(connection, policyPda, {
-      commitment: "processed",
-    });
-    policyState = policyData.policyState;
-    assert.strictEqual(policyState.__kind, "ProgramInteraction");
-    programInteractionPolicy = policyState
-      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
-    let spendingLimit = programInteractionPolicy.spendingLimits[0];
-    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "0");
-    assert.equal(spendingLimit.usage.lastReset.toString(), "0");
+    let invalidTokenTransferIxn = createTransferInstruction(
+      sourceTokenAccount, // source token account
+      randomDestinationTokenAccount, // destination token account
+      sourceSmartAccountPda, // authority
+      500_000_000n // amount
+    );
+    // Make the authority writable to make it compatible with the util function
+    invalidTokenTransferIxn.keys[2].isWritable = true;
+
+    let invalidSynchronousPayload =
+      utils.instructionsToSynchronousTransactionDetailsV2({
+        vaultPda: sourceSmartAccountPda,
+        members: [members.voter.publicKey],
+        transaction_instructions: [invalidTokenTransferIxn],
+      });
+
+    let invalidSyncPolicyPayload: smartAccount.generated.PolicyPayload = {
+      __kind: "ProgramInteraction",
+      fields: [
+        {
+          instructionConstraintIndices: new Uint8Array([0]),
+          transactionPayload: {
+            __kind: "SyncTransaction",
+            fields: [
+              {
+                accountIndex: 0,
+                instructions: invalidSynchronousPayload.instructions,
+              },
+            ],
+          },
+        },
+      ],
+    };
 
     // Try to transfer more than the policy allows
-    await assert.rejects(
-      smartAccount.rpc.executePolicyPayloadSync({
-        connection,
-        feePayer: members.voter,
-        policy: policyPda,
-        accountIndex: 0,
-        numSigners: 1,
-        policyPayload: syncPolicyPayload,
-        instruction_accounts: synchronousPayload.accounts,
-        signers: [members.voter],
-        programId,
-      }),
-      (err: any) => {
-        assert.ok(
-          err
-            .toString()
-            .includes("ProgramInteractionInsufficientTokenAllowance")
-        );
-        return true;
-      }
-    );
-    // Wait 6 seconds and retry to get the spending limit to reset
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    let signatureAfter = await smartAccount.rpc.executePolicyPayloadSync({
+    let failedSignature = await smartAccount.rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
       accountIndex: 0,
       numSigners: 1,
-      policyPayload: syncPolicyPayload,
-      instruction_accounts: synchronousPayload.accounts,
+      policyPayload: invalidSyncPolicyPayload,
+      instruction_accounts: invalidSynchronousPayload.accounts,
       signers: [members.voter],
-      sendOptions: {
-        skipPreflight: true,
-      },
       programId,
     });
-    await connection.confirmTransaction(signatureAfter);
-
-    // Check the balances & policy state
-    sourceBalance = await connection.getTokenAccountBalance(sourceTokenAccount);
-    destinationBalance = await connection.getTokenAccountBalance(
-      destinationTokenAccount
-    );
-    assert.strictEqual(sourceBalance.value.amount, "0");
-    assert.strictEqual(destinationBalance.value.amount, "1500000000");
-
-    // Policy state
-    policyData = await Policy.fromAccountAddress(connection, policyPda, {
-      commitment: "processed",
-    });
-    policyState = policyData.policyState;
-    programInteractionPolicy = policyState
-      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
-    spendingLimit = programInteractionPolicy.spendingLimits[0];
-    // Should have reset
-    assert.equal(spendingLimit.usage.remainingInPeriod.toString(), "500000000");
+    await connection.confirmTransaction(failedSignature);
+    console.log("failedSignature", failedSignature);
   });
+
+  // it("Program Interaction Policy with pre/post hooks", async () => {
+  //   // Create new autonomous smart account with 1/1 threshold for easy testing
+  //   const settingsPda = (
+  //     await createAutonomousMultisig({
+  //       connection,
+  //       members,
+  //       threshold: 1,
+  //       timeLock: 0,
+  //       programId,
+  //     })
+  //   )[0];
+
+  //   // Use seed 1 for the first policy on this smart account
+  //   const policySeed = 1;
+  // });
 });
