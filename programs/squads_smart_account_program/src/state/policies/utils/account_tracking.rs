@@ -166,17 +166,24 @@ impl<'info> Balances<'info> {
                 );
             }
 
-            // Ensure the delegate, delegated amount, and authority have not changed
-            let post_delegate =
+            // Ensure the delegate, and authority have not changed. Delegated
+            // amount may decrease
+            let post_delegate: Option<(Pubkey, u64)> =
                 if let Some(delegate_key) = Option::from(post_token_account.delegate) {
                     Some((delegate_key, post_token_account.delegated_amount))
                 } else {
                     None
                 };
-            require!(
-                post_delegate == tracked_token_account.delegate,
-                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
-            );
+            match (post_delegate, tracked_token_account.delegate) {
+                (Some(post_delegate), Some(tracked_delegate)) => {
+                    require_eq!(post_delegate.0, tracked_delegate.0);
+                    require_gte!(post_delegate.1, tracked_delegate.1);
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into());
+                }
+            };
             require_eq!(
                 post_token_account.owner,
                 tracked_token_account.authority,
