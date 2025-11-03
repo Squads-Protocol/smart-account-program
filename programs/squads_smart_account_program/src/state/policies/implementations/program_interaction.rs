@@ -918,7 +918,10 @@ impl ProgramInteractionPolicy {
             // Re-set transaction accounts
             accounts = transaction_accounts;
 
-            (pre_hook_accounts_intermediate, post_hook_accounts_intermediate)
+            (
+                pre_hook_accounts_intermediate,
+                post_hook_accounts_intermediate,
+            )
         };
 
         // Execute the pre hook
@@ -926,7 +929,7 @@ impl ProgramInteractionPolicy {
             pre_hook.execute(
                 pre_hook_accounts,
                 &transaction_payload.message.instructions,
-                accounts,
+                &accounts[num_lookups..],
             )?;
         }
 
@@ -994,7 +997,7 @@ impl ProgramInteractionPolicy {
             post_hook.execute(
                 post_hook_accounts,
                 &transaction_payload.message.instructions,
-                accounts,
+                &accounts[num_lookups..],
             )?;
         }
         Ok(())
@@ -1009,7 +1012,7 @@ impl ProgramInteractionPolicy {
         &mut self,
         args: ProgramInteractionExecutionArgs,
         payload: &ProgramInteractionPayload,
-        accounts: &'info [AccountInfo<'info>],
+        mut accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         // Get the sync transaction payload
         let sync_transaction_payload = payload.get_sync_transaction_payload()?;
@@ -1047,11 +1050,49 @@ impl ProgramInteractionPolicy {
             &[smart_account_bump],
         ];
 
+        // Split all accounts into pre hook accounts, post_hook accounts and
+        // transaction related accounts
+        let (pre_hook_accounts, post_hook_accounts) = {
+            let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+            let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+            let mut transaction_accounts = accounts;
+
+            if self.pre_hook.is_some() {
+                let (pre_hook_accounts, remaining_accounts) = transaction_accounts
+                    .split_at(self.pre_hook.as_ref().unwrap().num_accounts as usize);
+                pre_hook_accounts_intermediate = pre_hook_accounts;
+                transaction_accounts = remaining_accounts;
+            };
+            if self.post_hook.is_some() {
+                let (post_hook_accounts, remaining_accounts) = transaction_accounts
+                    .split_at(self.post_hook.as_ref().unwrap().num_accounts as usize);
+                post_hook_accounts_intermediate = post_hook_accounts;
+                transaction_accounts = remaining_accounts;
+            }
+
+            // Re-set transaction accounts
+            accounts = transaction_accounts;
+
+            (
+                pre_hook_accounts_intermediate,
+                post_hook_accounts_intermediate,
+            )
+        };
+
+        // Execute the pre hook
+        if let Some(pre_hook) = &self.pre_hook {
+            pre_hook.execute(
+                pre_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
+        }
+
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
             &args.policy_signers,
-            settings_compiled_instructions,
+            &settings_compiled_instructions,
             accounts,
         )?;
 
@@ -1081,6 +1122,14 @@ impl ProgramInteractionPolicy {
             // references or usages of `self.message` should be made to avoid
             // faulty behavior.
             executable_message.execute(smart_account_signer_seeds)?;
+        }
+        // Execute the post hook
+        if let Some(post_hook) = &self.post_hook {
+            post_hook.execute(
+                post_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
         }
 
         Ok(())
