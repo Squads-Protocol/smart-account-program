@@ -298,8 +298,10 @@ impl AccountConstraint {
         // Evaluate the account constraint
         match &self.account_constraint {
             AccountConstraintType::Pubkey(keys) => {
-                if keys.contains(&account.key) {
-                    return Ok(());
+                if !keys.contains(&account.key) {
+                    return Err(
+                        SmartAccountError::ProgramInteractionAccountConstraintViolated.into(),
+                    );
                 }
             }
             AccountConstraintType::AccountData(constraints) => {
@@ -309,7 +311,7 @@ impl AccountConstraint {
                 }
             }
         }
-        Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
+        Ok(())
     }
 
     pub fn evaluate_account_infos<'info>(
@@ -1031,6 +1033,14 @@ impl ProgramInteractionPolicy {
                 .map(SmartAccountCompiledInstruction::from)
                 .collect();
 
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
+            )?;
+        }
         let smart_account_seeds = &[
             SEED_PREFIX,
             settings_key.as_ref(),

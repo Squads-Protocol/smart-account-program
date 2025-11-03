@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::program::SquadsSmartAccountProgram;
-use crate::{state::*, LogAuthorityInfo, SmartAccountEvent};
 use crate::{errors::*, AuthoritySettingsEvent};
+use crate::{state::*, LogAuthorityInfo, SmartAccountEvent};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddSpendingLimitArgs {

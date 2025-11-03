@@ -181,8 +181,8 @@ export function getPolicyPda({
   return PublicKey.findProgramAddressSync(
     [
       SEED_PREFIX,
-      settingsPda.toBytes(),
       SEED_POLICY,
+      settingsPda.toBytes(),
       toU64Bytes(BigInt(policySeed)),
     ],
     programId

@@ -252,9 +252,7 @@ impl PolicyTrait for SettingsChangePolicy {
                 (
                     AllowedSettingsChange::ChangeThreshold,
                     LimitedSettingsAction::ChangeThreshold { new_threshold: _ },
-                ) => {
-                    continue;
-                }
+                ) => {}
                 (
                     AllowedSettingsChange::ChangeTimeLock {
                         new_time_lock: allowed_time_lock,
@@ -319,8 +317,17 @@ impl PolicyTrait for SettingsChangePolicy {
             };
             SmartAccountEvent::SettingsChangePolicyEvent(event).log(&log_authority_info)?;
         }
-
-        // Run settings invariant
+        // Reallocate the settings account if needed
+        Settings::realloc_if_needed(
+            validated_accounts.settings.to_account_info(),
+            validated_accounts.settings.signers.len(),
+            validated_accounts
+                .rent_payer
+                .map(|rent_payer| rent_payer.to_account_info()),
+            validated_accounts
+                .system_program
+                .map(|system_program| system_program.to_account_info()),
+        )?;
         Ok(())
     }
 }
@@ -360,6 +367,12 @@ impl SettingsChangePolicy {
         );
         let settings: Account<'info, Settings> = Account::try_from(settings_account_info)?;
 
+        // Settings authority validation
+        require!(
+            settings.settings_authority == Pubkey::default(),
+            SmartAccountError::NotSupportedForControlled
+        );
+       
         // Rent payer validation
         let rent_payer = Signer::try_from(rent_payer_info)
             .map_err(|_| SmartAccountError::SettingsChangeInvalidRentPayer)?;

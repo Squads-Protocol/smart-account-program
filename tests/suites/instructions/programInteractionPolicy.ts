@@ -526,6 +526,7 @@ describe("Flow / ProgramInteractionPolicy", () => {
       accountIndex: 1,
       programId,
     });
+    console.log("destinationSmartAccountPda", destinationSmartAccountPda);
 
     let [mint, mintDecimals] = await createMintAndTransferTo(
       connection,
@@ -769,6 +770,9 @@ describe("Flow / ProgramInteractionPolicy", () => {
       instruction_accounts: syncPayload.accounts,
       signers: [members.voter],
       programId,
+      sendOptions: {
+        skipPreflight: true,
+      },
     });
     await connection.confirmTransaction(signature);
 
@@ -883,20 +887,21 @@ describe("Flow / ProgramInteractionPolicy", () => {
       ],
     };
 
-    // Try to transfer more than the policy allows
-    let failedSignature = await smartAccount.rpc.executePolicyPayloadSync({
-      connection,
-      feePayer: members.voter,
-      policy: policyPda,
-      accountIndex: 0,
-      numSigners: 1,
-      policyPayload: invalidSyncPolicyPayload,
-      instruction_accounts: invalidSynchronousPayload.accounts,
-      signers: [members.voter],
-      programId,
-    });
-    await connection.confirmTransaction(failedSignature);
-    console.log("failedSignature", failedSignature);
+    // Try to transfer more than the policy allows; should fail
+    await assert.rejects(
+      smartAccount.rpc.executePolicyPayloadSync({
+        connection,
+        feePayer: members.voter,
+        policy: policyPda,
+        accountIndex: 0,
+        numSigners: 1,
+        policyPayload: invalidSyncPolicyPayload,
+        instruction_accounts: invalidSynchronousPayload.accounts,
+        signers: [members.voter],
+        programId,
+      }),
+      /ProgramInteractionInvalidNumericValue/i // This is the error from @file_context_0
+    );
   });
 
   // it("Program Interaction Policy with pre/post hooks", async () => {

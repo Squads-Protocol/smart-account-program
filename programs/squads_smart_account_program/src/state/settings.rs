@@ -445,8 +445,8 @@ impl Settings {
                 let (policy_pubkey, policy_bump) = Pubkey::find_program_address(
                     &[
                         crate::SEED_PREFIX,
-                        self_key.as_ref(),
                         SEED_POLICY,
+                        self_key.as_ref(),
                         &next_policy_seed.to_le_bytes(),
                     ],
                     program_id,
@@ -479,9 +479,9 @@ impl Settings {
                     policy_size,
                     vec![
                         crate::SEED_PREFIX.to_vec(),
-                        self_key.as_ref().to_vec(),
                         SEED_POLICY.to_vec(),
-                        seed.to_le_bytes().to_vec(),
+                        self_key.as_ref().to_vec(),
+                        next_policy_seed.to_le_bytes().to_vec(),
                         vec![policy_bump],
                     ],
                 )?;
