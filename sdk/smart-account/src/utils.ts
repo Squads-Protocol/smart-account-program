@@ -16,7 +16,10 @@ import { getEphemeralSignerPda } from "./pda";
 import { transactionMessageBeet } from "./types";
 import { compileToSynchronousMessageAndAccounts } from "./utils/compileToSynchronousMessage";
 import { compileToWrappedMessageV0 } from "./utils/compileToWrappedMessageV0";
-import { compileToSynchronousMessageAndAccountsV2 } from "./utils/compileToSynchronousMessageV2";
+import {
+  compileToSynchronousMessageAndAccountsV2,
+  compileToSynchronousMessageAndAccountsV2WithHooks,
+} from "./utils/compileToSynchronousMessageV2";
 
 export function toUtfBytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
@@ -210,6 +213,36 @@ export function instructionsToSynchronousTransactionDetailsV2({
   };
 }
 
+export function instructionsToSynchronousTransactionDetailsV2WithHooks({
+  vaultPda,
+  members,
+  preHookAccounts,
+  postHookAccounts,
+  transaction_instructions,
+}: {
+  vaultPda: PublicKey;
+  members: PublicKey[];
+  preHookAccounts: AccountMeta[];
+  postHookAccounts: AccountMeta[];
+  transaction_instructions: TransactionInstruction[];
+}): {
+  instructions: Uint8Array;
+  accounts: AccountMeta[];
+} {
+  const { instructions, accounts } =
+    compileToSynchronousMessageAndAccountsV2WithHooks({
+      vaultPda,
+      members,
+      preHookAccounts,
+      postHookAccounts,
+      instructions: transaction_instructions,
+    });
+
+  return {
+    instructions,
+    accounts,
+  };
+}
 /** Populate remaining accounts required for execution of the transaction. */
 export async function accountsForTransactionExecute({
   connection,

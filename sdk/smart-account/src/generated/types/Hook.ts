@@ -10,7 +10,7 @@ import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import { AccountConstraint, accountConstraintBeet } from './AccountConstraint'
 export type Hook = {
-  numAccounts: number
+  numExtraAccounts: number
   accountConstraints: AccountConstraint[]
   instructionData: Uint8Array
   programId: web3.PublicKey
@@ -23,7 +23,7 @@ export type Hook = {
  */
 export const hookBeet = new beet.FixableBeetArgsStruct<Hook>(
   [
-    ['numAccounts', beet.u8],
+    ['numExtraAccounts', beet.u8],
     ['accountConstraints', beet.array(accountConstraintBeet)],
     ['instructionData', beet.bytes],
     ['programId', beetSolana.publicKey],
