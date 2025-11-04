@@ -45,8 +45,8 @@ pub struct InstructionConstraint {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Hook {
-    // Dictates how many accounts are required for the hook
-    pub num_accounts: u8,
+    // Dictates how many extra accounts are required for the hook, beyond the program ID
+    pub num_extra_accounts: u8,
     // Dictates constraints for the hook accounts
     pub account_constraints: Vec<AccountConstraint>,
     // Dictates which instruction data will be invoked
@@ -67,14 +67,13 @@ impl Hook {
         1 // pass_inner_instructions
     }
 
-    // Get the accounts for the hook
-    pub fn get_accounts<'info>(
-        &self,
-        offset: usize,
-        accounts: &'info [AccountInfo<'info>],
-    ) -> &'info [AccountInfo<'info>] {
-        let accounts_len = self.num_accounts as usize;
-        accounts.get(offset..offset + accounts_len).unwrap()
+    // Get the total number of accounts required for the hook
+    pub fn num_accounts(&self) -> usize {
+        // Program ID also needs to get passed in, therefore add 1
+        self.num_extra_accounts
+            .checked_add(1)
+            .map(|v| v as usize)
+            .unwrap()
     }
 }
 // =============================================================================
@@ -484,7 +483,8 @@ impl Hook {
         // Invoke the instruction
         anchor_lang::solana_program::program::invoke_signed(
             &instruction,
-            hook_accounts,
+            // Concatenate the hook accounts and the instruction accounts
+            &[hook_accounts, instruction_accounts].concat(),
             &[&[SEED_HOOK_AUTHORITY]],
         )?;
         Ok(())
@@ -521,6 +521,39 @@ impl ProgramInteractionPolicy {
             }
         }
         Ok(())
+    }
+
+    // Parses hook accounts from the accounts slice and returns them
+    pub fn parse_hook_accounts<'info, 'a>(
+        &self,
+        accounts: &mut &'a [AccountInfo<'info>],
+    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
+        // Split all accounts into pre hook accounts, post_hook accounts and
+        // transaction related accounts including lookups
+        let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut transaction_accounts = *accounts;
+
+        if self.pre_hook.is_some() {
+            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.pre_hook.as_ref().unwrap().num_accounts() as usize);
+            pre_hook_accounts_intermediate = pre_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        };
+        if self.post_hook.is_some() {
+            let (post_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.post_hook.as_ref().unwrap().num_accounts() as usize);
+            post_hook_accounts_intermediate = post_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        }
+
+        // Re-set transaction accounts
+        *accounts = transaction_accounts;
+
+        (
+            pre_hook_accounts_intermediate,
+            post_hook_accounts_intermediate,
+        )
     }
 }
 
@@ -869,15 +902,6 @@ impl ProgramInteractionPolicy {
         // Get the transaction payload
         let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
 
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &transaction_payload.message.instructions,
-                accounts,
-            )?;
-        }
-
         // Largely copied from `transaction_execute.rs`
         let smart_account_seeds = &[
             SEED_PREFIX,
@@ -895,36 +919,28 @@ impl ProgramInteractionPolicy {
             smart_account_seeds[3],
             &[smart_account_bump],
         ];
+
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+
+        // Get the message account infos and address lookup table account infos
         let num_lookups = transaction_payload.message.address_table_lookups.len();
+        // Execute the transaction
+        let message_account_infos = accounts
+            .get(num_lookups..)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+        let address_lookup_table_account_infos = accounts
+            .get(..num_lookups)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        // Split all accounts into pre hook accounts, post_hook accounts and
-        // transaction related accounts
-        let (pre_hook_accounts, post_hook_accounts) = {
-            let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-            let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-            let mut transaction_accounts = accounts;
-
-            if self.pre_hook.is_some() {
-                let (pre_hook_accounts, remaining_accounts) = transaction_accounts
-                    .split_at(self.pre_hook.as_ref().unwrap().num_accounts as usize);
-                pre_hook_accounts_intermediate = pre_hook_accounts;
-                transaction_accounts = remaining_accounts;
-            };
-            if self.post_hook.is_some() {
-                let (post_hook_accounts, remaining_accounts) = transaction_accounts
-                    .split_at(self.post_hook.as_ref().unwrap().num_accounts as usize);
-                post_hook_accounts_intermediate = post_hook_accounts;
-                transaction_accounts = remaining_accounts;
-            }
-
-            // Re-set transaction accounts
-            accounts = transaction_accounts;
-
-            (
-                pre_hook_accounts_intermediate,
-                post_hook_accounts_intermediate,
-            )
-        };
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &transaction_payload.message.instructions,
+                message_account_infos,
+            )?;
+        }
 
         // Execute the pre hook
         if let Some(pre_hook) = &self.pre_hook {
@@ -934,15 +950,6 @@ impl ProgramInteractionPolicy {
                 &accounts[num_lookups..],
             )?;
         }
-
-        // Execute the transaction
-        let message_account_infos = accounts
-            .get(num_lookups..)
-            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
-        let address_lookup_table_account_infos = accounts
-            .get(..num_lookups)
-            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
-
         let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
             args.transaction_key,
             &transaction_payload.ephemeral_signer_bumps,
@@ -1032,22 +1039,13 @@ impl ProgramInteractionPolicy {
                 .into_iter()
                 .map(SmartAccountCompiledInstruction::from)
                 .collect();
-
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &settings_compiled_instructions,
-                accounts,
-            )?;
-        }
+        // Get the smart account seeds
         let smart_account_seeds = &[
             SEED_PREFIX,
             settings_key.as_ref(),
             SEED_SMART_ACCOUNT,
             &sync_transaction_payload.account_index.to_le_bytes(),
         ];
-
         let (smart_account_pubkey, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, &crate::ID);
 
@@ -1060,34 +1058,17 @@ impl ProgramInteractionPolicy {
             &[smart_account_bump],
         ];
 
-        // Split all accounts into pre hook accounts, post_hook accounts and
-        // transaction related accounts
-        let (pre_hook_accounts, post_hook_accounts) = {
-            let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-            let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-            let mut transaction_accounts = accounts;
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
 
-            if self.pre_hook.is_some() {
-                let (pre_hook_accounts, remaining_accounts) = transaction_accounts
-                    .split_at(self.pre_hook.as_ref().unwrap().num_accounts as usize);
-                pre_hook_accounts_intermediate = pre_hook_accounts;
-                transaction_accounts = remaining_accounts;
-            };
-            if self.post_hook.is_some() {
-                let (post_hook_accounts, remaining_accounts) = transaction_accounts
-                    .split_at(self.post_hook.as_ref().unwrap().num_accounts as usize);
-                post_hook_accounts_intermediate = post_hook_accounts;
-                transaction_accounts = remaining_accounts;
-            }
-
-            // Re-set transaction accounts
-            accounts = transaction_accounts;
-
-            (
-                pre_hook_accounts_intermediate,
-                post_hook_accounts_intermediate,
-            )
-        };
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
+            )?;
+        }
 
         // Execute the pre hook
         if let Some(pre_hook) = &self.pre_hook {
