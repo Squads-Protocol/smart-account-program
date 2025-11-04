@@ -156,7 +156,7 @@ describe("Flows / Policy Creation", () => {
           {
             accountIndex: 0, // Apply to account index 0
             preHook: {
-              numAccounts: 4,
+              numExtraAccounts: 4,
               accountConstraints: [
                 {
                   accountIndex: 0,
