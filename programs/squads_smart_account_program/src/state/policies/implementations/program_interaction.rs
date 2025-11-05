@@ -277,8 +277,8 @@ impl DataConstraint {
 }
 
 impl AccountConstraint {
-    /// Evaluate the account constraint for a given instruction
-    pub fn evaluate(
+    /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
+    pub fn evaluate_against_instruction_indices_and_accounts(
         &self,
         instruction_account_indices: &[u8],
         accounts: &[AccountInfo],
@@ -286,6 +286,14 @@ impl AccountConstraint {
         // Get the account at the given constraint index
         let mapped_account_index = instruction_account_indices[self.account_index as usize];
         let account = &accounts[mapped_account_index as usize];
+
+        self.evaluate_against_account_info(account)?;
+
+        Ok(())
+    }
+
+    /// Simply evaluate the account constraint against a single AccountInfo
+    pub fn evaluate_against_account_info(&self, account: &AccountInfo) -> Result<()> {
         // Evaluate the owner constraint
         if let Some(owner) = self.owner {
             require_eq!(
@@ -313,7 +321,8 @@ impl AccountConstraint {
         Ok(())
     }
 
-    pub fn evaluate_account_infos<'info>(
+    /// Evaluate the account constraint against a set of AccountInfos
+    pub fn evaluate_against_account_infos<'info>(
         &self,
         account_infos: &'info [AccountInfo<'info>],
     ) -> Result<()> {
@@ -322,29 +331,9 @@ impl AccountConstraint {
             .ok_or(SmartAccountError::ProgramInteractionAccountConstraintViolated)
             .unwrap();
 
-        // Evaluate the owner constraint
-        if let Some(owner) = self.owner {
-            require_eq!(
-                account_info_to_evalute.owner,
-                &owner,
-                SmartAccountError::IllegalAccountOwner
-            );
-        };
-        // Evaluate the account constraint
-        match &self.account_constraint {
-            AccountConstraintType::Pubkey(keys) => {
-                if keys.contains(&account_info_to_evalute.key) {
-                    return Ok(());
-                }
-            }
-            AccountConstraintType::AccountData(constraints) => {
-                let data = account_info_to_evalute.try_borrow_data()?;
-                for constraint in constraints {
-                    constraint.evaluate(&data)?;
-                }
-            }
-        }
-        Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
+        self.evaluate_against_account_info(account_info_to_evalute)?;
+
+        Ok(())
     }
 }
 
@@ -427,7 +416,7 @@ impl Hook {
 
         // Evaluate the hook accounts
         for account_constraint in self.account_constraints.iter() {
-            account_constraint.evaluate_account_infos(hook_accounts)?;
+            account_constraint.evaluate_against_account_infos(hook_accounts)?;
         }
 
         // Build the necessary account metas
@@ -513,7 +502,10 @@ impl ProgramInteractionPolicy {
 
             // Evaluate the account constraints
             for account_constraint in &instruction_constraint.account_constraints {
-                account_constraint.evaluate(&instruction.account_indexes, accounts)?;
+                account_constraint.evaluate_against_instruction_indices_and_accounts(
+                    &instruction.account_indexes,
+                    accounts,
+                )?;
             }
             // Evaluate the data constraints
             for data_constraint in &instruction_constraint.data_constraints {
