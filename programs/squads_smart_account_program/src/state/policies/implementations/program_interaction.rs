@@ -143,9 +143,9 @@ pub enum AccountConstraintType {
 impl AccountConstraintType {
     pub fn size(&self) -> usize {
         match self {
-            AccountConstraintType::Pubkey(keys) => 4 + keys.len() * 32,
+            AccountConstraintType::Pubkey(keys) => 1 + 4 + keys.len() * 32,
             AccountConstraintType::AccountData(constraints) => {
-                4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
             }
         }
     }
@@ -644,8 +644,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + // pre_hook
-        1 + // post_hook
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
         4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>()
         // spending_limits vec
     }
