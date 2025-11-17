@@ -102,7 +102,6 @@ To run the tests, first install the node modules for the repository.
 yarn
 ```
 
-
 And run these tests with this command:
 
 ```bash
@@ -146,7 +145,7 @@ If the hash outputs of those two commands match, the code in the repository matc
 The Squads Smart Account Program has been audited by Ottersec and Certora and additionally formally verified by Certora.
 
 - Certora FV & Audit: [View Full Report](./audits/certora_smart_account_audit+FV.pdf)
-- Ottersec Audit: (coming soon)
+- Ottersec Audit: [View Full Report](./audits/ottersec_smart_account_audit.pdf)
 
 ## License
 
