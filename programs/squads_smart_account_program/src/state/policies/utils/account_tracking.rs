@@ -1,12 +1,14 @@
 use anchor_lang::{prelude::*, Ids};
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
-use crate::{errors::SmartAccountError, state::policies::utils::spending_limit_v2::SpendingLimitV2};
+use crate::{
+    errors::SmartAccountError, state::policies::utils::spending_limit_v2::SpendingLimitV2,
+};
 
 pub struct TrackedTokenAccount<'info> {
     pub account: &'info AccountInfo<'info>,
     pub balance: u64,
-    pub delegate: Option<Pubkey>,
+    pub delegate: Option<(Pubkey, u64)>,
     pub authority: Pubkey,
 }
 
@@ -43,10 +45,8 @@ pub fn check_pre_balances<'info>(
     // owned by the executing account
     let token_program_ids = TokenInterface::ids();
     for account in accounts {
-
         // Only track accounts owned by a token program and that are writable
         if token_program_ids.contains(&account.owner) && account.is_writable {
-
             // This may fail for accounts that are not token accounts, so skip if it does
             let Ok(token_account) = InterfaceAccount::<TokenAccount>::try_from(account) else {
                 continue;
@@ -55,7 +55,7 @@ pub fn check_pre_balances<'info>(
             if token_account.owner == executing_account {
                 let balance = token_account.amount;
                 let delegate = if let Some(delegate_key) = Option::from(token_account.delegate) {
-                    Some(delegate_key)
+                    Some((delegate_key, token_account.delegated_amount))
                 } else {
                     None
                 };
@@ -91,6 +91,7 @@ impl<'info> Balances<'info> {
         let current_lamports = self.executing_account.account.lamports();
 
         // Check the SOL spending limit
+        // Note: Assumes spending limits have been deduplicated, and no two spending limits can have the same mint
         if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
             spending_limit.mint() == Pubkey::default()
                 && spending_limit.is_active(current_timestamp).is_ok()
@@ -165,12 +166,24 @@ impl<'info> Balances<'info> {
                 );
             }
 
-            // Ensure the delegate and authority have not changed
-            let post_delegate = Option::from(post_token_account.delegate);
-            require!(
-                post_delegate == tracked_token_account.delegate,
-                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
-            );
+            // Ensure the delegate, and authority have not changed. Delegated
+            // amount may decrease
+            let post_delegate: Option<(Pubkey, u64)> =
+                if let Some(delegate_key) = Option::from(post_token_account.delegate) {
+                    Some((delegate_key, post_token_account.delegated_amount))
+                } else {
+                    None
+                };
+            match (post_delegate, tracked_token_account.delegate) {
+                (Some(post_delegate), Some(tracked_delegate)) => {
+                    require_eq!(post_delegate.0, tracked_delegate.0);
+                    require_gte!(post_delegate.1, tracked_delegate.1);
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into());
+                }
+            };
             require_eq!(
                 post_token_account.owner,
                 tracked_token_account.authority,

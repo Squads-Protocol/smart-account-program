@@ -124,7 +124,7 @@ impl PolicyPayloadConversionTrait for SpendingLimitPolicyCreationPayload {
         Ok(SpendingLimitPolicy {
             spending_limit: SpendingLimitV2 {
                 mint: self.mint,
-                time_constraints: self.time_constraints,
+                time_constraints: modified_time_constraints,
                 quantity_constraints: self.quantity_constraints,
                 usage: usage_state,
             },
@@ -333,7 +333,10 @@ impl SpendingLimitPolicy {
                 );
 
                 // Check that the source account is not the same as the destination account
-                require!(source_account_info.key() != destination_account_info.key(), SmartAccountError::InvalidAccount);
+                require!(
+                    source_account_info.key() != destination_account_info.key(),
+                    SmartAccountError::InvalidAccount
+                );
 
                 // Check the system program
                 require!(

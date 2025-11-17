@@ -495,7 +495,16 @@ impl Settings {
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
                         PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
                     }
-                    PolicyCreationPayload::SpendingLimit(creation_payload) => {
+                    PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
+                        // If accumulate unused is true, and the policy has a
+                        // start date in the past, set it to the current
+                        // timestamp to avoid unintended accumulated usage
+                        let current_timestamp = Clock::get()?.unix_timestamp;
+                        if creation_payload.time_constraints.accumulate_unused
+                            && creation_payload.time_constraints.start < current_timestamp
+                        {
+                            creation_payload.time_constraints.start = current_timestamp;
+                        }
                         PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::SettingsChange(creation_payload) => {
@@ -589,18 +598,26 @@ impl Settings {
                     .as_ref()
                     .ok_or(SmartAccountError::MissingAccount)?;
 
-                let new_policy_state = match policy_update_payload.clone() {
-                    PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
-                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
-                    }
-                    PolicyCreationPayload::ProgramInteraction(creation_payload) => {
-                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
-                    }
-                    PolicyCreationPayload::SpendingLimit(creation_payload) => {
-                        PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
-                    }
-                    PolicyCreationPayload::SettingsChange(creation_payload) => {
-                        PolicyState::SettingsChange(creation_payload.to_policy_state()?)
+                // Only accept updates to the same policy type
+                let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
+                    (
+                        PolicyState::InternalFundTransfer(_),
+                        PolicyCreationPayload::InternalFundTransfer(creation_payload),
+                    ) => PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::ProgramInteraction(_),
+                        PolicyCreationPayload::ProgramInteraction(creation_payload),
+                    ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::SpendingLimit(_),
+                        PolicyCreationPayload::SpendingLimit(creation_payload),
+                    ) => PolicyState::SpendingLimit(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::SettingsChange(_),
+                        PolicyCreationPayload::SettingsChange(creation_payload),
+                    ) => PolicyState::SettingsChange(creation_payload.to_policy_state()?),
+                    (_, _) => {
+                        return err!(SmartAccountError::InvalidPolicyPayload);
                     }
                 };
 
