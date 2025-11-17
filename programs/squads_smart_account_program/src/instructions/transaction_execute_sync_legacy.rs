@@ -89,7 +89,7 @@ impl LegacySyncTransaction<'_> {
             &settings_key,
             &smart_account_pubkey,
             &settings.signers,
-            settings_compiled_instructions,
+            &settings_compiled_instructions,
             &ctx.remaining_accounts,
         )?;
 
@@ -109,7 +109,7 @@ impl LegacySyncTransaction<'_> {
                 .map(|acc| acc.key.clone())
                 .collect(),
             account_index: args.account_index,
-            instructions: executable_message.instructions,
+            instructions: executable_message.instructions.to_vec(),
             instruction_accounts: executable_message
                 .accounts
                 .iter()

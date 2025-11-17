@@ -100,6 +100,113 @@ export function compileToSynchronousMessageAndAccountsV2({
   };
 }
 
+export function compileToSynchronousMessageAndAccountsV2WithHooks({
+  vaultPda,
+  members,
+  preHookAccounts,
+  postHookAccounts,
+  instructions,
+}: {
+  vaultPda: PublicKey;
+  members: PublicKey[];
+  preHookAccounts: AccountMeta[];
+  postHookAccounts: AccountMeta[];
+  instructions: TransactionInstruction[];
+}): {
+  instructions: Uint8Array;
+  accounts: AccountMeta[];
+} {
+  // Compile instructions to get account mapping
+  const compiledKeys = CompiledKeys.compileWithoutPayer(instructions);
+
+  // Get message components
+  const [header, staticAccountKeys] = compiledKeys.getMessageComponents();
+
+  // Mark the vault as non-signer if it exists
+  // Create remaining accounts array starting with vault
+  const remainingAccounts: AccountMeta[] = [];
+
+  // Add all other accounts
+  staticAccountKeys.forEach((key, index) => {
+    remainingAccounts.push({
+      pubkey: key,
+      isSigner: index < header.numRequiredSignatures,
+      isWritable:
+        index <
+          header.numRequiredSignatures - header.numReadonlySignedAccounts ||
+        (index >= header.numRequiredSignatures &&
+          index <
+            staticAccountKeys.length - header.numReadonlyUnsignedAccounts),
+    });
+  });
+
+  // Mark the vault as non-signer if it exists
+  if (remainingAccounts.find((acc) => acc.pubkey.equals(vaultPda))) {
+    remainingAccounts.find((acc) => acc.pubkey.equals(vaultPda))!.isSigner =
+      false;
+  }
+  // Compile instructions with updated indices
+  let args_buffer = Buffer.alloc(0);
+
+  // Insert instruction length as u8 as first byte
+  args_buffer = Buffer.concat([Buffer.from([instructions.length])]);
+
+  // Serialize each instruction
+  instructions.forEach((ix) => {
+    const accounts = ix.keys.map((key) => {
+      const index = remainingAccounts.findIndex((acc) =>
+        acc.pubkey.equals(key.pubkey)
+      );
+      if (index === -1) {
+        throw new Error(
+          `Account ${key.pubkey.toBase58()} not found in remaining accounts`
+        );
+      }
+      return index;
+    });
+
+    const programIdIndex = remainingAccounts.findIndex((id) =>
+      id.pubkey.equals(ix.programId)
+    );
+    if (programIdIndex === -1) {
+      throw new Error(
+        `ProgramId ${ix.programId.toBase58()} not found in remaining accounts`
+      );
+    }
+
+    const serialized_ix = serializeCompiledInstruction({
+      programIdIndex,
+      accountIndexes: accounts,
+      data: ix.data,
+    });
+
+    // Concatenate the serialized instruction to the buffer
+    args_buffer = Buffer.concat([args_buffer, serialized_ix]);
+
+    // Add the members as signers
+    members.forEach((member) => {
+      remainingAccounts.unshift({
+        pubkey: member,
+        isSigner: true,
+        isWritable: false,
+      });
+    });
+    // Add the pre hook accounts after the members
+    remainingAccounts.splice(members.length, 0, ...preHookAccounts);
+    // Add the post hook accounts after the pre hook accounts
+    remainingAccounts.splice(
+      members.length + preHookAccounts.length,
+      0,
+      ...postHookAccounts
+    );
+  });
+
+  return {
+    instructions: args_buffer,
+    accounts: remainingAccounts,
+  };
+}
+
 function serializeCompiledInstruction(ix: {
   programIdIndex: number;
   accountIndexes: number[];

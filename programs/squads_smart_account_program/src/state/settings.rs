@@ -531,6 +531,7 @@ impl Settings {
                     // If no start was submitted, use the current timestamp
                     start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
                     expiration.clone(),
+                    rent_payer.key(),
                 )?;
 
                 // Check the policy invariant
@@ -665,7 +666,7 @@ impl Settings {
                     .find(|acc| acc.key == policy_key)
                     .ok_or(SmartAccountError::MissingAccount)?;
 
-                let rent_payer = rent_payer
+                let rent_collector = rent_payer
                     .as_ref()
                     .ok_or(SmartAccountError::MissingAccount)?;
 
@@ -677,8 +678,14 @@ impl Settings {
                     self_key.to_owned(),
                     SmartAccountError::InvalidAccount
                 );
+                // Verify the policy rent collector matche the account getting reimbursed
+                require_keys_eq!(
+                    policy.rent_collector,
+                    rent_collector.key(),
+                    SmartAccountError::InvalidRentCollector
+                );
 
-                policy.close(rent_payer.to_account_info())?;
+                policy.close(rent_collector.to_account_info())?;
 
                 // Log the event
                 let event = PolicyEvent {

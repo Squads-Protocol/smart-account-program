@@ -151,7 +151,7 @@ impl<'info> SyncTransaction<'info> {
                     &settings_key,
                     &smart_account_pubkey,
                     &settings.signers,
-                    settings_compiled_instructions,
+                    &settings_compiled_instructions,
                     &remaining_accounts,
                 )?;
 
@@ -169,7 +169,7 @@ impl<'info> SyncTransaction<'info> {
                     consensus_account_type: ConsensusAccountType::Settings,
                     payload: SynchronousTransactionEventPayload::TransactionPayload {
                         account_index: args.account_index,
-                        instructions: executable_message.instructions,
+                        instructions: executable_message.instructions.to_vec(),
                     },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()

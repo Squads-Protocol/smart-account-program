@@ -170,6 +170,10 @@ pub enum SmartAccountError {
     ProgramInteractionTooManyInstructionConstraints,
     #[msg("Program interaction constraint violation: too many spending limits. Max is 10")]
     ProgramInteractionTooManySpendingLimits,
+    #[msg("Program interaction hook violation: template hook error")]
+    ProgramInteractionTemplateHookError,
+    #[msg("Program interaction hook violation: hook authority cannot be part of hook accounts")]
+    ProgramInteractionHookAuthorityCannotBePartOfHookAccounts,
 
     // ===============================================
     // Spending Limit Policy Errors

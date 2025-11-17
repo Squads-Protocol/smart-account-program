@@ -41,7 +41,7 @@ impl SettingsTransaction {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 #[non_exhaustive]
 pub enum SettingsAction {
     /// Add a new member to the settings.

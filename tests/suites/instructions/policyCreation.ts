@@ -155,6 +155,23 @@ describe("Flows / Policy Creation", () => {
         fields: [
           {
             accountIndex: 0, // Apply to account index 0
+            preHook: {
+              numExtraAccounts: 4,
+              accountConstraints: [
+                {
+                  accountIndex: 0,
+                  accountConstraint: {
+                    __kind: "Pubkey",
+                    fields: [[members.proposer.publicKey]],
+                  },
+                  owner: null,
+                },
+              ],
+              instructionData: new Uint8Array([1, 2, 3]),
+              programId: web3.PublicKey.default,
+              passInnerInstructions: false,
+            },
+            postHook: null,
             instructionsConstraints: [
               {
                 programId: web3.PublicKey.default, // Allow system program interactions
@@ -492,6 +509,4 @@ describe("Flows / Policy Creation", () => {
     );
     assert.strictEqual(policyAccount.threshold, 1);
   });
-
-
 });

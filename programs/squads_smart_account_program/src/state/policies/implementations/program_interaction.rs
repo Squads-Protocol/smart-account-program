@@ -9,21 +9,26 @@ use crate::{
     },
     CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
     PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage,
-    TransactionPayload, TransactionPayloadDetails, SEED_EPHEMERAL_SIGNER, SEED_PREFIX,
-    SEED_SMART_ACCOUNT,
+    TransactionPayload, TransactionPayloadDetails, HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER,
+    SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 use anchor_lang::prelude::*;
+use solana_program::instruction::Instruction;
 
 // =============================================================================
 // CORE POLICY STRUCTURES
 // =============================================================================
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ProgramInteractionPolicy {
     /// The account index of the account that will be used to execute the policy
     pub account_index: u8,
     /// Constraints evaluated as a logical OR
     pub instructions_constraints: Vec<InstructionConstraint>,
+    /// Hook invoked before inner instruction execution
+    pub pre_hook: Option<Hook>,
+    /// Hook invoked after inner instruction execution
+    pub post_hook: Option<Hook>,
     /// Spending limits applied during policy execution
     pub spending_limits: Vec<SpendingLimitV2>,
 }
@@ -38,6 +43,39 @@ pub struct InstructionConstraint {
     pub data_constraints: Vec<DataConstraint>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct Hook {
+    // Dictates how many extra accounts are required for the hook, beyond the program ID
+    pub num_extra_accounts: u8,
+    // Dictates constraints for the hook accounts
+    pub account_constraints: Vec<AccountConstraint>,
+    // Dictates which instruction data will be invoked
+    pub instruction_data: Vec<u8>,
+    // The program that will be invoked
+    pub program_id: Pubkey,
+    // Dictates if inner instruction data & account will be passed to the
+    // instruction on top of the instruction data
+    pub pass_inner_instructions: bool,
+}
+
+impl Hook {
+    pub fn size(&self) -> usize {
+        1 + // num_accounts
+        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
+        4 + self.instruction_data.len() + // instruction_data
+        32 + // program_id
+        1 // pass_inner_instructions
+    }
+
+    // Get the total number of accounts required for the hook
+    pub fn num_accounts(&self) -> usize {
+        // Program ID also needs to get passed in, therefore add 1
+        self.num_extra_accounts
+            .checked_add(1)
+            .map(|v| v as usize)
+            .unwrap()
+    }
+}
 // =============================================================================
 // CONSTRAINT TYPES AND OPERATORS
 // =============================================================================
@@ -97,9 +135,26 @@ pub struct DataConstraint {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub enum AccountConstraintType {
+    Pubkey(Vec<Pubkey>),
+    AccountData(Vec<DataConstraint>),
+}
+
+impl AccountConstraintType {
+    pub fn size(&self) -> usize {
+        match self {
+            AccountConstraintType::Pubkey(keys) => 1 + 4 + keys.len() * 32,
+            AccountConstraintType::AccountData(constraints) => {
+                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+            }
+        }
+    }
+}
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct AccountConstraint {
     pub account_index: u8,
-    pub account_keys: Vec<Pubkey>,
+    pub account_constraint: AccountConstraintType,
+    pub owner: Option<Pubkey>,
 }
 
 // =============================================================================
@@ -117,7 +172,9 @@ impl DataConstraint {
 impl AccountConstraint {
     pub fn size(&self) -> usize {
         1 + // account_index
-        4 + self.account_keys.len() * 32 // account_keys vec
+        4 + self.account_constraint.size() + // account_constraint
+        32 + // owner
+        1 // owner discriminator
     }
 }
 
@@ -127,43 +184,43 @@ impl AccountConstraint {
 
 impl DataConstraint {
     /// Evaluate constraint against instruction data
-    pub fn evaluate(&self, instruction_data: &[u8]) -> Result<()> {
+    pub fn evaluate(&self, data: &[u8]) -> Result<()> {
         let offset = self.data_offset as usize;
 
         let constraint_passed = match &self.data_value {
             DataValue::U8(expected) => {
                 // Check bounds
-                if offset >= instruction_data.len() {
+                if offset >= data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
-                let actual = instruction_data[offset];
+                let actual = data[offset];
                 self.compare(actual, *expected)?
             }
             DataValue::U16Le(expected) => {
                 // Check bounds for 2 bytes
-                if offset + 2 > instruction_data.len() {
+                if offset + 2 > data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
-                let bytes = &instruction_data[offset..offset + 2];
+                let bytes = &data[offset..offset + 2];
                 let actual = u16::from_le_bytes([bytes[0], bytes[1]]);
                 self.compare(actual, *expected)?
             }
             DataValue::U32Le(expected) => {
                 // Check bounds for 4 bytes
-                if offset + 4 > instruction_data.len() {
+                if offset + 4 > data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
-                let bytes = &instruction_data[offset..offset + 4];
+                let bytes = &data[offset..offset + 4];
                 let actual = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
                 self.compare(actual, *expected)?
             }
             DataValue::U64Le(expected) => {
                 // Check bounds for 8 bytes
-                if offset + 8 > instruction_data.len() {
+                if offset + 8 > data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
                 let actual = u64::from_le_bytes(
-                    instruction_data[offset..offset + 8]
+                    data[offset..offset + 8]
                         .try_into()
                         .map_err(|_| SmartAccountError::ProgramInteractionDataParsingError)?,
                 );
@@ -171,11 +228,11 @@ impl DataConstraint {
             }
             DataValue::U128Le(expected) => {
                 // Check bounds for 16 bytes
-                if offset + 16 > instruction_data.len() {
+                if offset + 16 > data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
                 let actual = u128::from_le_bytes(
-                    instruction_data[offset..offset + 16]
+                    data[offset..offset + 16]
                         .try_into()
                         .map_err(|_| SmartAccountError::ProgramInteractionDataParsingError)?,
                 );
@@ -183,10 +240,10 @@ impl DataConstraint {
             }
             DataValue::U8Slice(expected) => {
                 // Check bounds for slice length
-                if offset + expected.len() > instruction_data.len() {
+                if offset + expected.len() > data.len() {
                     return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
                 }
-                let actual = &instruction_data[offset..offset + expected.len()];
+                let actual = &data[offset..offset + expected.len()];
                 match self.operator {
                     DataOperator::Equals => actual == expected.as_slice(),
                     DataOperator::NotEquals => actual != expected.as_slice(),
@@ -220,8 +277,8 @@ impl DataConstraint {
 }
 
 impl AccountConstraint {
-    /// Evaluate the account constraint for a given instruction
-    pub fn evaluate(
+    /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
+    pub fn evaluate_against_instruction_indices_and_accounts(
         &self,
         instruction_account_indices: &[u8],
         accounts: &[AccountInfo],
@@ -229,11 +286,54 @@ impl AccountConstraint {
         // Get the account at the given constraint index
         let mapped_account_index = instruction_account_indices[self.account_index as usize];
         let account = &accounts[mapped_account_index as usize];
-        // Check if the account key is in the account keys
-        if self.account_keys.contains(&account.key) {
-            return Ok(());
+
+        self.evaluate_against_account_info(account)?;
+
+        Ok(())
+    }
+
+    /// Simply evaluate the account constraint against a single AccountInfo
+    pub fn evaluate_against_account_info(&self, account: &AccountInfo) -> Result<()> {
+        // Evaluate the owner constraint
+        if let Some(owner) = self.owner {
+            require_eq!(
+                account.owner,
+                &owner,
+                SmartAccountError::IllegalAccountOwner
+            );
+        };
+        // Evaluate the account constraint
+        match &self.account_constraint {
+            AccountConstraintType::Pubkey(keys) => {
+                if !keys.contains(&account.key) {
+                    return Err(
+                        SmartAccountError::ProgramInteractionAccountConstraintViolated.into(),
+                    );
+                }
+            }
+            AccountConstraintType::AccountData(constraints) => {
+                let data = account.try_borrow_data()?;
+                for constraint in constraints {
+                    constraint.evaluate(&data)?;
+                }
+            }
         }
-        Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into())
+        Ok(())
+    }
+
+    /// Evaluate the account constraint against a set of AccountInfos
+    pub fn evaluate_against_account_infos<'info>(
+        &self,
+        account_infos: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        let account_info_to_evalute = account_infos
+            .get(self.account_index as usize)
+            .ok_or(SmartAccountError::ProgramInteractionAccountConstraintViolated)
+            .unwrap();
+
+        self.evaluate_against_account_info(account_info_to_evalute)?;
+
+        Ok(())
     }
 }
 
@@ -264,10 +364,12 @@ pub struct LimitedSpendingLimit {
 }
 
 /// Payload used to create a program interaction policy
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProgramInteractionPolicyCreationPayload {
     pub account_index: u8,
     pub instructions_constraints: Vec<InstructionConstraint>,
+    pub pre_hook: Option<Hook>,
+    pub post_hook: Option<Hook>,
     pub spending_limits: Vec<LimitedSpendingLimit>,
 }
 
@@ -303,6 +405,80 @@ pub struct ProgramInteractionExecutionArgs {
 // CORE POLICY IMPLEMENTATION
 // =============================================================================
 
+impl Hook {
+    pub fn execute<'info>(
+        &self,
+        hook_accounts: &'info [AccountInfo<'info>],
+        instructions: &[SmartAccountCompiledInstruction],
+        instruction_accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        use borsh::BorshSerialize;
+
+        // Evaluate the hook accounts
+        for account_constraint in self.account_constraints.iter() {
+            account_constraint.evaluate_against_account_infos(hook_accounts)?;
+        }
+
+        // Build the necessary account metas
+        let mut account_metas =
+            Vec::with_capacity(1 + hook_accounts.len() + instruction_accounts.len());
+
+        // Add the hook accounts to the account metas
+        for account in hook_accounts.iter() {
+            let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                AccountMeta::new_readonly(*account.key, true)
+            } else if account.is_writable {
+                AccountMeta::new(*account.key, account.is_signer)
+            } else {
+                AccountMeta::new_readonly(*account.key, account.is_signer)
+            };
+            account_metas.push(meta);
+        }
+
+        // Build the instruction data
+        let mut instruction_data = self.instruction_data.clone();
+
+        if self.pass_inner_instructions {
+            // Serialized Vec represenation of the instructions length
+            instruction_data.extend_from_slice(&(instructions.len() as u32).to_le_bytes());
+
+            // Serialize the instructions
+            for ix in instructions {
+                ix.serialize(&mut instruction_data)
+                    .map_err(|_| SmartAccountError::ProgramInteractionTemplateHookError)?;
+            }
+
+            // Add the instruction accounts
+            for account in instruction_accounts.iter() {
+                // Allow the hook authority, as long as it is readonly
+                let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                    AccountMeta::new_readonly(*account.key, true)
+                } else if account.is_writable {
+                    AccountMeta::new(*account.key, account.is_signer)
+                } else {
+                    AccountMeta::new_readonly(*account.key, account.is_signer)
+                };
+                account_metas.push(meta);
+            }
+        }
+
+        // Build the instruction
+        let instruction = Instruction {
+            program_id: self.program_id,
+            accounts: account_metas,
+            data: instruction_data,
+        };
+
+        // Invoke the instruction
+        anchor_lang::solana_program::program::invoke_signed(
+            &instruction,
+            // Concatenate the hook accounts and the instruction accounts
+            &[hook_accounts, instruction_accounts].concat(),
+            &[&[SEED_HOOK_AUTHORITY]],
+        )?;
+        Ok(())
+    }
+}
 impl ProgramInteractionPolicy {
     /// Evaluate the instruction constraints for a given instruction
     pub fn evaluate_instruction_constraints<'info>(
@@ -326,7 +502,10 @@ impl ProgramInteractionPolicy {
 
             // Evaluate the account constraints
             for account_constraint in &instruction_constraint.account_constraints {
-                account_constraint.evaluate(&instruction.account_indexes, accounts)?;
+                account_constraint.evaluate_against_instruction_indices_and_accounts(
+                    &instruction.account_indexes,
+                    accounts,
+                )?;
             }
             // Evaluate the data constraints
             for data_constraint in &instruction_constraint.data_constraints {
@@ -334,6 +513,39 @@ impl ProgramInteractionPolicy {
             }
         }
         Ok(())
+    }
+
+    // Parses hook accounts from the accounts slice and returns them
+    pub fn parse_hook_accounts<'info, 'a>(
+        &self,
+        accounts: &mut &'a [AccountInfo<'info>],
+    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
+        // Split all accounts into pre hook accounts, post_hook accounts and
+        // transaction related accounts including lookups
+        let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut transaction_accounts = *accounts;
+
+        if self.pre_hook.is_some() {
+            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.pre_hook.as_ref().unwrap().num_accounts() as usize);
+            pre_hook_accounts_intermediate = pre_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        };
+        if self.post_hook.is_some() {
+            let (post_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.post_hook.as_ref().unwrap().num_accounts() as usize);
+            post_hook_accounts_intermediate = post_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        }
+
+        // Re-set transaction accounts
+        *accounts = transaction_accounts;
+
+        (
+            pre_hook_accounts_intermediate,
+            post_hook_accounts_intermediate,
+        )
     }
 }
 
@@ -393,6 +605,8 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
         Ok(ProgramInteractionPolicy {
             account_index: self.account_index,
             instructions_constraints: self.instructions_constraints,
+            pre_hook: self.pre_hook,
+            post_hook: self.post_hook,
             spending_limits: spending_limits
                 .iter()
                 .map(|spending_limit| {
@@ -430,6 +644,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
         4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>()
         // spending_limits vec
     }
@@ -437,6 +653,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn policy_state_size(&self) -> usize {
         1 + // account_index (account_scope becomes account_index in policy state)
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
         4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>()
         // spending_limits vec
     }
@@ -671,19 +889,10 @@ impl ProgramInteractionPolicy {
         &mut self,
         args: ProgramInteractionExecutionArgs,
         payload: &ProgramInteractionPayload,
-        accounts: &'info [AccountInfo<'info>],
+        mut accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         // Get the transaction payload
         let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
-
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &transaction_payload.message.instructions,
-                accounts,
-            )?;
-        }
 
         // Largely copied from `transaction_execute.rs`
         let smart_account_seeds = &[
@@ -702,8 +911,13 @@ impl ProgramInteractionPolicy {
             smart_account_seeds[3],
             &[smart_account_bump],
         ];
-        let num_lookups = transaction_payload.message.address_table_lookups.len();
 
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+
+        // Get the message account infos and address lookup table account infos
+        let num_lookups = transaction_payload.message.address_table_lookups.len();
+        // Execute the transaction
         let message_account_infos = accounts
             .get(num_lookups..)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
@@ -711,6 +925,23 @@ impl ProgramInteractionPolicy {
             .get(..num_lookups)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &transaction_payload.message.instructions,
+                message_account_infos,
+            )?;
+        }
+
+        // Execute the pre hook
+        if let Some(pre_hook) = &self.pre_hook {
+            pre_hook.execute(
+                pre_hook_accounts,
+                &transaction_payload.message.instructions,
+                &accounts[num_lookups..],
+            )?;
+        }
         let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
             args.transaction_key,
             &transaction_payload.ephemeral_signer_bumps,
@@ -761,6 +992,15 @@ impl ProgramInteractionPolicy {
                 protected_accounts,
             )?;
         }
+
+        // Execute post hook
+        if let Some(post_hook) = &self.post_hook {
+            post_hook.execute(
+                post_hook_accounts,
+                &transaction_payload.message.instructions,
+                &accounts[num_lookups..],
+            )?;
+        }
         Ok(())
     }
 
@@ -773,7 +1013,7 @@ impl ProgramInteractionPolicy {
         &mut self,
         args: ProgramInteractionExecutionArgs,
         payload: &ProgramInteractionPayload,
-        accounts: &'info [AccountInfo<'info>],
+        mut accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         // Get the sync transaction payload
         let sync_transaction_payload = payload.get_sync_transaction_payload()?;
@@ -791,22 +1031,13 @@ impl ProgramInteractionPolicy {
                 .into_iter()
                 .map(SmartAccountCompiledInstruction::from)
                 .collect();
-
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &settings_compiled_instructions,
-                accounts,
-            )?;
-        }
+        // Get the smart account seeds
         let smart_account_seeds = &[
             SEED_PREFIX,
             settings_key.as_ref(),
             SEED_SMART_ACCOUNT,
             &sync_transaction_payload.account_index.to_le_bytes(),
         ];
-
         let (smart_account_pubkey, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, &crate::ID);
 
@@ -819,11 +1050,32 @@ impl ProgramInteractionPolicy {
             &[smart_account_bump],
         ];
 
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+
+        // Evaluate the instruction constraints
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
+            )?;
+        }
+
+        // Execute the pre hook
+        if let Some(pre_hook) = &self.pre_hook {
+            pre_hook.execute(
+                pre_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
+        }
+
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
             &args.policy_signers,
-            settings_compiled_instructions,
+            &settings_compiled_instructions,
             accounts,
         )?;
 
@@ -853,6 +1105,14 @@ impl ProgramInteractionPolicy {
             // references or usages of `self.message` should be made to avoid
             // faulty behavior.
             executable_message.execute(smart_account_signer_seeds)?;
+        }
+        // Execute the post hook
+        if let Some(post_hook) = &self.post_hook {
+            post_hook.execute(
+                post_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
         }
 
         Ok(())
@@ -1136,11 +1396,17 @@ mod tests {
     fn test_creation_payload_size_calculation() {
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
+            pre_hook: None,
+            post_hook: None,
             instructions_constraints: vec![InstructionConstraint {
                 program_id: Pubkey::new_unique(),
                 account_constraints: vec![AccountConstraint {
                     account_index: 0,
-                    account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                    account_constraint: AccountConstraintType::Pubkey(vec![
+                        Pubkey::new_unique(),
+                        Pubkey::new_unique(),
+                    ]),
+                    owner: None,
                 }],
                 data_constraints: vec![
                     DataConstraint {
@@ -1184,11 +1450,17 @@ mod tests {
     fn test_policy_state_size_calculation() {
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
+            pre_hook: None,
+            post_hook: None,
             instructions_constraints: vec![InstructionConstraint {
                 program_id: Pubkey::new_unique(),
                 account_constraints: vec![AccountConstraint {
                     account_index: 0,
-                    account_keys: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+                    account_constraint: AccountConstraintType::Pubkey(vec![
+                        Pubkey::new_unique(),
+                        Pubkey::new_unique(),
+                    ]),
+                    owner: None,
                 }],
                 data_constraints: vec![
                     DataConstraint {

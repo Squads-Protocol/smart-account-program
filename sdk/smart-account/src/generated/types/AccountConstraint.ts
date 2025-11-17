@@ -8,9 +8,14 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import {
+  AccountConstraintType,
+  accountConstraintTypeBeet,
+} from './AccountConstraintType'
 export type AccountConstraint = {
   accountIndex: number
-  accountKeys: web3.PublicKey[]
+  accountConstraint: AccountConstraintType
+  owner: beet.COption<web3.PublicKey>
 }
 
 /**
@@ -21,7 +26,8 @@ export const accountConstraintBeet =
   new beet.FixableBeetArgsStruct<AccountConstraint>(
     [
       ['accountIndex', beet.u8],
-      ['accountKeys', beet.array(beetSolana.publicKey)],
+      ['accountConstraint', accountConstraintTypeBeet],
+      ['owner', beet.coption(beetSolana.publicKey)],
     ],
     'AccountConstraint'
   )

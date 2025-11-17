@@ -62,6 +62,9 @@ pub struct Policy {
 
     /// Policy expiration - either time-based or state-based.
     pub expiration: Option<PolicyExpiration>,
+
+    /// Rent Collector for the policy for when it gets closed
+    pub rent_collector: Pubkey
 }
 
 impl Policy {
@@ -78,7 +81,8 @@ impl Policy {
         4  + // time_lock
         1  + policy_data_length + // discriminator + policy_data_length
         8  + // start_timestamp
-        1  + PolicyExpiration::INIT_SPACE // expiration (discriminator + max data size)
+        1  + PolicyExpiration::INIT_SPACE + // expiration (discriminator + max data size)
+        32  // rent_collector
     }
 
     /// Check if the policy account space needs to be reallocated.
@@ -176,6 +180,7 @@ impl Policy {
         policy_state: PolicyState,
         start: i64,
         expiration: Option<PolicyExpiration>,
+        rent_collector: Pubkey,
     ) -> Result<Policy> {
         let mut sorted_signers = signers.clone();
         sorted_signers.sort_by_key(|s| s.key);
@@ -192,6 +197,7 @@ impl Policy {
             policy_state,
             start,
             expiration,
+            rent_collector,
         })
     }
 
@@ -216,7 +222,7 @@ impl Policy {
     }
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub enum PolicyState {
     /// Internal fund transfer policy.
     InternalFundTransfer(InternalFundTransferPolicy),

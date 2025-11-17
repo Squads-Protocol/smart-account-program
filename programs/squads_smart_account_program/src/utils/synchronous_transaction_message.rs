@@ -7,23 +7,23 @@ use crate::state::*;
 use crate::LogEvent;
 
 /// Sanitized and validated combination of transaction instructions and accounts
-pub struct SynchronousTransactionMessage<'info> {
-    pub instructions: Vec<SmartAccountCompiledInstruction>,
+pub struct SynchronousTransactionMessage<'a, 'info> {
+    pub instructions: &'a [SmartAccountCompiledInstruction],
     pub accounts: Vec<AccountInfo<'info>>,
 }
 
-impl<'info> SynchronousTransactionMessage<'info> {
+impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
     pub fn new_validated(
         settings_key: &Pubkey,
         smart_account_pubkey: &Pubkey,
         consensus_account_signers: &[SmartAccountSigner],
-        instructions: Vec<SmartAccountCompiledInstruction>,
+        instructions: &'a [SmartAccountCompiledInstruction],
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
 
         // Validate instruction indices first
-        for instruction in &instructions {
-            
+        for instruction in instructions {
+
             require!(
                 (instruction.program_id_index as usize) < remaining_accounts.len(),
                 SmartAccountError::InvalidTransactionMessage
@@ -68,7 +68,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
 
     /// Executes all instructions in the message via CPI calls
     pub fn execute(&self, smart_account_seeds: &[&[u8]]) -> Result<()> {
-        for instruction in &self.instructions {
+        for instruction in self.instructions {
             let program_id = self.accounts[instruction.program_id_index as usize].key;
 
             // Build account metas for this instruction
