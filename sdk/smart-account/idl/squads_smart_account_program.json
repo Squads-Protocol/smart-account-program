@@ -3725,7 +3725,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "numAccounts",
+            "name": "numExtraAccounts",
             "type": "u8"
           },
           {
