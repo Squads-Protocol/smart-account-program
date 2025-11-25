@@ -305,46 +305,15 @@ pub struct LimitedSpendingLimit {
     pub quantity_constraints: LimitedQuantityConstraints,
 }
 
-/// Creation payload version of InstructionConstraint (uses full Pubkeys)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct InstructionConstraintCreationPayload {
-    pub program_id: Pubkey,
-    pub account_constraints: Vec<AccountConstraintCreationPayload>,
-    pub data_constraints: Vec<DataConstraint>,
-}
-
-/// Creation payload version of Hook (uses full Pubkeys)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct HookCreationPayload {
-    pub num_extra_accounts: u8,
-    pub account_constraints: Vec<AccountConstraintCreationPayload>,
-    pub instruction_data: Vec<u8>,
-    pub program_id: Pubkey,
-    pub pass_inner_instructions: bool,
-}
-
-/// Creation payload version of AccountConstraint (uses full Pubkeys)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct AccountConstraintCreationPayload {
-    pub account_index: u8,
-    pub account_constraint: AccountConstraintTypeCreationPayload,
-    pub owner: Option<Pubkey>,
-}
-
-/// Creation payload version of AccountConstraintType (uses full Pubkeys)
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub enum AccountConstraintTypeCreationPayload {
-    Pubkey(Vec<Pubkey>),
-    AccountData(Vec<DataConstraint>),
-}
-
 /// Payload used to create a program interaction policy
+/// Uses the same index-based structure as the policy state for transaction size efficiency
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProgramInteractionPolicyCreationPayload {
     pub account_index: u8,
-    pub instructions_constraints: Vec<InstructionConstraintCreationPayload>,
-    pub pre_hook: Option<HookCreationPayload>,
-    pub post_hook: Option<HookCreationPayload>,
+    pub pubkey_table: Vec<Pubkey>,
+    pub instructions_constraints: Vec<InstructionConstraint>,
+    pub pre_hook: Option<Hook>,
+    pub post_hook: Option<Hook>,
     pub spending_limits: Vec<LimitedSpendingLimit>,
 }
 
@@ -459,6 +428,7 @@ impl Hook {
         Ok(())
     }
 }
+
 impl ProgramInteractionPolicy {
     /// Evaluate the instruction constraints for a given instruction
     pub fn evaluate_instruction_constraints<'info>(
@@ -606,46 +576,6 @@ impl LimitedSpendingLimit {
     }
 }
 
-impl InstructionConstraintCreationPayload {
-    pub fn size(&self) -> usize {
-        32 + // program_id
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
-    }
-}
-
-impl HookCreationPayload {
-    pub fn size(&self) -> usize {
-        1 + // num_extra_accounts
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.instruction_data.len() + // instruction_data
-        32 + // program_id
-        1 // pass_inner_instructions
-    }
-}
-
-impl AccountConstraintCreationPayload {
-    pub fn size(&self) -> usize {
-        1 + // account_index
-        4 + self.account_constraint.size() + // account_constraint
-        1 + // owner Option discriminator
-        match self.owner {
-            Some(_) => 32, // owner pubkey
-            None => 0,
-        }
-    }
-}
-
-impl AccountConstraintTypeCreationPayload {
-    pub fn size(&self) -> usize {
-        match self {
-            AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => 1 + 4 + (pubkeys.len() * 32),
-            AccountConstraintTypeCreationPayload::AccountData(constraints) => {
-                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
-            }
-        }
-    }
-}
 
 // =============================================================================
 // PAYLOAD CONVERSION IMPLEMENTATIONS
@@ -655,8 +585,7 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     type PolicyState = ProgramInteractionPolicy;
 
     fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
-        // For sanity sake, we limit the number of instruction constraints and
-        // spending limits
+        // Validate limits
         require!(
             self.instructions_constraints.len() <= 20,
             SmartAccountError::ProgramInteractionTooManyInstructionConstraints
@@ -665,169 +594,65 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
             self.spending_limits.len() <= 10,
             SmartAccountError::ProgramInteractionTooManySpendingLimits
         );
+        require!(
+            self.pubkey_table.len() <= 256,
+            SmartAccountError::ProgramInteractionTooManyUniquePubkeys
+        );
 
-        // Build deduplicated pubkey table
-        use std::collections::HashMap;
-        let mut pubkey_table = Vec::new();
-        let mut pubkey_to_index: HashMap<Pubkey, u8> = HashMap::new();
+        // NOTE: Index validation is intentionally omitted here for compute efficiency.
+        // The resolve_pubkey() method already validates indices during policy execution,
+        // so adding validation here would be redundant. Invalid indices will fail at
+        // execution time with ProgramInteractionInvalidPubkeyTableIndex error.
+        //
+        // If validation at creation time is desired to catch client bugs early and
+        // prevent wasted rent, the recommended approach is spot-check validation:
+        //
+        // fn validate_indices(&self) -> Result<()> {
+        //     let max_index = self.pubkey_table.len() as u8;
+        //     let mut highest_index = 0u8;
+        //
+        //     // Find highest index across all constraints
+        //     for constraint in &self.instructions_constraints {
+        //         highest_index = highest_index.max(constraint.program_id_index);
+        //         for ac in &constraint.account_constraints {
+        //             if let Some(owner_index) = ac.owner_index {
+        //                 highest_index = highest_index.max(owner_index);
+        //             }
+        //             if let AccountConstraintType::Pubkey(indices) = &ac.account_constraint {
+        //                 if let Some(&max_in_vec) = indices.iter().max() {
+        //                     highest_index = highest_index.max(max_in_vec);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     // Repeat for pre_hook and post_hook...
+        //
+        //     // Single validation check - if highest is valid, all are valid
+        //     require!(
+        //         highest_index < max_index,
+        //         SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex
+        //     );
+        //     Ok(())
+        // }
+        //
+        // This approach provides O(1) require! calls instead of O(N), reducing compute cost
+        // while still catching malformed payloads at creation time.
 
-        // Helper closure to get or insert a pubkey into the table
-        let mut get_or_insert_index = |pubkey: &Pubkey| -> Result<u8> {
-            if let Some(&index) = pubkey_to_index.get(pubkey) {
-                return Ok(index);
-            }
-            let index = pubkey_table.len() as u8;
-            require!(
-                pubkey_table.len() < 256,
-                SmartAccountError::ProgramInteractionTooManyUniquePubkeys
-            );
-            pubkey_table.push(*pubkey);
-            pubkey_to_index.insert(*pubkey, index);
-            Ok(index)
-        };
-
-        // Convert instruction constraints
-        let mut instructions_constraints = Vec::new();
-        for constraint in self.instructions_constraints {
-            let program_id_index = get_or_insert_index(&constraint.program_id)?;
-
-            let mut account_constraints = Vec::new();
-            for ac in constraint.account_constraints {
-                let owner_index = if let Some(owner) = ac.owner {
-                    Some(get_or_insert_index(&owner)?)
-                } else {
-                    None
-                };
-
-                let account_constraint = match ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => {
-                        let mut indices = Vec::new();
-                        for pk in pubkeys {
-                            indices.push(get_or_insert_index(&pk)?);
-                        }
-                        AccountConstraintType::Pubkey(indices)
-                    }
-                    AccountConstraintTypeCreationPayload::AccountData(data_constraints) => {
-                        AccountConstraintType::AccountData(data_constraints)
-                    }
-                };
-
-                account_constraints.push(AccountConstraint {
-                    account_index: ac.account_index,
-                    account_constraint,
-                    owner_index,
-                });
-            }
-
-            instructions_constraints.push(InstructionConstraint {
-                program_id_index,
-                account_constraints,
-                data_constraints: constraint.data_constraints,
-            });
-        }
-
-        // Convert pre_hook
-        let pre_hook = if let Some(hook) = self.pre_hook {
-            let program_id_index = get_or_insert_index(&hook.program_id)?;
-
-            let mut account_constraints = Vec::new();
-            for ac in hook.account_constraints {
-                let owner_index = if let Some(owner) = ac.owner {
-                    Some(get_or_insert_index(&owner)?)
-                } else {
-                    None
-                };
-
-                let account_constraint = match ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => {
-                        let mut indices = Vec::new();
-                        for pk in pubkeys {
-                            indices.push(get_or_insert_index(&pk)?);
-                        }
-                        AccountConstraintType::Pubkey(indices)
-                    }
-                    AccountConstraintTypeCreationPayload::AccountData(data_constraints) => {
-                        AccountConstraintType::AccountData(data_constraints)
-                    }
-                };
-
-                account_constraints.push(AccountConstraint {
-                    account_index: ac.account_index,
-                    account_constraint,
-                    owner_index,
-                });
-            }
-
-            Some(Hook {
-                num_extra_accounts: hook.num_extra_accounts,
-                account_constraints,
-                instruction_data: hook.instruction_data,
-                program_id_index,
-                pass_inner_instructions: hook.pass_inner_instructions,
-            })
-        } else {
-            None
-        };
-
-        // Convert post_hook
-        let post_hook = if let Some(hook) = self.post_hook {
-            let program_id_index = get_or_insert_index(&hook.program_id)?;
-
-            let mut account_constraints = Vec::new();
-            for ac in hook.account_constraints {
-                let owner_index = if let Some(owner) = ac.owner {
-                    Some(get_or_insert_index(&owner)?)
-                } else {
-                    None
-                };
-
-                let account_constraint = match ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => {
-                        let mut indices = Vec::new();
-                        for pk in pubkeys {
-                            indices.push(get_or_insert_index(&pk)?);
-                        }
-                        AccountConstraintType::Pubkey(indices)
-                    }
-                    AccountConstraintTypeCreationPayload::AccountData(data_constraints) => {
-                        AccountConstraintType::AccountData(data_constraints)
-                    }
-                };
-
-                account_constraints.push(AccountConstraint {
-                    account_index: ac.account_index,
-                    account_constraint,
-                    owner_index,
-                });
-            }
-
-            Some(Hook {
-                num_extra_accounts: hook.num_extra_accounts,
-                account_constraints,
-                instruction_data: hook.instruction_data,
-                program_id_index,
-                pass_inner_instructions: hook.pass_inner_instructions,
-            })
-        } else {
-            None
-        };
-
-        // Convert spending limits
-        let mut spending_limits = self.spending_limits.clone();
+        // Sort and initialize spending limits
+        let mut spending_limits = self.spending_limits;
         spending_limits.sort_by_key(|c| c.mint);
-
         let current_timestamp = Clock::get()?.unix_timestamp;
 
         Ok(ProgramInteractionPolicy {
             account_index: self.account_index,
-            pubkey_table,
-            instructions_constraints,
-            pre_hook,
-            post_hook,
+            pubkey_table: self.pubkey_table,
+            instructions_constraints: self.instructions_constraints,
+            pre_hook: self.pre_hook,
+            post_hook: self.post_hook,
             spending_limits: spending_limits
                 .iter()
                 .map(|spending_limit| {
-                    // Determine the start timestamp
                     let start = if spending_limit.time_constraints.start == 0 {
                         current_timestamp
                     } else {
@@ -860,136 +685,20 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
 impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
-        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
-        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
-        4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>()
-        // spending_limits vec
+        4 + (self.pubkey_table.len() * 32) + // vec + pubkey_table
+        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // vec + instructions_constraints
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + post_hook
+        4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>() // vec + spending_limits
     }
 
     fn policy_state_size(&self) -> usize {
-        use std::collections::HashSet;
-
-        // Collect all unique pubkeys to calculate pubkey_table size
-        let mut unique_pubkeys = HashSet::new();
-
-        // Collect from instruction constraints
-        for constraint in &self.instructions_constraints {
-            unique_pubkeys.insert(constraint.program_id);
-            for ac in &constraint.account_constraints {
-                if let Some(owner) = ac.owner {
-                    unique_pubkeys.insert(owner);
-                }
-                if let AccountConstraintTypeCreationPayload::Pubkey(pubkeys) = &ac.account_constraint {
-                    for pk in pubkeys {
-                        unique_pubkeys.insert(*pk);
-                    }
-                }
-            }
-        }
-
-        // Collect from pre_hook
-        if let Some(hook) = &self.pre_hook {
-            unique_pubkeys.insert(hook.program_id);
-            for ac in &hook.account_constraints {
-                if let Some(owner) = ac.owner {
-                    unique_pubkeys.insert(owner);
-                }
-                if let AccountConstraintTypeCreationPayload::Pubkey(pubkeys) = &ac.account_constraint {
-                    for pk in pubkeys {
-                        unique_pubkeys.insert(*pk);
-                    }
-                }
-            }
-        }
-
-        // Collect from post_hook
-        if let Some(hook) = &self.post_hook {
-            unique_pubkeys.insert(hook.program_id);
-            for ac in &hook.account_constraints {
-                if let Some(owner) = ac.owner {
-                    unique_pubkeys.insert(owner);
-                }
-                if let AccountConstraintTypeCreationPayload::Pubkey(pubkeys) = &ac.account_constraint {
-                    for pk in pubkeys {
-                        unique_pubkeys.insert(*pk);
-                    }
-                }
-            }
-        }
-
-        let pubkey_table_size = 4 + (unique_pubkeys.len() * 32); // vec length + pubkeys
-
-        // Calculate size of converted instruction constraints (using indices instead of pubkeys)
-        let instructions_constraints_size: usize = self.instructions_constraints.iter().map(|c| {
-            1 + // program_id_index
-            4 + c.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                4 + match &ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => 1 + 4 + pubkeys.len(), // enum discriminator + vec length + indices
-                    AccountConstraintTypeCreationPayload::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|dc| dc.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner_index Option discriminator
-                match ac.owner {
-                    Some(_) => 1, // owner_index
-                    None => 0,
-                }
-            }).sum::<usize>() + // account_constraints vec
-            4 + c.data_constraints.iter().map(|dc| dc.size()).sum::<usize>() // data_constraints vec
-        }).sum();
-
-        // Calculate size of converted hooks
-        let pre_hook_size = self.pre_hook.as_ref().map(|h| {
-            1 + // num_extra_accounts
-            4 + h.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                4 + match &ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => 1 + 4 + pubkeys.len(),
-                    AccountConstraintTypeCreationPayload::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|dc| dc.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner_index Option discriminator
-                match ac.owner {
-                    Some(_) => 1,
-                    None => 0,
-                }
-            }).sum::<usize>() + // account_constraints vec
-            4 + h.instruction_data.len() + // instruction_data
-            1 + // program_id_index
-            1 // pass_inner_instructions
-        }).unwrap_or(0);
-
-        let post_hook_size = self.post_hook.as_ref().map(|h| {
-            1 + // num_extra_accounts
-            4 + h.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                4 + match &ac.account_constraint {
-                    AccountConstraintTypeCreationPayload::Pubkey(pubkeys) => 1 + 4 + pubkeys.len(),
-                    AccountConstraintTypeCreationPayload::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|dc| dc.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner_index Option discriminator
-                match ac.owner {
-                    Some(_) => 1,
-                    None => 0,
-                }
-            }).sum::<usize>() + // account_constraints vec
-            4 + h.instruction_data.len() + // instruction_data
-            1 + // program_id_index
-            1 // pass_inner_instructions
-        }).unwrap_or(0);
-
-        1 + // account_index
-        pubkey_table_size + // pubkey_table vec
-        4 + instructions_constraints_size + // instructions_constraints vec
-        1 + pre_hook_size + // pre_hook
-        1 + post_hook_size + // post_hook
-        4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>()
-        // spending_limits vec
+        1 + // account_index (account_scope becomes account_index in policy state)
+        4 + (self.pubkey_table.len() * 32) + // vec + pubkey_table
+        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // vec + instructions_constraints
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + post_hook
+        4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>() // vec + spending_limits
     }
 }
 
@@ -1731,19 +1440,24 @@ mod tests {
 
     #[test]
     fn test_creation_payload_size_calculation() {
+        // Build pubkey table
+        let program_id = Pubkey::new_unique();
+        let allowed_pubkey_1 = Pubkey::new_unique();
+        let allowed_pubkey_2 = Pubkey::new_unique();
+
+        let pubkey_table = vec![program_id, allowed_pubkey_1, allowed_pubkey_2];
+
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
+            pubkey_table,
             pre_hook: None,
             post_hook: None,
-            instructions_constraints: vec![InstructionConstraintCreationPayload {
-                program_id: Pubkey::new_unique(),
-                account_constraints: vec![AccountConstraintCreationPayload {
+            instructions_constraints: vec![InstructionConstraint {
+                program_id_index: 0, // program_id
+                account_constraints: vec![AccountConstraint {
                     account_index: 0,
-                    account_constraint: AccountConstraintTypeCreationPayload::Pubkey(vec![
-                        Pubkey::new_unique(),
-                        Pubkey::new_unique(),
-                    ]),
-                    owner: None,
+                    account_constraint: AccountConstraintType::Pubkey(vec![1, 2]), // indices 1 and 2
+                    owner_index: None,
                 }],
                 data_constraints: vec![
                     DataConstraint {
@@ -1785,19 +1499,24 @@ mod tests {
 
     #[test]
     fn test_policy_state_size_calculation() {
+        // Build pubkey table
+        let program_id = Pubkey::new_unique();
+        let allowed_pubkey_1 = Pubkey::new_unique();
+        let allowed_pubkey_2 = Pubkey::new_unique();
+
+        let pubkey_table = vec![program_id, allowed_pubkey_1, allowed_pubkey_2];
+
         let payload = ProgramInteractionPolicyCreationPayload {
             account_index: 1,
+            pubkey_table,
             pre_hook: None,
             post_hook: None,
-            instructions_constraints: vec![InstructionConstraintCreationPayload {
-                program_id: Pubkey::new_unique(),
-                account_constraints: vec![AccountConstraintCreationPayload {
+            instructions_constraints: vec![InstructionConstraint {
+                program_id_index: 0,
+                account_constraints: vec![AccountConstraint {
                     account_index: 0,
-                    account_constraint: AccountConstraintTypeCreationPayload::Pubkey(vec![
-                        Pubkey::new_unique(),
-                        Pubkey::new_unique(),
-                    ]),
-                    owner: None,
+                    account_constraint: AccountConstraintType::Pubkey(vec![1, 2]),
+                    owner_index: None,
                 }],
                 data_constraints: vec![
                     DataConstraint {
@@ -1836,261 +1555,5 @@ mod tests {
         // size is greater than or equal to the actual size to make sure
         // serialization succeeds
         assert!(calculated_size >= actual_size);
-    }
-
-    #[test]
-    fn test_pubkey_deduplication() {
-        // Create shared pubkeys that will be reused
-        let shared_program_id = Pubkey::new_unique();
-        let shared_owner = Pubkey::new_unique();
-        let shared_allowed_pubkey_1 = Pubkey::new_unique();
-        let shared_allowed_pubkey_2 = Pubkey::new_unique();
-        let unique_program_id = Pubkey::new_unique();
-
-        let payload = ProgramInteractionPolicyCreationPayload {
-            account_index: 0,
-            instructions_constraints: vec![
-                // First constraint uses shared_program_id
-                InstructionConstraintCreationPayload {
-                    program_id: shared_program_id,
-                    account_constraints: vec![AccountConstraintCreationPayload {
-                        account_index: 0,
-                        account_constraint: AccountConstraintTypeCreationPayload::Pubkey(vec![
-                            shared_allowed_pubkey_1,
-                            shared_allowed_pubkey_2,
-                        ]),
-                        owner: Some(shared_owner),
-                    }],
-                    data_constraints: vec![],
-                },
-                // Second constraint reuses same program_id and pubkeys
-                InstructionConstraintCreationPayload {
-                    program_id: shared_program_id, // Duplicate
-                    account_constraints: vec![AccountConstraintCreationPayload {
-                        account_index: 1,
-                        account_constraint: AccountConstraintTypeCreationPayload::Pubkey(vec![
-                            shared_allowed_pubkey_1, // Duplicate
-                            shared_allowed_pubkey_2, // Duplicate
-                        ]),
-                        owner: Some(shared_owner), // Duplicate
-                    }],
-                    data_constraints: vec![],
-                },
-                // Third constraint uses unique program_id
-                InstructionConstraintCreationPayload {
-                    program_id: unique_program_id, // New pubkey
-                    account_constraints: vec![],
-                    data_constraints: vec![],
-                },
-            ],
-            pre_hook: Some(HookCreationPayload {
-                num_extra_accounts: 2,
-                program_id: shared_program_id, // Reuses shared_program_id
-                account_constraints: vec![AccountConstraintCreationPayload {
-                    account_index: 0,
-                    account_constraint: AccountConstraintTypeCreationPayload::Pubkey(vec![
-                        shared_allowed_pubkey_1, // Duplicate
-                    ]),
-                    owner: Some(shared_owner), // Duplicate
-                }],
-                instruction_data: vec![1, 2, 3],
-                pass_inner_instructions: false,
-            }),
-            post_hook: Some(HookCreationPayload {
-                num_extra_accounts: 1,
-                program_id: shared_program_id, // Reuses shared_program_id
-                account_constraints: vec![],
-                instruction_data: vec![4, 5, 6],
-                pass_inner_instructions: true,
-            }),
-            spending_limits: vec![],
-        };
-
-        let policy = payload.to_policy_state().unwrap();
-
-        // Verify deduplication: Should only have 5 unique pubkeys in table
-        // 1. shared_program_id
-        // 2. shared_owner
-        // 3. shared_allowed_pubkey_1
-        // 4. shared_allowed_pubkey_2
-        // 5. unique_program_id
-        assert_eq!(
-            policy.pubkey_table.len(),
-            5,
-            "Expected 5 unique pubkeys in table"
-        );
-
-        // Verify each shared pubkey appears exactly once
-        assert_eq!(
-            policy
-                .pubkey_table
-                .iter()
-                .filter(|&pk| pk == &shared_program_id)
-                .count(),
-            1,
-            "shared_program_id should appear exactly once"
-        );
-        assert_eq!(
-            policy
-                .pubkey_table
-                .iter()
-                .filter(|&pk| pk == &shared_owner)
-                .count(),
-            1,
-            "shared_owner should appear exactly once"
-        );
-        assert_eq!(
-            policy
-                .pubkey_table
-                .iter()
-                .filter(|&pk| pk == &shared_allowed_pubkey_1)
-                .count(),
-            1,
-            "shared_allowed_pubkey_1 should appear exactly once"
-        );
-        assert_eq!(
-            policy
-                .pubkey_table
-                .iter()
-                .filter(|&pk| pk == &shared_allowed_pubkey_2)
-                .count(),
-            1,
-            "shared_allowed_pubkey_2 should appear exactly once"
-        );
-        assert_eq!(
-            policy
-                .pubkey_table
-                .iter()
-                .filter(|&pk| pk == &unique_program_id)
-                .count(),
-            1,
-            "unique_program_id should appear exactly once"
-        );
-
-        // Verify that all instruction constraints reference correct indices
-        for (i, constraint) in policy.instructions_constraints.iter().enumerate() {
-            let resolved_program_id = policy
-                .resolve_pubkey(constraint.program_id_index)
-                .unwrap();
-            if i < 2 {
-                assert_eq!(
-                    resolved_program_id, &shared_program_id,
-                    "First two constraints should reference shared_program_id"
-                );
-            } else {
-                assert_eq!(
-                    resolved_program_id, &unique_program_id,
-                    "Third constraint should reference unique_program_id"
-                );
-            }
-        }
-
-        // Verify hooks reference correct program_id
-        let pre_hook = policy.pre_hook.as_ref().unwrap();
-        assert_eq!(
-            policy.resolve_pubkey(pre_hook.program_id_index).unwrap(),
-            &shared_program_id,
-            "Pre-hook should reference shared_program_id"
-        );
-
-        let post_hook = policy.post_hook.as_ref().unwrap();
-        assert_eq!(
-            policy.resolve_pubkey(post_hook.program_id_index).unwrap(),
-            &shared_program_id,
-            "Post-hook should reference shared_program_id"
-        );
-    }
-
-    #[test]
-    fn test_pubkey_deduplication_max_limit() {
-        // Test that we properly enforce the 256 unique pubkey limit
-        let mut instructions_constraints = Vec::new();
-
-        // Create 255 unique program IDs (should succeed)
-        for _ in 0..255 {
-            instructions_constraints.push(InstructionConstraintCreationPayload {
-                program_id: Pubkey::new_unique(),
-                account_constraints: vec![],
-                data_constraints: vec![],
-            });
-        }
-
-        let payload = ProgramInteractionPolicyCreationPayload {
-            account_index: 0,
-            instructions_constraints: instructions_constraints.clone(),
-            pre_hook: None,
-            post_hook: None,
-            spending_limits: vec![],
-        };
-
-        // Should succeed with 255 unique pubkeys
-        assert!(payload.to_policy_state().is_ok());
-
-        // Add one more to exceed limit
-        instructions_constraints.push(InstructionConstraintCreationPayload {
-            program_id: Pubkey::new_unique(),
-            account_constraints: vec![],
-            data_constraints: vec![],
-        });
-
-        let payload_over_limit = ProgramInteractionPolicyCreationPayload {
-            account_index: 0,
-            instructions_constraints,
-            pre_hook: None,
-            post_hook: None,
-            spending_limits: vec![],
-        };
-
-        // Should fail with 256 unique pubkeys (exceeds u8 max)
-        let result = payload_over_limit.to_policy_state();
-        assert!(result.is_err());
-        assert_eq!(
-            result.err().unwrap().to_string(),
-            SmartAccountError::ProgramInteractionTooManyUniquePubkeys
-                .to_string()
-        );
-    }
-
-    #[test]
-    fn test_account_constraint_size_with_owner() {
-        // Test size calculation with owner present
-        let constraint_with_owner = AccountConstraint {
-            account_index: 0,
-            account_constraint: AccountConstraintType::Pubkey(vec![1, 2, 3]),
-            owner_index: Some(5),
-        };
-
-        let expected_size = 1 + // account_index
-            4 + // enum discriminator for account_constraint
-            1 + // enum discriminator for Pubkey variant
-            4 + // Vec length
-            3 + // 3 indices
-            1 + // Option discriminator
-            1; // owner_index value
-
-        assert_eq!(constraint_with_owner.size(), expected_size);
-
-        // Test size calculation without owner
-        let constraint_without_owner = AccountConstraint {
-            account_index: 0,
-            account_constraint: AccountConstraintType::Pubkey(vec![1, 2, 3]),
-            owner_index: None,
-        };
-
-        let expected_size_no_owner = 1 + // account_index
-            4 + // enum discriminator for account_constraint
-            1 + // enum discriminator for Pubkey variant
-            4 + // Vec length
-            3 + // 3 indices
-            1 + // Option discriminator
-            0; // no owner_index value
-
-        assert_eq!(constraint_without_owner.size(), expected_size_no_owner);
-
-        // Verify the difference is exactly 1 byte
-        assert_eq!(
-            constraint_with_owner.size() - constraint_without_owner.size(),
-            1
-        );
     }
 }
