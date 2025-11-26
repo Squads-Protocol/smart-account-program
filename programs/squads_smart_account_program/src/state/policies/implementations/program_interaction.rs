@@ -16,6 +16,44 @@ use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 
 // =============================================================================
+// BUILTIN PUBKEY CONSTANTS
+// =============================================================================
+
+/// Starting index for builtin programs in the pubkey lookup table.
+/// Indices 0-239 are for custom pubkeys stored in pubkey_table.
+/// Indices 240-255 are reserved for commonly-used builtin programs.
+const BUILTIN_INDEX_START: u8 = 240;
+
+/// Builtin program pubkeys mapped to indices 240-255.
+/// These programs are so commonly used that we reserve space for them
+/// to avoid storing them in every policy's pubkey_table, saving 32 bytes each.
+///
+/// Index mapping:
+/// - 240: System Program
+/// - 241: Token Program (SPL Token)
+/// - 242: Associated Token Account Program
+/// - 243: Token-2022 Program
+/// - 244-255: Reserved for future use (currently unused)
+const BUILTIN_PUBKEYS: [Pubkey; 16] = [
+    anchor_lang::system_program::ID,                            // 240
+    anchor_spl::token::ID,                                      // 241
+    anchor_spl::associated_token::ID,                           // 242
+    anchor_spl::token_2022::ID,                                 // 243
+    Pubkey::new_from_array([0xff; 32]),            // 244 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 245 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 246 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 247 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 248 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 249 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 250 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 251 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 252 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 253 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 254 - unused
+    Pubkey::new_from_array([0xff; 32]),            // 255 - unused
+];
+
+// =============================================================================
 // CORE POLICY STRUCTURES
 // =============================================================================
 
@@ -501,9 +539,24 @@ impl ProgramInteractionPolicy {
 
     #[inline]
     fn resolve_pubkey(&self, index: u8) -> Result<&Pubkey> {
-        self.pubkey_table
-            .get(index as usize)
-            .ok_or_else(|| SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into())
+        if index >= BUILTIN_INDEX_START {
+            // Builtin program (indices 240-255)
+            let offset = (index - BUILTIN_INDEX_START) as usize;
+            let pubkey = &BUILTIN_PUBKEYS[offset];
+
+            // Reject unused builtin slots
+            require!(
+                *pubkey != Pubkey::new_from_array([0xff; 32]),
+                SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex
+            );
+
+            Ok(pubkey)
+        } else {
+            // Custom pubkey from table (indices 0-239)
+            self.pubkey_table
+                .get(index as usize)
+                .ok_or_else(|| SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into())
+        }
     }
 
     fn evaluate_account_constraint(
@@ -595,7 +648,7 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
             SmartAccountError::ProgramInteractionTooManySpendingLimits
         );
         require!(
-            self.pubkey_table.len() <= 256,
+            self.pubkey_table.len() <= BUILTIN_INDEX_START as usize,
             SmartAccountError::ProgramInteractionTooManyUniquePubkeys
         );
 
