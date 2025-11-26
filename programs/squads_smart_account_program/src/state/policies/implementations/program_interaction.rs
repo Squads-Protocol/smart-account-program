@@ -83,9 +83,9 @@ pub struct InstructionConstraintCompiled {
     /// Index into pubkey_table for the program_id
     pub program_id_index: u8,
     /// Account constraints (evaluated as logical AND)
-    pub account_constraints: Vec<AccountConstraintCompiled>,
+    pub account_constraints: SmallVec<u8, AccountConstraintCompiled>,
     /// Data constraints (evaluated as logical AND)
-    pub data_constraints: Vec<DataConstraint>,
+    pub data_constraints: SmallVec<u8, DataConstraint>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
@@ -109,9 +109,9 @@ pub struct HookCompiled {
     // Dictates how many extra accounts are required for the hook, beyond the program ID
     pub num_extra_accounts: u8,
     // Dictates constraints for the hook accounts
-    pub account_constraints: Vec<AccountConstraintCompiled>,
+    pub account_constraints: SmallVec<u8, AccountConstraintCompiled>,
     // Dictates which instruction data will be invoked
-    pub instruction_data: Vec<u8>,
+    pub instruction_data: SmallVec<u8, u8>,
     // Index into pubkey_table for the program_id
     pub program_id_index: u8,
     // Dictates if inner instruction data & account will be passed to the
@@ -141,8 +141,8 @@ impl Hook {
 impl HookCompiled {
     pub fn size(&self) -> usize {
         1 + // num_accounts
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.instruction_data.len() + // instruction_data
+        1 + self.account_constraints.len() + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints
+        1 + self.instruction_data.len() + // instruction_data
         1 + // program_id_index
         1 // pass_inner_instructions
     }
@@ -172,8 +172,8 @@ impl InstructionConstraint {
 impl InstructionConstraintCompiled {
     pub fn size(&self) -> usize {
         1 + // program_id_index
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
+        1 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints small_vec
+        1 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints small_vec
     }
 }
 
@@ -243,16 +243,16 @@ impl AccountConstraintType {
 /// Compiled version of AccountConstraintType for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub enum AccountConstraintTypeCompiled {
-    Pubkey(Vec<u8>),  // Indices into pubkey_table
-    AccountData(Vec<DataConstraint>),
+    Pubkey(SmallVec<u8, u8>),  // Indices into pubkey_table
+    AccountData(SmallVec<u8, DataConstraint>),
 }
 
 impl AccountConstraintTypeCompiled {
     pub fn size(&self) -> usize {
         match self {
-            AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 4 + indices.len(),
+            AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 1 + indices.len(),
             AccountConstraintTypeCompiled::AccountData(constraints) => {
-                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+                1 + 1 + constraints.iter().map(|c| c.size()).sum::<usize>()
             }
         }
     }
@@ -297,7 +297,7 @@ impl AccountConstraint {
 impl AccountConstraintCompiled {
     pub fn size(&self) -> usize {
         1 + // account_index
-        4 + self.account_constraint.size() + // account_constraint
+        self.account_constraint.size() + // account_constraint (includes enum discriminator + SmallVec length + data)
         1 + // Option<u8> discriminator
         if self.owner_index.is_some() { 1 } else { 0 } // owner_index value
     }
@@ -510,11 +510,11 @@ pub struct ProgramInteractionPolicyCreationPayloadLegacy {
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProgramInteractionPolicyCreationPayload {
     pub account_index: u8,
-    pub pubkey_table: Vec<Pubkey>,
-    pub instructions_constraints: Vec<InstructionConstraintCompiled>,
+    pub pubkey_table: SmallVec<u8, Pubkey>,
+    pub instructions_constraints: SmallVec<u8, InstructionConstraintCompiled>,
     pub pre_hook: Option<HookCompiled>,
     pub post_hook: Option<HookCompiled>,
-    pub spending_limits: Vec<LimitedSpendingLimitCompiled>,
+    pub spending_limits: SmallVec<u8, LimitedSpendingLimitCompiled>,
 }
 
 // =============================================================================
@@ -820,7 +820,7 @@ impl ProgramInteractionPolicyCreationPayload {
                 .iter()
                 .map(|ac| self.expand_account_constraint(ac))
                 .collect::<Result<Vec<_>>>()?,
-            data_constraints: compiled.data_constraints.clone(), // No conversion needed
+            data_constraints: compiled.data_constraints.to_vec(),
         })
     }
 
@@ -834,13 +834,13 @@ impl ProgramInteractionPolicyCreationPayload {
                 AccountConstraintTypeCompiled::Pubkey(indices) => {
                     // Pre-allocate with known capacity
                     let mut pubkeys = Vec::with_capacity(indices.len());
-                    for &idx in indices {
+                    for &idx in indices.iter() {
                         pubkeys.push(self.resolve_pubkey(idx)?);
                     }
                     AccountConstraintType::Pubkey(pubkeys)
                 }
                 AccountConstraintTypeCompiled::AccountData(constraints) => {
-                    AccountConstraintType::AccountData(constraints.clone())
+                    AccountConstraintType::AccountData(constraints.to_vec())
                 }
             },
             owner: compiled.owner_index
@@ -856,7 +856,7 @@ impl ProgramInteractionPolicyCreationPayload {
                 .iter()
                 .map(|ac| self.expand_account_constraint(ac))
                 .collect::<Result<Vec<_>>>()?,
-            instruction_data: compiled.instruction_data.clone(),
+            instruction_data: compiled.instruction_data.to_vec(),
             program_id: self.resolve_pubkey(compiled.program_id_index)?,
             pass_inner_instructions: compiled.pass_inner_instructions,
         })
