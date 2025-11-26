@@ -77,13 +77,13 @@ pub struct InstructionConstraint {
     pub data_constraints: Vec<DataConstraint>,
 }
 
-/// Indexed version of InstructionConstraint for use with pubkey_table
+/// Compiled version of InstructionConstraint for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct InstructionConstraintIndexed {
+pub struct InstructionConstraintCompiled {
     /// Index into pubkey_table for the program_id
     pub program_id_index: u8,
     /// Account constraints (evaluated as logical AND)
-    pub account_constraints: Vec<AccountConstraintIndexed>,
+    pub account_constraints: Vec<AccountConstraintCompiled>,
     /// Data constraints (evaluated as logical AND)
     pub data_constraints: Vec<DataConstraint>,
 }
@@ -103,13 +103,13 @@ pub struct Hook {
     pub pass_inner_instructions: bool,
 }
 
-/// Indexed version of Hook for use with pubkey_table
+/// Compiled version of Hook for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct HookIndexed {
+pub struct HookCompiled {
     // Dictates how many extra accounts are required for the hook, beyond the program ID
     pub num_extra_accounts: u8,
     // Dictates constraints for the hook accounts
-    pub account_constraints: Vec<AccountConstraintIndexed>,
+    pub account_constraints: Vec<AccountConstraintCompiled>,
     // Dictates which instruction data will be invoked
     pub instruction_data: Vec<u8>,
     // Index into pubkey_table for the program_id
@@ -138,7 +138,7 @@ impl Hook {
     }
 }
 
-impl HookIndexed {
+impl HookCompiled {
     pub fn size(&self) -> usize {
         1 + // num_accounts
         4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
@@ -169,7 +169,7 @@ impl InstructionConstraint {
     }
 }
 
-impl InstructionConstraintIndexed {
+impl InstructionConstraintCompiled {
     pub fn size(&self) -> usize {
         1 + // program_id_index
         4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
@@ -240,18 +240,18 @@ impl AccountConstraintType {
     }
 }
 
-/// Indexed version of AccountConstraintType for use with pubkey_table
+/// Compiled version of AccountConstraintType for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub enum AccountConstraintTypeIndexed {
+pub enum AccountConstraintTypeCompiled {
     Pubkey(Vec<u8>),  // Indices into pubkey_table
     AccountData(Vec<DataConstraint>),
 }
 
-impl AccountConstraintTypeIndexed {
+impl AccountConstraintTypeCompiled {
     pub fn size(&self) -> usize {
         match self {
-            AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len(),
-            AccountConstraintTypeIndexed::AccountData(constraints) => {
+            AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 4 + indices.len(),
+            AccountConstraintTypeCompiled::AccountData(constraints) => {
                 1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
             }
         }
@@ -265,11 +265,11 @@ pub struct AccountConstraint {
     pub owner: Option<Pubkey>,
 }
 
-/// Indexed version of AccountConstraint for use with pubkey_table
+/// Compiled version of AccountConstraint for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct AccountConstraintIndexed {
+pub struct AccountConstraintCompiled {
     pub account_index: u8,
-    pub account_constraint: AccountConstraintTypeIndexed,
+    pub account_constraint: AccountConstraintTypeCompiled,
     pub owner_index: Option<u8>,  // Index into pubkey_table for owner
 }
 
@@ -294,7 +294,7 @@ impl AccountConstraint {
     }
 }
 
-impl AccountConstraintIndexed {
+impl AccountConstraintCompiled {
     pub fn size(&self) -> usize {
         1 + // account_index
         4 + self.account_constraint.size() + // account_constraint
@@ -488,9 +488,9 @@ pub struct LimitedSpendingLimit {
     pub quantity_constraints: LimitedQuantityConstraints,
 }
 
-/// Indexed version of LimitedSpendingLimit for use with pubkey_table
+/// Compiled version of LimitedSpendingLimit for use with pubkey_table
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedSpendingLimitIndexed {
+pub struct LimitedSpendingLimitCompiled {
     pub mint_index: u8,
     pub time_constraints: LimitedTimeConstraints,
     pub quantity_constraints: LimitedQuantityConstraints,
@@ -511,10 +511,10 @@ pub struct ProgramInteractionPolicyCreationPayloadLegacy {
 pub struct ProgramInteractionPolicyCreationPayload {
     pub account_index: u8,
     pub pubkey_table: Vec<Pubkey>,
-    pub instructions_constraints: Vec<InstructionConstraintIndexed>,
-    pub pre_hook: Option<HookIndexed>,
-    pub post_hook: Option<HookIndexed>,
-    pub spending_limits: Vec<LimitedSpendingLimitIndexed>,
+    pub instructions_constraints: Vec<InstructionConstraintCompiled>,
+    pub pre_hook: Option<HookCompiled>,
+    pub post_hook: Option<HookCompiled>,
+    pub spending_limits: Vec<LimitedSpendingLimitCompiled>,
 }
 
 // =============================================================================
@@ -723,7 +723,7 @@ impl LimitedSpendingLimit {
     }
 }
 
-impl LimitedSpendingLimitIndexed {
+impl LimitedSpendingLimitCompiled {
     pub fn size(&self) -> usize {
         1 + // mint_index
         self.time_constraints.size() + // time_constraints
@@ -809,29 +809,29 @@ impl ProgramInteractionPolicyCreationPayload {
         }
     }
 
-    /// Convert indexed constraint to full constraint
+    /// Convert compiled constraint to full constraint
     fn expand_instruction_constraint(
         &self,
-        indexed: &InstructionConstraintIndexed,
+        compiled: &InstructionConstraintCompiled,
     ) -> Result<InstructionConstraint> {
         Ok(InstructionConstraint {
-            program_id: self.resolve_pubkey(indexed.program_id_index)?,
-            account_constraints: indexed.account_constraints
+            program_id: self.resolve_pubkey(compiled.program_id_index)?,
+            account_constraints: compiled.account_constraints
                 .iter()
                 .map(|ac| self.expand_account_constraint(ac))
                 .collect::<Result<Vec<_>>>()?,
-            data_constraints: indexed.data_constraints.clone(), // No conversion needed
+            data_constraints: compiled.data_constraints.clone(), // No conversion needed
         })
     }
 
     fn expand_account_constraint(
         &self,
-        indexed: &AccountConstraintIndexed,
+        compiled: &AccountConstraintCompiled,
     ) -> Result<AccountConstraint> {
         Ok(AccountConstraint {
-            account_index: indexed.account_index,
-            account_constraint: match &indexed.account_constraint {
-                AccountConstraintTypeIndexed::Pubkey(indices) => {
+            account_index: compiled.account_index,
+            account_constraint: match &compiled.account_constraint {
+                AccountConstraintTypeCompiled::Pubkey(indices) => {
                     // Pre-allocate with known capacity
                     let mut pubkeys = Vec::with_capacity(indices.len());
                     for &idx in indices {
@@ -839,37 +839,37 @@ impl ProgramInteractionPolicyCreationPayload {
                     }
                     AccountConstraintType::Pubkey(pubkeys)
                 }
-                AccountConstraintTypeIndexed::AccountData(constraints) => {
+                AccountConstraintTypeCompiled::AccountData(constraints) => {
                     AccountConstraintType::AccountData(constraints.clone())
                 }
             },
-            owner: indexed.owner_index
+            owner: compiled.owner_index
                 .map(|idx| self.resolve_pubkey(idx))
                 .transpose()?,
         })
     }
 
-    fn expand_hook(&self, indexed: &HookIndexed) -> Result<Hook> {
+    fn expand_hook(&self, compiled: &HookCompiled) -> Result<Hook> {
         Ok(Hook {
-            num_extra_accounts: indexed.num_extra_accounts,
-            account_constraints: indexed.account_constraints
+            num_extra_accounts: compiled.num_extra_accounts,
+            account_constraints: compiled.account_constraints
                 .iter()
                 .map(|ac| self.expand_account_constraint(ac))
                 .collect::<Result<Vec<_>>>()?,
-            instruction_data: indexed.instruction_data.clone(),
-            program_id: self.resolve_pubkey(indexed.program_id_index)?,
-            pass_inner_instructions: indexed.pass_inner_instructions,
+            instruction_data: compiled.instruction_data.clone(),
+            program_id: self.resolve_pubkey(compiled.program_id_index)?,
+            pass_inner_instructions: compiled.pass_inner_instructions,
         })
     }
 
     fn expand_spending_limit(
         &self,
-        indexed: &LimitedSpendingLimitIndexed,
+        compiled: &LimitedSpendingLimitCompiled,
     ) -> Result<LimitedSpendingLimit> {
         Ok(LimitedSpendingLimit {
-            mint: self.resolve_pubkey(indexed.mint_index)?,
-            time_constraints: indexed.time_constraints.clone(),
-            quantity_constraints: indexed.quantity_constraints.clone(),
+            mint: self.resolve_pubkey(compiled.mint_index)?,
+            time_constraints: compiled.time_constraints.clone(),
+            quantity_constraints: compiled.quantity_constraints.clone(),
         })
     }
 }
@@ -992,8 +992,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
             4 + ic.account_constraints.iter().map(|ac| {
                 1 + // account_index
                 4 + match &ac.account_constraint {
-                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32, // expanded
-                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                    AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 4 + indices.len() * 32, // expanded
+                    AccountConstraintTypeCompiled::AccountData(constraints) => {
                         1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
                     }
                 } +
@@ -1007,8 +1007,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
             4 + h.account_constraints.iter().map(|ac| {
                 1 + // account_index
                 4 + match &ac.account_constraint {
-                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32,
-                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                    AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 4 + indices.len() * 32,
+                    AccountConstraintTypeCompiled::AccountData(constraints) => {
                         1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
                     }
                 } +
@@ -1024,8 +1024,8 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
             4 + h.account_constraints.iter().map(|ac| {
                 1 + // account_index
                 4 + match &ac.account_constraint {
-                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32,
-                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                    AccountConstraintTypeCompiled::Pubkey(indices) => 1 + 4 + indices.len() * 32,
+                    AccountConstraintTypeCompiled::AccountData(constraints) => {
                         1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
                     }
                 } +
