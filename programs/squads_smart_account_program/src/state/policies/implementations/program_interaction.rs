@@ -13,45 +13,41 @@ use crate::{
     SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
 use anchor_lang::prelude::*;
-use solana_program::instruction::Instruction;
+use solana_program::{instruction::Instruction, pubkey};
 
 // =============================================================================
 // BUILTIN PUBKEY CONSTANTS
 // =============================================================================
+
+/// Wrapped SOL mint address
+const WRAPPED_SOL: Pubkey = pubkey!("So11111111111111111111111111111111111111112");
 
 /// Starting index for builtin programs in the pubkey lookup table.
 /// Indices 0-239 are for custom pubkeys stored in pubkey_table.
 /// Indices 240-255 are reserved for commonly-used builtin programs.
 const BUILTIN_INDEX_START: u8 = 240;
 
-/// Builtin program pubkeys mapped to indices 240-255.
-/// These programs are so commonly used that we reserve space for them
-/// to avoid storing them in every policy's pubkey_table, saving 32 bytes each.
+/// Resolve a builtin program pubkey by index (240-243).
+/// Returns a reference to the static builtin pubkey constant.
 ///
 /// Index mapping:
 /// - 240: System Program
 /// - 241: Token Program (SPL Token)
 /// - 242: Associated Token Account Program
 /// - 243: Token-2022 Program
-/// - 244-255: Reserved for future use (currently unused)
-const BUILTIN_PUBKEYS: [Pubkey; 16] = [
-    anchor_lang::system_program::ID,                 // 240
-    anchor_spl::token::ID,                           // 241
-    anchor_spl::associated_token::ID,                // 242
-    anchor_spl::token_2022::ID,                      // 243
-    Pubkey::new_from_array([0xff; 32]),              // 244 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 245 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 246 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 247 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 248 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 249 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 250 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 251 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 252 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 253 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 254 - unused
-    Pubkey::new_from_array([0xff; 32]),              // 255 - unused
-];
+/// - 244-255: Reserved for future use (currently invalid)
+#[inline(always)]
+fn resolve_builtin_pubkey(index: u8) -> Result<&'static Pubkey> {
+    match index {
+        240 => Ok(&anchor_lang::system_program::ID),
+        241 => Ok(&anchor_spl::token::ID),
+        242 => Ok(&anchor_spl::associated_token::ID),
+        243 => Ok(&anchor_spl::token_2022::ID),
+        244 => Ok(&anchor_spl::mint::USDC),
+        245 => Ok(&WRAPPED_SOL),
+        _ => Err(SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into()),
+    }
+}
 
 // =============================================================================
 // CORE POLICY STRUCTURES
@@ -492,6 +488,14 @@ pub struct LimitedSpendingLimit {
     pub quantity_constraints: LimitedQuantityConstraints,
 }
 
+/// Indexed version of LimitedSpendingLimit for use with pubkey_table
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub struct LimitedSpendingLimitIndexed {
+    pub mint_index: u8,
+    pub time_constraints: LimitedTimeConstraints,
+    pub quantity_constraints: LimitedQuantityConstraints,
+}
+
 /// Legacy payload used to create a program interaction policy (V1 format with embedded Pubkeys)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProgramInteractionPolicyCreationPayloadLegacy {
@@ -510,7 +514,7 @@ pub struct ProgramInteractionPolicyCreationPayload {
     pub instructions_constraints: Vec<InstructionConstraintIndexed>,
     pub pre_hook: Option<HookIndexed>,
     pub post_hook: Option<HookIndexed>,
-    pub spending_limits: Vec<LimitedSpendingLimit>,
+    pub spending_limits: Vec<LimitedSpendingLimitIndexed>,
 }
 
 // =============================================================================
@@ -719,6 +723,14 @@ impl LimitedSpendingLimit {
     }
 }
 
+impl LimitedSpendingLimitIndexed {
+    pub fn size(&self) -> usize {
+        1 + // mint_index
+        self.time_constraints.size() + // time_constraints
+        self.quantity_constraints.size() // quantity_constraints
+    }
+}
+
 // =============================================================================
 // PAYLOAD CONVERSION IMPLEMENTATIONS
 // =============================================================================
@@ -786,16 +798,8 @@ impl ProgramInteractionPolicyCreationPayload {
     fn resolve_pubkey(&self, index: u8) -> Result<Pubkey> {
         if index >= BUILTIN_INDEX_START {
             // Builtin program (indices 240-255)
-            let offset = (index - BUILTIN_INDEX_START) as usize;
-            let pubkey = &BUILTIN_PUBKEYS[offset];
-
-            // Reject unused builtin slots
-            require!(
-                *pubkey != Pubkey::new_from_array([0xff; 32]),
-                SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex
-            );
-
-            Ok(*pubkey)
+            // resolve_builtin_pubkey handles validation internally
+            Ok(*resolve_builtin_pubkey(index)?)
         } else {
             // Custom pubkey from table (indices 0-239)
             self.pubkey_table
@@ -857,6 +861,17 @@ impl ProgramInteractionPolicyCreationPayload {
             pass_inner_instructions: indexed.pass_inner_instructions,
         })
     }
+
+    fn expand_spending_limit(
+        &self,
+        indexed: &LimitedSpendingLimitIndexed,
+    ) -> Result<LimitedSpendingLimit> {
+        Ok(LimitedSpendingLimit {
+            mint: self.resolve_pubkey(indexed.mint_index)?,
+            time_constraints: indexed.time_constraints.clone(),
+            quantity_constraints: indexed.quantity_constraints.clone(),
+        })
+    }
 }
 
 impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
@@ -893,8 +908,11 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
             .map(|h| self.expand_hook(h))
             .transpose()?;
 
-        // Process spending limits (same as legacy)
-        let mut spending_limits = self.spending_limits.clone();
+        // Expand indexed spending limits to full spending limits
+        let mut spending_limits = self.spending_limits
+            .iter()
+            .map(|sl| self.expand_spending_limit(sl))
+            .collect::<Result<Vec<_>>>()?;
         spending_limits.sort_by_key(|c| c.mint);
 
         let current_timestamp = Clock::get()?.unix_timestamp;
