@@ -43,6 +43,17 @@ pub struct InstructionConstraint {
     pub data_constraints: Vec<DataConstraint>,
 }
 
+/// Indexed version of InstructionConstraint for use with pubkey_table
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub struct InstructionConstraintIndexed {
+    /// Index into pubkey_table for the program_id
+    pub program_id_index: u8,
+    /// Account constraints (evaluated as logical AND)
+    pub account_constraints: Vec<AccountConstraintIndexed>,
+    /// Data constraints (evaluated as logical AND)
+    pub data_constraints: Vec<DataConstraint>,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct Hook {
     // Dictates how many extra accounts are required for the hook, beyond the program ID
@@ -53,6 +64,22 @@ pub struct Hook {
     pub instruction_data: Vec<u8>,
     // The program that will be invoked
     pub program_id: Pubkey,
+    // Dictates if inner instruction data & account will be passed to the
+    // instruction on top of the instruction data
+    pub pass_inner_instructions: bool,
+}
+
+/// Indexed version of Hook for use with pubkey_table
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct HookIndexed {
+    // Dictates how many extra accounts are required for the hook, beyond the program ID
+    pub num_extra_accounts: u8,
+    // Dictates constraints for the hook accounts
+    pub account_constraints: Vec<AccountConstraintIndexed>,
+    // Dictates which instruction data will be invoked
+    pub instruction_data: Vec<u8>,
+    // Index into pubkey_table for the program_id
+    pub program_id_index: u8,
     // Dictates if inner instruction data & account will be passed to the
     // instruction on top of the instruction data
     pub pass_inner_instructions: bool,
@@ -76,6 +103,26 @@ impl Hook {
             .unwrap()
     }
 }
+
+impl HookIndexed {
+    pub fn size(&self) -> usize {
+        1 + // num_accounts
+        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
+        4 + self.instruction_data.len() + // instruction_data
+        1 + // program_id_index
+        1 // pass_inner_instructions
+    }
+
+    // Get the total number of accounts required for the hook
+    pub fn num_accounts(&self) -> usize {
+        // Program ID also needs to get passed in, therefore add 1
+        self.num_extra_accounts
+            .checked_add(1)
+            .map(|v| v as usize)
+            .unwrap()
+    }
+}
+
 // =============================================================================
 // CONSTRAINT TYPES AND OPERATORS
 // =============================================================================
@@ -83,6 +130,14 @@ impl Hook {
 impl InstructionConstraint {
     pub fn size(&self) -> usize {
         32 + // program_id
+        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
+        4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
+    }
+}
+
+impl InstructionConstraintIndexed {
+    pub fn size(&self) -> usize {
+        1 + // program_id_index
         4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
         4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
     }
@@ -150,11 +205,38 @@ impl AccountConstraintType {
         }
     }
 }
+
+/// Indexed version of AccountConstraintType for use with pubkey_table
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub enum AccountConstraintTypeIndexed {
+    Pubkey(Vec<u8>),  // Indices into pubkey_table
+    AccountData(Vec<DataConstraint>),
+}
+
+impl AccountConstraintTypeIndexed {
+    pub fn size(&self) -> usize {
+        match self {
+            AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len(),
+            AccountConstraintTypeIndexed::AccountData(constraints) => {
+                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+            }
+        }
+    }
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
 pub struct AccountConstraint {
     pub account_index: u8,
     pub account_constraint: AccountConstraintType,
     pub owner: Option<Pubkey>,
+}
+
+/// Indexed version of AccountConstraint for use with pubkey_table
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
+pub struct AccountConstraintIndexed {
+    pub account_index: u8,
+    pub account_constraint: AccountConstraintTypeIndexed,
+    pub owner_index: Option<u8>,  // Index into pubkey_table for owner
 }
 
 // =============================================================================
@@ -175,6 +257,15 @@ impl AccountConstraint {
         4 + self.account_constraint.size() + // account_constraint
         32 + // owner
         1 // owner discriminator
+    }
+}
+
+impl AccountConstraintIndexed {
+    pub fn size(&self) -> usize {
+        1 + // account_index
+        4 + self.account_constraint.size() + // account_constraint
+        1 + // Option<u8> discriminator
+        if self.owner_index.is_some() { 1 } else { 0 } // owner_index value
     }
 }
 
@@ -363,13 +454,24 @@ pub struct LimitedSpendingLimit {
     pub quantity_constraints: LimitedQuantityConstraints,
 }
 
-/// Payload used to create a program interaction policy
+/// Legacy payload used to create a program interaction policy (V1 format with embedded Pubkeys)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ProgramInteractionPolicyCreationPayload {
+pub struct ProgramInteractionPolicyCreationPayloadLegacy {
     pub account_index: u8,
     pub instructions_constraints: Vec<InstructionConstraint>,
     pub pre_hook: Option<Hook>,
     pub post_hook: Option<Hook>,
+    pub spending_limits: Vec<LimitedSpendingLimit>,
+}
+
+/// Payload used to create a program interaction policy (V2 format with pubkey table and indices)
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct ProgramInteractionPolicyCreationPayload {
+    pub account_index: u8,
+    pub pubkey_table: Vec<Pubkey>,
+    pub instructions_constraints: Vec<InstructionConstraintIndexed>,
+    pub pre_hook: Option<HookIndexed>,
+    pub post_hook: Option<HookIndexed>,
     pub spending_limits: Vec<LimitedSpendingLimit>,
 }
 
@@ -583,7 +685,7 @@ impl LimitedSpendingLimit {
 // PAYLOAD CONVERSION IMPLEMENTATIONS
 // =============================================================================
 
-impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
+impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayloadLegacy {
     type PolicyState = ProgramInteractionPolicy;
 
     fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
@@ -640,7 +742,147 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     }
 }
 
-impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
+impl ProgramInteractionPolicyCreationPayload {
+    /// Resolve a pubkey from the table, checking bounds
+    #[inline]
+    fn resolve_pubkey(&self, index: u8) -> Result<Pubkey> {
+        self.pubkey_table
+            .get(index as usize)
+            .copied()  // Copy the Pubkey (32 bytes on stack)
+            .ok_or_else(|| SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into())
+    }
+
+    /// Convert indexed constraint to full constraint
+    fn expand_instruction_constraint(
+        &self,
+        indexed: &InstructionConstraintIndexed,
+    ) -> Result<InstructionConstraint> {
+        Ok(InstructionConstraint {
+            program_id: self.resolve_pubkey(indexed.program_id_index)?,
+            account_constraints: indexed.account_constraints
+                .iter()
+                .map(|ac| self.expand_account_constraint(ac))
+                .collect::<Result<Vec<_>>>()?,
+            data_constraints: indexed.data_constraints.clone(), // No conversion needed
+        })
+    }
+
+    fn expand_account_constraint(
+        &self,
+        indexed: &AccountConstraintIndexed,
+    ) -> Result<AccountConstraint> {
+        Ok(AccountConstraint {
+            account_index: indexed.account_index,
+            account_constraint: match &indexed.account_constraint {
+                AccountConstraintTypeIndexed::Pubkey(indices) => {
+                    // Pre-allocate with known capacity
+                    let mut pubkeys = Vec::with_capacity(indices.len());
+                    for &idx in indices {
+                        pubkeys.push(self.resolve_pubkey(idx)?);
+                    }
+                    AccountConstraintType::Pubkey(pubkeys)
+                }
+                AccountConstraintTypeIndexed::AccountData(constraints) => {
+                    AccountConstraintType::AccountData(constraints.clone())
+                }
+            },
+            owner: indexed.owner_index
+                .map(|idx| self.resolve_pubkey(idx))
+                .transpose()?,
+        })
+    }
+
+    fn expand_hook(&self, indexed: &HookIndexed) -> Result<Hook> {
+        Ok(Hook {
+            num_extra_accounts: indexed.num_extra_accounts,
+            account_constraints: indexed.account_constraints
+                .iter()
+                .map(|ac| self.expand_account_constraint(ac))
+                .collect::<Result<Vec<_>>>()?,
+            instruction_data: indexed.instruction_data.clone(),
+            program_id: self.resolve_pubkey(indexed.program_id_index)?,
+            pass_inner_instructions: indexed.pass_inner_instructions,
+        })
+    }
+}
+
+impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
+    type PolicyState = ProgramInteractionPolicy;
+
+    fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
+        // Validate limits
+        require!(
+            self.instructions_constraints.len() <= 20,
+            SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+        );
+        require!(
+            self.spending_limits.len() <= 10,
+            SmartAccountError::ProgramInteractionTooManySpendingLimits
+        );
+        require!(
+            self.pubkey_table.len() <= 240,
+            SmartAccountError::ProgramInteractionTooManyUniquePubkeys
+        );
+
+        // Expand indexed constraints to full Pubkey constraints
+        let instructions_constraints = self.instructions_constraints
+            .iter()
+            .map(|ic| self.expand_instruction_constraint(ic))
+            .collect::<Result<Vec<_>>>()?;
+
+        let pre_hook = self.pre_hook
+            .as_ref()
+            .map(|h| self.expand_hook(h))
+            .transpose()?;
+
+        let post_hook = self.post_hook
+            .as_ref()
+            .map(|h| self.expand_hook(h))
+            .transpose()?;
+
+        // Process spending limits (same as legacy)
+        let mut spending_limits = self.spending_limits.clone();
+        spending_limits.sort_by_key(|c| c.mint);
+
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        Ok(ProgramInteractionPolicy {
+            account_index: self.account_index,
+            instructions_constraints,
+            pre_hook,
+            post_hook,
+            spending_limits: spending_limits
+                .iter()
+                .map(|spending_limit| {
+                    let start = if spending_limit.time_constraints.start == 0 {
+                        current_timestamp
+                    } else {
+                        spending_limit.time_constraints.start
+                    };
+                    SpendingLimitV2 {
+                        mint: spending_limit.mint,
+                        time_constraints: TimeConstraints {
+                            start,
+                            period: spending_limit.time_constraints.period,
+                            expiration: spending_limit.time_constraints.expiration,
+                            accumulate_unused: false,
+                        },
+                        quantity_constraints: QuantityConstraints {
+                            max_per_period: spending_limit.quantity_constraints.max_per_period,
+                            max_per_use: 0,
+                            enforce_exact_quantity: false,
+                        },
+                        usage: UsageState {
+                            remaining_in_period: spending_limit.quantity_constraints.max_per_period,
+                            last_reset: start,
+                        },
+                    }
+                })
+                .collect(),
+        })
+    }
+}
+
+impl PolicySizeTrait for ProgramInteractionPolicyCreationPayloadLegacy {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
         4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
@@ -657,6 +899,73 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
         1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
         4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>()
         // spending_limits vec
+    }
+}
+
+impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
+    fn creation_payload_size(&self) -> usize {
+        1 + // account_index
+        4 + (self.pubkey_table.len() * 32) + // vec + pubkey_table
+        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // vec + instructions_constraints
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + post_hook
+        4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>() // vec + spending_limits
+    }
+
+    fn policy_state_size(&self) -> usize {
+        // After expansion, state size is based on expanded Pubkeys, not indices
+        // This is the same calculation as Legacy but we need to calculate the expanded size
+        1 + // account_index
+        4 + self.instructions_constraints.iter().map(|ic| {
+            32 + // program_id (expanded from index)
+            4 + ic.account_constraints.iter().map(|ac| {
+                1 + // account_index
+                4 + match &ac.account_constraint {
+                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32, // expanded
+                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+                    }
+                } +
+                32 + // owner (expanded from index)
+                1 // owner discriminator
+            }).sum::<usize>() + // account_constraints vec
+            4 + ic.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
+        }).sum::<usize>() + // instructions_constraints vec
+        1 + self.pre_hook.as_ref().map(|h| {
+            1 + // num_accounts
+            4 + h.account_constraints.iter().map(|ac| {
+                1 + // account_index
+                4 + match &ac.account_constraint {
+                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32,
+                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+                    }
+                } +
+                32 + // owner
+                1 // owner discriminator
+            }).sum::<usize>() +
+            4 + h.instruction_data.len() +
+            32 + // program_id (expanded from index)
+            1 // pass_inner_instructions
+        }).unwrap_or(0) + // pre_hook
+        1 + self.post_hook.as_ref().map(|h| {
+            1 + // num_accounts
+            4 + h.account_constraints.iter().map(|ac| {
+                1 + // account_index
+                4 + match &ac.account_constraint {
+                    AccountConstraintTypeIndexed::Pubkey(indices) => 1 + 4 + indices.len() * 32,
+                    AccountConstraintTypeIndexed::AccountData(constraints) => {
+                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
+                    }
+                } +
+                32 + // owner
+                1 // owner discriminator
+            }).sum::<usize>() +
+            4 + h.instruction_data.len() +
+            32 + // program_id (expanded from index)
+            1 // pass_inner_instructions
+        }).unwrap_or(0) + // post_hook
+        4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>() // vec + spending_limits
     }
 }
 
@@ -1394,7 +1703,7 @@ mod tests {
 
     #[test]
     fn test_creation_payload_size_calculation() {
-        let payload = ProgramInteractionPolicyCreationPayload {
+        let payload = ProgramInteractionPolicyCreationPayloadLegacy {
             account_index: 1,
             pre_hook: None,
             post_hook: None,
@@ -1448,7 +1757,7 @@ mod tests {
 
     #[test]
     fn test_policy_state_size_calculation() {
-        let payload = ProgramInteractionPolicyCreationPayload {
+        let payload = ProgramInteractionPolicyCreationPayloadLegacy {
             account_index: 1,
             pre_hook: None,
             post_hook: None,
