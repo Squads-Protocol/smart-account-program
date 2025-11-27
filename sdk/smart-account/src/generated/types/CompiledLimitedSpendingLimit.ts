@@ -14,7 +14,7 @@ import {
   LimitedQuantityConstraints,
   limitedQuantityConstraintsBeet,
 } from './LimitedQuantityConstraints'
-export type LimitedSpendingLimitCompiled = {
+export type CompiledLimitedSpendingLimit = {
   mintIndex: number
   timeConstraints: LimitedTimeConstraints
   quantityConstraints: LimitedQuantityConstraints
@@ -24,12 +24,12 @@ export type LimitedSpendingLimitCompiled = {
  * @category userTypes
  * @category generated
  */
-export const limitedSpendingLimitCompiledBeet =
-  new beet.FixableBeetArgsStruct<LimitedSpendingLimitCompiled>(
+export const compiledLimitedSpendingLimitBeet =
+  new beet.FixableBeetArgsStruct<CompiledLimitedSpendingLimit>(
     [
       ['mintIndex', beet.u8],
       ['timeConstraints', limitedTimeConstraintsBeet],
       ['quantityConstraints', limitedQuantityConstraintsBeet],
     ],
-    'LimitedSpendingLimitCompiled'
+    'CompiledLimitedSpendingLimit'
   )

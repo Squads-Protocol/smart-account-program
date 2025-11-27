@@ -3843,7 +3843,7 @@
       }
     },
     {
-      "name": "InstructionConstraintCompiled",
+      "name": "CompiledInstructionConstraint",
       "docs": [
         "Compiled version of InstructionConstraint for use with pubkey_table"
       ],
@@ -3864,7 +3864,7 @@
             ],
             "type": {
               "vec": {
-                "defined": "AccountConstraintCompiled"
+                "defined": "CompiledAccountConstraint"
               }
             }
           },
@@ -3915,7 +3915,7 @@
       }
     },
     {
-      "name": "HookCompiled",
+      "name": "CompiledHook",
       "docs": [
         "Compiled version of Hook for use with pubkey_table"
       ],
@@ -3930,7 +3930,7 @@
             "name": "accountConstraints",
             "type": {
               "vec": {
-                "defined": "AccountConstraintCompiled"
+                "defined": "CompiledAccountConstraint"
               }
             }
           },
@@ -3998,7 +3998,7 @@
       }
     },
     {
-      "name": "AccountConstraintCompiled",
+      "name": "CompiledAccountConstraint",
       "docs": [
         "Compiled version of AccountConstraint for use with pubkey_table"
       ],
@@ -4012,7 +4012,7 @@
           {
             "name": "accountConstraint",
             "type": {
-              "defined": "AccountConstraintTypeCompiled"
+              "defined": "CompiledAccountConstraintType"
             }
           },
           {
@@ -4094,7 +4094,7 @@
       }
     },
     {
-      "name": "LimitedSpendingLimitCompiled",
+      "name": "CompiledLimitedSpendingLimit",
       "docs": [
         "Compiled version of LimitedSpendingLimit for use with pubkey_table"
       ],
@@ -4189,7 +4189,7 @@
             "name": "instructionsConstraints",
             "type": {
               "vec": {
-                "defined": "InstructionConstraintCompiled"
+                "defined": "CompiledInstructionConstraint"
               }
             }
           },
@@ -4197,7 +4197,7 @@
             "name": "preHook",
             "type": {
               "option": {
-                "defined": "HookCompiled"
+                "defined": "CompiledHook"
               }
             }
           },
@@ -4205,7 +4205,7 @@
             "name": "postHook",
             "type": {
               "option": {
-                "defined": "HookCompiled"
+                "defined": "CompiledHook"
               }
             }
           },
@@ -4213,7 +4213,7 @@
             "name": "spendingLimits",
             "type": {
               "vec": {
-                "defined": "LimitedSpendingLimitCompiled"
+                "defined": "CompiledLimitedSpendingLimit"
               }
             }
           }
@@ -4936,7 +4936,7 @@
       }
     },
     {
-      "name": "AccountConstraintTypeCompiled",
+      "name": "CompiledAccountConstraintType",
       "docs": [
         "Compiled version of AccountConstraintType for use with pubkey_table"
       ],

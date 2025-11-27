@@ -7,12 +7,12 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import {
-  AccountConstraintTypeCompiled,
-  accountConstraintTypeCompiledBeet,
-} from './AccountConstraintTypeCompiled'
-export type AccountConstraintCompiled = {
+  CompiledAccountConstraintType,
+  compiledAccountConstraintTypeBeet,
+} from './CompiledAccountConstraintType'
+export type CompiledAccountConstraint = {
   accountIndex: number
-  accountConstraint: AccountConstraintTypeCompiled
+  accountConstraint: CompiledAccountConstraintType
   ownerIndex: beet.COption<number>
 }
 
@@ -20,12 +20,12 @@ export type AccountConstraintCompiled = {
  * @category userTypes
  * @category generated
  */
-export const accountConstraintCompiledBeet =
-  new beet.FixableBeetArgsStruct<AccountConstraintCompiled>(
+export const compiledAccountConstraintBeet =
+  new beet.FixableBeetArgsStruct<CompiledAccountConstraint>(
     [
       ['accountIndex', beet.u8],
-      ['accountConstraint', accountConstraintTypeCompiledBeet],
+      ['accountConstraint', compiledAccountConstraintTypeBeet],
       ['ownerIndex', beet.coption(beet.u8)],
     ],
-    'AccountConstraintCompiled'
+    'CompiledAccountConstraint'
   )

@@ -10,21 +10,21 @@ import * as beet from '@metaplex-foundation/beet'
 import { smallArray } from '../../types'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
-  InstructionConstraintCompiled,
-  instructionConstraintCompiledBeet,
-} from './InstructionConstraintCompiled'
-import { HookCompiled, hookCompiledBeet } from './HookCompiled'
+  CompiledInstructionConstraint,
+  compiledInstructionConstraintBeet,
+} from './CompiledInstructionConstraint'
+import { CompiledHook, compiledHookBeet } from './CompiledHook'
 import {
-  LimitedSpendingLimitCompiled,
-  limitedSpendingLimitCompiledBeet,
-} from './LimitedSpendingLimitCompiled'
+  CompiledLimitedSpendingLimit,
+  compiledLimitedSpendingLimitBeet,
+} from './CompiledLimitedSpendingLimit'
 export type ProgramInteractionPolicyCreationPayload = {
   accountIndex: number
   pubkeyTable: web3.PublicKey[]
-  instructionsConstraints: InstructionConstraintCompiled[]
-  preHook: beet.COption<HookCompiled>
-  postHook: beet.COption<HookCompiled>
-  spendingLimits: LimitedSpendingLimitCompiled[]
+  instructionsConstraints: CompiledInstructionConstraint[]
+  preHook: beet.COption<CompiledHook>
+  postHook: beet.COption<CompiledHook>
+  spendingLimits: CompiledLimitedSpendingLimit[]
 }
 
 /**
@@ -38,11 +38,11 @@ export const programInteractionPolicyCreationPayloadBeet =
       ['pubkeyTable', smallArray(beet.u8, beetSolana.publicKey)],
       [
         'instructionsConstraints',
-        smallArray(beet.u8, instructionConstraintCompiledBeet),
+        smallArray(beet.u8, compiledInstructionConstraintBeet),
       ],
-      ['preHook', beet.coption(hookCompiledBeet)],
-      ['postHook', beet.coption(hookCompiledBeet)],
-      ['spendingLimits', smallArray(beet.u8, limitedSpendingLimitCompiledBeet)],
+      ['preHook', beet.coption(compiledHookBeet)],
+      ['postHook', beet.coption(compiledHookBeet)],
+      ['spendingLimits', smallArray(beet.u8, compiledLimitedSpendingLimitBeet)],
     ],
     'ProgramInteractionPolicyCreationPayload'
   )

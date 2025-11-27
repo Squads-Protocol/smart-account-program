@@ -8,12 +8,12 @@
 import * as beet from '@metaplex-foundation/beet'
 import { smallArray } from '../../types'
 import {
-  AccountConstraintCompiled,
-  accountConstraintCompiledBeet,
-} from './AccountConstraintCompiled'
-export type HookCompiled = {
+  CompiledAccountConstraint,
+  compiledAccountConstraintBeet,
+} from './CompiledAccountConstraint'
+export type CompiledHook = {
   numExtraAccounts: number
-  accountConstraints: AccountConstraintCompiled[]
+  accountConstraints: CompiledAccountConstraint[]
   instructionData: number[]
   programIdIndex: number
   passInnerInstructions: boolean
@@ -23,13 +23,13 @@ export type HookCompiled = {
  * @category userTypes
  * @category generated
  */
-export const hookCompiledBeet = new beet.FixableBeetArgsStruct<HookCompiled>(
+export const compiledHookBeet = new beet.FixableBeetArgsStruct<CompiledHook>(
   [
     ['numExtraAccounts', beet.u8],
-    ['accountConstraints', smallArray(beet.u8, accountConstraintCompiledBeet)],
+    ['accountConstraints', smallArray(beet.u8, compiledAccountConstraintBeet)],
     ['instructionData', smallArray(beet.u8, beet.u8)],
     ['programIdIndex', beet.u8],
     ['passInnerInstructions', beet.bool],
   ],
-  'HookCompiled'
+  'CompiledHook'
 )

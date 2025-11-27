@@ -8,13 +8,13 @@
 import * as beet from '@metaplex-foundation/beet'
 import { smallArray } from '../../types'
 import {
-  AccountConstraintCompiled,
-  accountConstraintCompiledBeet,
-} from './AccountConstraintCompiled'
+  CompiledAccountConstraint,
+  compiledAccountConstraintBeet,
+} from './CompiledAccountConstraint'
 import { DataConstraint, dataConstraintBeet } from './DataConstraint'
-export type InstructionConstraintCompiled = {
+export type CompiledInstructionConstraint = {
   programIdIndex: number
-  accountConstraints: AccountConstraintCompiled[]
+  accountConstraints: CompiledAccountConstraint[]
   dataConstraints: DataConstraint[]
 }
 
@@ -22,12 +22,12 @@ export type InstructionConstraintCompiled = {
  * @category userTypes
  * @category generated
  */
-export const instructionConstraintCompiledBeet =
-  new beet.FixableBeetArgsStruct<InstructionConstraintCompiled>(
+export const compiledInstructionConstraintBeet =
+  new beet.FixableBeetArgsStruct<CompiledInstructionConstraint>(
     [
       ['programIdIndex', beet.u8],
-      ['accountConstraints', smallArray(beet.u8, accountConstraintCompiledBeet)],
+      ['accountConstraints', smallArray(beet.u8, compiledAccountConstraintBeet)],
       ['dataConstraints', smallArray(beet.u8, dataConstraintBeet)],
     ],
-    'InstructionConstraintCompiled'
+    'CompiledInstructionConstraint'
   )

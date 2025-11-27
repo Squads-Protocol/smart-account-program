@@ -11,10 +11,10 @@
  *
  * Adding new SmallVec types:
  *   1. If the Rust type ALWAYS uses SmallVec (never Vec), add the beet type to SMALLVEC_U8_BEET_TYPES_GLOBAL
- *      Example: InstructionConstraintCompiled is only ever used with SmallVec, so add 'instructionConstraintCompiledBeet'
+ *      Example: CompiledInstructionConstraint is only ever used with SmallVec, so add 'compiledInstructionConstraintBeet'
  *
  *   2. If the Rust type uses SmallVec in some structs but Vec in others, add to SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC
- *      Example: DataConstraint uses Vec in InstructionConstraint (legacy) but SmallVec in InstructionConstraintCompiled,
+ *      Example: DataConstraint uses Vec in InstructionConstraint (legacy) but SmallVec in CompiledInstructionConstraint,
  *               so we list only the files where it should be SmallVec
  *
  *   3. For SmallVec<u8, u8> or SmallVec<u16, u8> fields (byte arrays), add file-specific handling below
@@ -27,9 +27,9 @@ const GENERATED_DIR = path.join(__dirname, '..', 'src', 'generated', 'types');
 
 // Beet types that ALWAYS use SmallVec<u8, X> (never Vec)
 const SMALLVEC_U8_BEET_TYPES_GLOBAL = [
-  'instructionConstraintCompiledBeet',
-  'accountConstraintCompiledBeet',
-  'limitedSpendingLimitCompiledBeet',
+  'compiledInstructionConstraintBeet',
+  'compiledAccountConstraintBeet',
+  'compiledLimitedSpendingLimitBeet',
   'compiledInstructionBeet',
   'messageAddressTableLookupBeet',
 ];
@@ -37,8 +37,8 @@ const SMALLVEC_U8_BEET_TYPES_GLOBAL = [
 // Beet types that use SmallVec only in specific files (Vec elsewhere)
 const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
   'dataConstraintBeet': [
-    'InstructionConstraintCompiled.ts',
-    'AccountConstraintTypeCompiled.ts',
+    'CompiledInstructionConstraint.ts',
+    'CompiledAccountConstraintType.ts',
   ],
   'beetSolana.publicKey': [
     'SmartAccountTransactionMessage.ts',
@@ -86,12 +86,12 @@ function processFile(filePath) {
     content = content.replace(/readonlyIndexes: Uint8Array/g, 'readonlyIndexes: number[]');
   }
 
-  if (fileName === 'HookCompiled.ts') {
+  if (fileName === 'CompiledHook.ts') {
     content = content.replace(/\['instructionData', beet\.bytes\]/g, "['instructionData', smallArray(beet.u8, beet.u8)]");
     content = content.replace(/instructionData: Uint8Array/g, 'instructionData: number[]');
   }
 
-  if (fileName === 'AccountConstraintTypeCompiled.ts') {
+  if (fileName === 'CompiledAccountConstraintType.ts') {
     // Pubkey variant uses tuple([bytes]) for SmallVec<u8, u8>
     content = content.replace(/beet\.tuple\(\[beet\.bytes\]\)/g, 'beet.tuple([smallArray(beet.u8, beet.u8)])');
     content = content.replace(/Pubkey: \{ fields: \[Uint8Array\] \}/g, 'Pubkey: { fields: [number[]] }');
