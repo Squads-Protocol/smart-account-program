@@ -5,22 +5,26 @@
  * See: https://github.com/metaplex-foundation/solita
  */
 
+import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
+import { smallArray } from '../../types'
+import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
-  InstructionConstraint,
-  instructionConstraintBeet,
-} from './InstructionConstraint'
-import { Hook, hookBeet } from './Hook'
+  InstructionConstraintCompiled,
+  instructionConstraintCompiledBeet,
+} from './InstructionConstraintCompiled'
+import { HookCompiled, hookCompiledBeet } from './HookCompiled'
 import {
-  LimitedSpendingLimit,
-  limitedSpendingLimitBeet,
-} from './LimitedSpendingLimit'
+  LimitedSpendingLimitCompiled,
+  limitedSpendingLimitCompiledBeet,
+} from './LimitedSpendingLimitCompiled'
 export type ProgramInteractionPolicyCreationPayload = {
   accountIndex: number
-  instructionsConstraints: InstructionConstraint[]
-  preHook: beet.COption<Hook>
-  postHook: beet.COption<Hook>
-  spendingLimits: LimitedSpendingLimit[]
+  pubkeyTable: web3.PublicKey[]
+  instructionsConstraints: InstructionConstraintCompiled[]
+  preHook: beet.COption<HookCompiled>
+  postHook: beet.COption<HookCompiled>
+  spendingLimits: LimitedSpendingLimitCompiled[]
 }
 
 /**
@@ -31,10 +35,14 @@ export const programInteractionPolicyCreationPayloadBeet =
   new beet.FixableBeetArgsStruct<ProgramInteractionPolicyCreationPayload>(
     [
       ['accountIndex', beet.u8],
-      ['instructionsConstraints', beet.array(instructionConstraintBeet)],
-      ['preHook', beet.coption(hookBeet)],
-      ['postHook', beet.coption(hookBeet)],
-      ['spendingLimits', beet.array(limitedSpendingLimitBeet)],
+      ['pubkeyTable', smallArray(beet.u8, beetSolana.publicKey)],
+      [
+        'instructionsConstraints',
+        smallArray(beet.u8, instructionConstraintCompiledBeet),
+      ],
+      ['preHook', beet.coption(hookCompiledBeet)],
+      ['postHook', beet.coption(hookCompiledBeet)],
+      ['spendingLimits', smallArray(beet.u8, limitedSpendingLimitCompiledBeet)],
     ],
     'ProgramInteractionPolicyCreationPayload'
   )
