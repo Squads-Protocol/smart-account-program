@@ -141,8 +141,8 @@ impl Hook {
 impl CompiledHook {
     pub fn size(&self) -> usize {
         1 + // num_accounts
-        1 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints (SmallVec<u8>)
-        2 + self.instruction_data.len() + // instruction_data (SmallVec<u16>)
+        1 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints
+        2 + self.instruction_data.len() + // instruction_data
         1 + // program_id_index
         1 // pass_inner_instructions
     }
@@ -270,7 +270,7 @@ pub struct AccountConstraint {
 pub struct CompiledAccountConstraint {
     pub account_index: u8,
     pub account_constraint: CompiledAccountConstraintType,
-    pub owner_index: Option<u8>,  // Index into pubkey_table for owner
+    pub owner_index: Option<u8>,  // index into pubkey_table for owner
 }
 
 // =============================================================================
@@ -289,7 +289,7 @@ impl AccountConstraint {
     pub fn size(&self) -> usize {
         1 + // account_index
         self.account_constraint.size() + // account_constraint (enum, no vec prefix needed)
-        1 + // owner Option discriminator
+        1 + // option discriminator
         if self.owner.is_some() { 32 } else { 0 } // owner value (conditional)
     }
 }
@@ -297,8 +297,8 @@ impl AccountConstraint {
 impl CompiledAccountConstraint {
     pub fn size(&self) -> usize {
         1 + // account_index
-        self.account_constraint.size() + // account_constraint (includes enum discriminator + SmallVec length + data)
-        1 + // Option<u8> discriminator
+        self.account_constraint.size() + // account_constraint (includes enum discriminator + small_vec length + data)
+        1 + // option discriminator
         if self.owner_index.is_some() { 1 } else { 0 } // owner_index value
     }
 }
@@ -497,10 +497,6 @@ pub struct CompiledLimitedSpendingLimit {
 }
 
 /// Legacy payload used to create a program interaction policy (V1 format with embedded Pubkeys)
-#[deprecated(
-    since = "2.0.0",
-    note = "Use ProgramInteractionPolicyCreationPayload (V2 format with pubkey table) instead for better space efficiency"
-)]
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct ProgramInteractionPolicyCreationPayloadLegacy {
     pub account_index: u8,
@@ -1781,7 +1777,6 @@ mod tests {
     #[test]
     #[ignore = "This test doesn't work because `to_policy_state` uses the Clock"]
     fn test_creation_payload_size_calculation() {
-        #[allow(deprecated)]
         let payload = ProgramInteractionPolicyCreationPayloadLegacy {
             account_index: 1,
             pre_hook: None,
@@ -1837,7 +1832,6 @@ mod tests {
     #[test]
     #[ignore = "This test doesn't work because `to_policy_state` uses the Clock"]
     fn test_policy_state_size_calculation() {
-        #[allow(deprecated)]
         let payload = ProgramInteractionPolicyCreationPayloadLegacy {
             account_index: 1,
             pre_hook: None,
