@@ -32,6 +32,7 @@ pub struct CloseTransactionBuffer<'info> {
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
     /// The signer on the smart account that created the TransactionBuffer.
+    #[account(mut)]
     pub creator: Signer<'info>,
 }
 
