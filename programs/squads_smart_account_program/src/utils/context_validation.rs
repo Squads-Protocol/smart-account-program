@@ -81,24 +81,24 @@ fn count_voters(signers: &[SmartAccountSigner]) -> usize {
 
 /// Helper function to check for duplicate signers
 fn has_duplicate_signers(signers: &[SmartAccountSigner]) -> bool {
-    let mut seen = Vec::with_capacity(signers.len());
-    for signer in signers {
-        if seen.contains(&signer.key) {
-            return true;
+    for i in 0..signers.len() {
+        for j in (i + 1)..signers.len() {
+            if signers[i].key == signers[j].key {
+                return true;
+            }
         }
-        seen.push(signer.key);
     }
     false
 }
 
 /// Helper function to check for duplicate pubkeys
 fn has_duplicate_pubkeys(pubkeys: &[Pubkey]) -> bool {
-    let mut seen = Vec::with_capacity(pubkeys.len());
-    for pubkey in pubkeys {
-        if seen.contains(pubkey) {
-            return true;
+    for i in 0..pubkeys.len() {
+        for j in (i + 1)..pubkeys.len() {
+            if pubkeys[i] == pubkeys[j] {
+                return true;
+            }
         }
-        seen.push(*pubkey);
     }
     false
 }
