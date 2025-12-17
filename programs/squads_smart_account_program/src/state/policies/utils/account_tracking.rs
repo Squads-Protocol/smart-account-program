@@ -184,8 +184,8 @@ impl<'info> Balances<'info> {
                 );
             }
 
-            // Ensure the delegate, and authority have not changed. Delegated
-            // amount may decrease
+            // Ensure the delegate and authority have not changed. Delegated
+            // amount must not decrease (to prevent unauthorized spending via delegate)
             let post_delegate: Option<(Pubkey, u64)> =
                 if let Some(delegate_key) = Option::from(post_token_account.delegate) {
                     Some((delegate_key, post_token_account.delegated_amount))
