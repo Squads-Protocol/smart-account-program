@@ -140,6 +140,7 @@ impl PolicySizeTrait for SpendingLimitPolicyCreationPayload {
         1 + // source_account_index
         TimeConstraints::INIT_SPACE + // time_constraints
         QuantityConstraints::INIT_SPACE + // quantity_constraints
+        1 + self.usage_state.as_ref().map(|_| UsageState::INIT_SPACE).unwrap_or(0) + // usage_state option
         4 + self.destinations.len() * 32 // destinations vec
     }
 
