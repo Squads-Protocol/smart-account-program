@@ -10,6 +10,7 @@ pub struct TrackedTokenAccount<'info> {
     pub balance: u64,
     pub delegate: Option<(Pubkey, u64)>,
     pub authority: Pubkey,
+    pub mint: Pubkey,
 }
 
 pub struct TrackedExecutingAccount<'info> {
@@ -60,6 +61,7 @@ pub fn check_pre_balances<'info>(
                     None
                 };
                 let authority = token_account.owner;
+                let mint = token_account.mint;
 
                 // Add the token account to the tracked token accounts
                 tracked_token_accounts.push(TrackedTokenAccount {
@@ -67,6 +69,7 @@ pub fn check_pre_balances<'info>(
                     balance,
                     delegate,
                     authority,
+                    mint,
                 });
             }
         }
@@ -120,6 +123,7 @@ impl<'info> Balances<'info> {
         }
 
         // Check all of the token accounts
+        let token_program_ids = TokenInterface::ids();
         for tracked_token_account in &self.token_accounts {
             // Ensure that any tracked token account is not closed
             if tracked_token_account.account.data_is_empty() {
@@ -127,9 +131,20 @@ impl<'info> Balances<'info> {
                     SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
                 );
             }
+            // Ensure the account is still owned by a token program
+            require!(
+                token_program_ids.contains(&tracked_token_account.account.owner),
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
             // Re-deserialize the token account
             let post_token_account =
                 InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
+            // Ensure the mint has not changed
+            require_eq!(
+                post_token_account.mint,
+                tracked_token_account.mint,
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
 
             // Find the spending limit for the token account if it exists and is active
             if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
