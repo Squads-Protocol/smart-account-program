@@ -55,7 +55,14 @@ pub fn check_pre_balances<'info>(
             };
             // Only track token accounts that are owned by the executing account
             if token_account.owner == executing_account {
-                let balance = token_account.amount;
+                // For native (WSOL) token accounts, use lamports - rent_reserve
+                // instead of amount to get the accurate balance even if SyncNative
+                // hasn't been called. This prevents spending limit bypass attacks.
+                let balance = if let Some(rent_reserve) = Option::<u64>::from(token_account.is_native) {
+                    account.lamports().saturating_sub(rent_reserve)
+                } else {
+                    token_account.amount
+                };
                 let delegate = if let Some(delegate_key) = Option::from(token_account.delegate) {
                     Some((delegate_key, token_account.delegated_amount))
                 } else {
@@ -150,6 +157,14 @@ impl<'info> Balances<'info> {
                 SmartAccountError::ProgramInteractionIllegalTokenAccountModification
             );
 
+            // For native (WSOL) token accounts, use lamports - rent_reserve
+            // instead of amount to get the accurate balance
+            let post_balance = if let Some(rent_reserve) = Option::<u64>::from(post_token_account.is_native) {
+                tracked_token_account.account.lamports().saturating_sub(rent_reserve)
+            } else {
+                post_token_account.amount
+            };
+
             // Find the spending limit for the token account if it exists and is active
             if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
                 spending_limit.mint() == post_token_account.mint
@@ -164,22 +179,22 @@ impl<'info> Balances<'info> {
 
                     // Ensure the token account has no greater difference than the allowed change
                     require_gte!(
-                        post_token_account.amount,
+                        post_balance,
                         minimum_balance,
                         SmartAccountError::ProgramInteractionInsufficientTokenAllowance
                     );
 
                     // If the token account has a lower balance than before, decrement the spending limit
-                    if post_token_account.amount < tracked_token_account.balance {
+                    if post_balance < tracked_token_account.balance {
                         spending_limit
-                            .decrement(tracked_token_account.balance - post_token_account.amount);
+                            .decrement(tracked_token_account.balance - post_balance);
                     }
                 }
             } else {
                 // Ensure the token account has the exact or greater balance
                 // than before
                 require_gte!(
-                    post_token_account.amount,
+                    post_balance,
                     tracked_token_account.balance,
                     SmartAccountError::ProgramInteractionModifiedIllegalBalance
                 );
