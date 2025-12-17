@@ -591,7 +591,6 @@ impl Settings {
 
                 // Calculate policy data size based on the creation payload
                 let policy_specific_data_size = policy_update_payload.policy_state_size();
-                let policy_size = Policy::size(signers.len(), policy_specific_data_size);
 
                 // Get the rent payer and system program
                 let rent_payer = rent_payer
@@ -660,7 +659,7 @@ impl Settings {
                 Policy::realloc_if_needed(
                     policy_info.clone(),
                     signers.len(),
-                    policy_size,
+                    policy_specific_data_size,
                     Some(rent_payer.to_account_info()),
                     Some(system_program.to_account_info()),
                 )?;
