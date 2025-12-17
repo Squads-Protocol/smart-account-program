@@ -141,7 +141,8 @@ impl<'info> Balances<'info> {
             );
             // Re-deserialize the token account
             let post_token_account =
-                InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
+                InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account)
+                    .map_err(|_| SmartAccountError::ProgramInteractionIllegalTokenAccountModification)?;
             // Ensure the mint has not changed
             require_eq!(
                 post_token_account.mint,
