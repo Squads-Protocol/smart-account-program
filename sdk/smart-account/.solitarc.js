@@ -12,10 +12,6 @@ const binaryInstallDir = path.join(__dirname, "..", "..", ".crates");
 const ignoredTypes = new Set([
   // Exclude `Permission` enum from the IDL because it is not correctly represented there.
   "Permission",
-  // Exclude the types that use `SmallVec` because anchor doesn't have it in the IDL.
-  "TransactionMessage",
-  "CompiledInstruction",
-  "MessageAddressTableLookup",
   // Add event types
   "CreateSmartAccountEvent",
   "SynchronousTransactionEvent",
@@ -51,6 +47,19 @@ module.exports = {
       if (typeof obj === "object" && obj !== null) {
         if (obj.defined === "SmallVec<u16,u8>") {
           return "bytes"; // Replace just the type reference
+        }
+        // Handle SmallVec<u8, u8> as bytes
+        if (obj.defined === "SmallVec<u8,u8>") {
+          return "bytes";
+        }
+        // Handle SmallVec<u8, Pubkey> as vec of publicKey
+        if (obj.defined === "SmallVec<u8,Pubkey>") {
+          return { vec: "publicKey" };
+        }
+        // Handle SmallVec<u8, X> patterns - transform to vec of X
+        if (obj.defined && obj.defined.startsWith("SmallVec<u8,")) {
+          const innerType = obj.defined.slice("SmallVec<u8,".length, -1);
+          return { vec: { defined: innerType } };
         }
         if (Array.isArray(obj)) {
           return obj.map(transformType);

@@ -3,8 +3,9 @@ use anchor_lang::prelude::*;
 use crate::{
     state::policies::implementations::InternalFundTransferPayload,
     InternalFundTransferPolicyCreationPayload, ProgramInteractionPayload,
-    ProgramInteractionPolicyCreationPayload, SettingsChangePayload,
-    SettingsChangePolicyCreationPayload, SpendingLimitPayload, SpendingLimitPolicyCreationPayload,
+    ProgramInteractionPolicyCreationPayload, ProgramInteractionPolicyCreationPayloadLegacy,
+    SettingsChangePayload, SettingsChangePolicyCreationPayload, SpendingLimitPayload,
+    SpendingLimitPolicyCreationPayload,
 };
 
 use super::PolicySizeTrait;
@@ -16,6 +17,7 @@ pub enum PolicyCreationPayload {
     InternalFundTransfer(InternalFundTransferPolicyCreationPayload),
     SpendingLimit(SpendingLimitPolicyCreationPayload),
     SettingsChange(SettingsChangePolicyCreationPayload),
+    LegacyProgramInteraction(ProgramInteractionPolicyCreationPayloadLegacy),
     ProgramInteraction(ProgramInteractionPolicyCreationPayload),
 }
 
@@ -27,6 +29,7 @@ impl PolicyCreationPayload {
             PolicyCreationPayload::InternalFundTransfer(payload) => payload.policy_state_size(),
             PolicyCreationPayload::SpendingLimit(payload) => payload.policy_state_size(),
             PolicyCreationPayload::SettingsChange(payload) => payload.policy_state_size(),
+            PolicyCreationPayload::LegacyProgramInteraction(payload) => payload.policy_state_size(),
             PolicyCreationPayload::ProgramInteraction(payload) => payload.policy_state_size(),
         }
     }

@@ -17,7 +17,7 @@
     "build:js": "tsup src/index.ts --format esm,cjs --outDir lib",
     "build:types": "tsc --emitDeclarationOnly",
     "build": "yarn build:js && yarn build:types",
-    "generate": "yarn solita",
+    "generate": "yarn solita && node scripts/fix-smallvec.js",
     "ts": "tsc --noEmit",
     "prepare:canary": "yarn build && npm version --prerelease --preid=canary"
   },
@@ -27,6 +27,7 @@
     "@metaplex-foundation/cusper": "^0.0.2",
     "@solana/spl-token": "^0.3.6",
     "@solana/web3.js": "^1.70.3",
+    "@types/bn.js": "^5.1.1",
     "assert": "^2.0.0",
     "bn.js": "^5.2.1",
     "buffer": "6.0.3",

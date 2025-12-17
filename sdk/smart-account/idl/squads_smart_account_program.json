@@ -3317,6 +3317,129 @@
       }
     },
     {
+      "name": "TransactionMessage",
+      "docs": [
+        "Unvalidated instruction data, must be treated as untrusted."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numSigners",
+            "docs": [
+              "The number of signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableSigners",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableNonSigners",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountKeys",
+            "docs": [
+              "The list of unique account public keys (including program IDs) that will be used in the provided instructions."
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructions",
+            "docs": [
+              "The list of instructions to execute."
+            ],
+            "type": {
+              "vec": {
+                "defined": "CompiledInstruction"
+              }
+            }
+          },
+          {
+            "name": "addressTableLookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "vec": {
+                "defined": "MessageAddressTableLookup"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompiledInstruction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountIndexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "Instruction data."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts in a single tx."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountKey",
+            "docs": [
+              "Address lookup table account key"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "writableIndexes",
+            "docs": [
+              "List of indexes used to load writable account addresses"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "readonlyIndexes",
+            "docs": [
+              "List of indexes used to load readonly account addresses"
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
       "name": "LegacySyncTransactionArgs",
       "type": {
         "kind": "struct",
@@ -3720,6 +3843,46 @@
       }
     },
     {
+      "name": "CompiledInstructionConstraint",
+      "docs": [
+        "Compiled version of InstructionConstraint for use with pubkey_table"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "docs": [
+              "Index into pubkey_table for the program_id"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountConstraints",
+            "docs": [
+              "Account constraints (evaluated as logical AND)"
+            ],
+            "type": {
+              "vec": {
+                "defined": "CompiledAccountConstraint"
+              }
+            }
+          },
+          {
+            "name": "dataConstraints",
+            "docs": [
+              "Data constraints (evaluated as logical AND)"
+            ],
+            "type": {
+              "vec": {
+                "defined": "DataConstraint"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "Hook",
       "type": {
         "kind": "struct",
@@ -3743,6 +3906,41 @@
           {
             "name": "programId",
             "type": "publicKey"
+          },
+          {
+            "name": "passInnerInstructions",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompiledHook",
+      "docs": [
+        "Compiled version of Hook for use with pubkey_table"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numExtraAccounts",
+            "type": "u8"
+          },
+          {
+            "name": "accountConstraints",
+            "type": {
+              "vec": {
+                "defined": "CompiledAccountConstraint"
+              }
+            }
+          },
+          {
+            "name": "instructionData",
+            "type": "bytes"
+          },
+          {
+            "name": "programIdIndex",
+            "type": "u8"
           },
           {
             "name": "passInnerInstructions",
@@ -3794,6 +3992,33 @@
             "name": "owner",
             "type": {
               "option": "publicKey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompiledAccountConstraint",
+      "docs": [
+        "Compiled version of AccountConstraint for use with pubkey_table"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountConstraint",
+            "type": {
+              "defined": "CompiledAccountConstraintType"
+            }
+          },
+          {
+            "name": "ownerIndex",
+            "type": {
+              "option": "u8"
             }
           }
         ]
@@ -3869,9 +4094,36 @@
       }
     },
     {
-      "name": "ProgramInteractionPolicyCreationPayload",
+      "name": "CompiledLimitedSpendingLimit",
       "docs": [
-        "Payload used to create a program interaction policy"
+        "Compiled version of LimitedSpendingLimit for use with pubkey_table"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mintIndex",
+            "type": "u8"
+          },
+          {
+            "name": "timeConstraints",
+            "type": {
+              "defined": "LimitedTimeConstraints"
+            }
+          },
+          {
+            "name": "quantityConstraints",
+            "type": {
+              "defined": "LimitedQuantityConstraints"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramInteractionPolicyCreationPayloadLegacy",
+      "docs": [
+        "Legacy payload used to create a program interaction policy (V1 format with embedded Pubkeys)"
       ],
       "type": {
         "kind": "struct",
@@ -3909,6 +4161,59 @@
             "type": {
               "vec": {
                 "defined": "LimitedSpendingLimit"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProgramInteractionPolicyCreationPayload",
+      "docs": [
+        "Payload used to create a program interaction policy (V2 format with pubkey table and indices)"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "pubkeyTable",
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructionsConstraints",
+            "type": {
+              "vec": {
+                "defined": "CompiledInstructionConstraint"
+              }
+            }
+          },
+          {
+            "name": "preHook",
+            "type": {
+              "option": {
+                "defined": "CompiledHook"
+              }
+            }
+          },
+          {
+            "name": "postHook",
+            "type": {
+              "option": {
+                "defined": "CompiledHook"
+              }
+            }
+          },
+          {
+            "name": "spendingLimits",
+            "type": {
+              "vec": {
+                "defined": "CompiledLimitedSpendingLimit"
               }
             }
           }
@@ -4631,6 +4936,33 @@
       }
     },
     {
+      "name": "CompiledAccountConstraintType",
+      "docs": [
+        "Compiled version of AccountConstraintType for use with pubkey_table"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pubkey",
+            "fields": [
+              "bytes"
+            ]
+          },
+          {
+            "name": "AccountData",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "DataConstraint"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "ProgramInteractionTransactionPayload",
       "type": {
         "kind": "enum",
@@ -4800,6 +5132,14 @@
             "fields": [
               {
                 "defined": "SettingsChangePolicyCreationPayload"
+              }
+            ]
+          },
+          {
+            "name": "LegacyProgramInteraction",
+            "fields": [
+              {
+                "defined": "ProgramInteractionPolicyCreationPayloadLegacy"
               }
             ]
           },
@@ -5772,241 +6112,251 @@
     },
     {
       "code": 6079,
+      "name": "ProgramInteractionInvalidPubkeyTableIndex",
+      "msg": "Program interaction constraint violation: invalid pubkey table index"
+    },
+    {
+      "code": 6080,
+      "name": "ProgramInteractionTooManyUniquePubkeys",
+      "msg": "Program interaction constraint violation: too many unique pubkeys. Max is 240 (indices 240-255 reserved for builtin programs)"
+    },
+    {
+      "code": 6081,
       "name": "ProgramInteractionTemplateHookError",
       "msg": "Program interaction hook violation: template hook error"
     },
     {
-      "code": 6080,
+      "code": 6082,
       "name": "ProgramInteractionHookAuthorityCannotBePartOfHookAccounts",
       "msg": "Program interaction hook violation: hook authority cannot be part of hook accounts"
     },
     {
-      "code": 6081,
+      "code": 6083,
       "name": "SpendingLimitNotActive",
       "msg": "Spending limit is not active"
     },
     {
-      "code": 6082,
+      "code": 6084,
       "name": "SpendingLimitExpired",
       "msg": "Spending limit is expired"
     },
     {
-      "code": 6083,
+      "code": 6085,
       "name": "SpendingLimitPolicyInvariantAccumulateUnused",
       "msg": "Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true"
     },
     {
-      "code": 6084,
+      "code": 6086,
       "name": "SpendingLimitViolatesExactQuantityConstraint",
       "msg": "Amount violates exact quantity constraint"
     },
     {
-      "code": 6085,
+      "code": 6087,
       "name": "SpendingLimitViolatesMaxPerUseConstraint",
       "msg": "Amount violates max per use constraint"
     },
     {
-      "code": 6086,
+      "code": 6088,
       "name": "SpendingLimitInsufficientRemainingAmount",
       "msg": "Spending limit is insufficient"
     },
     {
-      "code": 6087,
+      "code": 6089,
       "name": "SpendingLimitInvariantMaxPerPeriodZero",
       "msg": "Spending limit invariant violation: max per period must be non-zero"
     },
     {
-      "code": 6088,
+      "code": 6090,
       "name": "SpendingLimitInvariantStartTimePositive",
       "msg": "Spending limit invariant violation: start time must be positive"
     },
     {
-      "code": 6089,
+      "code": 6091,
       "name": "SpendingLimitInvariantExpirationSmallerThanStart",
       "msg": "Spending limit invariant violation: expiration must be greater than start"
     },
     {
-      "code": 6090,
+      "code": 6092,
       "name": "SpendingLimitInvariantOverflowEnabledMustHaveExpiration",
       "msg": "Spending limit invariant violation: overflow enabled must have expiration"
     },
     {
-      "code": 6091,
+      "code": 6093,
       "name": "SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled",
       "msg": "Spending limit invariant violation: one time period cannot have overflow enabled"
     },
     {
-      "code": 6092,
+      "code": 6094,
       "name": "SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount",
       "msg": "Spending limit invariant violation: remaining amount must be less than max amount"
     },
     {
-      "code": 6093,
+      "code": 6095,
       "name": "SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: remaining amount must be less than or equal to max per period"
     },
     {
-      "code": 6094,
+      "code": 6096,
       "name": "SpendingLimitInvariantExactQuantityMaxPerUseZero",
       "msg": "Spending limit invariant violation: exact quantity must have max per use non-zero"
     },
     {
-      "code": 6095,
+      "code": 6097,
       "name": "SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: max per use must be less than or equal to max per period"
     },
     {
-      "code": 6096,
+      "code": 6098,
       "name": "SpendingLimitInvariantCustomPeriodNegative",
       "msg": "Spending limit invariant violation: custom period must be positive"
     },
     {
-      "code": 6097,
+      "code": 6099,
       "name": "SpendingLimitPolicyInvariantDuplicateDestinations",
       "msg": "Spending limit policy invariant violation: cannot have duplicate destinations for the same mint"
     },
     {
-      "code": 6098,
+      "code": 6100,
       "name": "SpendingLimitInvariantLastResetOutOfBounds",
       "msg": "Spending limit invariant violation: last reset must be between start and expiration"
     },
     {
-      "code": 6099,
+      "code": 6101,
       "name": "SpendingLimitInvariantLastResetSmallerThanStart",
       "msg": "Spending limit invariant violation: last reset must be greater than start"
     },
     {
-      "code": 6100,
+      "code": 6102,
       "name": "InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: source account index is not allowed"
     },
     {
-      "code": 6101,
+      "code": 6103,
       "name": "InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: destination account index is not allowed"
     },
     {
-      "code": 6102,
+      "code": 6104,
       "name": "InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame",
       "msg": "Internal fund transfer policy invariant violation: source and destination cannot be the same"
     },
     {
-      "code": 6103,
+      "code": 6105,
       "name": "InternalFundTransferPolicyInvariantMintNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: mint is not allowed"
     },
     {
-      "code": 6104,
+      "code": 6106,
       "name": "InternalFundTransferPolicyInvariantAmountZero",
       "msg": "Internal fund transfer policy invariant violation: amount must be greater than 0"
     },
     {
-      "code": 6105,
+      "code": 6107,
       "name": "InternalFundTransferPolicyInvariantDuplicateMints",
       "msg": "Internal fund transfer policy invariant violation: cannot have duplicate mints"
     },
     {
-      "code": 6106,
+      "code": 6108,
       "name": "ConsensusAccountNotSettings",
       "msg": "Consensus account is not a settings"
     },
     {
-      "code": 6107,
+      "code": 6109,
       "name": "ConsensusAccountNotPolicy",
       "msg": "Consensus account is not a policy"
     },
     {
-      "code": 6108,
+      "code": 6110,
       "name": "SettingsChangePolicyActionsMustBeNonZero",
       "msg": "Settings change policy invariant violation: actions must be non-zero"
     },
     {
-      "code": 6109,
+      "code": 6111,
       "name": "SettingsChangeInvalidSettingsKey",
       "msg": "Settings change policy violation: submitted settings account must match policy settings key"
     },
     {
-      "code": 6110,
+      "code": 6112,
       "name": "SettingsChangeInvalidSettingsAccount",
       "msg": "Settings change policy violation: submitted settings account must be writable"
     },
     {
-      "code": 6111,
+      "code": 6113,
       "name": "SettingsChangeInvalidRentPayer",
       "msg": "Settings change policy violation: rent payer must be writable and signer"
     },
     {
-      "code": 6112,
+      "code": 6114,
       "name": "SettingsChangeInvalidSystemProgram",
       "msg": "Settings change policy violation: system program must be the system program"
     },
     {
-      "code": 6113,
+      "code": 6115,
       "name": "SettingsChangeAddSignerViolation",
       "msg": "Settings change policy violation: signer does not match allowed signer"
     },
     {
-      "code": 6114,
+      "code": 6116,
       "name": "SettingsChangeAddSignerPermissionsViolation",
       "msg": "Settings change policy violation: signer permissions does not match allowed signer permissions"
     },
     {
-      "code": 6115,
+      "code": 6117,
       "name": "SettingsChangeRemoveSignerViolation",
       "msg": "Settings change policy violation: signer removal does not mach allowed signer removal"
     },
     {
-      "code": 6116,
+      "code": 6118,
       "name": "SettingsChangeChangeTimelockViolation",
       "msg": "Settings change policy violation: time lock does not match allowed time lock"
     },
     {
-      "code": 6117,
+      "code": 6119,
       "name": "SettingsChangeActionMismatch",
       "msg": "Settings change policy violation: action does not match allowed action"
     },
     {
-      "code": 6118,
+      "code": 6120,
       "name": "SettingsChangePolicyInvariantDuplicateActions",
       "msg": "Settings change policy invariant violation: cannot have duplicate actions"
     },
     {
-      "code": 6119,
+      "code": 6121,
       "name": "SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch",
       "msg": "Settings change policy invariant violation: action indices must match actions length"
     },
     {
-      "code": 6120,
+      "code": 6122,
       "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
       "msg": "Settings change policy invariant violation: action index out of bounds"
     },
     {
-      "code": 6121,
+      "code": 6123,
       "name": "PolicyNotActiveYet",
       "msg": "Policy is not active yet"
     },
     {
-      "code": 6122,
+      "code": 6124,
       "name": "PolicyInvariantInvalidExpiration",
       "msg": "Policy invariant violation: invalid policy expiration"
     },
     {
-      "code": 6123,
+      "code": 6125,
       "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
       "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
     },
     {
-      "code": 6124,
+      "code": 6126,
       "name": "PolicyExpirationViolationSettingsAccountNotPresent",
       "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
     },
     {
-      "code": 6125,
+      "code": 6127,
       "name": "PolicyExpirationViolationHashExpired",
       "msg": "Policy expiration violation: state hash has expired"
     },
     {
-      "code": 6126,
+      "code": 6128,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
     }

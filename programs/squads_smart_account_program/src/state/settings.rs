@@ -492,6 +492,9 @@ impl Settings {
                     PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
                         PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
                     }
+                    PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
+                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
+                    }
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
                         PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
                     }
