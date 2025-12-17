@@ -208,12 +208,11 @@ pub fn validate_settings_actions(actions: &Vec<SettingsAction>) -> Result<()> {
                 return err!(SmartAccountError::NotImplemented);
             }
 
-            // PolicyCreate: validate governance params and payload
+            // PolicyCreate: validate governance params and expiration
             SettingsAction::PolicyCreate {
                 signers,
                 threshold,
                 time_lock,
-                policy_creation_payload,
                 start_timestamp,
                 expiration_args,
                 ..
@@ -221,9 +220,8 @@ pub fn validate_settings_actions(actions: &Vec<SettingsAction>) -> Result<()> {
                 // Validate governance parameters
                 validate_policy_governance(signers, *threshold, *time_lock)?;
 
-                // Validate the policy creation payload by calling to_policy_state
-                // This catches invalid configurations early
-                policy_creation_payload.to_policy_state()?;
+                // Policy payload validation happens at execution time when
+                // to_policy_state() is called on the specific payload variant
 
                 // If expiration is Timestamp, check it's greater than start
                 if let Some(PolicyExpirationArgs::Timestamp(exp_timestamp)) = expiration_args {
@@ -235,20 +233,19 @@ pub fn validate_settings_actions(actions: &Vec<SettingsAction>) -> Result<()> {
                 }
             }
 
-            // PolicyUpdate: validate governance params and payload
+            // PolicyUpdate: validate governance params and expiration
             SettingsAction::PolicyUpdate {
                 signers,
                 threshold,
                 time_lock,
-                policy_update_payload,
                 expiration_args,
                 ..
             } => {
                 // Validate governance parameters
                 validate_policy_governance(signers, *threshold, *time_lock)?;
 
-                // Validate the policy update payload by calling to_policy_state
-                policy_update_payload.to_policy_state()?;
+                // Policy payload validation happens at execution time when
+                // to_policy_state() is called on the specific payload variant
 
                 // If expiration is Timestamp, check it's greater than current time
                 if let Some(PolicyExpirationArgs::Timestamp(exp_timestamp)) = expiration_args {
