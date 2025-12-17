@@ -11,6 +11,7 @@ pub struct TrackedTokenAccount<'info> {
     pub delegate: Option<(Pubkey, u64)>,
     pub authority: Pubkey,
     pub mint: Pubkey,
+    pub close_authority: Option<Pubkey>,
 }
 
 pub struct TrackedExecutingAccount<'info> {
@@ -62,6 +63,7 @@ pub fn check_pre_balances<'info>(
                 };
                 let authority = token_account.owner;
                 let mint = token_account.mint;
+                let close_authority = Option::from(token_account.close_authority);
 
                 // Add the token account to the tracked token accounts
                 tracked_token_accounts.push(TrackedTokenAccount {
@@ -70,6 +72,7 @@ pub fn check_pre_balances<'info>(
                     delegate,
                     authority,
                     mint,
+                    close_authority,
                 });
             }
         }
@@ -202,6 +205,13 @@ impl<'info> Balances<'info> {
             require_eq!(
                 post_token_account.owner,
                 tracked_token_account.authority,
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
+            // Ensure the close_authority has not changed
+            let post_close_authority: Option<Pubkey> =
+                Option::from(post_token_account.close_authority);
+            require!(
+                post_close_authority == tracked_token_account.close_authority,
                 SmartAccountError::ProgramInteractionIllegalTokenAccountModification
             );
         }
