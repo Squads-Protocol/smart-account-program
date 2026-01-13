@@ -434,6 +434,9 @@ impl Settings {
                 start_timestamp,
                 expiration_args,
             } => {
+                // Validate that all account indices used by the policy are unlocked
+                policy_creation_payload.validate_account_indices(self)?;
+
                 // Increment the policy seed if it exists, otherwise set it to
                 // 1 (First policy is being created)
                 let next_policy_seed = if let Some(policy_seed) = self.policy_seed {
@@ -576,6 +579,9 @@ impl Settings {
                 policy_update_payload,
                 expiration_args,
             } => {
+                // Validate that all account indices used by the policy are unlocked
+                policy_update_payload.validate_account_indices(self)?;
+
                 // Find the policy account
                 let policy_info = remaining_accounts
                     .iter()
@@ -744,6 +750,14 @@ impl Settings {
             index <= self.account_utilization,
             SmartAccountError::AccountIndexLocked
         );
+        Ok(())
+    }
+
+    /// Validates that all given account indices are unlocked.
+    pub fn validate_account_indices_unlocked(&self, indices: &[u8]) -> Result<()> {
+        for index in indices {
+            self.validate_account_index_unlocked(*index)?;
+        }
         Ok(())
     }
 }

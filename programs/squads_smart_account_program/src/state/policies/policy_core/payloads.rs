@@ -4,7 +4,7 @@ use crate::{
     state::policies::implementations::InternalFundTransferPayload,
     InternalFundTransferPolicyCreationPayload, ProgramInteractionPayload,
     ProgramInteractionPolicyCreationPayload, ProgramInteractionPolicyCreationPayloadLegacy,
-    SettingsChangePayload, SettingsChangePolicyCreationPayload, SpendingLimitPayload,
+    Settings, SettingsChangePayload, SettingsChangePolicyCreationPayload, SpendingLimitPayload,
     SpendingLimitPolicyCreationPayload,
 };
 
@@ -32,6 +32,23 @@ impl PolicyCreationPayload {
             PolicyCreationPayload::LegacyProgramInteraction(payload) => payload.policy_state_size(),
             PolicyCreationPayload::ProgramInteraction(payload) => payload.policy_state_size(),
         }
+    }
+
+    /// Validates that all account indices used by this policy are unlocked.
+    /// SettingsChange policies don't use vault accounts and always pass validation.
+    pub fn validate_account_indices(&self, settings: &Settings) -> Result<()> {
+        let indices: Vec<u8> = match self {
+            PolicyCreationPayload::SpendingLimit(p) => vec![p.source_account_index],
+            PolicyCreationPayload::ProgramInteraction(p) => vec![p.account_index],
+            PolicyCreationPayload::LegacyProgramInteraction(p) => vec![p.account_index],
+            PolicyCreationPayload::InternalFundTransfer(p) => {
+                let mut indices = p.source_account_indices.clone();
+                indices.extend(&p.destination_account_indices);
+                indices
+            }
+            PolicyCreationPayload::SettingsChange(_) => vec![],
+        };
+        settings.validate_account_indices_unlocked(&indices)
     }
 }
 

@@ -812,13 +812,18 @@
       ],
       "accounts": [
         {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
           "name": "transactionBuffer",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "creator",
-          "isMut": true,
+          "isMut": false,
           "isSigner": true,
           "docs": [
             "The signer on the smart account that created the TransactionBuffer."

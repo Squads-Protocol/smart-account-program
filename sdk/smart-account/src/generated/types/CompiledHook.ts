@@ -27,7 +27,7 @@ export const compiledHookBeet = new beet.FixableBeetArgsStruct<CompiledHook>(
   [
     ['numExtraAccounts', beet.u8],
     ['accountConstraints', smallArray(beet.u8, compiledAccountConstraintBeet)],
-    ['instructionData', smallArray(beet.u8, beet.u8)],
+    ['instructionData', smallArray(beet.u16, beet.u8)],
     ['programIdIndex', beet.u8],
     ['passInnerInstructions', beet.bool],
   ],

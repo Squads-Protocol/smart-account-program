@@ -31,6 +31,24 @@ describe("Flows / Policy Creation", () => {
       })
     )[0];
 
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    for (let i = 0; i < 3; i++) {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: settingsPda, signer: members.almighty.publicKey },
+        programId
+      );
+      const msg = new web3.TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new web3.VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+    }
+
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
 
@@ -151,7 +169,7 @@ describe("Flows / Policy Creation", () => {
 
     const policyCreationPayload: smartAccount.generated.PolicyCreationPayload =
       {
-        __kind: "ProgramInteraction",
+        __kind: "LegacyProgramInteraction",
         fields: [
           {
             accountIndex: 0, // Apply to account index 0
@@ -508,5 +526,116 @@ describe("Flows / Policy Creation", () => {
       settingsPda.toString()
     );
     assert.strictEqual(policyAccount.threshold, 1);
+  });
+
+  it("error: create policy with locked account index", async () => {
+    // Create new autonomous smart account - account_utilization starts at 0
+    const settingsPda = (
+      await createAutonomousMultisig({
+        connection,
+        members,
+        threshold: 1,
+        timeLock: 0,
+        programId,
+      })
+    )[0];
+
+    const policySeed = 1;
+
+    // Try to create a SpendingLimit policy targeting account index 1 (locked)
+    const policyCreationPayload: smartAccount.generated.PolicyCreationPayload =
+      {
+        __kind: "SpendingLimit",
+        fields: [
+          {
+            mint: web3.PublicKey.default,
+            sourceAccountIndex: 1, // Index 1 is locked (account_utilization = 0)
+            timeConstraints: {
+              start: 0,
+              expiration: null,
+              period: { __kind: "OneTime" },
+              accumulateUnused: false,
+            },
+            quantityConstraints: {
+              maxPerPeriod: 1000000,
+              maxPerUse: 1000000,
+              enforceExactQuantity: false,
+            },
+            usageState: null,
+            destinations: [],
+          },
+        ],
+      };
+
+    const transactionIndex = BigInt(1);
+
+    const [policyPda] = smartAccount.getPolicyPda({
+      settingsPda,
+      policySeed,
+      programId,
+    });
+
+    // Create settings transaction with PolicyCreate action
+    let signature = await smartAccount.rpc.createSettingsTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer.publicKey,
+      actions: [
+        {
+          __kind: "PolicyCreate",
+          seed: policySeed,
+          policyCreationPayload,
+          signers: [{ key: members.voter.publicKey, permissions: { mask: 7 } }],
+          threshold: 1,
+          timeLock: 0,
+          startTimestamp: null,
+          expirationArgs: null,
+        },
+      ],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Create and approve proposal
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Execute should fail with AccountIndexLocked
+    await assert.rejects(
+      async () => {
+        await smartAccount.rpc
+          .executeSettingsTransaction({
+            connection,
+            feePayer: members.almighty,
+            settingsPda,
+            transactionIndex,
+            signer: members.almighty,
+            rentPayer: members.almighty,
+            policies: [policyPda],
+            programId,
+          })
+          .catch(smartAccount.errors.translateAndThrowAnchorError);
+      },
+      /AccountIndexLocked/
+    );
   });
 });
