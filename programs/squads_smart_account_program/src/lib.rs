@@ -340,4 +340,11 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }
+
+    /// Increment the account utilization index, unlocking the next vault index.
+    /// Callable by any signer with Initiate, Vote, or Execute permissions.
+    // Future: consider decrement instruction for account index management
+    pub fn increment_account_index(ctx: Context<IncrementAccountIndex>) -> Result<()> {
+        IncrementAccountIndex::increment_account_index(ctx)
+    }
 }

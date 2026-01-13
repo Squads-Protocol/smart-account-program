@@ -10,58 +10,58 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category CloseTransactionBuffer
+ * @category IncrementAccountIndex
  * @category generated
  */
-export const closeTransactionBufferStruct = new beet.BeetArgsStruct<{
+export const incrementAccountIndexStruct = new beet.BeetArgsStruct<{
   instructionDiscriminator: number[] /* size: 8 */
 }>(
   [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
-  'CloseTransactionBufferInstructionArgs'
+  'IncrementAccountIndexInstructionArgs'
 )
 /**
- * Accounts required by the _closeTransactionBuffer_ instruction
+ * Accounts required by the _incrementAccountIndex_ instruction
  *
- * @property [_writable_] transactionBuffer
- * @property [_writable_, **signer**] creator
+ * @property [_writable_] settings
+ * @property [**signer**] signer
  * @category Instructions
- * @category CloseTransactionBuffer
+ * @category IncrementAccountIndex
  * @category generated
  */
-export type CloseTransactionBufferInstructionAccounts = {
-  transactionBuffer: web3.PublicKey
-  creator: web3.PublicKey
+export type IncrementAccountIndexInstructionAccounts = {
+  settings: web3.PublicKey
+  signer: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const closeTransactionBufferInstructionDiscriminator = [
-  224, 221, 123, 213, 0, 204, 5, 191,
+export const incrementAccountIndexInstructionDiscriminator = [
+  212, 170, 222, 71, 21, 131, 117, 220,
 ]
 
 /**
- * Creates a _CloseTransactionBuffer_ instruction.
+ * Creates a _IncrementAccountIndex_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @category Instructions
- * @category CloseTransactionBuffer
+ * @category IncrementAccountIndex
  * @category generated
  */
-export function createCloseTransactionBufferInstruction(
-  accounts: CloseTransactionBufferInstructionAccounts,
+export function createIncrementAccountIndexInstruction(
+  accounts: IncrementAccountIndexInstructionAccounts,
   programId = new web3.PublicKey('SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG')
 ) {
-  const [data] = closeTransactionBufferStruct.serialize({
-    instructionDiscriminator: closeTransactionBufferInstructionDiscriminator,
+  const [data] = incrementAccountIndexStruct.serialize({
+    instructionDiscriminator: incrementAccountIndexInstructionDiscriminator,
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.transactionBuffer,
+      pubkey: accounts.settings,
       isWritable: true,
       isSigner: false,
     },
     {
-      pubkey: accounts.creator,
-      isWritable: true,
+      pubkey: accounts.signer,
+      isWritable: false,
       isSigner: true,
     },
   ]

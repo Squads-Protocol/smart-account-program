@@ -827,4 +827,142 @@ describe("Instructions / transaction_execute_sync", () => {
       );
     }, /DuplicateSigner/);
   });
+
+  it("error: sync transaction with locked account index", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [settingsPda] = await createAutonomousSmartAccountV2({
+      connection,
+      accountIndex,
+      members,
+      threshold: 2,
+      timeLock: 0,
+      rentCollector: null,
+      programId,
+    });
+
+    // account_utilization starts at 0, so vault index 1 should fail
+    const [vaultPda] = smartAccount.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 1, // This index is locked
+      programId,
+    });
+
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(vaultPda, 2 * LAMPORTS_PER_SOL)
+    );
+
+    const receiver = Keypair.generate();
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: vaultPda,
+      toPubkey: receiver.publicKey,
+      lamports: LAMPORTS_PER_SOL,
+    });
+
+    const { instructions, accounts: instruction_accounts } =
+      smartAccount.utils.instructionsToSynchronousTransactionDetails({
+        vaultPda,
+        members: [
+          members.proposer.publicKey,
+          members.voter.publicKey,
+          members.almighty.publicKey,
+        ],
+        transaction_instructions: [transferInstruction],
+      });
+
+    const synchronousTransactionInstruction =
+      smartAccount.instructions.executeTransactionSync({
+        settingsPda,
+        numSigners: 3,
+        accountIndex: 1, // Locked index
+        instructions,
+        instruction_accounts,
+        programId,
+      });
+
+    const message = new TransactionMessage({
+      payerKey: members.almighty.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [synchronousTransactionInstruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+    transaction.sign([members.proposer, members.voter, members.almighty]);
+
+    await assert.rejects(
+      async () => {
+        await connection
+          .sendRawTransaction(transaction.serialize())
+          .catch(smartAccount.errors.translateAndThrowAnchorError);
+      },
+      /AccountIndexLocked/
+    );
+  });
+
+  it("reserved account index (251) bypasses validation", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [settingsPda] = await createAutonomousSmartAccountV2({
+      connection,
+      accountIndex,
+      members,
+      threshold: 2,
+      timeLock: 0,
+      rentCollector: null,
+      programId,
+    });
+
+    // Reserved account index 251 should bypass validation even with account_utilization = 0
+    const [vaultPda] = smartAccount.getSmartAccountPda({
+      settingsPda,
+      accountIndex: 251, // Reserved index - should bypass validation
+      programId,
+    });
+
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(vaultPda, 2 * LAMPORTS_PER_SOL)
+    );
+
+    const receiver = Keypair.generate();
+    const transferInstruction = SystemProgram.transfer({
+      fromPubkey: vaultPda,
+      toPubkey: receiver.publicKey,
+      lamports: LAMPORTS_PER_SOL,
+    });
+
+    const { instructions, accounts: instruction_accounts } =
+      smartAccount.utils.instructionsToSynchronousTransactionDetails({
+        vaultPda,
+        members: [
+          members.proposer.publicKey,
+          members.voter.publicKey,
+          members.almighty.publicKey,
+        ],
+        transaction_instructions: [transferInstruction],
+      });
+
+    const synchronousTransactionInstruction =
+      smartAccount.instructions.executeTransactionSync({
+        settingsPda,
+        numSigners: 3,
+        accountIndex: 251, // Reserved index
+        instructions,
+        instruction_accounts,
+        programId,
+      });
+
+    const message = new TransactionMessage({
+      payerKey: members.almighty.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [synchronousTransactionInstruction],
+    }).compileToV0Message();
+
+    const transaction = new VersionedTransaction(message);
+    transaction.sign([members.proposer, members.voter, members.almighty]);
+
+    const signature = await connection.sendRawTransaction(transaction.serialize());
+    await connection.confirmTransaction(signature);
+
+    // Verify the transfer succeeded
+    const receiverBalance = await connection.getBalance(receiver.publicKey);
+    assert.strictEqual(receiverBalance, LAMPORTS_PER_SOL);
+  });
 });

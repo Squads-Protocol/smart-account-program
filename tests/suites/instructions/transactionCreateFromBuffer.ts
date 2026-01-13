@@ -519,4 +519,147 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     assert.match(logs, /Access violation in heap section at address/);
   });
+
+  it("error: create transaction with locked account index", async () => {
+    // Create a fresh smart account for this test
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [testSettingsPda] = await createAutonomousSmartAccountV2({
+      connection,
+      accountIndex,
+      members,
+      threshold: 1,
+      timeLock: 0,
+      rentCollector: null,
+      programId,
+    });
+    const [testVaultPda] = smartAccount.getSmartAccountPda({
+      settingsPda: testSettingsPda,
+      accountIndex: 0,
+      programId,
+    });
+
+    const transactionIndex = 1n;
+    const bufferIndex = 0;
+
+    const testIx = await createTestTransferInstruction(
+      testVaultPda,
+      Keypair.generate().publicKey,
+      0.1 * LAMPORTS_PER_SOL
+    );
+
+    const testTransferMessage = new TransactionMessage({
+      payerKey: testVaultPda,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [testIx],
+    });
+
+    const messageBuffer =
+      smartAccount.utils.transactionMessageToMultisigTransactionMessageBytes({
+        message: testTransferMessage,
+        addressLookupTableAccounts: [],
+        smartAccountPda: testVaultPda,
+      });
+
+    const [transactionBuffer] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("smart_account"),
+        testSettingsPda.toBuffer(),
+        Buffer.from("transaction_buffer"),
+        members.proposer.publicKey.toBuffer(),
+        Uint8Array.from([bufferIndex]),
+      ],
+      programId
+    );
+
+    const messageHash = crypto
+      .createHash("sha256")
+      .update(messageBuffer.transactionMessageBytes)
+      .digest();
+
+    // Create buffer with locked account_index 1
+    const createBufferIx =
+      smartAccount.generated.createCreateTransactionBufferInstruction(
+        {
+          consensusAccount: testSettingsPda,
+          transactionBuffer,
+          creator: members.proposer.publicKey,
+          rentPayer: members.proposer.publicKey,
+          systemProgram: SystemProgram.programId,
+        },
+        {
+          args: {
+            bufferIndex,
+            accountIndex: 1, // Locked - account_utilization starts at 0
+            finalBufferHash: Array.from(messageHash),
+            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            buffer: messageBuffer.transactionMessageBytes,
+          } as CreateTransactionBufferArgs,
+        } as CreateTransactionBufferInstructionArgs,
+        programId
+      );
+
+    const createBufferMsg = new TransactionMessage({
+      payerKey: members.proposer.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [createBufferIx],
+    }).compileToV0Message();
+
+    const createBufferTx = new VersionedTransaction(createBufferMsg);
+    createBufferTx.sign([members.proposer]);
+    await connection.confirmTransaction(
+      await connection.sendTransaction(createBufferTx, { skipPreflight: true })
+    );
+
+    // Now try to create transaction from buffer - should fail
+    const [transactionPda] = smartAccount.getTransactionPda({
+      settingsPda: testSettingsPda,
+      transactionIndex,
+      programId,
+    });
+
+    const createFromBufferIx =
+      smartAccount.generated.createCreateTransactionFromBufferInstruction(
+        {
+          transactionCreateItemConsensusAccount: testSettingsPda,
+          transactionCreateItemTransaction: transactionPda,
+          transactionCreateItemCreator: members.proposer.publicKey,
+          transactionCreateItemRentPayer: members.proposer.publicKey,
+          transactionCreateItemSystemProgram: SystemProgram.programId,
+          transactionCreateItemProgram: programId,
+          transactionBuffer,
+          creator: members.proposer.publicKey,
+        },
+        {
+          args: {
+            __kind: "TransactionPayload",
+            fields: [
+              {
+                accountIndex: 1, // Locked index
+                ephemeralSigners: 0,
+                transactionMessage: new Uint8Array([0, 0, 0, 0, 0, 0]),
+                memo: null,
+              },
+            ],
+          },
+        },
+        programId
+      );
+
+    const createFromBufferMsg = new TransactionMessage({
+      payerKey: members.proposer.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [createFromBufferIx],
+    }).compileToV0Message();
+
+    const createFromBufferTx = new VersionedTransaction(createFromBufferMsg);
+    createFromBufferTx.sign([members.proposer]);
+
+    await assert.rejects(
+      () =>
+        connection
+          .sendTransaction(createFromBufferTx)
+          .catch(smartAccount.errors.translateAndThrowAnchorError),
+      /AccountIndexLocked/
+    );
+  });
 });

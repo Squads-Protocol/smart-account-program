@@ -812,18 +812,13 @@
       ],
       "accounts": [
         {
-          "name": "consensusAccount",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "transactionBuffer",
           "isMut": true,
           "isSigner": false
         },
         {
           "name": "creator",
-          "isMut": false,
+          "isMut": true,
           "isSigner": true,
           "docs": [
             "The signer on the smart account that created the TransactionBuffer."
@@ -1858,6 +1853,26 @@
           }
         }
       ]
+    },
+    {
+      "name": "incrementAccountIndex",
+      "docs": [
+        "Increment the account utilization index, unlocking the next vault index.",
+        "Callable by any signer with Initiate, Vote, or Execute permissions."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -6359,12 +6374,22 @@
       "code": 6128,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
+    },
+    {
+      "code": 6129,
+      "name": "AccountIndexLocked",
+      "msg": "Account index is locked, must increment_account_index first"
+    },
+    {
+      "code": 6130,
+      "name": "MaxAccountIndexReached",
+      "msg": "Cannot exceed maximum free account index (250)"
     }
   ],
   "metadata": {
     "address": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
     "origin": "anchor",
-    "binaryVersion": "0.29.0",
+    "binaryVersion": "0.32.1",
     "libVersion": "=0.29.0"
   }
 }

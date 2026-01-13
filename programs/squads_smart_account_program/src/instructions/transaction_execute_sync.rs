@@ -71,6 +71,12 @@ impl<'info> SyncTransaction<'info> {
         // Check that the consensus account is active (policy)
         consensus_account.is_active(&remaining_accounts[args.num_signers as usize..])?;
 
+        // Validate account index is unlocked for Settings-based transactions
+        if consensus_account.account_type() == ConsensusAccountType::Settings {
+            let settings = consensus_account.read_only_settings()?;
+            settings.validate_account_index_unlocked(args.account_index)?;
+        }
+
         // Validate policy payload if necessary
         if consensus_account.account_type() == ConsensusAccountType::Policy {
             let policy = consensus_account.read_only_policy()?;

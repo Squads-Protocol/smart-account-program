@@ -1,4 +1,5 @@
 pub use activate_proposal::*;
+pub use increment_account_index::*;
 pub use authority_settings_transaction_execute::*;
 pub use authority_spending_limit_add::*;
 pub use authority_spending_limit_remove::*;
@@ -26,6 +27,7 @@ pub use transaction_execute_sync_legacy::*;
 pub use use_spending_limit::*;
 
 mod activate_proposal;
+mod increment_account_index;
 mod authority_settings_transaction_execute;
 mod authority_spending_limit_add;
 mod authority_spending_limit_remove;

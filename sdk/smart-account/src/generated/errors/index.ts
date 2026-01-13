@@ -3429,6 +3429,52 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * AccountIndexLocked: 'Account index is locked, must increment_account_index first'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AccountIndexLockedError extends Error {
+  readonly code: number = 0x17f1
+  readonly name: string = 'AccountIndexLocked'
+  constructor() {
+    super('Account index is locked, must increment_account_index first')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AccountIndexLockedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f1, () => new AccountIndexLockedError())
+createErrorFromNameLookup.set(
+  'AccountIndexLocked',
+  () => new AccountIndexLockedError()
+)
+
+/**
+ * MaxAccountIndexReached: 'Cannot exceed maximum free account index (250)'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MaxAccountIndexReachedError extends Error {
+  readonly code: number = 0x17f2
+  readonly name: string = 'MaxAccountIndexReached'
+  constructor() {
+    super('Cannot exceed maximum free account index (250)')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MaxAccountIndexReachedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f2, () => new MaxAccountIndexReachedError())
+createErrorFromNameLookup.set(
+  'MaxAccountIndexReached',
+  () => new MaxAccountIndexReachedError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated
