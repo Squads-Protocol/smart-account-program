@@ -22,6 +22,10 @@ import {
   ProgramInteractionPolicy,
   programInteractionPolicyBeet,
 } from './ProgramInteractionPolicy'
+import {
+  CompiledProgramInteractionPolicy,
+  compiledProgramInteractionPolicyBeet,
+} from './CompiledProgramInteractionPolicy'
 /**
  * This type is used to derive the {@link PolicyState} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link PolicyState} type instead.
@@ -35,7 +39,8 @@ export type PolicyStateRecord = {
   InternalFundTransfer: { fields: [InternalFundTransferPolicy] }
   SpendingLimit: { fields: [SpendingLimitPolicy] }
   SettingsChange: { fields: [SettingsChangePolicy] }
-  ProgramInteraction: { fields: [ProgramInteractionPolicy] }
+  LegacyProgramInteraction: { fields: [ProgramInteractionPolicy] }
+  ProgramInteraction: { fields: [CompiledProgramInteractionPolicy] }
 }
 
 /**
@@ -63,6 +68,10 @@ export const isPolicyStateSettingsChange = (
   x: PolicyState
 ): x is PolicyState & { __kind: 'SettingsChange' } =>
   x.__kind === 'SettingsChange'
+export const isPolicyStateLegacyProgramInteraction = (
+  x: PolicyState
+): x is PolicyState & { __kind: 'LegacyProgramInteraction' } =>
+  x.__kind === 'LegacyProgramInteraction'
 export const isPolicyStateProgramInteraction = (
   x: PolicyState
 ): x is PolicyState & { __kind: 'ProgramInteraction' } =>
@@ -95,9 +104,18 @@ export const policyStateBeet = beet.dataEnum<PolicyStateRecord>([
     ),
   ],
   [
+    'LegacyProgramInteraction',
+    new beet.FixableBeetArgsStruct<
+      PolicyStateRecord['LegacyProgramInteraction']
+    >(
+      [['fields', beet.tuple([programInteractionPolicyBeet])]],
+      'PolicyStateRecord["LegacyProgramInteraction"]'
+    ),
+  ],
+  [
     'ProgramInteraction',
     new beet.FixableBeetArgsStruct<PolicyStateRecord['ProgramInteraction']>(
-      [['fields', beet.tuple([programInteractionPolicyBeet])]],
+      [['fields', beet.tuple([compiledProgramInteractionPolicyBeet])]],
       'PolicyStateRecord["ProgramInteraction"]'
     ),
   ],

@@ -14,6 +14,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 use solana_program::{instruction::Instruction, pubkey};
+use std::collections::HashSet;
 
 // =============================================================================
 // BUILTIN PUBKEY CONSTANTS
@@ -49,6 +50,208 @@ fn resolve_builtin_pubkey(index: u8) -> Result<&'static Pubkey> {
     }
 }
 
+/// Resolve a pubkey from the provided table or builtin constants
+#[inline]
+fn resolve_pubkey_from_table(pubkey_table: &SmallVec<u8, Pubkey>, index: u8) -> Result<Pubkey> {
+    if index >= BUILTIN_INDEX_START {
+        Ok(*resolve_builtin_pubkey(index)?)
+    } else {
+        pubkey_table
+            .get(index as usize)
+            .copied()
+            .ok_or_else(|| SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into())
+    }
+}
+
+// =============================================================================
+// SHARED HELPER FUNCTIONS
+// =============================================================================
+
+/// Validates a program interaction payload against policy parameters.
+/// Shared between legacy ProgramInteractionPolicy and CompiledProgramInteractionPolicy.
+///
+/// Validates:
+/// - Context matches payload type (sync vs async)
+/// - Payload account_index matches policy account_index
+/// - Instruction constraint indices are valid (correct length, within bounds)
+pub fn validate_payload_common(
+    account_index: u8,
+    instruction_constraints_len: usize,
+    context: PolicyExecutionContext,
+    payload: &ProgramInteractionPayload,
+) -> Result<()> {
+    // Validate context vs payload type
+    match (context, &payload.transaction_payload) {
+        (
+            PolicyExecutionContext::Synchronous,
+            ProgramInteractionTransactionPayload::AsyncTransaction(..),
+        ) => {
+            return Err(
+                SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction.into(),
+            );
+        }
+        (
+            PolicyExecutionContext::Asynchronous,
+            ProgramInteractionTransactionPayload::SyncTransaction(..),
+        ) => {
+            return Err(
+                SmartAccountError::ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction.into(),
+            );
+        }
+        (_, _) => {}
+    }
+
+    // Validate account index matches
+    let payload_account_index = payload.transaction_payload.get_account_index();
+    require_eq!(
+        payload_account_index,
+        account_index,
+        SmartAccountError::InvalidPayload
+    );
+
+    // Validate instruction constraint indices if constraints exist
+    if instruction_constraints_len > 0 {
+        let instructions_len = payload.transaction_payload.instructions_len()?;
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            require_eq!(
+                instruction_constraint_indices.len(),
+                instructions_len,
+                SmartAccountError::ProgramInteractionInstructionCountMismatch
+            );
+            for instruction_constraint_index in instruction_constraint_indices {
+                require!(
+                    *instruction_constraint_index < instruction_constraints_len as u8,
+                    SmartAccountError::ProgramInteractionConstraintIndexOutOfBounds
+                );
+            }
+        } else {
+            return Err(SmartAccountError::ProgramInteractionInstructionCountMismatch.into());
+        }
+    }
+
+    Ok(())
+}
+
+/// Shared helper to parse hook accounts from an accounts slice.
+/// Takes the number of accounts for pre_hook and post_hook (0 if None),
+/// splits the accounts accordingly, and updates the accounts slice to point to remaining accounts.
+///
+/// Returns: (pre_hook_accounts, post_hook_accounts)
+pub fn parse_hook_accounts_helper<'info, 'a>(
+    pre_hook_num_accounts: usize,
+    post_hook_num_accounts: usize,
+    accounts: &mut &'a [AccountInfo<'info>],
+) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
+    let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+    let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+    let mut transaction_accounts = *accounts;
+
+    if pre_hook_num_accounts > 0 {
+        let (pre_hook_accounts, remaining_accounts) =
+            transaction_accounts.split_at(pre_hook_num_accounts);
+        pre_hook_accounts_intermediate = pre_hook_accounts;
+        transaction_accounts = remaining_accounts;
+    }
+    if post_hook_num_accounts > 0 {
+        let (post_hook_accounts, remaining_accounts) =
+            transaction_accounts.split_at(post_hook_num_accounts);
+        post_hook_accounts_intermediate = post_hook_accounts;
+        transaction_accounts = remaining_accounts;
+    }
+
+    // Re-set transaction accounts
+    *accounts = transaction_accounts;
+
+    (
+        pre_hook_accounts_intermediate,
+        post_hook_accounts_intermediate,
+    )
+}
+
+fn validate_pubkey_table_unique(pubkey_table: &SmallVec<u8, Pubkey>) -> Result<()> {
+    let mut seen = HashSet::with_capacity(pubkey_table.len());
+    for key in pubkey_table.iter() {
+        if !seen.insert(*key) {
+            return Err(SmartAccountError::ProgramInteractionDuplicatePubkeyTableEntry.into());
+        }
+    }
+    Ok(())
+}
+
+fn validate_creation_payload_limits(
+    instructions_constraints_len: usize,
+    spending_limits_len: usize,
+    pubkey_table_len: usize,
+) -> Result<()> {
+    require!(
+        instructions_constraints_len <= 20,
+        SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+    );
+    require!(
+        spending_limits_len <= 10,
+        SmartAccountError::ProgramInteractionTooManySpendingLimits
+    );
+    require!(
+        pubkey_table_len <= 240,
+        SmartAccountError::ProgramInteractionTooManyUniquePubkeys
+    );
+    Ok(())
+}
+
+fn validate_compiled_account_constraint_indices(
+    pubkey_table: &SmallVec<u8, Pubkey>,
+    compiled_ac: &CompiledAccountConstraint,
+) -> Result<()> {
+    if let CompiledAccountConstraintType::Pubkey(indices) = &compiled_ac.account_constraint {
+        for &idx in indices.iter() {
+            resolve_pubkey_from_table(pubkey_table, idx)?;
+        }
+    }
+
+    if let Some(owner_index) = compiled_ac.owner_index {
+        resolve_pubkey_from_table(pubkey_table, owner_index)?;
+    }
+
+    Ok(())
+}
+
+fn validate_compiled_policy_indices<I>(
+    pubkey_table: &SmallVec<u8, Pubkey>,
+    instruction_constraints: &SmallVec<u8, CompiledInstructionConstraint>,
+    pre_hook: Option<&CompiledHook>,
+    post_hook: Option<&CompiledHook>,
+    spending_limit_mint_indices: I,
+) -> Result<()>
+where
+    I: IntoIterator<Item = u8>,
+{
+    validate_pubkey_table_unique(pubkey_table)?;
+
+    for constraint in instruction_constraints.iter() {
+        resolve_pubkey_from_table(pubkey_table, constraint.program_id_index)?;
+        for compiled_ac in constraint.account_constraints.iter() {
+            validate_compiled_account_constraint_indices(pubkey_table, compiled_ac)?;
+        }
+    }
+
+    for hook in [pre_hook, post_hook].into_iter().flatten() {
+        resolve_pubkey_from_table(pubkey_table, hook.program_id_index)?;
+        for compiled_ac in hook.account_constraints.iter() {
+            validate_compiled_account_constraint_indices(pubkey_table, compiled_ac)?;
+        }
+    }
+
+    let mut seen_mints = HashSet::new();
+    for mint_index in spending_limit_mint_indices {
+        let mint = resolve_pubkey_from_table(pubkey_table, mint_index)?;
+        if !seen_mints.insert(mint) {
+            return Err(SmartAccountError::ProgramInteractionDuplicateSpendingLimit.into());
+        }
+    }
+
+    Ok(())
+}
+
 // =============================================================================
 // CORE POLICY STRUCTURES
 // =============================================================================
@@ -65,6 +268,25 @@ pub struct ProgramInteractionPolicy {
     pub post_hook: Option<Hook>,
     /// Spending limits applied during policy execution
     pub spending_limits: Vec<SpendingLimitV2>,
+}
+
+/// Space-efficient program interaction policy stored on-chain
+/// Uses pubkey_table with indices instead of embedding full Pubkeys
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct CompiledProgramInteractionPolicy {
+    /// The account index of the vault that will be used to execute the policy
+    pub account_index: u8,
+    /// Lookup table containing deduplicated pubkeys
+    /// Indices 0-239 are custom pubkeys, 240-255 are reserved for builtins
+    pub pubkey_table: SmallVec<u8, Pubkey>,
+    /// Instruction constraints using indices into pubkey_table
+    pub instructions_constraints: SmallVec<u8, CompiledInstructionConstraint>,
+    /// Hook invoked before inner instruction execution
+    pub pre_hook: Option<CompiledHook>,
+    /// Hook invoked after inner instruction execution
+    pub post_hook: Option<CompiledHook>,
+    /// Spending limits using indices into pubkey_table
+    pub spending_limits: SmallVec<u8, CompiledSpendingLimitV2>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
@@ -488,12 +710,35 @@ pub struct LimitedSpendingLimit {
     pub quantity_constraints: LimitedQuantityConstraints,
 }
 
-/// Compiled version of LimitedSpendingLimit for use with pubkey_table
+/// Compiled version of LimitedSpendingLimit for use with pubkey_table (creation payload)
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub struct CompiledLimitedSpendingLimit {
     pub mint_index: u8,
     pub time_constraints: LimitedTimeConstraints,
     pub quantity_constraints: LimitedQuantityConstraints,
+}
+
+/// Compiled spending limit with usage tracking for on-chain storage
+/// Uses mint_index instead of full Pubkey to save space
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
+pub struct CompiledSpendingLimitV2 {
+    /// Index into the policy's pubkey_table for the mint
+    pub mint_index: u8,
+    /// Timing configuration
+    pub time_constraints: TimeConstraints,
+    /// Amount constraints
+    pub quantity_constraints: QuantityConstraints,
+    /// Current usage tracking (mutable)
+    pub usage: UsageState,
+}
+
+impl CompiledSpendingLimitV2 {
+    /// Size of a CompiledSpendingLimitV2 in bytes
+    pub const INIT_SPACE: usize =
+        1 +                              // mint_index
+        TimeConstraints::INIT_SPACE +    // time_constraints
+        QuantityConstraints::INIT_SPACE + // quantity_constraints
+        UsageState::INIT_SPACE;          // usage
 }
 
 /// Legacy payload used to create a program interaction policy (V1 format with embedded Pubkeys)
@@ -659,36 +904,48 @@ impl ProgramInteractionPolicy {
         Ok(())
     }
 
-    // Parses hook accounts from the accounts slice and returns them
+    /// Parses hook accounts from the accounts slice and returns them
     pub fn parse_hook_accounts<'info, 'a>(
         &self,
         accounts: &mut &'a [AccountInfo<'info>],
     ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
-        // Split all accounts into pre hook accounts, post_hook accounts and
-        // transaction related accounts including lookups
-        let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-        let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-        let mut transaction_accounts = *accounts;
+        parse_hook_accounts_helper(
+            self.pre_hook.as_ref().map(|h| h.num_accounts() as usize).unwrap_or(0),
+            self.post_hook.as_ref().map(|h| h.num_accounts() as usize).unwrap_or(0),
+            accounts,
+        )
+    }
+}
 
-        if self.pre_hook.is_some() {
-            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.pre_hook.as_ref().unwrap().num_accounts() as usize);
-            pre_hook_accounts_intermediate = pre_hook_accounts;
-            transaction_accounts = remaining_accounts;
-        };
-        if self.post_hook.is_some() {
-            let (post_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.post_hook.as_ref().unwrap().num_accounts() as usize);
-            post_hook_accounts_intermediate = post_hook_accounts;
-            transaction_accounts = remaining_accounts;
-        }
+impl CompiledProgramInteractionPolicy {
+    /// Resolve a pubkey from the table or builtin constants
+    #[inline]
+    pub fn resolve_pubkey(&self, index: u8) -> Result<Pubkey> {
+        resolve_pubkey_from_table(&self.pubkey_table, index)
+    }
 
-        // Re-set transaction accounts
-        *accounts = transaction_accounts;
+    /// Calculate the size of this policy in bytes
+    pub fn size(&self) -> usize {
+        1 +                                              // account_index
+        1 + (self.pubkey_table.len() * 32) +            // SmallVec length + pubkeys
+        1 + self.instructions_constraints.iter()        // SmallVec length + constraints
+            .map(|c| c.size()).sum::<usize>() +
+        1 + self.pre_hook.as_ref()                      // Option + hook
+            .map(|h| h.size()).unwrap_or(0) +
+        1 + self.post_hook.as_ref()                     // Option + hook
+            .map(|h| h.size()).unwrap_or(0) +
+        1 + (self.spending_limits.len() * CompiledSpendingLimitV2::INIT_SPACE) // SmallVec + limits
+    }
 
-        (
-            pre_hook_accounts_intermediate,
-            post_hook_accounts_intermediate,
+    /// Parses hook accounts from the accounts slice and returns them
+    pub fn parse_hook_accounts<'info, 'a>(
+        &self,
+        accounts: &mut &'a [AccountInfo<'info>],
+    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
+        parse_hook_accounts_helper(
+            self.pre_hook.as_ref().map(|h| h.num_accounts() as usize).unwrap_or(0),
+            self.post_hook.as_ref().map(|h| h.num_accounts() as usize).unwrap_or(0),
+            accounts,
         )
     }
 }
@@ -797,17 +1054,7 @@ impl ProgramInteractionPolicyCreationPayload {
     /// Resolve a pubkey from the table or builtin constants, checking bounds
     #[inline]
     fn resolve_pubkey(&self, index: u8) -> Result<Pubkey> {
-        if index >= BUILTIN_INDEX_START {
-            // Builtin program (indices 240-255)
-            // resolve_builtin_pubkey handles validation internally
-            Ok(*resolve_builtin_pubkey(index)?)
-        } else {
-            // Custom pubkey from table (indices 0-239)
-            self.pubkey_table
-                .get(index as usize)
-                .copied()
-                .ok_or_else(|| SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex.into())
-        }
+        resolve_pubkey_from_table(&self.pubkey_table, index)
     }
 
     /// Convert compiled constraint to full constraint
@@ -879,19 +1126,12 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     type PolicyState = ProgramInteractionPolicy;
 
     fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
-        // Validate limits
-        require!(
-            self.instructions_constraints.len() <= 20,
-            SmartAccountError::ProgramInteractionTooManyInstructionConstraints
-        );
-        require!(
-            self.spending_limits.len() <= 10,
-            SmartAccountError::ProgramInteractionTooManySpendingLimits
-        );
-        require!(
-            self.pubkey_table.len() <= 240,
-            SmartAccountError::ProgramInteractionTooManyUniquePubkeys
-        );
+        validate_creation_payload_limits(
+            self.instructions_constraints.len(),
+            self.spending_limits.len(),
+            self.pubkey_table.len(),
+        )?;
+        validate_pubkey_table_unique(&self.pubkey_table)?;
 
         // Expand indexed constraints to full Pubkey constraints
         let instructions_constraints = self.instructions_constraints
@@ -955,6 +1195,71 @@ impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
     }
 }
 
+impl ProgramInteractionPolicyCreationPayload {
+    /// Convert the creation payload to a compiled policy state (no expansion)
+    /// This stores the pubkey_table and indices directly on-chain
+    pub fn to_compiled_policy_state(self) -> Result<CompiledProgramInteractionPolicy> {
+        validate_creation_payload_limits(
+            self.instructions_constraints.len(),
+            self.spending_limits.len(),
+            self.pubkey_table.len(),
+        )?;
+
+        validate_compiled_policy_indices(
+            &self.pubkey_table,
+            &self.instructions_constraints,
+            self.pre_hook.as_ref(),
+            self.post_hook.as_ref(),
+            self.spending_limits.iter().map(|sl| sl.mint_index),
+        )?;
+
+        let current_timestamp = Clock::get()?.unix_timestamp;
+
+        // Convert spending limits to CompiledSpendingLimitV2 with usage tracking
+        let mut spending_limits_vec: Vec<CompiledSpendingLimitV2> = self
+            .spending_limits
+            .iter()
+            .map(|sl| {
+                let start = if sl.time_constraints.start == 0 {
+                    current_timestamp
+                } else {
+                    sl.time_constraints.start
+                };
+                CompiledSpendingLimitV2 {
+                    mint_index: sl.mint_index,
+                    time_constraints: TimeConstraints {
+                        start,
+                        period: sl.time_constraints.period,
+                        expiration: sl.time_constraints.expiration,
+                        accumulate_unused: false,
+                    },
+                    quantity_constraints: QuantityConstraints {
+                        max_per_period: sl.quantity_constraints.max_per_period,
+                        max_per_use: 0,
+                        enforce_exact_quantity: false,
+                    },
+                    usage: UsageState {
+                        remaining_in_period: sl.quantity_constraints.max_per_period,
+                        last_reset: start,
+                    },
+                }
+            })
+            .collect();
+        // Sort by mint_index to match legacy behavior and enable duplicate detection
+        spending_limits_vec.sort_by_key(|sl| sl.mint_index);
+        let spending_limits: SmallVec<u8, CompiledSpendingLimitV2> = spending_limits_vec.into();
+
+        Ok(CompiledProgramInteractionPolicy {
+            account_index: self.account_index,
+            pubkey_table: self.pubkey_table,
+            instructions_constraints: self.instructions_constraints,
+            pre_hook: self.pre_hook,
+            post_hook: self.post_hook,
+            spending_limits,
+        })
+    }
+}
+
 impl PolicySizeTrait for ProgramInteractionPolicyCreationPayloadLegacy {
     fn creation_payload_size(&self) -> usize {
         1 + // account_scope
@@ -986,59 +1291,14 @@ impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     }
 
     fn policy_state_size(&self) -> usize {
-        // After expansion, state size is based on expanded Pubkeys, not indices
-        // This is the same calculation as Legacy but we need to calculate the expanded size
+        // Compiled format: stores pubkey_table and indices directly (no expansion)
+        // This is the same structure as creation payload, but spending_limits use CompiledSpendingLimitV2
         1 + // account_index
-        4 + self.instructions_constraints.iter().map(|ic| {
-            32 + // program_id (expanded from index)
-            4 + ic.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                match &ac.account_constraint {
-                    CompiledAccountConstraintType::Pubkey(indices) => 1 + 4 + indices.len() * 32, // expanded
-                    CompiledAccountConstraintType::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner Option discriminator
-                if ac.owner_index.is_some() { 32 } else { 0 } // owner value (conditional)
-            }).sum::<usize>() + // account_constraints vec
-            4 + ic.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
-        }).sum::<usize>() + // instructions_constraints vec
-        1 + self.pre_hook.as_ref().map(|h| {
-            1 + // num_accounts
-            4 + h.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                match &ac.account_constraint {
-                    CompiledAccountConstraintType::Pubkey(indices) => 1 + 4 + indices.len() * 32,
-                    CompiledAccountConstraintType::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner Option discriminator
-                if ac.owner_index.is_some() { 32 } else { 0 } // owner value (conditional)
-            }).sum::<usize>() +
-            4 + h.instruction_data.len() +
-            32 + // program_id (expanded from index)
-            1 // pass_inner_instructions
-        }).unwrap_or(0) + // pre_hook
-        1 + self.post_hook.as_ref().map(|h| {
-            1 + // num_accounts
-            4 + h.account_constraints.iter().map(|ac| {
-                1 + // account_index
-                match &ac.account_constraint {
-                    CompiledAccountConstraintType::Pubkey(indices) => 1 + 4 + indices.len() * 32,
-                    CompiledAccountConstraintType::AccountData(constraints) => {
-                        1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
-                    }
-                } +
-                1 + // owner Option discriminator
-                if ac.owner_index.is_some() { 32 } else { 0 } // owner value (conditional)
-            }).sum::<usize>() +
-            4 + h.instruction_data.len() +
-            32 + // program_id (expanded from index)
-            1 // pass_inner_instructions
-        }).unwrap_or(0) + // post_hook
-        4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>() // vec + spending_limits
+        1 + (self.pubkey_table.len() * 32) + // SmallVec<u8> + pubkey_table
+        1 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // SmallVec<u8> + instructions_constraints
+        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + pre_hook
+        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // option + post_hook
+        1 + (self.spending_limits.len() * CompiledSpendingLimitV2::INIT_SPACE) // SmallVec<u8> + CompiledSpendingLimitV2
     }
 }
 
@@ -1167,80 +1427,12 @@ impl PolicyTrait for ProgramInteractionPolicy {
         context: PolicyExecutionContext,
         payload: &Self::UsagePayload,
     ) -> Result<()> {
-        // Validate that the payload is valid for the context
-        match (context, &payload.transaction_payload) {
-            (
-                PolicyExecutionContext::Synchronous,
-                ProgramInteractionTransactionPayload::AsyncTransaction(..),
-            ) => {
-                return Err(
-                    SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
-                        .into(),
-                );
-            }
-            (
-                PolicyExecutionContext::Asynchronous,
-                ProgramInteractionTransactionPayload::SyncTransaction(..),
-            ) => {
-                return Err(
-                    SmartAccountError::ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction
-                        .into(),
-                );
-            }
-            // Both other variants are valid
-            (_, _) => {}
-        }
-
-        // Get the account index and instructions length
-        let payload_account_index = payload.transaction_payload.get_account_index();
-        let instructions_len = match &payload.transaction_payload {
-            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
-                // TODO: Inefficient to deserialize the transaction message and
-                // not do anything with it.
-                TransactionMessage::deserialize(
-                    &mut transaction_payload.transaction_message.as_slice(),
-                )?
-                .instructions
-                .len()
-            }
-            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
-                let instructions: SmallVec<u8, CompiledInstruction> =
-                    SmallVec::<u8, CompiledInstruction>::try_from_slice(
-                        &sync_transaction_payload.instructions,
-                    )
-                    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
-                instructions.len()
-            }
-        };
-        require_eq!(
-            payload_account_index,
+        validate_payload_common(
             self.account_index,
-            SmartAccountError::InvalidPayload
-        );
-
-        // If there are instruction constraints, ensure that the submitted instruction constraints are valid
-        if !self.instructions_constraints.is_empty() {
-            if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-                // Ensure that the instruction indices match the number of
-                // instructions
-                require_eq!(
-                    instruction_constraint_indices.len(),
-                    instructions_len,
-                    SmartAccountError::ProgramInteractionInstructionCountMismatch
-                );
-                // Ensure that the instruction constraint index is within the bounds
-                // of the instructions constraints
-                for instruction_constraint_index in instruction_constraint_indices {
-                    require!(
-                        *instruction_constraint_index < self.instructions_constraints.len() as u8,
-                        SmartAccountError::ProgramInteractionConstraintIndexOutOfBounds
-                    );
-                }
-            } else {
-                return Err(SmartAccountError::ProgramInteractionInstructionCountMismatch.into());
-            }
-        }
-        Ok(())
+            self.instructions_constraints.len(),
+            context,
+            payload,
+        )
     }
 
     // Wrapper method to distinguish between transaction and sync transaction payloads
@@ -1498,6 +1690,797 @@ impl ProgramInteractionPolicy {
         }
 
         Ok(())
+    }
+}
+
+// =============================================================================
+// COMPILED PROGRAM INTERACTION POLICY IMPLEMENTATION
+// =============================================================================
+
+impl CompiledProgramInteractionPolicy {
+    /// Validate the policy invariant
+    pub fn invariant(&self) -> Result<()> {
+        // Validate pubkey_table size
+        validate_compiled_policy_indices(
+            &self.pubkey_table,
+            &self.instructions_constraints,
+            self.pre_hook.as_ref(),
+            self.post_hook.as_ref(),
+            self.spending_limits.iter().map(|sl| sl.mint_index),
+        )?;
+
+        // Validate instruction constraints count
+        require!(
+            self.instructions_constraints.len() <= 20,
+            SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+        );
+
+        // Validate spending limits count
+        require!(
+            self.spending_limits.len() <= 10,
+            SmartAccountError::ProgramInteractionTooManySpendingLimits
+        );
+
+        // Each spending limit invariant must be valid (matching SpendingLimitV2::invariant())
+        for spending_limit in self.spending_limits.iter() {
+            // Validate that mint_index is valid
+            if spending_limit.mint_index < BUILTIN_INDEX_START {
+                require!(
+                    (spending_limit.mint_index as usize) < self.pubkey_table.len(),
+                    SmartAccountError::ProgramInteractionInvalidPubkeyTableIndex
+                );
+            }
+
+            // Amount per period must be non-zero
+            require_neq!(
+                spending_limit.quantity_constraints.max_per_period,
+                0,
+                SmartAccountError::SpendingLimitInvariantMaxPerPeriodZero
+            );
+
+            // If start time is set, it must be positive
+            require!(
+                spending_limit.time_constraints.start >= 0,
+                SmartAccountError::SpendingLimitInvariantStartTimePositive
+            );
+
+            // If expiration is set, it must be greater than start
+            if let Some(expiration) = spending_limit.time_constraints.expiration {
+                require!(
+                    expiration > spending_limit.time_constraints.start,
+                    SmartAccountError::SpendingLimitInvariantExpirationSmallerThanStart
+                );
+            }
+
+            // If overflow is enabled, must have expiration and cannot be OneTime
+            if spending_limit.time_constraints.accumulate_unused {
+                // OneTime period cannot have overflow enabled
+                require!(
+                    spending_limit.time_constraints.period != PeriodV2::OneTime,
+                    SmartAccountError::SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled
+                );
+                require!(
+                    spending_limit.time_constraints.expiration.is_some(),
+                    SmartAccountError::SpendingLimitInvariantOverflowEnabledMustHaveExpiration
+                );
+                // Calculate max amount based on periods within start & expiration
+                let total_time = spending_limit.time_constraints.expiration.unwrap()
+                    - spending_limit.time_constraints.start;
+                let total_periods = total_time
+                    .checked_div(spending_limit.time_constraints.period.to_seconds().unwrap())
+                    .unwrap() as u64;
+                let max_amount =
+                    match total_time % spending_limit.time_constraints.period.to_seconds().unwrap() {
+                        0 => total_periods
+                            .checked_mul(spending_limit.quantity_constraints.max_per_period)
+                            .unwrap(),
+                        _ => (total_periods.checked_add(1).unwrap())
+                            .checked_mul(spending_limit.quantity_constraints.max_per_period)
+                            .unwrap(),
+                    };
+                require!(
+                    spending_limit.usage.remaining_in_period <= max_amount,
+                    SmartAccountError::SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount
+                );
+            } else {
+                // If overflow is disabled, remaining in period must be <= max per period
+                require!(
+                    spending_limit.usage.remaining_in_period
+                        <= spending_limit.quantity_constraints.max_per_period,
+                    SmartAccountError::SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod
+                );
+            }
+
+            // If exact amount is enforced, per-use amount must be set and non-zero
+            if spending_limit.quantity_constraints.enforce_exact_quantity {
+                require!(
+                    spending_limit.quantity_constraints.max_per_use > 0,
+                    SmartAccountError::SpendingLimitInvariantExactQuantityMaxPerUseZero
+                );
+            }
+
+            // If per-use amount is set, it cannot exceed per-period amount
+            if spending_limit.quantity_constraints.max_per_use > 0 {
+                require!(
+                    spending_limit.quantity_constraints.max_per_use
+                        <= spending_limit.quantity_constraints.max_per_period,
+                    SmartAccountError::SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod
+                );
+            }
+
+            // Custom period must have positive duration
+            if let PeriodV2::Custom(seconds) = spending_limit.time_constraints.period {
+                require!(
+                    seconds > 0,
+                    SmartAccountError::SpendingLimitInvariantCustomPeriodNegative
+                );
+            }
+
+            // Last reset must be between start and expiration
+            if let Some(expiration) = spending_limit.time_constraints.expiration {
+                require!(
+                    spending_limit.usage.last_reset >= spending_limit.time_constraints.start
+                        && spending_limit.usage.last_reset <= expiration,
+                    SmartAccountError::SpendingLimitInvariantLastResetOutOfBounds
+                );
+            } else {
+                require!(
+                    spending_limit.usage.last_reset >= spending_limit.time_constraints.start,
+                    SmartAccountError::SpendingLimitInvariantLastResetSmallerThanStart
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Validate the payload for the policy (same as ProgramInteractionPolicy)
+    pub fn validate_payload(
+        &self,
+        context: PolicyExecutionContext,
+        payload: &ProgramInteractionPayload,
+    ) -> Result<()> {
+        validate_payload_common(
+            self.account_index,
+            self.instructions_constraints.len(),
+            context,
+            payload,
+        )
+    }
+
+    // Wrapper method to distinguish between transaction and sync transaction payloads
+    pub fn execute_payload<'info>(
+        &mut self,
+        args: ProgramInteractionExecutionArgs,
+        payload: &ProgramInteractionPayload,
+        accounts: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        match &payload.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(..) => {
+                self.execute_payload_async(args, payload, accounts)
+            }
+            ProgramInteractionTransactionPayload::SyncTransaction(..) => {
+                self.execute_payload_sync(args, payload, accounts)
+            }
+        }
+    }
+    /// Evaluate instruction constraints with runtime index resolution
+    pub fn evaluate_instruction_constraints<'info>(
+        &self,
+        instruction_constraint_indices: &[u8],
+        instructions: &[SmartAccountCompiledInstruction],
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        for (instruction, instruction_constraint_index) in
+            instructions.iter().zip(instruction_constraint_indices)
+        {
+            let compiled_constraint =
+                &self.instructions_constraints[*instruction_constraint_index as usize];
+
+            // Resolve program_id from index and check
+            let expected_program_id = self.resolve_pubkey(compiled_constraint.program_id_index)?;
+            require!(
+                accounts[instruction.program_id_index as usize].key == &expected_program_id,
+                SmartAccountError::ProgramInteractionProgramIdMismatch
+            );
+
+            // Evaluate the account constraints (with index resolution)
+            for compiled_ac in compiled_constraint.account_constraints.iter() {
+                self.evaluate_compiled_account_constraint(
+                    compiled_ac,
+                    &instruction.account_indexes,
+                    accounts,
+                )?;
+            }
+
+            // Evaluate the data constraints (no index resolution needed)
+            for data_constraint in compiled_constraint.data_constraints.iter() {
+                data_constraint.evaluate(instruction.data.as_slice())?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Evaluate a compiled account constraint with index resolution
+    fn evaluate_compiled_account_constraint<'info>(
+        &self,
+        compiled_ac: &CompiledAccountConstraint,
+        instruction_account_indexes: &[u8],
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        // Get the account from the instruction's account indices
+        let account_pubkey = accounts
+            .get(instruction_account_indexes[compiled_ac.account_index as usize] as usize)
+            .map(|a| a.key)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+
+        // Evaluate the constraint based on type
+        match &compiled_ac.account_constraint {
+            CompiledAccountConstraintType::Pubkey(indices) => {
+                // Resolve all indices to pubkeys and check if account matches any
+                let mut matched = false;
+                for &idx in indices.iter() {
+                    let expected = self.resolve_pubkey(idx)?;
+                    if account_pubkey == &expected {
+                        matched = true;
+                        break;
+                    }
+                }
+                require!(
+                    matched,
+                    SmartAccountError::ProgramInteractionAccountConstraintViolated
+                );
+            }
+            CompiledAccountConstraintType::AccountData(data_constraints) => {
+                // Get the account info
+                let account_info = accounts
+                    .get(instruction_account_indexes[compiled_ac.account_index as usize] as usize)
+                    .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+                let account_data = account_info.try_borrow_data()?;
+                for data_constraint in data_constraints.iter() {
+                    data_constraint.evaluate(&account_data)?;
+                }
+            }
+        }
+
+        // Check owner constraint if present
+        if let Some(owner_index) = compiled_ac.owner_index {
+            let expected_owner = self.resolve_pubkey(owner_index)?;
+            let account_info = accounts
+                .get(instruction_account_indexes[compiled_ac.account_index as usize] as usize)
+                .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+            require!(
+                account_info.owner == &expected_owner,
+                SmartAccountError::ProgramInteractionAccountConstraintViolated
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Execute a compiled hook with index resolution
+    fn execute_compiled_hook<'info>(
+        &self,
+        hook: &CompiledHook,
+        hook_accounts: &'info [AccountInfo<'info>],
+        instructions: &[SmartAccountCompiledInstruction],
+        instruction_accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        // Evaluate the hook account constraints (with index resolution)
+        for compiled_ac in hook.account_constraints.iter() {
+            self.evaluate_compiled_hook_account_constraint(compiled_ac, hook_accounts)?;
+        }
+
+        // Build the necessary account metas
+        let mut account_metas =
+            Vec::with_capacity(1 + hook_accounts.len() + instruction_accounts.len());
+
+        // Add the hook accounts to the account metas
+        for account in hook_accounts.iter() {
+            let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                AccountMeta::new_readonly(*account.key, true)
+            } else if account.is_writable {
+                AccountMeta::new(*account.key, account.is_signer)
+            } else {
+                AccountMeta::new_readonly(*account.key, account.is_signer)
+            };
+            account_metas.push(meta);
+        }
+
+        // Build the instruction data
+        let mut instruction_data = hook.instruction_data.to_vec();
+
+        if hook.pass_inner_instructions {
+            // Serialized Vec representation of the instructions length
+            instruction_data.extend_from_slice(&(instructions.len() as u32).to_le_bytes());
+
+            // Serialize the instructions
+            for ix in instructions {
+                ix.serialize(&mut instruction_data)
+                    .map_err(|_| SmartAccountError::ProgramInteractionTemplateHookError)?;
+            }
+
+            // Add the instruction accounts
+            for account in instruction_accounts.iter() {
+                // Allow the hook authority, as long as it is readonly
+                let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
+                    AccountMeta::new_readonly(*account.key, true)
+                } else if account.is_writable {
+                    AccountMeta::new(*account.key, account.is_signer)
+                } else {
+                    AccountMeta::new_readonly(*account.key, account.is_signer)
+                };
+                account_metas.push(meta);
+            }
+        }
+
+        // Resolve the program_id from index
+        let program_id = self.resolve_pubkey(hook.program_id_index)?;
+
+        // Invoke the hook instruction
+        let instruction = Instruction {
+            program_id,
+            accounts: account_metas,
+            data: instruction_data,
+        };
+
+        // Invoke the hook with the hook authority as signer
+        // Uses SEED_HOOK_AUTHORITY only (matching legacy Hook::execute behavior)
+        // The hook authority PDA signing works even if the hook authority is not in the accounts
+        solana_program::program::invoke_signed(
+            &instruction,
+            &[hook_accounts, instruction_accounts].concat(),
+            &[&[SEED_HOOK_AUTHORITY]],
+        )?;
+
+        Ok(())
+    }
+
+    /// Evaluate a compiled hook account constraint
+    fn evaluate_compiled_hook_account_constraint<'info>(
+        &self,
+        compiled_ac: &CompiledAccountConstraint,
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        let account_info = accounts
+            .get(compiled_ac.account_index as usize)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+
+        match &compiled_ac.account_constraint {
+            CompiledAccountConstraintType::Pubkey(indices) => {
+                let mut matched = false;
+                for &idx in indices.iter() {
+                    let expected = self.resolve_pubkey(idx)?;
+                    if account_info.key == &expected {
+                        matched = true;
+                        break;
+                    }
+                }
+                require!(
+                    matched,
+                    SmartAccountError::ProgramInteractionAccountConstraintViolated
+                );
+            }
+            CompiledAccountConstraintType::AccountData(data_constraints) => {
+                let account_data = account_info.try_borrow_data()?;
+                for data_constraint in data_constraints.iter() {
+                    data_constraint.evaluate(&account_data)?;
+                }
+            }
+        }
+
+        if let Some(owner_index) = compiled_ac.owner_index {
+            let expected_owner = self.resolve_pubkey(owner_index)?;
+            require!(
+                account_info.owner == &expected_owner,
+                SmartAccountError::ProgramInteractionAccountConstraintViolated
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Execute an async transaction through the compiled policy
+    fn execute_payload_async<'info>(
+        &mut self,
+        args: ProgramInteractionExecutionArgs,
+        payload: &ProgramInteractionPayload,
+        mut accounts: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        // Get the transaction payload
+        let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
+
+        let smart_account_seeds = &[
+            SEED_PREFIX,
+            args.settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
+            &transaction_payload.account_index.to_le_bytes(),
+        ];
+        let (smart_account_pubkey, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+
+        let smart_account_signer_seeds = &[
+            smart_account_seeds[0],
+            smart_account_seeds[1],
+            smart_account_seeds[2],
+            smart_account_seeds[3],
+            &[smart_account_bump],
+        ];
+
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+
+        // Get the message account infos and address lookup table account infos
+        let num_lookups = transaction_payload.message.address_table_lookups.len();
+        let message_account_infos = accounts
+            .get(num_lookups..)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+        let address_lookup_table_account_infos = accounts
+            .get(..num_lookups)
+            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+
+        // Evaluate the instruction constraints with index resolution
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &transaction_payload.message.instructions,
+                message_account_infos,
+            )?;
+        }
+
+        // Execute the pre hook with index resolution
+        if let Some(pre_hook) = &self.pre_hook {
+            self.execute_compiled_hook(
+                pre_hook,
+                pre_hook_accounts,
+                &transaction_payload.message.instructions,
+                &accounts[num_lookups..],
+            )?;
+        }
+
+        let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
+            args.transaction_key,
+            &transaction_payload.ephemeral_signer_bumps,
+        );
+
+        let executable_message = ExecutableTransactionMessage::new_validated(
+            transaction_payload.message.clone(),
+            message_account_infos,
+            address_lookup_table_account_infos,
+            &smart_account_pubkey,
+            &ephemeral_signer_keys,
+        )?;
+
+        let protected_accounts = &[args.proposal_key];
+
+        // Update the spending limits if present
+        if !self.spending_limits.is_empty() {
+            let current_timestamp = Clock::get()?.unix_timestamp;
+            for i in 0..self.spending_limits.len() {
+                self.spending_limits[i].reset_if_needed(current_timestamp);
+            }
+
+            let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
+            executable_message.execute_message(
+                smart_account_signer_seeds,
+                &ephemeral_signer_seeds,
+                protected_accounts,
+            )?;
+            // Evaluate the balance changes post-execution (with index resolution)
+            self.evaluate_compiled_balance_changes(&tracked_pre_balances)?;
+        } else {
+            executable_message.execute_message(
+                smart_account_signer_seeds,
+                &ephemeral_signer_seeds,
+                protected_accounts,
+            )?;
+        }
+
+        // Execute post hook with index resolution
+        if let Some(post_hook) = &self.post_hook {
+            self.execute_compiled_hook(
+                post_hook,
+                post_hook_accounts,
+                &transaction_payload.message.instructions,
+                &accounts[num_lookups..],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Execute a synchronous transaction through the compiled policy
+    fn execute_payload_sync<'info>(
+        &mut self,
+        args: ProgramInteractionExecutionArgs,
+        payload: &ProgramInteractionPayload,
+        mut accounts: &'info [AccountInfo<'info>],
+    ) -> Result<()> {
+        let sync_transaction_payload = payload.get_sync_transaction_payload()?;
+        let settings_key = args.settings_key;
+
+        let instructions = SmallVec::<u8, CompiledInstruction>::try_from_slice(
+            &sync_transaction_payload.instructions,
+        )
+        .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+
+        let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
+            Vec::from(instructions)
+                .into_iter()
+                .map(SmartAccountCompiledInstruction::from)
+                .collect();
+
+        let smart_account_seeds = &[
+            SEED_PREFIX,
+            settings_key.as_ref(),
+            SEED_SMART_ACCOUNT,
+            &sync_transaction_payload.account_index.to_le_bytes(),
+        ];
+        let (smart_account_pubkey, smart_account_bump) =
+            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+
+        let smart_account_signer_seeds = &[
+            smart_account_seeds[0],
+            smart_account_seeds[1],
+            smart_account_seeds[2],
+            smart_account_seeds[3],
+            &[smart_account_bump],
+        ];
+
+        // Parse out the hook accounts from the accounts slice
+        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+
+        // Evaluate the instruction constraints with index resolution
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
+            )?;
+        }
+
+        // Execute the pre hook with index resolution
+        if let Some(pre_hook) = &self.pre_hook {
+            self.execute_compiled_hook(
+                pre_hook,
+                pre_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
+        }
+
+        let executable_message = SynchronousTransactionMessage::new_validated(
+            &settings_key,
+            &smart_account_pubkey,
+            &args.policy_signers,
+            &settings_compiled_instructions,
+            accounts,
+        )?;
+
+        // Update the spending limits if present
+        if !self.spending_limits.is_empty() {
+            let current_timestamp = Clock::get()?.unix_timestamp;
+            for i in 0..self.spending_limits.len() {
+                self.spending_limits[i].reset_if_needed(current_timestamp);
+            }
+
+            let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
+            executable_message.execute(smart_account_signer_seeds)?;
+            // Evaluate the balance changes post-execution (with index resolution)
+            self.evaluate_compiled_balance_changes(&tracked_pre_balances)?;
+        } else {
+            executable_message.execute(smart_account_signer_seeds)?;
+        }
+
+        // Execute the post hook with index resolution
+        if let Some(post_hook) = &self.post_hook {
+            self.execute_compiled_hook(
+                post_hook,
+                post_hook_accounts,
+                &settings_compiled_instructions,
+                &accounts,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    /// Evaluate balance changes for compiled spending limits
+    fn evaluate_compiled_balance_changes(
+        &mut self,
+        tracked_pre_balances: &crate::state::policies::utils::Balances,
+    ) -> Result<()> {
+        use anchor_lang::Ids;
+        use anchor_spl::token_interface::{TokenAccount, TokenInterface};
+
+        let current_timestamp = Clock::get()?.unix_timestamp;
+
+        // Check the executing accounts lamports (SOL spending limit)
+        let current_lamports = tracked_pre_balances.executing_account.account.lamports();
+
+        // Find SOL spending limit (mint_index for SOL would resolve to Pubkey::default())
+        // SOL is not in pubkey_table, so we check for a special case or skip if not present
+        let sol_limit_idx = self.spending_limits.iter().position(|sl| {
+            // Check if this spending limit is for SOL (Pubkey::default())
+            // Note: SOL can't be in pubkey_table (0-239) or builtins (240-255)
+            // We need a convention for SOL - let's assume index 255 could mean SOL
+            // Or we can check if the mint_index is 245 (WRAPPED_SOL builtin)
+            let mint_result = self.resolve_pubkey(sl.mint_index);
+            match mint_result {
+                Ok(mint) => mint == Pubkey::default(),
+                Err(_) => false,
+            }
+        });
+
+        if let Some(idx) = sol_limit_idx {
+            let spending_limit = &mut self.spending_limits[idx];
+            if spending_limit.is_active(current_timestamp).is_ok() {
+                let minimum_balance = tracked_pre_balances
+                    .executing_account
+                    .lamports
+                    .saturating_sub(spending_limit.usage.remaining_in_period);
+                require_gte!(
+                    current_lamports,
+                    minimum_balance,
+                    SmartAccountError::ProgramInteractionInsufficientLamportAllowance
+                );
+                if current_lamports < tracked_pre_balances.executing_account.lamports {
+                    let spent = tracked_pre_balances.executing_account.lamports - current_lamports;
+                    // Use checked_sub().unwrap() to match legacy behavior - panic if underflow
+                    spending_limit.usage.remaining_in_period = spending_limit
+                        .usage
+                        .remaining_in_period
+                        .checked_sub(spent)
+                        .unwrap();
+                }
+            }
+        } else {
+            // No SOL spending limit - ensure lamports didn't decrease
+            require_gte!(
+                current_lamports,
+                tracked_pre_balances.executing_account.lamports,
+                SmartAccountError::ProgramInteractionModifiedIllegalBalance
+            );
+        }
+
+        // Check all of the token accounts
+        let token_program_ids = TokenInterface::ids();
+        for tracked_token_account in &tracked_pre_balances.token_accounts {
+            if tracked_token_account.account.data_is_empty() {
+                return Err(
+                    SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
+                );
+            }
+            let post_token_account =
+                InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
+            let mint = post_token_account.mint;
+
+            // Find the spending limit for this mint
+            let limit_idx = self.spending_limits.iter().position(|sl| {
+                match self.resolve_pubkey(sl.mint_index) {
+                    Ok(resolved_mint) => resolved_mint == mint,
+                    Err(_) => false,
+                }
+            });
+
+            if let Some(idx) = limit_idx {
+                let spending_limit = &mut self.spending_limits[idx];
+                if spending_limit.is_active(current_timestamp).is_ok() {
+                    let minimum_balance = tracked_token_account
+                        .balance
+                        .saturating_sub(spending_limit.usage.remaining_in_period);
+                    require_gte!(
+                        post_token_account.amount,
+                        minimum_balance,
+                        SmartAccountError::ProgramInteractionInsufficientTokenAllowance
+                    );
+                    if post_token_account.amount < tracked_token_account.balance {
+                        let spent = tracked_token_account.balance - post_token_account.amount;
+                        // Use checked_sub().unwrap() to match legacy behavior - panic if underflow
+                        spending_limit.usage.remaining_in_period = spending_limit
+                            .usage
+                            .remaining_in_period
+                            .checked_sub(spent)
+                            .unwrap();
+                    }
+                }
+            } else {
+                // No spending limit for this token - ensure balance didn't decrease
+                require_gte!(
+                    post_token_account.amount,
+                    tracked_token_account.balance,
+                    SmartAccountError::ProgramInteractionModifiedIllegalBalance
+                );
+            }
+
+            // CRITICAL: Ensure the delegate and authority have not changed.
+            // Note: require_gte means post_delegated >= pre_delegated, so delegated amount
+            // can only increase or stay the same (matches legacy evaluate_balance_changes behavior)
+            let post_delegate: Option<(Pubkey, u64)> =
+                if let Some(delegate_key) = Option::from(post_token_account.delegate) {
+                    Some((delegate_key, post_token_account.delegated_amount))
+                } else {
+                    None
+                };
+            match (post_delegate, tracked_token_account.delegate) {
+                (Some(post_delegate), Some(tracked_delegate)) => {
+                    require_eq!(post_delegate.0, tracked_delegate.0);
+                    require_gte!(post_delegate.1, tracked_delegate.1);
+                }
+                (None, None) => {}
+                _ => {
+                    return Err(
+                        SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
+                    );
+                }
+            };
+            require_eq!(
+                post_token_account.owner,
+                tracked_token_account.authority,
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
+        }
+
+        Ok(())
+    }
+}
+
+impl CompiledSpendingLimitV2 {
+    /// Check if the spending limit is currently active
+    pub fn is_active(&self, current_timestamp: i64) -> Result<()> {
+        // Check start time
+        if current_timestamp < self.time_constraints.start {
+            return err!(SmartAccountError::SpendingLimitNotActive);
+        }
+        // Check expiration
+        if let Some(expiration) = self.time_constraints.expiration {
+            if current_timestamp > expiration {
+                return err!(SmartAccountError::SpendingLimitExpired);
+            }
+        }
+        Ok(())
+    }
+
+    /// Reset the spending limit if the period has elapsed
+    /// Mirrors the logic in SpendingLimitV2::reset_if_needed including accumulate_unused handling
+    pub fn reset_if_needed(&mut self, current_timestamp: i64) {
+        if let Some(reset_period) = self.time_constraints.period.to_seconds() {
+            // Check that the spending limit is active
+            if self.is_active(current_timestamp).is_err() {
+                return;
+            }
+
+            let passed_since_last_reset = current_timestamp
+                .checked_sub(self.usage.last_reset)
+                .unwrap();
+
+            if passed_since_last_reset > reset_period {
+                let periods_passed = passed_since_last_reset.checked_div(reset_period).unwrap();
+
+                // Update last_reset: last_reset = last_reset + periods_passed * reset_period
+                self.usage.last_reset = self
+                    .usage
+                    .last_reset
+                    .checked_add(periods_passed.checked_mul(reset_period).unwrap())
+                    .unwrap();
+
+                if self.time_constraints.accumulate_unused {
+                    // For overflow: add missed periods to current amount
+                    // (overflow is only enabled with expiration, so we know it exists)
+                    let additional_amount = self
+                        .quantity_constraints
+                        .max_per_period
+                        .saturating_mul(periods_passed as u64);
+                    self.usage.remaining_in_period = self
+                        .usage
+                        .remaining_in_period
+                        .saturating_add(additional_amount);
+                } else {
+                    // For non-overflow: reset to full period amount (original behavior)
+                    self.usage.remaining_in_period = self.quantity_constraints.max_per_period;
+                }
+            }
+        }
     }
 }
 
@@ -2162,5 +3145,34 @@ mod tests {
             },
         };
         assert_eq!(expanded_wsol, expected_wsol);
+    }
+
+    #[test]
+    fn test_validate_pubkey_table_unique() {
+        let duplicate = Pubkey::new_unique();
+        let table = SmallVec::from(vec![duplicate, duplicate]);
+        assert_eq!(
+            validate_pubkey_table_unique(&table).err().unwrap(),
+            SmartAccountError::ProgramInteractionDuplicatePubkeyTableEntry.into()
+        );
+    }
+
+    #[test]
+    fn test_validate_compiled_policy_indices_duplicate_spending_limit() {
+        let table = SmallVec::from(vec![WRAPPED_SOL]);
+        let spending_limit_indices = vec![0u8, 245u8]; // table[0] and builtin wSOL
+
+        assert_eq!(
+            validate_compiled_policy_indices(
+                &table,
+                &SmallVec::from(vec![]),
+                None,
+                None,
+                spending_limit_indices.into_iter(),
+            )
+            .err()
+            .unwrap(),
+            SmartAccountError::ProgramInteractionDuplicateSpendingLimit.into()
+        );
     }
 }

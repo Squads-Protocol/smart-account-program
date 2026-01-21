@@ -1347,7 +1347,7 @@ describe("Flow / ProgramInteractionPolicy", () => {
       throw e;
     }
 
-    // Verify policy was created and indices were expanded to full Pubkeys
+    // Verify policy was created with compiled format (pubkey_table + indices)
     const policyAccount = await Policy.fromAccountAddress(connection, policyPda);
     assert.strictEqual(policyAccount.settings.toString(), settingsPda.toString());
     assert.strictEqual(policyAccount.threshold, 1);
@@ -1355,46 +1355,49 @@ describe("Flow / ProgramInteractionPolicy", () => {
 
     const policyState = policyAccount.policyState;
     assert.strictEqual(policyState.__kind, "ProgramInteraction");
-    const programInteractionPolicy = policyState
-      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    // Now uses CompiledProgramInteractionPolicy with pubkey_table + indices
+    const compiledPolicy = policyState
+      .fields[0] as smartAccount.generated.CompiledProgramInteractionPolicy;
 
-    assert.strictEqual(programInteractionPolicy.accountIndex, 0);
+    assert.strictEqual(compiledPolicy.accountIndex, 0);
 
-    // Verify programIdIndex 0 -> TOKEN_PROGRAM_ID
-    assert.strictEqual(programInteractionPolicy.instructionsConstraints.length, 1);
-    const instructionConstraint = programInteractionPolicy.instructionsConstraints[0];
+    // Verify pubkey_table contains the pubkeys (index 0 = TOKEN_PROGRAM_ID, index 1 = noopProgramId)
+    assert.strictEqual(compiledPolicy.pubkeyTable.length, 2);
     assert.strictEqual(
-      instructionConstraint.programId.toString(),
+      compiledPolicy.pubkeyTable[0].toString(),
       TOKEN_PROGRAM_ID.toString()
     );
+    assert.strictEqual(
+      compiledPolicy.pubkeyTable[1].toString(),
+      noopProgramId.toString()
+    );
+
+    // Verify instruction constraint uses index 0 (TOKEN_PROGRAM_ID)
+    assert.strictEqual(compiledPolicy.instructionsConstraints.length, 1);
+    const instructionConstraint = compiledPolicy.instructionsConstraints[0];
+    assert.strictEqual(instructionConstraint.programIdIndex, 0); // Index into pubkey_table
 
     assert.strictEqual(instructionConstraint.dataConstraints.length, 1);
     assert.strictEqual(instructionConstraint.dataConstraints[0].dataOffset.toString(), "0");
     assert.strictEqual(instructionConstraint.dataConstraints[0].dataValue.__kind, "U8");
 
-    // Verify programIdIndex 1 -> noopProgramId for hooks
-    assert.ok(programInteractionPolicy.preHook !== null, "preHook should exist");
-    assert.strictEqual(
-      programInteractionPolicy.preHook!.programId.toString(),
-      noopProgramId.toString()
-    );
+    // Verify hooks use index 1 (noopProgramId)
+    assert.ok(compiledPolicy.preHook !== null, "preHook should exist");
+    assert.strictEqual(compiledPolicy.preHook!.programIdIndex, 1); // Index into pubkey_table
     assert.deepStrictEqual(
-      Array.from(programInteractionPolicy.preHook!.instructionData),
+      Array.from(compiledPolicy.preHook!.instructionData),
       [1, 2, 3]
     );
-    assert.strictEqual(programInteractionPolicy.preHook!.passInnerInstructions, false);
+    assert.strictEqual(compiledPolicy.preHook!.passInnerInstructions, false);
 
-    assert.ok(programInteractionPolicy.postHook !== null, "postHook should exist");
-    assert.strictEqual(
-      programInteractionPolicy.postHook!.programId.toString(),
-      noopProgramId.toString()
-    );
+    assert.ok(compiledPolicy.postHook !== null, "postHook should exist");
+    assert.strictEqual(compiledPolicy.postHook!.programIdIndex, 1); // Index into pubkey_table
     assert.deepStrictEqual(
-      Array.from(programInteractionPolicy.postHook!.instructionData),
+      Array.from(compiledPolicy.postHook!.instructionData),
       [3, 4, 5]
     );
-    assert.strictEqual(programInteractionPolicy.postHook!.passInnerInstructions, true);
-    assert.strictEqual(programInteractionPolicy.postHook!.numExtraAccounts, 1);
+    assert.strictEqual(compiledPolicy.postHook!.passInnerInstructions, true);
+    assert.strictEqual(compiledPolicy.postHook!.numExtraAccounts, 1);
 
     const tokenTransferIxn = createTransferInstruction(
       sourceTokenAccount,
@@ -1636,21 +1639,22 @@ describe("Flow / ProgramInteractionPolicy", () => {
     await connection.confirmTransaction(signature);
     console.log("Settings transaction executed:", signature);
 
-    // Verify builtin index 241 was expanded to TOKEN_PROGRAM_ID
+    // Verify compiled format: pubkey_table is empty (builtin index 241 is used directly)
     const policyAccount = await Policy.fromAccountAddress(connection, policyPda);
     assert.strictEqual(policyAccount.settings.toString(), settingsPda.toString());
 
     const policyState = policyAccount.policyState;
     assert.strictEqual(policyState.__kind, "ProgramInteraction");
-    const programInteractionPolicy = policyState
-      .fields[0] as smartAccount.generated.ProgramInteractionPolicy;
+    const compiledPolicy = policyState
+      .fields[0] as smartAccount.generated.CompiledProgramInteractionPolicy;
 
-    assert.strictEqual(programInteractionPolicy.instructionsConstraints.length, 1);
-    const instructionConstraint = programInteractionPolicy.instructionsConstraints[0];
-    assert.strictEqual(
-      instructionConstraint.programId.toString(),
-      TOKEN_PROGRAM_ID.toString()
-    );
+    // pubkey_table should be empty since we only used builtin indices
+    assert.strictEqual(compiledPolicy.pubkeyTable.length, 0);
+
+    // Verify instruction constraint uses builtin index 241 (TOKEN_PROGRAM_ID)
+    assert.strictEqual(compiledPolicy.instructionsConstraints.length, 1);
+    const instructionConstraint = compiledPolicy.instructionsConstraints[0];
+    assert.strictEqual(instructionConstraint.programIdIndex, BUILTIN_TOKEN_PROGRAM_INDEX);
 
     const tokenTransferIxn = createTransferInstruction(
       sourceTokenAccount,

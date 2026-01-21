@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use anchor_lang::prelude::*;
 
@@ -25,6 +25,16 @@ impl<L, T> Deref for SmallVec<L, T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// SAFETY: DerefMut exposes the internal Vec<T>, which allows callers to
+/// modify the length (push, pop, etc.). Callers MUST NOT exceed the maximum
+/// length that type L can represent (255 for u8, 65535 for u16), or
+/// serialization will panic. Use invariant checks to validate length limits.
+impl<L, T> DerefMut for SmallVec<L, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

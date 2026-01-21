@@ -502,10 +502,10 @@ impl Settings {
                         PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
-                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
+                        PolicyState::LegacyProgramInteraction(creation_payload.to_policy_state()?)
                     }
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
-                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
+                        PolicyState::ProgramInteraction(creation_payload.to_compiled_policy_state()?)
                     }
                     PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
                         // If accumulate unused is true, and the policy has a
@@ -613,16 +613,32 @@ impl Settings {
                     .as_ref()
                     .ok_or(SmartAccountError::MissingAccount)?;
 
-                // Only accept updates to the same policy type
+                // Only accept updates to the same policy type (with migration allowed for program interaction)
                 let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
                     (
                         PolicyState::InternalFundTransfer(_),
                         PolicyCreationPayload::InternalFundTransfer(creation_payload),
                     ) => PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?),
+
+                    // === LEGACY PROGRAM INTERACTION ===
+                    // Legacy → Legacy (update without format change)
+                    (
+                        PolicyState::LegacyProgramInteraction(_),
+                        PolicyCreationPayload::LegacyProgramInteraction(creation_payload),
+                    ) => PolicyState::LegacyProgramInteraction(creation_payload.to_policy_state()?),
+                    // Legacy → Compiled (MIGRATION - upgrade to space-efficient format)
+                    (
+                        PolicyState::LegacyProgramInteraction(_),
+                        PolicyCreationPayload::ProgramInteraction(creation_payload),
+                    ) => PolicyState::ProgramInteraction(creation_payload.to_compiled_policy_state()?),
+
+                    // === COMPILED PROGRAM INTERACTION ===
+                    // Compiled → Compiled (update without format change)
                     (
                         PolicyState::ProgramInteraction(_),
                         PolicyCreationPayload::ProgramInteraction(creation_payload),
-                    ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
+                    ) => PolicyState::ProgramInteraction(creation_payload.to_compiled_policy_state()?),
+
                     (
                         PolicyState::SpendingLimit(_),
                         PolicyCreationPayload::SpendingLimit(creation_payload),

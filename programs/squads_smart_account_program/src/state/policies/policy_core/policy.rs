@@ -6,10 +6,10 @@ use crate::MAX_TIME_LOCK;
 use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
-    InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
-    ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
-    SettingsChangePolicy, SmartAccountSigner, SpendingLimitExecutionArgs, SpendingLimitPolicy,
-    Transaction, SEED_POLICY, SEED_PREFIX,
+    CompiledProgramInteractionPolicy, InternalFundTransferExecutionArgs,
+    ProgramInteractionExecutionArgs, ProgramInteractionPolicy, Proposal, Settings,
+    SettingsChangeExecutionArgs, SettingsChangePolicy, SmartAccountSigner,
+    SpendingLimitExecutionArgs, SpendingLimitPolicy, Transaction, SEED_POLICY, SEED_PREFIX,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq, InitSpace)]
@@ -230,8 +230,12 @@ pub enum PolicyState {
     SpendingLimit(SpendingLimitPolicy),
     /// Settings change policy
     SettingsChange(SettingsChangePolicy),
-    /// Program interaction policy
-    ProgramInteraction(ProgramInteractionPolicy),
+    /// Legacy program interaction policy (stores expanded Pubkeys)
+    /// Discriminator 3 - kept for backwards compatibility with existing on-chain accounts
+    LegacyProgramInteraction(ProgramInteractionPolicy),
+    /// Compiled program interaction policy (stores pubkey_table with indices)
+    /// Discriminator 4 - new space-efficient format
+    ProgramInteraction(CompiledProgramInteractionPolicy),
 }
 
 impl PolicyState {
@@ -240,6 +244,7 @@ impl PolicyState {
             PolicyState::InternalFundTransfer(policy) => policy.invariant(),
             PolicyState::SpendingLimit(policy) => policy.invariant(),
             PolicyState::SettingsChange(policy) => policy.invariant(),
+            PolicyState::LegacyProgramInteraction(policy) => policy.invariant(),
             PolicyState::ProgramInteraction(policy) => policy.invariant(),
         }
     }
@@ -263,6 +268,12 @@ impl Policy {
             (PolicyState::SettingsChange(policy), PolicyPayload::SettingsChange(payload)) => {
                 policy.validate_payload(context, payload)
             }
+            // Legacy format uses same payload as compiled format
+            (
+                PolicyState::LegacyProgramInteraction(policy),
+                PolicyPayload::ProgramInteraction(payload),
+            ) => policy.validate_payload(context, payload),
+            // Compiled format
             (
                 PolicyState::ProgramInteraction(policy),
                 PolicyPayload::ProgramInteraction(payload),
@@ -297,19 +308,33 @@ impl Policy {
                 };
                 policy_state.execute_payload(args, payload, accounts)
             }
+            // Legacy program interaction (expanded Pubkeys)
+            (
+                PolicyState::LegacyProgramInteraction(ref mut policy_state),
+                PolicyPayload::ProgramInteraction(payload),
+            ) => {
+                let args = ProgramInteractionExecutionArgs {
+                    settings_key: self.settings,
+                    transaction_key: transaction_account
+                        .map(|t| t.key())
+                        .unwrap_or(Pubkey::default()),
+                    proposal_key: proposal_account
+                        .map(|p| p.key())
+                        .unwrap_or(Pubkey::default()),
+                    policy_signers: self.signers.clone(),
+                };
+                policy_state.execute_payload(args, payload, accounts)
+            }
+            // Compiled program interaction (pubkey_table with indices)
             (
                 PolicyState::ProgramInteraction(ref mut policy_state),
                 PolicyPayload::ProgramInteraction(payload),
             ) => {
                 let args = ProgramInteractionExecutionArgs {
                     settings_key: self.settings,
-                    // if the transaction account is not provided, use a default
-                    // pubkey (sync transactions)
                     transaction_key: transaction_account
                         .map(|t| t.key())
                         .unwrap_or(Pubkey::default()),
-                    // if the proposal account is not provided, use a default
-                    // pubkey (sync transactions)
                     proposal_key: proposal_account
                         .map(|p| p.key())
                         .unwrap_or(Pubkey::default()),

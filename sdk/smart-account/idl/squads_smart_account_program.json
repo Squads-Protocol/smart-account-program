@@ -3826,6 +3826,79 @@
       }
     },
     {
+      "name": "CompiledProgramInteractionPolicy",
+      "docs": [
+        "Space-efficient program interaction policy stored on-chain",
+        "Uses pubkey_table with indices instead of embedding full Pubkeys"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "docs": [
+              "The account index of the vault that will be used to execute the policy"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "pubkeyTable",
+            "docs": [
+              "Lookup table containing deduplicated pubkeys",
+              "Indices 0-239 are custom pubkeys, 240-255 are reserved for builtins"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructionsConstraints",
+            "docs": [
+              "Instruction constraints using indices into pubkey_table"
+            ],
+            "type": {
+              "vec": {
+                "defined": "CompiledInstructionConstraint"
+              }
+            }
+          },
+          {
+            "name": "preHook",
+            "docs": [
+              "Hook invoked before inner instruction execution"
+            ],
+            "type": {
+              "option": {
+                "defined": "CompiledHook"
+              }
+            }
+          },
+          {
+            "name": "postHook",
+            "docs": [
+              "Hook invoked after inner instruction execution"
+            ],
+            "type": {
+              "option": {
+                "defined": "CompiledHook"
+              }
+            }
+          },
+          {
+            "name": "spendingLimits",
+            "docs": [
+              "Spending limits using indices into pubkey_table"
+            ],
+            "type": {
+              "vec": {
+                "defined": "CompiledSpendingLimitV2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "InstructionConstraint",
       "type": {
         "kind": "struct",
@@ -4116,7 +4189,7 @@
     {
       "name": "CompiledLimitedSpendingLimit",
       "docs": [
-        "Compiled version of LimitedSpendingLimit for use with pubkey_table"
+        "Compiled version of LimitedSpendingLimit for use with pubkey_table (creation payload)"
       ],
       "type": {
         "kind": "struct",
@@ -4135,6 +4208,52 @@
             "name": "quantityConstraints",
             "type": {
               "defined": "LimitedQuantityConstraints"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompiledSpendingLimitV2",
+      "docs": [
+        "Compiled spending limit with usage tracking for on-chain storage",
+        "Uses mint_index instead of full Pubkey to save space"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mintIndex",
+            "docs": [
+              "Index into the policy's pubkey_table for the mint"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "timeConstraints",
+            "docs": [
+              "Timing configuration"
+            ],
+            "type": {
+              "defined": "TimeConstraints"
+            }
+          },
+          {
+            "name": "quantityConstraints",
+            "docs": [
+              "Amount constraints"
+            ],
+            "type": {
+              "defined": "QuantityConstraints"
+            }
+          },
+          {
+            "name": "usage",
+            "docs": [
+              "Current usage tracking (mutable)"
+            ],
+            "type": {
+              "defined": "UsageState"
             }
           }
         ]
@@ -5289,10 +5408,18 @@
             ]
           },
           {
-            "name": "ProgramInteraction",
+            "name": "LegacyProgramInteraction",
             "fields": [
               {
                 "defined": "ProgramInteractionPolicy"
+              }
+            ]
+          },
+          {
+            "name": "ProgramInteraction",
+            "fields": [
+              {
+                "defined": "CompiledProgramInteractionPolicy"
               }
             ]
           }
@@ -6137,256 +6264,261 @@
     },
     {
       "code": 6080,
+      "name": "ProgramInteractionDuplicatePubkeyTableEntry",
+      "msg": "Program interaction constraint violation: duplicate pubkey table entry"
+    },
+    {
+      "code": 6081,
       "name": "ProgramInteractionTooManyUniquePubkeys",
       "msg": "Program interaction constraint violation: too many unique pubkeys. Max is 240 (indices 240-255 reserved for builtin programs)"
     },
     {
-      "code": 6081,
+      "code": 6082,
       "name": "ProgramInteractionTemplateHookError",
       "msg": "Program interaction hook violation: template hook error"
     },
     {
-      "code": 6082,
+      "code": 6083,
       "name": "ProgramInteractionHookAuthorityCannotBePartOfHookAccounts",
       "msg": "Program interaction hook violation: hook authority cannot be part of hook accounts"
     },
     {
-      "code": 6083,
+      "code": 6084,
       "name": "SpendingLimitNotActive",
       "msg": "Spending limit is not active"
     },
     {
-      "code": 6084,
+      "code": 6085,
       "name": "SpendingLimitExpired",
       "msg": "Spending limit is expired"
     },
     {
-      "code": 6085,
+      "code": 6086,
       "name": "SpendingLimitPolicyInvariantAccumulateUnused",
       "msg": "Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true"
     },
     {
-      "code": 6086,
+      "code": 6087,
       "name": "SpendingLimitViolatesExactQuantityConstraint",
       "msg": "Amount violates exact quantity constraint"
     },
     {
-      "code": 6087,
+      "code": 6088,
       "name": "SpendingLimitViolatesMaxPerUseConstraint",
       "msg": "Amount violates max per use constraint"
     },
     {
-      "code": 6088,
+      "code": 6089,
       "name": "SpendingLimitInsufficientRemainingAmount",
       "msg": "Spending limit is insufficient"
     },
     {
-      "code": 6089,
+      "code": 6090,
       "name": "SpendingLimitInvariantMaxPerPeriodZero",
       "msg": "Spending limit invariant violation: max per period must be non-zero"
     },
     {
-      "code": 6090,
+      "code": 6091,
       "name": "SpendingLimitInvariantStartTimePositive",
       "msg": "Spending limit invariant violation: start time must be positive"
     },
     {
-      "code": 6091,
+      "code": 6092,
       "name": "SpendingLimitInvariantExpirationSmallerThanStart",
       "msg": "Spending limit invariant violation: expiration must be greater than start"
     },
     {
-      "code": 6092,
+      "code": 6093,
       "name": "SpendingLimitInvariantOverflowEnabledMustHaveExpiration",
       "msg": "Spending limit invariant violation: overflow enabled must have expiration"
     },
     {
-      "code": 6093,
+      "code": 6094,
       "name": "SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled",
       "msg": "Spending limit invariant violation: one time period cannot have overflow enabled"
     },
     {
-      "code": 6094,
+      "code": 6095,
       "name": "SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount",
       "msg": "Spending limit invariant violation: remaining amount must be less than max amount"
     },
     {
-      "code": 6095,
+      "code": 6096,
       "name": "SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: remaining amount must be less than or equal to max per period"
     },
     {
-      "code": 6096,
+      "code": 6097,
       "name": "SpendingLimitInvariantExactQuantityMaxPerUseZero",
       "msg": "Spending limit invariant violation: exact quantity must have max per use non-zero"
     },
     {
-      "code": 6097,
+      "code": 6098,
       "name": "SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: max per use must be less than or equal to max per period"
     },
     {
-      "code": 6098,
+      "code": 6099,
       "name": "SpendingLimitInvariantCustomPeriodNegative",
       "msg": "Spending limit invariant violation: custom period must be positive"
     },
     {
-      "code": 6099,
+      "code": 6100,
       "name": "SpendingLimitPolicyInvariantDuplicateDestinations",
       "msg": "Spending limit policy invariant violation: cannot have duplicate destinations for the same mint"
     },
     {
-      "code": 6100,
+      "code": 6101,
       "name": "SpendingLimitInvariantLastResetOutOfBounds",
       "msg": "Spending limit invariant violation: last reset must be between start and expiration"
     },
     {
-      "code": 6101,
+      "code": 6102,
       "name": "SpendingLimitInvariantLastResetSmallerThanStart",
       "msg": "Spending limit invariant violation: last reset must be greater than start"
     },
     {
-      "code": 6102,
+      "code": 6103,
       "name": "InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: source account index is not allowed"
     },
     {
-      "code": 6103,
+      "code": 6104,
       "name": "InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: destination account index is not allowed"
     },
     {
-      "code": 6104,
+      "code": 6105,
       "name": "InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame",
       "msg": "Internal fund transfer policy invariant violation: source and destination cannot be the same"
     },
     {
-      "code": 6105,
+      "code": 6106,
       "name": "InternalFundTransferPolicyInvariantMintNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: mint is not allowed"
     },
     {
-      "code": 6106,
+      "code": 6107,
       "name": "InternalFundTransferPolicyInvariantAmountZero",
       "msg": "Internal fund transfer policy invariant violation: amount must be greater than 0"
     },
     {
-      "code": 6107,
+      "code": 6108,
       "name": "InternalFundTransferPolicyInvariantDuplicateMints",
       "msg": "Internal fund transfer policy invariant violation: cannot have duplicate mints"
     },
     {
-      "code": 6108,
+      "code": 6109,
       "name": "ConsensusAccountNotSettings",
       "msg": "Consensus account is not a settings"
     },
     {
-      "code": 6109,
+      "code": 6110,
       "name": "ConsensusAccountNotPolicy",
       "msg": "Consensus account is not a policy"
     },
     {
-      "code": 6110,
+      "code": 6111,
       "name": "SettingsChangePolicyActionsMustBeNonZero",
       "msg": "Settings change policy invariant violation: actions must be non-zero"
     },
     {
-      "code": 6111,
+      "code": 6112,
       "name": "SettingsChangeInvalidSettingsKey",
       "msg": "Settings change policy violation: submitted settings account must match policy settings key"
     },
     {
-      "code": 6112,
+      "code": 6113,
       "name": "SettingsChangeInvalidSettingsAccount",
       "msg": "Settings change policy violation: submitted settings account must be writable"
     },
     {
-      "code": 6113,
+      "code": 6114,
       "name": "SettingsChangeInvalidRentPayer",
       "msg": "Settings change policy violation: rent payer must be writable and signer"
     },
     {
-      "code": 6114,
+      "code": 6115,
       "name": "SettingsChangeInvalidSystemProgram",
       "msg": "Settings change policy violation: system program must be the system program"
     },
     {
-      "code": 6115,
+      "code": 6116,
       "name": "SettingsChangeAddSignerViolation",
       "msg": "Settings change policy violation: signer does not match allowed signer"
     },
     {
-      "code": 6116,
+      "code": 6117,
       "name": "SettingsChangeAddSignerPermissionsViolation",
       "msg": "Settings change policy violation: signer permissions does not match allowed signer permissions"
     },
     {
-      "code": 6117,
+      "code": 6118,
       "name": "SettingsChangeRemoveSignerViolation",
       "msg": "Settings change policy violation: signer removal does not mach allowed signer removal"
     },
     {
-      "code": 6118,
+      "code": 6119,
       "name": "SettingsChangeChangeTimelockViolation",
       "msg": "Settings change policy violation: time lock does not match allowed time lock"
     },
     {
-      "code": 6119,
+      "code": 6120,
       "name": "SettingsChangeActionMismatch",
       "msg": "Settings change policy violation: action does not match allowed action"
     },
     {
-      "code": 6120,
+      "code": 6121,
       "name": "SettingsChangePolicyInvariantDuplicateActions",
       "msg": "Settings change policy invariant violation: cannot have duplicate actions"
     },
     {
-      "code": 6121,
+      "code": 6122,
       "name": "SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch",
       "msg": "Settings change policy invariant violation: action indices must match actions length"
     },
     {
-      "code": 6122,
+      "code": 6123,
       "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
       "msg": "Settings change policy invariant violation: action index out of bounds"
     },
     {
-      "code": 6123,
+      "code": 6124,
       "name": "PolicyNotActiveYet",
       "msg": "Policy is not active yet"
     },
     {
-      "code": 6124,
+      "code": 6125,
       "name": "PolicyInvariantInvalidExpiration",
       "msg": "Policy invariant violation: invalid policy expiration"
     },
     {
-      "code": 6125,
+      "code": 6126,
       "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
       "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
     },
     {
-      "code": 6126,
+      "code": 6127,
       "name": "PolicyExpirationViolationSettingsAccountNotPresent",
       "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
     },
     {
-      "code": 6127,
+      "code": 6128,
       "name": "PolicyExpirationViolationHashExpired",
       "msg": "Policy expiration violation: state hash has expired"
     },
     {
-      "code": 6128,
+      "code": 6129,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
     },
     {
-      "code": 6129,
+      "code": 6130,
       "name": "AccountIndexLocked",
       "msg": "Account index is locked, must increment_account_index first"
     },
     {
-      "code": 6130,
+      "code": 6131,
       "name": "MaxAccountIndexReached",
       "msg": "Cannot exceed maximum free account index (250)"
     }

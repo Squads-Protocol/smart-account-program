@@ -30,6 +30,7 @@ const SMALLVEC_U8_BEET_TYPES_GLOBAL = [
   'compiledInstructionConstraintBeet',
   'compiledAccountConstraintBeet',
   'compiledLimitedSpendingLimitBeet',
+  'compiledSpendingLimitV2Beet',  // NEW: For CompiledProgramInteractionPolicy on-chain state
   'compiledInstructionBeet',
   'messageAddressTableLookupBeet',
 ];
@@ -43,6 +44,7 @@ const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
   'beetSolana.publicKey': [
     'SmartAccountTransactionMessage.ts',
     'ProgramInteractionPolicyCreationPayload.ts',
+    'CompiledProgramInteractionPolicy.ts',  // NEW: pubkey_table in on-chain state
   ],
 };
 

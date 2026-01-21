@@ -172,6 +172,8 @@ pub enum SmartAccountError {
     ProgramInteractionTooManySpendingLimits,
     #[msg("Program interaction constraint violation: invalid pubkey table index")]
     ProgramInteractionInvalidPubkeyTableIndex,
+    #[msg("Program interaction constraint violation: duplicate pubkey table entry")]
+    ProgramInteractionDuplicatePubkeyTableEntry,
     #[msg("Program interaction constraint violation: too many unique pubkeys. Max is 240 (indices 240-255 reserved for builtin programs)")]
     ProgramInteractionTooManyUniquePubkeys,
     #[msg("Program interaction hook violation: template hook error")]
@@ -298,4 +300,5 @@ pub enum SmartAccountError {
     AccountIndexLocked,
     #[msg("Cannot exceed maximum free account index (250)")]
     MaxAccountIndexReached,
+
 }
