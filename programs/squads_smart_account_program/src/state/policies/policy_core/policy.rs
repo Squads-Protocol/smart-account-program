@@ -8,7 +8,8 @@ use crate::{
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
     ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
-    SettingsChangePolicy, SmartAccountSigner, SpendingLimitExecutionArgs, SpendingLimitPolicy,
+    SettingsChangePolicy, SmartAccountSigner, SmartAccountSignerWrapper, SmartAccountSignerV2,
+    SpendingLimitExecutionArgs, SpendingLimitPolicy,
     Transaction, SEED_POLICY, SEED_PREFIX,
 };
 
@@ -45,8 +46,8 @@ pub struct Policy {
     /// Stale transaction index boundary.
     pub stale_transaction_index: u64,
 
-    /// Signers attached to the policy with their permissions.
-    pub signers: Vec<SmartAccountSigner>,
+    /// Signers attached to the policy with their permissions (V1 or V2 format).
+    pub signers: SmartAccountSignerWrapper,
 
     /// Threshold for approvals.
     pub threshold: u16,
@@ -112,12 +113,11 @@ impl Policy {
         );
 
         // There must be no duplicate signers.
-        let has_duplicates = self.signers.windows(2).any(|win| win[0].key == win[1].key);
-        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
+        require!(!self.signers.has_duplicates(), SmartAccountError::DuplicateSigner);
 
         // Signers must not have unknown permissions.
         require!(
-            self.signers.iter().all(|s| s.permissions.mask < 8),
+            self.signers.all_permissions_valid(),
             SmartAccountError::UnknownPermission
         );
 
@@ -191,7 +191,7 @@ impl Policy {
             bump,
             transaction_index: 0,
             stale_transaction_index: 0,
-            signers: sorted_signers,
+            signers: SmartAccountSignerWrapper::from_v1_signers(sorted_signers),
             threshold,
             time_lock,
             policy_state,
@@ -213,7 +213,7 @@ impl Policy {
         let mut sorted_signers = signers.clone();
         sorted_signers.sort_by_key(|s| s.key);
 
-        self.signers = sorted_signers;
+        self.signers = SmartAccountSignerWrapper::from_v1_signers(sorted_signers);
         self.threshold = threshold;
         self.time_lock = time_lock;
         self.policy_state = policy_state;
@@ -396,7 +396,7 @@ impl Consensus for Policy {
         require_keys_eq!(address, key, SmartAccountError::InvalidAccount);
         Ok(())
     }
-    fn signers(&self) -> &[SmartAccountSigner] {
+    fn signers(&self) -> &SmartAccountSignerWrapper {
         &self.signers
     }
 

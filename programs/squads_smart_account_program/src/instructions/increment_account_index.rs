@@ -28,12 +28,13 @@ impl IncrementAccountIndex<'_> {
         let signer_key = self.signer.key();
 
         // Signer must be a member of the smart account
-        let signer_index = settings
-            .is_signer(signer_key)
+        let signer = settings
+            .signers
+            .find(&signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
         // Permission: Initiate OR Vote OR Execute (mask & 7 != 0)
-        let permissions = settings.signers[signer_index].permissions;
+        let permissions = signer.permissions();
         require!(
             permissions.has(Permission::Initiate)
                 || permissions.has(Permission::Vote)

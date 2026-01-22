@@ -13,6 +13,7 @@ use crate::{
     id,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     state::*,
+    state::signer_v2::{SmartAccountSignerWrapper, SmartAccountSignerV2},
     utils::*,
     SettingsAction,
 };
@@ -63,8 +64,8 @@ pub struct Settings {
     pub archivable_after: u64,
     /// Bump for the smart account PDA seed.
     pub bump: u8,
-    /// Signers attached to the smart account
-    pub signers: Vec<SmartAccountSigner>,
+    /// Signers attached to the smart account (V1 or V2 format with custom serialization)
+    pub signers: SmartAccountSignerWrapper,
     /// Counter for how many sub accounts are in use (improves off-chain indexing)
     pub account_utilization: u8,
     /// Seed used for deterministic policy creation.
@@ -78,11 +79,11 @@ impl Settings {
     pub fn generate_core_state_hash(&self) -> Result<[u8; 32]> {
         let mut data_to_hash = Vec::new();
 
-        // Signers
-        for signer in &self.signers {
-            data_to_hash.extend_from_slice(signer.key.as_ref());
+        // Signers (use V2 canonical view for consistent hashing)
+        for signer in self.signers.as_v2() {
+            data_to_hash.extend_from_slice(signer.key().as_ref());
             // Add signer permissions (1 byte)
-            data_to_hash.push(signer.permissions.mask);
+            data_to_hash.push(signer.permissions().mask);
         }
         // Threshold
         data_to_hash.extend_from_slice(&self.threshold.to_le_bytes());
@@ -128,7 +129,7 @@ impl Settings {
             system_program,
             &crate::ID,
             &rent,
-            Settings::size(self.signers.len()),
+            Settings::size_for_wrapper(&self.signers),
             vec![
                 SEED_PREFIX.to_vec(),
                 SEED_SETTINGS.to_vec(),
@@ -140,6 +141,7 @@ impl Settings {
         Ok(settings_account_info)
     }
 
+    /// Calculate size for V1 format (fixed 33-byte signers)
     pub fn size(signers_length: usize) -> usize {
         8  + // anchor account discriminator
         16 + // seed
@@ -154,6 +156,26 @@ impl Settings {
         1  + // bump
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE + // signers
+        1  + // sub_account_utilization
+        1  + 8 + // policy_seed
+        1 // _reserved_2
+    }
+
+    /// Calculate size based on actual wrapper contents (V1 or V2)
+    pub fn size_for_wrapper(wrapper: &SmartAccountSignerWrapper) -> usize {
+        let signers_size = wrapper.serialized_size();
+        8  + // anchor account discriminator
+        16 + // seed
+        32 + // settings_authority
+        2  + // threshold
+        4  + // time_lock
+        8  + // transaction_index
+        8  + // stale_transaction_index
+        1  + // archival_authority Option discriminator
+        32 + // archival_authority (always 32 bytes, even if None, just to keep the realloc logic simpler)
+        8  + // archivable_after
+        1  + // bump
+        signers_size + // signers (variable size)
         1  + // sub_account_utilization
         1  + 8 + // policy_seed
         1 // _reserved_2
@@ -207,12 +229,11 @@ impl Settings {
         );
 
         // There must be no duplicate signers.
-        let has_duplicates = signers.windows(2).any(|win| win[0].key == win[1].key);
-        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
+        require!(!signers.has_duplicates(), SmartAccountError::DuplicateSigner);
 
         // signers must not have unknown permissions.
         require!(
-            signers.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
+            signers.all_permissions_valid(), // mask < 8 = Initiate | Vote | Execute
             SmartAccountError::UnknownPermission
         );
 
@@ -254,8 +275,8 @@ impl Settings {
 
     /// Add `new_signer` to the settings `signers` vec and sort the vec.
     pub fn add_signer(&mut self, new_signer: SmartAccountSigner) {
-        self.signers.push(new_signer);
-        self.signers.sort_by_key(|m| m.key);
+        self.signers.add_signer(new_signer);
+        self.signers.sort_by_signer_key();
     }
 
     /// Remove `signer_pubkey` from the settings `signers` vec.
@@ -263,14 +284,10 @@ impl Settings {
     /// # Errors
     /// - `SmartAccountError::NotASigner` if `signer_pubkey` is not a signer.
     pub fn remove_signer(&mut self, signer_pubkey: Pubkey) -> Result<()> {
-        let old_signer_index = match self.is_signer(signer_pubkey) {
-            Some(old_signer_index) => old_signer_index,
-            None => return err!(SmartAccountError::NotASigner),
-        };
-
-        self.signers.remove(old_signer_index);
-
-        Ok(())
+        match self.signers.remove_signer(&signer_pubkey) {
+            Some(_) => Ok(()),
+            None => err!(SmartAccountError::NotASigner),
+        }
     }
     // Modify the settings with a given action.
     pub fn modify_with_action<'info>(
@@ -762,7 +779,7 @@ impl Settings {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone, Debug)]
 pub struct SmartAccountSigner {
     pub key: Pubkey,
     pub permissions: Permissions,
@@ -822,7 +839,7 @@ impl Consensus for Settings {
         Ok(())
     }
 
-    fn signers(&self) -> &[SmartAccountSigner] {
+    fn signers(&self) -> &SmartAccountSignerWrapper {
         &self.signers
     }
 

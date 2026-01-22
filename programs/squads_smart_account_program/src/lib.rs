@@ -347,4 +347,28 @@ pub mod squads_smart_account_program {
     pub fn increment_account_index(ctx: Context<IncrementAccountIndex>) -> Result<()> {
         IncrementAccountIndex::increment_account_index(ctx)
     }
+
+    /// Vote on a proposal with V2 signer support (native + external signers)
+    pub fn proposal_vote_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ProposalVoteV2<'info>>,
+        args: ProposalVoteV2Args,
+    ) -> Result<()> {
+        ProposalVoteV2::proposal_vote_v2(ctx, args)
+    }
+
+    /// Add an external signer to the smart account (P256/WebAuthn, secp256k1, Ed25519 external)
+    pub fn settings_add_external_signer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SettingsAddExternalSigner<'info>>,
+        args: AddExternalSignerArgs,
+    ) -> Result<()> {
+        SettingsAddExternalSigner::settings_add_external_signer(ctx, args)
+    }
+
+    /// Remove an external signer from the smart account
+    pub fn settings_remove_external_signer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SettingsRemoveExternalSigner<'info>>,
+        args: RemoveExternalSignerArgs,
+    ) -> Result<()> {
+        SettingsRemoveExternalSigner::settings_remove_external_signer(ctx, args)
+    }
 }

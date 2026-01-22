@@ -8,7 +8,8 @@ use crate::{
         derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
     },
     CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
-    PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage,
+    PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner,
+    SmartAccountSignerWrapper, TransactionMessage,
     TransactionPayload, TransactionPayloadDetails, HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER,
     SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,
 };
@@ -542,7 +543,7 @@ pub struct ProgramInteractionExecutionArgs {
     pub settings_key: Pubkey,
     pub transaction_key: Pubkey,
     pub proposal_key: Pubkey,
-    pub policy_signers: Vec<SmartAccountSigner>,
+    pub policy_signers: SmartAccountSignerWrapper,
 }
 
 // =============================================================================

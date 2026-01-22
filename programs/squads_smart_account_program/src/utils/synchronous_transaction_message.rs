@@ -4,6 +4,7 @@ use anchor_lang::solana_program::program::invoke_signed;
 
 use crate::errors::*;
 use crate::state::*;
+use crate::SmartAccountSignerWrapper;
 use crate::LogEvent;
 
 /// Sanitized and validated combination of transaction instructions and accounts
@@ -16,7 +17,7 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
     pub fn new_validated(
         settings_key: &Pubkey,
         smart_account_pubkey: &Pubkey,
-        consensus_account_signers: &[SmartAccountSigner],
+        consensus_account_signers: &SmartAccountSignerWrapper,
         instructions: &'a [SmartAccountCompiledInstruction],
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
@@ -51,7 +52,7 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
             } else if account.key == settings_key {
                 // This prevents dangerous re-entrancy
                 account_info.is_writable = false;
-            } else if consensus_account_signers.iter().any(|signer| &signer.key == account.key) && account.is_signer {
+            } else if consensus_account_signers.find(account.key).is_some() && account.is_signer {
                 // We may want to remove this so that a signer can be a rent
                 // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;

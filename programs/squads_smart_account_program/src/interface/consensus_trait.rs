@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{Permission, SmartAccountSigner};
+use crate::{Permission, SmartAccountSignerV2, SmartAccountSignerWrapper};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum ConsensusAccountType {
@@ -15,48 +15,52 @@ pub trait Consensus {
     fn is_active(&self, accounts: &[AccountInfo]) -> Result<()>;
 
     // Core consensus fields
-    fn signers(&self) -> &[SmartAccountSigner];
+    fn signers(&self) -> &SmartAccountSignerWrapper;
     fn threshold(&self) -> u16;
     fn time_lock(&self) -> u32;
     fn transaction_index(&self) -> u64;
     fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()>;
     fn stale_transaction_index(&self) -> u64;
 
-    // Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
+    /// Get signers as V2 format (canonical view for consensus)
+    fn signers_v2(&self) -> Vec<SmartAccountSignerV2> {
+        self.signers().as_v2()
+    }
+
+    /// Number of signers
+    fn signers_len(&self) -> usize {
+        self.signers().len()
+    }
+
+    /// Check if signer exists (by key or key_id)
+    fn is_signer_v2(&self, key: Pubkey) -> Option<SmartAccountSignerV2> {
+        self.signers().find(&key)
+    }
+
+    /// Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
     /// `None` otherwise.
     fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
-        self.signers()
-            .binary_search_by_key(&signer_pubkey, |s| s.key)
-            .ok()
+        self.signers().find_index(&signer_pubkey)
     }
 
     fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
-        match self.is_signer(signer_pubkey) {
-            Some(index) => self.signers()[index].permissions.has(permission),
+        match self.is_signer_v2(signer_pubkey) {
+            Some(signer) => signer.permissions().has(permission),
             _ => false,
         }
     }
 
     // Permission counting methods
     fn num_voters(&self) -> usize {
-        self.signers()
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Vote))
-            .count()
+        self.signers().count_with_permission(Permission::Vote)
     }
 
     fn num_proposers(&self) -> usize {
-        self.signers()
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Initiate))
-            .count()
+        self.signers().count_with_permission(Permission::Initiate)
     }
 
     fn num_executors(&self) -> usize {
-        self.signers()
-            .iter()
-            .filter(|s| s.permissions.has(Permission::Execute))
-            .count()
+        self.signers().count_with_permission(Permission::Execute)
     }
 
     /// How many "reject" votes are enough to make the transaction "Rejected".

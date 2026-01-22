@@ -298,4 +298,64 @@ pub enum SmartAccountError {
     AccountIndexLocked,
     #[msg("Cannot exceed maximum free account index (250)")]
     MaxAccountIndexReached,
+
+    // ===============================================
+    // V2 Signer Errors
+    // ===============================================
+    #[msg("Unsupported signer version in account data")]
+    UnsupportedSignerVersion,
+    #[msg("Failed to deserialize account data")]
+    DeserializationFailed,
+    #[msg("Failed to serialize account data")]
+    SerializationFailed,
+    #[msg("Cannot serialize external signers as V1 format")]
+    CannotSerializeExternalAsV1,
+    #[msg("Signer already exists with this key_id")]
+    SignerAlreadyExists,
+    #[msg("External signer not found")]
+    ExternalSignerNotFound,
+    #[msg("Use add_signer instruction for native signers")]
+    UseAddSignerForNative,
+    #[msg("Invalid signer type for this operation")]
+    InvalidSignerType,
+    #[msg("Invalid account data")]
+    InvalidAccountData,
+
+    // ===============================================
+    // Precompile Verification Errors
+    // ===============================================
+    #[msg("Missing precompile instruction for external signature")]
+    MissingPrecompileInstruction,
+    #[msg("Invalid precompile program ID")]
+    InvalidPrecompileProgram,
+    #[msg("Precompile public key does not match signer")]
+    PrecompilePublicKeyMismatch,
+    #[msg("Precompile message does not match expected")]
+    PrecompileMessageMismatch,
+    #[msg("Invalid precompile instruction data")]
+    InvalidPrecompileData,
+    #[msg("Precompile signature count mismatch")]
+    PrecompileSignatureCountMismatch,
+    #[msg("WebAuthn RP ID hash mismatch")]
+    WebauthnRpIdMismatch,
+    #[msg("WebAuthn user presence flag not set")]
+    WebauthnUserNotPresent,
+    #[msg("WebAuthn counter not incremented")]
+    WebauthnCounterNotIncremented,
+    #[msg("External signature already used in this transaction")]
+    DuplicateExternalSignature,
+
+    // ===============================================
+    // Version Migration Errors
+    // ===============================================
+    #[msg("V1 instruction called on V2 account - use V2 instruction")]
+    V1InstructionOnV2Account,
+    #[msg("V2 instruction called on V1 account - migrate first or use V1")]
+    V2InstructionOnV1Account,
+    #[msg("Cannot downgrade to V1 - external signers still present")]
+    CannotDowngradeWithExternalSigners,
+    #[msg("Signer has already voted on this proposal")]
+    AlreadyVoted,
+    #[msg("Signers do not meet consensus threshold")]
+    NotEnoughSigners,
 }

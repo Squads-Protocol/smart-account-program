@@ -8,6 +8,7 @@ use crate::errors::SmartAccountError;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::SmartAccountSignerWrapper;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSmartAccountArgs {
@@ -93,7 +94,7 @@ impl<'info> CreateSmartAccount<'info> {
             // Preset to 0 until archival feature is implemented.
             archivable_after: 0,
             bump: settings_bump,
-            signers,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
             account_utilization: 0,
             policy_seed: Some(0),
             _reserved2: 0,

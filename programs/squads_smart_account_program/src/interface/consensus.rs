@@ -4,7 +4,7 @@ use anchor_lang::{
 };
 
 use crate::{
-    errors::SmartAccountError, get_policy_signer_seeds, get_settings_signer_seeds, state::{Policy, Settings}, SmartAccountSigner
+    errors::SmartAccountError, get_policy_signer_seeds, get_settings_signer_seeds, state::{Policy, Settings}, SmartAccountSignerWrapper
 };
 
 use super::consensus_trait::{Consensus, ConsensusAccountType};
@@ -156,7 +156,7 @@ impl Consensus for ConsensusAccount {
         self.as_consensus().account_type()
     }
 
-    fn signers(&self) -> &[SmartAccountSigner] {
+    fn signers(&self) -> &SmartAccountSignerWrapper {
         self.as_consensus().signers()
     }
 

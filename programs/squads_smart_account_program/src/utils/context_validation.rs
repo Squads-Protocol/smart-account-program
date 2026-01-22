@@ -32,7 +32,7 @@ pub fn validate_synchronous_consensus(
 
     // Check permissions for all signers
     for signer in signers.iter() {
-        if let Some(member_index) = consensus_account.is_signer(signer.key()) {
+        if let Some(member) = consensus_account.is_signer_v2(signer.key()) {
             // Check that the signer is indeed a signer
             if !signer.is_signer {
                 return err!(SmartAccountError::MissingSignature);
@@ -43,7 +43,7 @@ pub fn validate_synchronous_consensus(
             }
             seen_signers.push(signer.key());
 
-            let signer_permissions = consensus_account.signers()[member_index].permissions;
+            let signer_permissions = member.permissions();
             // Add to the aggregated permissions mask
             aggregated_permissions.mask |= signer_permissions.mask;
 
