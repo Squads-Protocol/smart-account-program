@@ -3,58 +3,375 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use std::io::{Read, Write};
 
 // Re-export from settings for convenience
-pub use super::settings::{Permission, Permissions, SmartAccountSigner};
+pub use super::settings::{Permission, Permissions, LegacySmartAccountSigner};
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/// Maximum session key expiration: 3 months (in seconds)
+/// This matches the external-signature-program's SESSION_KEY_EXPIRATION_LIMIT
+pub const SESSION_KEY_EXPIRATION_LIMIT: u64 = 3 * 30 * 24 * 60 * 60; // ~7,776,000 seconds
+
+/// Maximum number of signers. Limited to u16::MAX to ensure the 4-byte length
+/// header [len_lo, len_mid, len_hi, version] doesn't overflow into the version byte.
+pub const MAX_SIGNERS: usize = u16::MAX as usize; // 65535
+
+/// WebAuthn authenticator data minimum size: rpIdHash(32) + flags(1) + counter(4) = 37 bytes
+pub const WEBAUTHN_AUTH_DATA_MIN_SIZE: usize = 32 + 1 + 4;
+
+/// WebAuthn clientDataJSON hash size (SHA256)
+pub const WEBAUTHN_CLIENT_DATA_HASH_SIZE: usize = 32;
+
+/// WebAuthn minimum signature payload size (auth data + clientDataHash)
+pub const WEBAUTHN_SIGNATURE_MIN_SIZE: usize = WEBAUTHN_AUTH_DATA_MIN_SIZE + WEBAUTHN_CLIENT_DATA_HASH_SIZE; // 69 bytes
+
+// ============================================================================
+// V2 Signer Type
+// ============================================================================
 
 /// V2 signer type discriminator (explicit u8 values for stability)
 #[derive(Clone, Copy, PartialEq, Eq, Debug, BorshSerialize, BorshDeserialize)]
 #[repr(u8)]
-pub enum SignerTypeV2 {
+pub enum SignerType {
     Native = 0,
     P256Webauthn = 1,
     Secp256k1 = 2,
     Ed25519External = 3,
 }
 
-/// P256/WebAuthn signer data (73 bytes)
-/// - compressed_pubkey: 33 bytes (compressed P256 public key)
-/// - rp_id_hash: 32 bytes (SHA256 of Relying Party ID for validation)
-/// - counter: 8 bytes (WebAuthn counter for replay protection)
+// ============================================================================
+// Session Key Management (Shared Implementation)
+// ============================================================================
+
+/// Session key data shared by all external signer types.
+/// Extracted into a separate struct to eliminate code duplication.
+#[derive(Clone, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq, Default)]
+pub struct SessionKeyData {
+    /// Optional session key pubkey. Pubkey::default() means no session key.
+    pub key: Pubkey,
+    /// Session key expiration timestamp (Unix seconds). 0 if no session key.
+    pub expiration: u64,
+}
+
+impl SessionKeyData {
+    pub const SIZE: usize = 32 + 8; // 40 bytes
+
+    /// Check if session key is active (not default and not expired)
+    #[inline]
+    pub fn is_active(&self, current_timestamp: u64) -> bool {
+        self.key != Pubkey::default() && self.expiration > current_timestamp
+    }
+
+    /// Check if a given pubkey matches this session key and is active
+    #[inline]
+    pub fn matches(&self, pubkey: &Pubkey, current_timestamp: u64) -> bool {
+        self.key == *pubkey && self.is_active(current_timestamp)
+    }
+
+    /// Clear session key
+    #[inline]
+    pub fn clear(&mut self) {
+        self.key = Pubkey::default();
+        self.expiration = 0;
+    }
+
+    /// Set session key with validation
+    pub fn set(&mut self, key: Pubkey, expiration: u64, current_timestamp: u64) -> Result<()> {
+        // Session key must not be the default pubkey
+        if key == Pubkey::default() {
+            return Err(error!(crate::errors::SmartAccountError::InvalidSessionKey));
+        }
+        // Session key expiration must be strictly in the future
+        // (is_active checks expiration > current_timestamp, so expiration == current_timestamp would be immediately invalid)
+        if expiration <= current_timestamp {
+            return Err(error!(crate::errors::SmartAccountError::InvalidSessionKeyExpiration));
+        }
+        // Session key expiration must not exceed the limit (3 months from now)
+        if expiration > current_timestamp.saturating_add(SESSION_KEY_EXPIRATION_LIMIT) {
+            return Err(error!(crate::errors::SmartAccountError::SessionKeyExpirationTooLong));
+        }
+        self.key = key;
+        self.expiration = expiration;
+        Ok(())
+    }
+}
+
+// ============================================================================
+// P256/WebAuthn Signer Data
+// ============================================================================
+
+/// P256/WebAuthn signer data for passkey authentication.
+///
+/// ## Fields
+/// - `compressed_pubkey`: 33 bytes - Compressed P256 public key for signature verification
+/// - `rp_id_len`: 1 byte - Actual length of RP ID (since rp_id is zero-padded to 32 bytes)
+/// - `rp_id`: 32 bytes - Relying Party ID string, used for origin verification
+/// - `rp_id_hash`: 32 bytes - SHA256 of RP ID, provided by authenticator in auth data
+/// - `counter`: 8 bytes - WebAuthn counter for replay protection (MUST be monotonically increasing)
+/// - `session_key`: Session key data for temporary native key delegation
 #[derive(Clone, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq)]
-pub struct P256WebauthnDataV2 {
+pub struct P256WebauthnData {
     pub compressed_pubkey: [u8; 33],
+    pub rp_id_len: u8,
+    pub rp_id: [u8; 32],
     pub rp_id_hash: [u8; 32],
     pub counter: u64,
+    /// Session key for temporary native key delegation
+    pub session_key_data: SessionKeyData,
 }
 
-impl P256WebauthnDataV2 {
-    pub const SIZE: usize = 33 + 32 + 8; // 73 bytes
+impl Default for P256WebauthnData {
+    fn default() -> Self {
+        Self {
+            compressed_pubkey: [0u8; 33],
+            rp_id_len: 0,
+            rp_id: [0u8; 32],
+            rp_id_hash: [0u8; 32],
+            counter: 0,
+            session_key_data: SessionKeyData::default(),
+        }
+    }
 }
 
-/// Secp256k1 signer data (85 bytes)
-/// - uncompressed_pubkey: 64 bytes (uncompressed secp256k1 public key, no 0x04 prefix)
-/// - eth_address: 20 bytes (keccak256(pubkey)[12..32])
-/// - has_eth_address: 1 byte (whether eth_address is populated/validated)
+impl P256WebauthnData {
+    pub const SIZE: usize = 33 + 1 + 32 + 32 + 8 + SessionKeyData::SIZE; // 146 bytes
+    pub const PACKED_PAYLOAD_LEN: usize = 33 + Self::SIZE;
+
+    /// Create new P256WebauthnData with RP ID (no session key).
+    ///
+    /// Note: The caller should verify that `rp_id_hash == sha256(rp_id)` before calling.
+    pub fn new(compressed_pubkey: [u8; 33], rp_id: &[u8], rp_id_hash: [u8; 32], counter: u64) -> Self {
+        let rp_id_len = rp_id.len().min(32) as u8;
+        let mut rp_id_padded = [0u8; 32];
+        rp_id_padded[..rp_id_len as usize].copy_from_slice(&rp_id[..rp_id_len as usize]);
+
+        Self {
+            compressed_pubkey,
+            rp_id_len,
+            rp_id: rp_id_padded,
+            rp_id_hash,
+            counter,
+            session_key_data: SessionKeyData::default(),
+        }
+    }
+
+    /// Get the RP ID as a slice (without padding)
+    #[inline]
+    pub fn get_rp_id(&self) -> &[u8] {
+        &self.rp_id[..self.rp_id_len as usize]
+    }
+
+    #[inline]
+    fn session_key_data(&self) -> &SessionKeyData {
+        &self.session_key_data
+    }
+
+    #[inline]
+    fn session_key_data_mut(&mut self) -> &mut SessionKeyData {
+        &mut self.session_key_data
+    }
+
+    /// Check if session key is active (not default and not expired)
+    #[inline]
+    pub fn has_active_session_key(&self, current_timestamp: u64) -> bool {
+        self.session_key_data().is_active(current_timestamp)
+    }
+
+    /// Clear session key
+    #[inline]
+    pub fn clear_session_key(&mut self) {
+        self.session_key_data_mut().clear();
+    }
+
+    /// Set session key with validation
+    pub fn set_session_key(&mut self, key: Pubkey, expiration: u64, current_timestamp: u64) -> Result<()> {
+        self.session_key_data_mut().set(key, expiration, current_timestamp)
+    }
+}
+
+/// Parameters for reconstructing clientDataJSON on-chain
+/// Packed into a single byte + optional port to minimize storage
+#[derive(Clone, Copy, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq, Default)]
+pub struct ClientDataJsonReconstructionParams {
+    /// High 4 bits: type (0x00 = create, 0x10 = get)
+    /// Low 4 bits: flags (cross_origin, http, google_extra)
+    pub type_and_flags: u8,
+    /// Optional port number (0 means no port)
+    pub port: u16,
+}
+
+impl ClientDataJsonReconstructionParams {
+    pub const TYPE_CREATE: u8 = 0x00;
+    pub const TYPE_GET: u8 = 0x10;
+    pub const FLAG_CROSS_ORIGIN: u8 = 0x01;
+    pub const FLAG_HTTP_ORIGIN: u8 = 0x02;
+    pub const FLAG_GOOGLE_EXTRA: u8 = 0x04;
+
+    pub fn new(
+        is_create: bool,
+        cross_origin: bool,
+        http_origin: bool,
+        google_extra: bool,
+        port: Option<u16>,
+    ) -> Self {
+        let type_bits = if is_create { Self::TYPE_CREATE } else { Self::TYPE_GET };
+        let mut flags = 0u8;
+        if cross_origin { flags |= Self::FLAG_CROSS_ORIGIN; }
+        if http_origin { flags |= Self::FLAG_HTTP_ORIGIN; }
+        if google_extra { flags |= Self::FLAG_GOOGLE_EXTRA; }
+
+        Self {
+            type_and_flags: type_bits | flags,
+            port: port.unwrap_or(0),
+        }
+    }
+
+    pub fn is_create(&self) -> bool {
+        (self.type_and_flags & 0xF0) == Self::TYPE_CREATE
+    }
+
+    pub fn is_cross_origin(&self) -> bool {
+        (self.type_and_flags & Self::FLAG_CROSS_ORIGIN) != 0
+    }
+
+    pub fn is_http(&self) -> bool {
+        (self.type_and_flags & Self::FLAG_HTTP_ORIGIN) != 0
+    }
+
+    pub fn has_google_extra(&self) -> bool {
+        (self.type_and_flags & Self::FLAG_GOOGLE_EXTRA) != 0
+    }
+
+    pub fn get_port(&self) -> Option<u16> {
+        if self.port == 0 { None } else { Some(self.port) }
+    }
+}
+
+// ============================================================================
+// Secp256k1 Signer Data
+// ============================================================================
+
+/// Secp256k1 signer data for Ethereum-style authentication.
+///
+/// ## Fields
+/// - `uncompressed_pubkey`: 64 bytes - Uncompressed secp256k1 public key (no 0x04 prefix)
+/// - `eth_address`: 20 bytes - keccak256(pubkey)[12..32], the Ethereum address
+/// - `has_eth_address`: 1 byte - Whether eth_address has been validated
+/// - `session_key`: Session key data for temporary native key delegation
 #[derive(Clone, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq)]
-pub struct Secp256k1DataV2 {
+pub struct Secp256k1Data {
     pub uncompressed_pubkey: [u8; 64],
     pub eth_address: [u8; 20],
     pub has_eth_address: bool,
+    pub session_key_data: SessionKeyData,
 }
 
-impl Secp256k1DataV2 {
-    pub const SIZE: usize = 64 + 20 + 1; // 85 bytes
+impl Default for Secp256k1Data {
+    fn default() -> Self {
+        Self {
+            uncompressed_pubkey: [0u8; 64],
+            eth_address: [0u8; 20],
+            has_eth_address: false,
+            session_key_data: SessionKeyData::default(),
+        }
+    }
 }
 
-/// Ed25519 external signer data (32 bytes)
-/// - external_pubkey: 32 bytes (Ed25519 public key verified via precompile, not native Signer)
+impl Secp256k1Data {
+    pub const SIZE: usize = 64 + 20 + 1 + SessionKeyData::SIZE; // 125 bytes
+    pub const PACKED_PAYLOAD_LEN: usize = 33 + Self::SIZE;
+
+    #[inline]
+    fn session_key_data(&self) -> &SessionKeyData {
+        &self.session_key_data
+    }
+
+    #[inline]
+    fn session_key_data_mut(&mut self) -> &mut SessionKeyData {
+        &mut self.session_key_data
+    }
+
+    /// Check if session key is active (not default and not expired)
+    #[inline]
+    pub fn has_active_session_key(&self, current_timestamp: u64) -> bool {
+        self.session_key_data().is_active(current_timestamp)
+    }
+
+    /// Clear session key
+    #[inline]
+    pub fn clear_session_key(&mut self) {
+        self.session_key_data_mut().clear();
+    }
+
+    /// Set session key with validation
+    pub fn set_session_key(&mut self, key: Pubkey, expiration: u64, current_timestamp: u64) -> Result<()> {
+        self.session_key_data_mut().set(key, expiration, current_timestamp)
+    }
+}
+
+// ============================================================================
+// Ed25519 External Signer Data
+// ============================================================================
+
+/// Ed25519 external signer data for hardware keys or off-chain Ed25519 signers.
+///
+/// This is for Ed25519 keys that are NOT native Solana transaction signers.
+/// Instead, they're verified via the Ed25519 precompile introspection.
+///
+/// ## Fields
+/// - `external_pubkey`: 32 bytes - Ed25519 public key verified via precompile
+/// - `session_key`: Session key data for temporary native key delegation
 #[derive(Clone, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq)]
-pub struct Ed25519ExternalDataV2 {
+pub struct Ed25519ExternalData {
     pub external_pubkey: [u8; 32],
+    pub session_key_data: SessionKeyData,
 }
 
-impl Ed25519ExternalDataV2 {
-    pub const SIZE: usize = 32;
+impl Default for Ed25519ExternalData {
+    fn default() -> Self {
+        Self {
+            external_pubkey: [0u8; 32],
+            session_key_data: SessionKeyData::default(),
+        }
+    }
 }
+
+impl Ed25519ExternalData {
+    pub const SIZE: usize = 32 + SessionKeyData::SIZE; // 72 bytes
+    pub const PACKED_PAYLOAD_LEN: usize = 33 + Self::SIZE;
+
+    #[inline]
+    fn session_key_data(&self) -> &SessionKeyData {
+        &self.session_key_data
+    }
+
+    #[inline]
+    fn session_key_data_mut(&mut self) -> &mut SessionKeyData {
+        &mut self.session_key_data
+    }
+
+    /// Check if session key is active (not default and not expired)
+    #[inline]
+    pub fn has_active_session_key(&self, current_timestamp: u64) -> bool {
+        self.session_key_data().is_active(current_timestamp)
+    }
+
+    /// Clear session key
+    #[inline]
+    pub fn clear_session_key(&mut self) {
+        self.session_key_data_mut().clear();
+    }
+
+    /// Set session key with validation
+    pub fn set_session_key(&mut self, key: Pubkey, expiration: u64, current_timestamp: u64) -> Result<()> {
+        self.session_key_data_mut().set(key, expiration, current_timestamp)
+    }
+}
+
+// ============================================================================
+// Unified V2 Signer Enum
+// ============================================================================
 
 /// Unified V2 signer enum
 /// Each variant contains:
@@ -62,7 +379,7 @@ impl Ed25519ExternalDataV2 {
 /// - permissions: Permissions (same bitmask as V1)
 /// - type-specific data
 #[derive(Clone, BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq)]
-pub enum SmartAccountSignerV2 {
+pub enum SmartAccountSigner {
     /// Native Solana Ed25519 signer (verified via AccountInfo.is_signer)
     Native {
         key: Pubkey,
@@ -73,27 +390,27 @@ pub enum SmartAccountSignerV2 {
     P256Webauthn {
         key_id: Pubkey,
         permissions: Permissions,
-        data: P256WebauthnDataV2,
+        data: P256WebauthnData,
     },
 
     /// Secp256k1/Ethereum-style signer (verified via secp256k1 precompile introspection)
     Secp256k1 {
         key_id: Pubkey,
         permissions: Permissions,
-        data: Secp256k1DataV2,
+        data: Secp256k1Data,
     },
 
     /// Ed25519 external signer (verified via ed25519 precompile introspection, NOT native Signer)
     Ed25519External {
         key_id: Pubkey,
         permissions: Permissions,
-        data: Ed25519ExternalDataV2,
+        data: Ed25519ExternalData,
     },
 }
 
-impl SmartAccountSignerV2 {
+impl SmartAccountSigner {
     /// Derive deterministic key_id from signer type and canonical public key bytes
-    pub fn derive_key_id(signer_type: SignerTypeV2, canonical_key: &[u8]) -> Pubkey {
+    pub fn derive_key_id(signer_type: SignerType, canonical_key: &[u8]) -> Pubkey {
         use anchor_lang::solana_program::hash::hash;
 
         let mut data = Vec::with_capacity(1 + canonical_key.len());
@@ -101,6 +418,143 @@ impl SmartAccountSignerV2 {
         data.extend_from_slice(canonical_key);
 
         Pubkey::new_from_array(hash(&data).to_bytes())
+    }
+
+    /// Create a SmartAccountSigner from raw instruction data.
+    ///
+    /// # Arguments
+    /// - `signer_type`: The type of signer (0=Native, 1=P256Webauthn, 2=Secp256k1, 3=Ed25519External)
+    /// - `key`: For Native signers, the signer's pubkey. Ignored for external signers (key_id is derived).
+    /// - `permissions`: The permissions for this signer
+    /// - `signer_data`: Signer-specific data:
+    ///   - Native: empty (0 bytes)
+    ///   - P256Webauthn: 74 bytes (compressed_pubkey(33) + rp_id_len(1) + rp_id(32) + counter(8))
+    ///     Note: rp_id_hash is derived from rp_id, not provided by caller
+    ///   - Secp256k1: 85 bytes (uncompressed_pubkey(64) + eth_address(20) + has_eth_address(1))
+    ///   - Ed25519External: 32 bytes (external_pubkey)
+    pub fn from_raw_data(
+        signer_type: u8,
+        key: Pubkey,
+        permissions: Permissions,
+        signer_data: &[u8],
+    ) -> Result<Self> {
+        // Validate permissions mask (must be < 8, only bits 0-2 are valid)
+        if permissions.mask >= 8 {
+            return Err(error!(crate::errors::SmartAccountError::InvalidPermissions));
+        }
+
+        let signer_type = match signer_type {
+            0 => SignerType::Native,
+            1 => SignerType::P256Webauthn,
+            2 => SignerType::Secp256k1,
+            3 => SignerType::Ed25519External,
+            _ => return Err(error!(crate::errors::SmartAccountError::InvalidSignerType)),
+        };
+
+        match signer_type {
+            SignerType::Native => {
+                // Native signers must not have default pubkey
+                if key == Pubkey::default() {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+                // Native signers have no additional data, key is used directly
+                if !signer_data.is_empty() {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+                Ok(Self::Native { key, permissions })
+            }
+            SignerType::P256Webauthn => {
+                // Layout: compressed_pubkey(33) + rp_id_len(1) + rp_id(32) + counter(8) = 74 bytes
+                // Note: rp_id_hash is computed from rp_id, not accepted from user input
+                if signer_data.len() != 74 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+                let mut compressed_pubkey = [0u8; 33];
+                compressed_pubkey.copy_from_slice(&signer_data[0..33]);
+
+                let rp_id_len = signer_data[33];
+                if rp_id_len > 32 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+
+                let mut rp_id = [0u8; 32];
+                rp_id.copy_from_slice(&signer_data[34..66]);
+
+                // Derive rp_id_hash from rp_id (don't trust user input)
+                // This matches the external-signature-program approach
+                use anchor_lang::solana_program::hash::hash;
+                let rp_id_hash_result = hash(&rp_id[..rp_id_len as usize]);
+                let mut rp_id_hash = [0u8; 32];
+                rp_id_hash.copy_from_slice(&rp_id_hash_result.to_bytes());
+
+                let counter = u64::from_le_bytes(
+                    signer_data[66..74]
+                        .try_into()
+                        .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?,
+                );
+
+                // Derive key_id deterministically from the compressed public key
+                let key_id = Self::derive_key_id(SignerType::P256Webauthn, &compressed_pubkey);
+
+                Ok(Self::P256Webauthn {
+                    key_id,
+                    permissions,
+                    data: P256WebauthnData {
+                        compressed_pubkey,
+                        rp_id_len,
+                        rp_id,
+                        rp_id_hash,
+                        counter,
+                        session_key_data: SessionKeyData::default(),
+                    },
+                })
+            }
+            SignerType::Secp256k1 => {
+                // Layout: uncompressed_pubkey(64) + eth_address(20) + has_eth_address(1) = 85 bytes
+                if signer_data.len() != 85 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+                let mut uncompressed_pubkey = [0u8; 64];
+                uncompressed_pubkey.copy_from_slice(&signer_data[0..64]);
+                let mut eth_address = [0u8; 20];
+                eth_address.copy_from_slice(&signer_data[64..84]);
+                let has_eth_address = signer_data[84] != 0;
+
+                // Derive key_id deterministically from the uncompressed public key
+                let key_id = Self::derive_key_id(SignerType::Secp256k1, &uncompressed_pubkey);
+
+                Ok(Self::Secp256k1 {
+                    key_id,
+                    permissions,
+                    data: Secp256k1Data {
+                        uncompressed_pubkey,
+                        eth_address,
+                        has_eth_address,
+                        session_key_data: SessionKeyData::default(),
+                    },
+                })
+            }
+            SignerType::Ed25519External => {
+                // Layout: external_pubkey(32) = 32 bytes
+                if signer_data.len() != 32 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+                let mut external_pubkey = [0u8; 32];
+                external_pubkey.copy_from_slice(&signer_data[0..32]);
+
+                // Derive key_id deterministically from the external public key
+                let key_id = Self::derive_key_id(SignerType::Ed25519External, &external_pubkey);
+
+                Ok(Self::Ed25519External {
+                    key_id,
+                    permissions,
+                    data: Ed25519ExternalData {
+                        external_pubkey,
+                        session_key_data: SessionKeyData::default(),
+                    },
+                })
+            }
+        }
     }
 
     /// Get the key (Native) or key_id (External) for this signer
@@ -124,12 +578,12 @@ impl SmartAccountSignerV2 {
     }
 
     /// Get signer type discriminator
-    pub fn signer_type(&self) -> SignerTypeV2 {
+    pub fn signer_type(&self) -> SignerType {
         match self {
-            Self::Native { .. } => SignerTypeV2::Native,
-            Self::P256Webauthn { .. } => SignerTypeV2::P256Webauthn,
-            Self::Secp256k1 { .. } => SignerTypeV2::Secp256k1,
-            Self::Ed25519External { .. } => SignerTypeV2::Ed25519External,
+            Self::Native { .. } => SignerType::Native,
+            Self::P256Webauthn { .. } => SignerType::P256Webauthn,
+            Self::Secp256k1 { .. } => SignerType::Secp256k1,
+            Self::Ed25519External { .. } => SignerType::Ed25519External,
         }
     }
 
@@ -153,18 +607,139 @@ impl SmartAccountSignerV2 {
         }
     }
 
-    /// Convert from V1 SmartAccountSigner (always Native)
-    pub fn from_v1(signer: &SmartAccountSigner) -> Self {
+    /// Check if two signers have the same underlying public key (not just key_id)
+    /// This prevents adding the same external public key with different key_ids
+    pub fn has_same_public_key(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Native { key: k1, .. }, Self::Native { key: k2, .. }) => k1 == k2,
+            (Self::P256Webauthn { data: d1, .. }, Self::P256Webauthn { data: d2, .. }) => {
+                d1.compressed_pubkey == d2.compressed_pubkey
+            }
+            (Self::Secp256k1 { data: d1, .. }, Self::Secp256k1 { data: d2, .. }) => {
+                d1.uncompressed_pubkey == d2.uncompressed_pubkey
+            }
+            (Self::Ed25519External { data: d1, .. }, Self::Ed25519External { data: d2, .. }) => {
+                d1.external_pubkey == d2.external_pubkey
+            }
+            // Different signer types can't have the same key
+            _ => false,
+        }
+    }
+
+    /// Get the session key for this signer (if external and has one)
+    pub fn get_session_key(&self) -> Option<Pubkey> {
+        match self {
+            Self::Native { .. } => None,
+            Self::P256Webauthn { data, .. } => {
+                if data.session_key_data.key != Pubkey::default() {
+                    Some(data.session_key_data.key)
+                } else {
+                    None
+                }
+            }
+            Self::Secp256k1 { data, .. } => {
+                if data.session_key_data.key != Pubkey::default() {
+                    Some(data.session_key_data.key)
+                } else {
+                    None
+                }
+            }
+            Self::Ed25519External { data, .. } => {
+                if data.session_key_data.key != Pubkey::default() {
+                    Some(data.session_key_data.key)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// Check if session key is active (exists and not expired)
+    pub fn has_active_session_key(&self, current_timestamp: u64) -> bool {
+        match self {
+            Self::Native { .. } => false,
+            Self::P256Webauthn { data, .. } => data.has_active_session_key(current_timestamp),
+            Self::Secp256k1 { data, .. } => data.has_active_session_key(current_timestamp),
+            Self::Ed25519External { data, .. } => data.has_active_session_key(current_timestamp),
+        }
+    }
+
+    /// Check if a given pubkey matches this signer's session key and is active
+    pub fn is_valid_session_key(&self, pubkey: &Pubkey, current_timestamp: u64) -> bool {
+        match self {
+            Self::Native { .. } => false,
+            Self::P256Webauthn { data, .. } => {
+                data.session_key_data.key == *pubkey && data.has_active_session_key(current_timestamp)
+            }
+            Self::Secp256k1 { data, .. } => {
+                data.session_key_data.key == *pubkey && data.has_active_session_key(current_timestamp)
+            }
+            Self::Ed25519External { data, .. } => {
+                data.session_key_data.key == *pubkey && data.has_active_session_key(current_timestamp)
+            }
+        }
+    }
+
+    /// Set session key (only for external signers)
+    pub fn set_session_key(&mut self, key: Pubkey, expiration: u64, current_timestamp: u64) -> Result<()> {
+        match self {
+            Self::Native { .. } => Err(error!(crate::errors::SmartAccountError::InvalidSignerType)),
+            Self::P256Webauthn { data, .. } => data.set_session_key(key, expiration, current_timestamp),
+            Self::Secp256k1 { data, .. } => data.set_session_key(key, expiration, current_timestamp),
+            Self::Ed25519External { data, .. } => data.set_session_key(key, expiration, current_timestamp),
+        }
+    }
+
+    /// Clear session key (only for external signers)
+    pub fn clear_session_key(&mut self) -> Result<()> {
+        match self {
+            Self::Native { .. } => Err(error!(crate::errors::SmartAccountError::InvalidSignerType)),
+            Self::P256Webauthn { data, .. } => {
+                data.clear_session_key();
+                Ok(())
+            }
+            Self::Secp256k1 { data, .. } => {
+                data.clear_session_key();
+                Ok(())
+            }
+            Self::Ed25519External { data, .. } => {
+                data.clear_session_key();
+                Ok(())
+            }
+        }
+    }
+
+    /// Update WebAuthn counter (only for P256Webauthn signers)
+    pub fn update_counter(&mut self, new_counter: u64) -> Result<()> {
+        match self {
+            Self::P256Webauthn { data, .. } => {
+                data.counter = new_counter;
+                Ok(())
+            }
+            _ => Err(error!(crate::errors::SmartAccountError::InvalidSignerType)),
+        }
+    }
+
+    /// Get WebAuthn counter (only for P256Webauthn signers)
+    pub fn get_counter(&self) -> Option<u64> {
+        match self {
+            Self::P256Webauthn { data, .. } => Some(data.counter),
+            _ => None,
+        }
+    }
+
+    /// Convert from V1 LegacySmartAccountSigner (always Native)
+    pub fn from_v1(signer: &LegacySmartAccountSigner) -> Self {
         Self::Native {
             key: signer.key,
             permissions: signer.permissions,
         }
     }
 
-    /// Convert to V1 SmartAccountSigner (only if Native)
-    pub fn to_v1(&self) -> Option<SmartAccountSigner> {
+    /// Convert to V1 LegacySmartAccountSigner (only if Native)
+    pub fn to_v1(&self) -> Option<LegacySmartAccountSigner> {
         match self {
-            Self::Native { key, permissions } => Some(SmartAccountSigner {
+            Self::Native { key, permissions } => Some(LegacySmartAccountSigner {
                 key: *key,
                 permissions: *permissions,
             }),
@@ -176,9 +751,9 @@ impl SmartAccountSignerV2 {
     pub fn packed_payload_size(&self) -> usize {
         match self {
             Self::Native { .. } => 33,                              // 32 (key) + 1 (permissions)
-            Self::P256Webauthn { .. } => 33 + P256WebauthnDataV2::SIZE, // 32 + 1 + 73 = 106
-            Self::Secp256k1 { .. } => 33 + Secp256k1DataV2::SIZE,       // 32 + 1 + 85 = 118
-            Self::Ed25519External { .. } => 33 + Ed25519ExternalDataV2::SIZE, // 32 + 1 + 32 = 65
+            Self::P256Webauthn { .. } => P256WebauthnData::PACKED_PAYLOAD_LEN,
+            Self::Secp256k1 { .. } => Secp256k1Data::PACKED_PAYLOAD_LEN,
+            Self::Ed25519External { .. } => Ed25519ExternalData::PACKED_PAYLOAD_LEN,
         }
     }
 
@@ -190,44 +765,52 @@ impl SmartAccountSignerV2 {
                 let mut payload = Vec::with_capacity(33);
                 payload.extend_from_slice(key.as_ref());
                 payload.push(permissions.mask);
-                (SignerTypeV2::Native as u8, payload)
+                (SignerType::Native as u8, payload)
             }
             Self::P256Webauthn {
                 key_id,
                 permissions,
                 data,
             } => {
-                let mut payload = Vec::with_capacity(106);
+                let mut payload = Vec::with_capacity(P256WebauthnData::PACKED_PAYLOAD_LEN);
                 payload.extend_from_slice(key_id.as_ref());
                 payload.push(permissions.mask);
                 payload.extend_from_slice(&data.compressed_pubkey);
+                payload.push(data.rp_id_len);
+                payload.extend_from_slice(&data.rp_id);
                 payload.extend_from_slice(&data.rp_id_hash);
                 payload.extend_from_slice(&data.counter.to_le_bytes());
-                (SignerTypeV2::P256Webauthn as u8, payload)
+                payload.extend_from_slice(data.session_key_data.key.as_ref());
+                payload.extend_from_slice(&data.session_key_data.expiration.to_le_bytes());
+                (SignerType::P256Webauthn as u8, payload)
             }
             Self::Secp256k1 {
                 key_id,
                 permissions,
                 data,
             } => {
-                let mut payload = Vec::with_capacity(118);
+                let mut payload = Vec::with_capacity(Secp256k1Data::PACKED_PAYLOAD_LEN);
                 payload.extend_from_slice(key_id.as_ref());
                 payload.push(permissions.mask);
                 payload.extend_from_slice(&data.uncompressed_pubkey);
                 payload.extend_from_slice(&data.eth_address);
                 payload.push(data.has_eth_address as u8);
-                (SignerTypeV2::Secp256k1 as u8, payload)
+                payload.extend_from_slice(data.session_key_data.key.as_ref());
+                payload.extend_from_slice(&data.session_key_data.expiration.to_le_bytes());
+                (SignerType::Secp256k1 as u8, payload)
             }
             Self::Ed25519External {
                 key_id,
                 permissions,
                 data,
             } => {
-                let mut payload = Vec::with_capacity(65);
+                let mut payload = Vec::with_capacity(Ed25519ExternalData::PACKED_PAYLOAD_LEN);
                 payload.extend_from_slice(key_id.as_ref());
                 payload.push(permissions.mask);
                 payload.extend_from_slice(&data.external_pubkey);
-                (SignerTypeV2::Ed25519External as u8, payload)
+                payload.extend_from_slice(data.session_key_data.key.as_ref());
+                payload.extend_from_slice(&data.session_key_data.expiration.to_le_bytes());
+                (SignerType::Ed25519External as u8, payload)
             }
         }
     }
@@ -243,9 +826,9 @@ impl SmartAccountSignerV2 {
         Ok(Self::Native { key, permissions })
     }
 
-    /// Parse from packed P256Webauthn payload (106 bytes)
+    /// Parse from packed P256Webauthn payload (179 bytes)
     pub fn from_packed_p256(payload: &[u8]) -> Result<Self> {
-        if payload.len() != 106 {
+        if payload.len() != P256WebauthnData::PACKED_PAYLOAD_LEN {
             return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
         }
         let key_id = Pubkey::try_from(&payload[..32])
@@ -255,11 +838,25 @@ impl SmartAccountSignerV2 {
         let mut compressed_pubkey = [0u8; 33];
         compressed_pubkey.copy_from_slice(&payload[33..66]);
 
+        let rp_id_len = payload[66];
+
+        let mut rp_id = [0u8; 32];
+        rp_id.copy_from_slice(&payload[67..99]);
+
         let mut rp_id_hash = [0u8; 32];
-        rp_id_hash.copy_from_slice(&payload[66..98]);
+        rp_id_hash.copy_from_slice(&payload[99..131]);
 
         let counter = u64::from_le_bytes(
-            payload[98..106]
+            payload[131..139]
+                .try_into()
+                .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?,
+        );
+
+        let session_key = Pubkey::try_from(&payload[139..171])
+            .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?;
+
+        let session_key_expiration = u64::from_le_bytes(
+            payload[171..179]
                 .try_into()
                 .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?,
         );
@@ -267,17 +864,23 @@ impl SmartAccountSignerV2 {
         Ok(Self::P256Webauthn {
             key_id,
             permissions,
-            data: P256WebauthnDataV2 {
+            data: P256WebauthnData {
                 compressed_pubkey,
+                rp_id_len,
+                rp_id,
                 rp_id_hash,
                 counter,
+                session_key_data: SessionKeyData {
+                    key: session_key,
+                    expiration: session_key_expiration,
+                },
             },
         })
     }
 
-    /// Parse from packed Secp256k1 payload (118 bytes)
+    /// Parse from packed Secp256k1 payload (158 bytes)
     pub fn from_packed_secp256k1(payload: &[u8]) -> Result<Self> {
-        if payload.len() != 118 {
+        if payload.len() != Secp256k1Data::PACKED_PAYLOAD_LEN {
             return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
         }
         let key_id = Pubkey::try_from(&payload[..32])
@@ -292,20 +895,33 @@ impl SmartAccountSignerV2 {
 
         let has_eth_address = payload[117] != 0;
 
+        let session_key = Pubkey::try_from(&payload[118..150])
+            .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?;
+
+        let session_key_expiration = u64::from_le_bytes(
+            payload[150..158]
+                .try_into()
+                .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?,
+        );
+
         Ok(Self::Secp256k1 {
             key_id,
             permissions,
-            data: Secp256k1DataV2 {
+            data: Secp256k1Data {
                 uncompressed_pubkey,
                 eth_address,
                 has_eth_address,
+                session_key_data: SessionKeyData {
+                    key: session_key,
+                    expiration: session_key_expiration,
+                },
             },
         })
     }
 
-    /// Parse from packed Ed25519External payload (65 bytes)
+    /// Parse from packed Ed25519External payload (105 bytes)
     pub fn from_packed_ed25519_external(payload: &[u8]) -> Result<Self> {
-        if payload.len() != 65 {
+        if payload.len() != Ed25519ExternalData::PACKED_PAYLOAD_LEN {
             return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
         }
         let key_id = Pubkey::try_from(&payload[..32])
@@ -315,10 +931,25 @@ impl SmartAccountSignerV2 {
         let mut external_pubkey = [0u8; 32];
         external_pubkey.copy_from_slice(&payload[33..65]);
 
+        let session_key = Pubkey::try_from(&payload[65..97])
+            .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?;
+
+        let session_key_expiration = u64::from_le_bytes(
+            payload[97..105]
+                .try_into()
+                .map_err(|_| error!(crate::errors::SmartAccountError::InvalidPayload))?,
+        );
+
         Ok(Self::Ed25519External {
             key_id,
             permissions,
-            data: Ed25519ExternalDataV2 { external_pubkey },
+            data: Ed25519ExternalData {
+                external_pubkey,
+                session_key_data: SessionKeyData {
+                    key: session_key,
+                    expiration: session_key_expiration,
+                },
+            },
         })
     }
 }
@@ -327,9 +958,6 @@ impl SmartAccountSignerV2 {
 pub const SIGNERS_VERSION_V1: u8 = 0x00;
 pub const SIGNERS_VERSION_V2: u8 = 0x01;
 
-/// Maximum signers to prevent overflow into version byte
-pub const MAX_SIGNERS: usize = 65535;
-
 /// Packed V2 entry header: <u8 tag><u16 payload_len LE><u8 flags>
 pub const ENTRY_HEADER_LEN: usize = 4;
 
@@ -337,8 +965,8 @@ pub const ENTRY_HEADER_LEN: usize = 4;
 /// Uses custom Borsh serialization to maintain V1 backward compatibility
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SmartAccountSignerWrapper {
-    V1(Vec<SmartAccountSigner>),
-    V2(Vec<SmartAccountSignerV2>),
+    V1(Vec<LegacySmartAccountSigner>),
+    V2(Vec<SmartAccountSigner>),
 }
 
 impl Default for SmartAccountSignerWrapper {
@@ -348,9 +976,14 @@ impl Default for SmartAccountSignerWrapper {
 }
 
 impl SmartAccountSignerWrapper {
-    /// Create a V1 wrapper from a Vec of SmartAccountSigner
-    pub fn from_v1_signers(signers: Vec<SmartAccountSigner>) -> Self {
+    /// Create a V1 wrapper from a Vec of LegacySmartAccountSigner
+    pub fn from_v1_signers(signers: Vec<LegacySmartAccountSigner>) -> Self {
         Self::V1(signers)
+    }
+
+    /// Create a V2 wrapper from a Vec of SmartAccountSigner
+    pub fn from_v2_signers(signers: Vec<SmartAccountSigner>) -> Self {
+        Self::V2(signers)
     }
 
     pub fn version(&self) -> u8 {
@@ -373,22 +1006,14 @@ impl SmartAccountSignerWrapper {
 
     /// Get a reference to the inner V1 signers slice.
     /// Returns the slice directly for V1, or panics for V2.
-    /// 
+    ///
     /// IMPORTANT: This is for backward compatibility with the Consensus trait.
     /// For V2 accounts, use `as_v2()` or `as_v1_lossy()` instead.
-    /// 
-    /// # Panics
-    /// Panics if called on a V2 wrapper. Use `try_as_v1_slice()` for a safe version.
-    pub fn as_v1_slice(&self) -> &[SmartAccountSigner] {
-        match self {
-            Self::V1(signers) => signers.as_slice(),
-            Self::V2(_) => panic!("Cannot get V1 slice from V2 wrapper - use as_v2() instead"),
-        }
-    }
-
-    /// Safely try to get a reference to the inner V1 signers slice.
-    /// Returns None for V2 wrappers.
-    pub fn try_as_v1_slice(&self) -> Option<&[SmartAccountSigner]> {
+    /// Get a reference to the inner V1 signers slice.
+    ///
+    /// Returns `Some(&[LegacySmartAccountSigner])` for V1 wrappers, `None` for V2.
+    #[inline]
+    pub fn try_as_v1_slice(&self) -> Option<&[LegacySmartAccountSigner]> {
         match self {
             Self::V1(signers) => Some(signers.as_slice()),
             Self::V2(_) => None,
@@ -396,15 +1021,15 @@ impl SmartAccountSignerWrapper {
     }
 
     /// Get signers as V2 format (canonical view)
-    pub fn as_v2(&self) -> Vec<SmartAccountSignerV2> {
+    pub fn as_v2(&self) -> Vec<SmartAccountSigner> {
         match self {
-            Self::V1(signers) => signers.iter().map(SmartAccountSignerV2::from_v1).collect(),
+            Self::V1(signers) => signers.iter().map(SmartAccountSigner::from_v1).collect(),
             Self::V2(signers) => signers.clone(),
         }
     }
 
     /// Get signers as V1 format (only if all are Native)
-    pub fn as_v1(&self) -> Option<Vec<SmartAccountSigner>> {
+    pub fn as_v1(&self) -> Option<Vec<LegacySmartAccountSigner>> {
         match self {
             Self::V1(signers) => Some(signers.clone()),
             Self::V2(signers) => {
@@ -416,14 +1041,50 @@ impl SmartAccountSignerWrapper {
     }
 
     /// Find a signer by key/key_id
-    pub fn find(&self, key: &Pubkey) -> Option<SmartAccountSignerV2> {
+    pub fn find(&self, key: &Pubkey) -> Option<SmartAccountSigner> {
         match self {
             Self::V1(signers) => signers
                 .iter()
                 .find(|s| &s.key == key)
-                .map(SmartAccountSignerV2::from_v1),
+                .map(SmartAccountSigner::from_v1),
             Self::V2(signers) => signers.iter().find(|s| &s.key() == key).cloned(),
         }
+    }
+
+    /// Find a mutable reference to a signer by key/key_id (V2 only).
+    /// Returns None if the wrapper is V1 (since V1 signers don't have counters).
+    pub fn find_mut(&mut self, key: &Pubkey) -> Option<&mut SmartAccountSigner> {
+        match self {
+            Self::V1(_) => None, // V1 signers don't have counters
+            Self::V2(signers) => signers.iter_mut().find(|s| &s.key() == key),
+        }
+    }
+
+    /// Update the WebAuthn counter for a signer by key_id.
+    /// Returns Ok(()) if successful, Err if signer not found or not a WebAuthn signer.
+    pub fn update_signer_counter(&mut self, key_id: &Pubkey, new_counter: u64) -> Result<()> {
+        match self {
+            Self::V1(_) => {
+                // V1 signers are all Native, they don't have counters
+                Err(error!(crate::errors::SmartAccountError::InvalidSignerType))
+            }
+            Self::V2(signers) => {
+                let signer = signers
+                    .iter_mut()
+                    .find(|s| &s.key() == key_id)
+                    .ok_or_else(|| error!(crate::errors::SmartAccountError::NotASigner))?;
+                signer.update_counter(new_counter)
+            }
+        }
+    }
+
+    /// Apply multiple counter updates from WebAuthn signature verification.
+    /// This is used after synchronous consensus validation to persist counter state.
+    pub fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        for (key_id, new_counter) in updates {
+            self.update_signer_counter(key_id, *new_counter)?;
+        }
+        Ok(())
     }
 
     /// Find index of a signer by key/key_id
@@ -435,15 +1096,15 @@ impl SmartAccountSignerWrapper {
     }
 
     /// Get signer at index
-    pub fn get(&self, index: usize) -> Option<SmartAccountSignerV2> {
+    pub fn get(&self, index: usize) -> Option<SmartAccountSigner> {
         match self {
-            Self::V1(signers) => signers.get(index).map(SmartAccountSignerV2::from_v1),
+            Self::V1(signers) => signers.get(index).map(SmartAccountSigner::from_v1),
             Self::V2(signers) => signers.get(index).cloned(),
         }
     }
 
     /// Push a V2 signer (converts to V2 format if needed)
-    pub fn push_v2(&mut self, signer: SmartAccountSignerV2) {
+    pub fn push_v2(&mut self, signer: SmartAccountSigner) {
         match self {
             Self::V1(signers) => {
                 // If signer is Native, can stay V1
@@ -451,8 +1112,8 @@ impl SmartAccountSignerWrapper {
                     signers.push(v1_signer);
                 } else {
                     // Convert to V2
-                    let mut v2_signers: Vec<SmartAccountSignerV2> =
-                        signers.iter().map(SmartAccountSignerV2::from_v1).collect();
+                    let mut v2_signers: Vec<SmartAccountSigner> =
+                        signers.iter().map(SmartAccountSigner::from_v1).collect();
                     v2_signers.push(signer);
                     *self = Self::V2(v2_signers);
                 }
@@ -464,9 +1125,9 @@ impl SmartAccountSignerWrapper {
     }
 
     /// Remove signer at index
-    pub fn remove(&mut self, index: usize) -> SmartAccountSignerV2 {
+    pub fn remove(&mut self, index: usize) -> SmartAccountSigner {
         match self {
-            Self::V1(signers) => SmartAccountSignerV2::from_v1(&signers.remove(index)),
+            Self::V1(signers) => SmartAccountSigner::from_v1(&signers.remove(index)),
             Self::V2(signers) => signers.remove(index),
         }
     }
@@ -474,12 +1135,12 @@ impl SmartAccountSignerWrapper {
     /// Sort signers by key
     pub fn sort_by_key<F, K>(&mut self, mut f: F)
     where
-        F: FnMut(&SmartAccountSignerV2) -> K,
+        F: FnMut(&SmartAccountSigner) -> K,
         K: Ord,
     {
         match self {
             Self::V1(signers) => {
-                signers.sort_by_key(|s| f(&SmartAccountSignerV2::from_v1(s)));
+                signers.sort_by_key(|s| f(&SmartAccountSigner::from_v1(s)));
             }
             Self::V2(signers) => {
                 signers.sort_by_key(|s| f(s));
@@ -490,8 +1151,8 @@ impl SmartAccountSignerWrapper {
     /// Force V2 format (for when external signers are added)
     pub fn force_v2(&mut self) {
         if let Self::V1(signers) = self {
-            let v2_signers: Vec<SmartAccountSignerV2> =
-                signers.iter().map(SmartAccountSignerV2::from_v1).collect();
+            let v2_signers: Vec<SmartAccountSigner> =
+                signers.iter().map(SmartAccountSigner::from_v1).collect();
             *self = Self::V2(v2_signers);
         }
     }
@@ -513,43 +1174,51 @@ impl SmartAccountSignerWrapper {
     }
 
     /// Get the last signer
-    pub fn last(&self) -> Option<SmartAccountSignerV2> {
+    pub fn last(&self) -> Option<SmartAccountSigner> {
         match self {
-            Self::V1(signers) => signers.last().map(SmartAccountSignerV2::from_v1),
+            Self::V1(signers) => signers.last().map(SmartAccountSigner::from_v1),
             Self::V2(signers) => signers.last().cloned(),
         }
     }
 
-    /// Iterate over signers as V2
-    pub fn iter_v2(&self) -> impl Iterator<Item = SmartAccountSignerV2> + '_ {
-        let signers = self.as_v2();
-        signers.into_iter()
+    /// Iterate over signers as V2 (zero allocation)
+    pub fn iter_v2(&self) -> SignerIterator<'_> {
+        SignerIterator {
+            wrapper: self,
+            index: 0,
+        }
     }
 
     /// Calculate the serialized size in bytes
+    /// Calculate the serialized size in bytes without allocating.
     pub fn serialized_size(&self) -> usize {
         match self {
             Self::V1(signers) => {
                 // 4 bytes for length + 33 bytes per V1 signer
-                4 + signers.len() * SmartAccountSigner::INIT_SPACE
+                4 + signers.len() * LegacySmartAccountSigner::INIT_SPACE
             }
             Self::V2(signers) => {
-                // 4 bytes for length + variable per signer (header + payload)
-                4 + signers.iter().map(|s| {
-                    let (_, payload) = s.to_packed_payload();
-                    ENTRY_HEADER_LEN + payload.len()
-                }).sum::<usize>()
+                // 4 bytes for length + (header + payload) per signer
+                // Use packed_payload_size() to avoid allocating Vec for each signer
+                4 + signers.iter()
+                    .map(|s| ENTRY_HEADER_LEN + s.packed_payload_size())
+                    .sum::<usize>()
             }
         }
     }
 
     /// Add a V1 signer (for backward compatibility)
-    pub fn add_signer(&mut self, signer: SmartAccountSigner) {
-        self.push_v2(SmartAccountSignerV2::from_v1(&signer));
+    pub fn add_signer(&mut self, signer: LegacySmartAccountSigner) {
+        self.push_v2(SmartAccountSigner::from_v1(&signer));
+    }
+
+    /// Add a V2 signer directly
+    pub fn add_signer_v2(&mut self, signer: SmartAccountSigner) {
+        self.push_v2(signer);
     }
 
     /// Remove signer by key and return it
-    pub fn remove_signer(&mut self, key: &Pubkey) -> Option<SmartAccountSignerV2> {
+    pub fn remove_signer(&mut self, key: &Pubkey) -> Option<SmartAccountSigner> {
         let index = self.find_index(key)?;
         Some(self.remove(index))
     }
@@ -559,10 +1228,43 @@ impl SmartAccountSignerWrapper {
         self.sort_by_key(|s| s.key());
     }
 
-    /// Check for duplicate signers
+    /// Check for duplicate signers by key/key_id
     pub fn has_duplicates(&self) -> bool {
+        let mut seen: std::collections::BTreeSet<Pubkey> = std::collections::BTreeSet::new();
+        self.iter_v2().any(|s| !seen.insert(s.key()))
+    }
+
+    /// Check if any existing signer has the same public key as the given signer.
+    /// This prevents adding the same external public key with a different key_id.
+    pub fn has_duplicate_public_key(&self, new_signer: &SmartAccountSigner) -> bool {
+        let mut seen: std::collections::BTreeSet<Vec<u8>> = std::collections::BTreeSet::new();
+        for existing in self.iter_v2() {
+            let key_bytes: Vec<u8> = match existing {
+                SmartAccountSigner::Native { key, .. } => key.to_bytes().to_vec(),
+                SmartAccountSigner::P256Webauthn { data, .. } => data.compressed_pubkey.to_vec(),
+                SmartAccountSigner::Secp256k1 { data, .. } => data.uncompressed_pubkey.to_vec(),
+                SmartAccountSigner::Ed25519External { data, .. } => data.external_pubkey.to_vec(),
+            };
+            seen.insert(key_bytes);
+        }
+
+        let new_key_bytes: Vec<u8> = match new_signer {
+            SmartAccountSigner::Native { key, .. } => key.to_bytes().to_vec(),
+            SmartAccountSigner::P256Webauthn { data, .. } => data.compressed_pubkey.to_vec(),
+            SmartAccountSigner::Secp256k1 { data, .. } => data.uncompressed_pubkey.to_vec(),
+            SmartAccountSigner::Ed25519External { data, .. } => data.external_pubkey.to_vec(),
+        };
+
+        seen.contains(&new_key_bytes)
+    }
+
+    /// Find an external signer by their active session key.
+    /// Returns the signer if the pubkey matches an active session key.
+    pub fn find_by_session_key(&self, pubkey: &Pubkey, current_timestamp: u64) -> Option<SmartAccountSigner> {
         let signers = self.as_v2();
-        signers.windows(2).any(|win| win[0].key() == win[1].key())
+        signers
+            .into_iter()
+            .find(|s| s.is_valid_session_key(pubkey, current_timestamp))
     }
 
     /// Check if all signers have valid permissions (mask < 8)
@@ -573,6 +1275,33 @@ impl SmartAccountSignerWrapper {
         }
     }
 }
+
+/// Zero-allocation iterator over signers as SmartAccountSigner.
+/// For V1 wrappers, converts each LegacySmartAccountSigner on the fly.
+/// For V2 wrappers, clones each SmartAccountSigner.
+pub struct SignerIterator<'a> {
+    wrapper: &'a SmartAccountSignerWrapper,
+    index: usize,
+}
+
+impl<'a> Iterator for SignerIterator<'a> {
+    type Item = SmartAccountSigner;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.wrapper.get(self.index);
+        if result.is_some() {
+            self.index += 1;
+        }
+        result
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.wrapper.len().saturating_sub(self.index);
+        (remaining, Some(remaining))
+    }
+}
+
+impl<'a> ExactSizeIterator for SignerIterator<'a> {}
 
 /// Custom Borsh serialization: no enum discriminant on-chain
 /// Emits: [len u32 LE with version in byte3] + signer bytes
@@ -641,7 +1370,7 @@ impl BorshDeserialize for SmartAccountSignerWrapper {
             SIGNERS_VERSION_V1 => {
                 let mut signers = Vec::with_capacity(count);
                 for _ in 0..count {
-                    let signer = SmartAccountSigner::deserialize_reader(reader)?;
+                    let signer = LegacySmartAccountSigner::deserialize_reader(reader)?;
                     signers.push(signer);
                 }
                 Ok(Self::V1(signers))
@@ -660,20 +1389,20 @@ impl BorshDeserialize for SmartAccountSignerWrapper {
                     reader.read_exact(&mut payload)?;
 
                     let signer = match tag {
-                        x if x == SignerTypeV2::Native as u8 => {
-                            SmartAccountSignerV2::from_packed_native(&payload)
+                        x if x == SignerType::Native as u8 => {
+                            SmartAccountSigner::from_packed_native(&payload)
                                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?
                         }
-                        x if x == SignerTypeV2::P256Webauthn as u8 => {
-                            SmartAccountSignerV2::from_packed_p256(&payload)
+                        x if x == SignerType::P256Webauthn as u8 => {
+                            SmartAccountSigner::from_packed_p256(&payload)
                                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?
                         }
-                        x if x == SignerTypeV2::Secp256k1 as u8 => {
-                            SmartAccountSignerV2::from_packed_secp256k1(&payload)
+                        x if x == SignerType::Secp256k1 as u8 => {
+                            SmartAccountSigner::from_packed_secp256k1(&payload)
                                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?
                         }
-                        x if x == SignerTypeV2::Ed25519External as u8 => {
-                            SmartAccountSignerV2::from_packed_ed25519_external(&payload)
+                        x if x == SignerType::Ed25519External as u8 => {
+                            SmartAccountSigner::from_packed_ed25519_external(&payload)
                                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?
                         }
                         _ => {
@@ -702,11 +1431,11 @@ mod tests {
     #[test]
     fn test_v1_serialization_roundtrip() {
         let signers = vec![
-            SmartAccountSigner {
+            LegacySmartAccountSigner {
                 key: Pubkey::new_unique(),
                 permissions: Permissions::all(),
             },
-            SmartAccountSigner {
+            LegacySmartAccountSigner {
                 key: Pubkey::new_unique(),
                 permissions: Permissions { mask: 0b011 },
             },
@@ -727,17 +1456,24 @@ mod tests {
     #[test]
     fn test_v2_serialization_roundtrip() {
         let signers = vec![
-            SmartAccountSignerV2::Native {
+            SmartAccountSigner::Native {
                 key: Pubkey::new_unique(),
                 permissions: Permissions::all(),
             },
-            SmartAccountSignerV2::P256Webauthn {
+            SmartAccountSigner::P256Webauthn {
                 key_id: Pubkey::new_unique(),
                 permissions: Permissions { mask: 0b111 },
-                data: P256WebauthnDataV2 {
+                data: P256WebauthnData {
                     compressed_pubkey: [0x02; 33],
+                    rp_id_len: 8,
+                    rp_id: {
+                        let mut arr = [0u8; 32];
+                        arr[..8].copy_from_slice(b"test.com");
+                        arr
+                    },
                     rp_id_hash: [0xAB; 32],
                     counter: 42,
+                    session_key_data: SessionKeyData::default(),
                 },
             },
         ];
@@ -757,20 +1493,20 @@ mod tests {
     #[test]
     fn test_derive_key_id() {
         let pubkey_bytes = [0x02; 33];
-        let key_id = SmartAccountSignerV2::derive_key_id(SignerTypeV2::P256Webauthn, &pubkey_bytes);
+        let key_id = SmartAccountSigner::derive_key_id(SignerType::P256Webauthn, &pubkey_bytes);
 
         // Same input should produce same key_id
-        let key_id_2 = SmartAccountSignerV2::derive_key_id(SignerTypeV2::P256Webauthn, &pubkey_bytes);
+        let key_id_2 = SmartAccountSigner::derive_key_id(SignerType::P256Webauthn, &pubkey_bytes);
         assert_eq!(key_id, key_id_2);
 
         // Different type should produce different key_id
-        let key_id_3 = SmartAccountSignerV2::derive_key_id(SignerTypeV2::Secp256k1, &pubkey_bytes);
+        let key_id_3 = SmartAccountSigner::derive_key_id(SignerType::Secp256k1, &pubkey_bytes);
         assert_ne!(key_id, key_id_3);
     }
 
     #[test]
     fn test_wrapper_force_v2() {
-        let signers = vec![SmartAccountSigner {
+        let signers = vec![LegacySmartAccountSigner {
             key: Pubkey::new_unique(),
             permissions: Permissions::all(),
         }];
@@ -784,7 +1520,7 @@ mod tests {
 
     #[test]
     fn test_push_external_converts_to_v2() {
-        let mut wrapper = SmartAccountSignerWrapper::V1(vec![SmartAccountSigner {
+        let mut wrapper = SmartAccountSignerWrapper::V1(vec![LegacySmartAccountSigner {
             key: Pubkey::new_unique(),
             permissions: Permissions::all(),
         }]);
@@ -792,13 +1528,20 @@ mod tests {
         assert_eq!(wrapper.version(), SIGNERS_VERSION_V1);
 
         // Push an external signer
-        wrapper.push_v2(SmartAccountSignerV2::P256Webauthn {
+        wrapper.push_v2(SmartAccountSigner::P256Webauthn {
             key_id: Pubkey::new_unique(),
             permissions: Permissions::all(),
-            data: P256WebauthnDataV2 {
+            data: P256WebauthnData {
                 compressed_pubkey: [0x02; 33],
+                rp_id_len: 8,
+                rp_id: {
+                    let mut arr = [0u8; 32];
+                    arr[..8].copy_from_slice(b"test.com");
+                    arr
+                },
                 rp_id_hash: [0xAB; 32],
                 counter: 0,
+                session_key_data: SessionKeyData::default(),
             },
         });
 

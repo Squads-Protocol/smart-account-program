@@ -8,7 +8,7 @@ use crate::{
         derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
     },
     CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
-    PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner,
+    PolicyTrait, SmallVec, SmartAccountCompiledInstruction,
     SmartAccountSignerWrapper, TransactionMessage,
     TransactionPayload, TransactionPayloadDetails, HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER,
     SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,

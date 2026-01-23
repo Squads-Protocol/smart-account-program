@@ -4,7 +4,7 @@ use crate::{
     errors::SmartAccountError, get_settings_signer_seeds, program::SquadsSmartAccountProgram,
     state::Settings, LogAuthorityInfo, Permissions, PolicyExecutionContext,
     PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction,
-    SettingsChangePolicyEvent, SmartAccountEvent, SmartAccountSigner,
+    SettingsChangePolicyEvent, SmartAccountEvent, LegacySmartAccountSigner,
 };
 
 /// == SettingsChangePolicy ==
@@ -56,7 +56,7 @@ pub struct SettingsChangePolicyCreationPayload {
 /// Limited subset of settings change actions for execution
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum LimitedSettingsAction {
-    AddSigner { new_signer: SmartAccountSigner },
+    AddSigner { new_signer: LegacySmartAccountSigner },
     RemoveSigner { old_signer: Pubkey },
     ChangeThreshold { new_threshold: u16 },
     SetTimeLock { new_time_lock: u32 },

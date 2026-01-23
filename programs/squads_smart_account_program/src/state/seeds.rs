@@ -80,6 +80,7 @@ mod tests {
         assert_eq!(address, HOOK_AUTHORITY_PUBKEY);
     }
 
+    #[cfg(feature = "testing")]
     #[test]
     fn test_testing_hook_authority_pubkey() {
         let test_program_id =
@@ -87,7 +88,6 @@ mod tests {
         let address =
             Pubkey::create_program_address(&[SEED_HOOK_AUTHORITY], &test_program_id)
                 .unwrap();
-        println!("address: {:?}", address.try_to_vec());
         assert_eq!(address, HOOK_AUTHORITY_PUBKEY);
     }
 }

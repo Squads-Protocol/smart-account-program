@@ -45,7 +45,7 @@ impl SettingsTransaction {
 #[non_exhaustive]
 pub enum SettingsAction {
     /// Add a new member to the settings.
-    AddSigner { new_signer: SmartAccountSigner },
+    AddSigner { new_signer: LegacySmartAccountSigner },
     /// Remove a member from the settings.
     RemoveSigner { old_signer: Pubkey },
     /// Change the `threshold` of the settings.
@@ -83,13 +83,16 @@ pub enum SettingsAction {
     /// Set the `archival_authority` config parameter of the settings.
     SetArchivalAuthority { new_archival_authority: Option<Pubkey> },
     /// Create a new policy account.
+    // TODO: Check with Orion if we want to add V2 variants (PolicyCreateV2, PolicyUpdateV2)
+    // that take SmartAccountSigner (V2) for external signer support on policies.
+    // Currently using LegacySmartAccountSigner for V1 compatibility.
     PolicyCreate {
         /// Key that is used to seed the Policy PDA.
         seed: u64,
         /// The policy creation payload containing policy-specific configuration.
         policy_creation_payload: PolicyCreationPayload,
         /// Signers attached to the policy with their permissions.
-        signers: Vec<SmartAccountSigner>,
+        signers: Vec<LegacySmartAccountSigner>,
         /// Threshold for approvals on the policy.
         threshold: u16,
         /// How many seconds must pass between approval and execution.
@@ -104,7 +107,7 @@ pub enum SettingsAction {
         /// The policy account to update.
         policy: Pubkey,
         /// Signers attached to the policy with their permissions.
-        signers: Vec<SmartAccountSigner>,
+        signers: Vec<LegacySmartAccountSigner>,
         /// Threshold for approvals on the policy.
         threshold: u16,
         /// How many seconds must pass between approval and execution.
@@ -118,5 +121,65 @@ pub enum SettingsAction {
     PolicyRemove {
         /// The policy account to remove.
         policy: Pubkey
+    },
+    /// Migrate policy signers from V1 to V2 format.
+    /// This enables external signer support on the policy.
+    PolicyMigrateSigners {
+        /// The policy account to migrate.
+        policy: Pubkey,
+    },
+    /// Add a new V2 signer (Native or External) to the settings.
+    /// Requires Settings to be migrated to V2 format first.
+    AddSignerV2 { new_signer: SmartAccountSigner },
+    /// Remove a V2 signer (Native or External) from the settings.
+    /// Works the same as RemoveSigner but uses key/key_id from SmartAccountSigner.
+    RemoveSignerV2 { old_signer: Pubkey },
+    /// Create a new policy account with V2 signers (supports external signers).
+    PolicyCreateV2 {
+        /// Key that is used to seed the Policy PDA.
+        seed: u64,
+        /// The policy creation payload containing policy-specific configuration.
+        policy_creation_payload: PolicyCreationPayload,
+        /// Signers attached to the policy with their permissions (V2 format).
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// Timestamp when the policy becomes active.
+        start_timestamp: Option<i64>,
+        /// Policy expiration - either time-based or state-based.
+        expiration_args: Option<PolicyExpirationArgs>,
+    },
+    /// Update a policy account with V2 signers (supports external signers).
+    PolicyUpdateV2 {
+        /// The policy account to update.
+        policy: Pubkey,
+        /// Signers attached to the policy with their permissions (V2 format).
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// The policy update payload containing policy-specific configuration.
+        policy_update_payload: PolicyCreationPayload,
+        /// Policy expiration - either time-based or state-based.
+        expiration_args: Option<PolicyExpirationArgs>,
+    },
+    /// Set a session key for an external signer.
+    /// Session keys allow temporary native Solana keys to sign on behalf of external signers.
+    SetSessionKey {
+        /// The key_id of the external signer to set the session key for.
+        signer_key: Pubkey,
+        /// The new session key (must be a valid Solana pubkey).
+        session_key: Pubkey,
+        /// Expiration timestamp (unix timestamp in seconds).
+        /// Must be in the future and not exceed SESSION_KEY_EXPIRATION_LIMIT (3 months).
+        expiration: u64,
+    },
+    /// Clear/revoke a session key for an external signer.
+    ClearSessionKey {
+        /// The key_id of the external signer to clear the session key for.
+        signer_key: Pubkey,
     },
 }

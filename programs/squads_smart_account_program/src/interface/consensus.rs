@@ -8,6 +8,7 @@ use crate::{
 };
 
 use super::consensus_trait::{Consensus, ConsensusAccountType};
+use anchor_lang::require;
 
 #[derive(Clone)]
 pub enum ConsensusAccount {
@@ -38,7 +39,13 @@ impl AccountSerialize for ConsensusAccount {
 // Implemented for InterfaceAccount
 impl AccountDeserialize for ConsensusAccount {
     fn try_deserialize(reader: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let discriminator: [u8; 8] = reader[..8].try_into().unwrap();
+        require!(
+            reader.len() >= 8,
+            anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
+        );
+        let discriminator: [u8; 8] = reader[..8]
+            .try_into()
+            .map_err(|_| anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch)?;
         match discriminator {
             Settings::DISCRIMINATOR => Ok(ConsensusAccount::Settings(Settings::try_deserialize(
                 reader,
@@ -51,7 +58,13 @@ impl AccountDeserialize for ConsensusAccount {
     }
 
     fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-        let discriminator: [u8; 8] = buf[..8].try_into().unwrap();
+        require!(
+            buf.len() >= 8,
+            anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch
+        );
+        let discriminator: [u8; 8] = buf[..8]
+            .try_into()
+            .map_err(|_| anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch)?;
         match discriminator {
             Settings::DISCRIMINATOR => Ok(ConsensusAccount::Settings(
                 Settings::try_deserialize_unchecked(buf)?,
@@ -139,6 +152,22 @@ impl ConsensusAccount {
         match self {
             ConsensusAccount::Settings(settings) => settings,
             ConsensusAccount::Policy(policy) => policy,
+        }
+    }
+
+    /// Apply WebAuthn counter updates after signature verification.
+    /// This must be called after successful consensus validation to prevent replay attacks.
+    pub fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+        match self {
+            ConsensusAccount::Settings(settings) => {
+                settings.signers.apply_counter_updates(updates)
+            }
+            ConsensusAccount::Policy(policy) => {
+                policy.signers.apply_counter_updates(updates)
+            }
         }
     }
 }

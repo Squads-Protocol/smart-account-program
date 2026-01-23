@@ -75,6 +75,7 @@ pub enum PolicyEventType {
     Update,
     UpdateDuringExecution,
     Remove,
+    MigrateSigners,
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]

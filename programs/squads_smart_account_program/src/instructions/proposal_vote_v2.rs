@@ -23,6 +23,8 @@ pub struct ProposalVoteV2Args {
     pub vote: VoteV2,
     /// The key (Native) or key_id (External) of the voting signer
     pub voter_key: Pubkey,
+    /// Client data params for WebAuthn verification (required for WebAuthn signers)
+    pub client_data_params: Option<ClientDataJsonReconstructionParams>,
     /// Optional memo
     pub memo: Option<String>,
 }
@@ -108,7 +110,7 @@ impl<'info> ProposalVoteV2<'info> {
     /// Vote on a proposal with V2 signer support (native + external)
     #[access_control(ctx.accounts.validate(&ctx, &args))]
     pub fn proposal_vote_v2(ctx: Context<ProposalVoteV2<'info>>, args: ProposalVoteV2Args) -> Result<()> {
-        let consensus_account = &ctx.accounts.consensus_account;
+        let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
 
         // Verify the voter hasn't already voted based on vote type
@@ -160,13 +162,15 @@ impl<'info> ProposalVoteV2<'info> {
                 consensus_account.transaction_index(),
             );
 
-            // signer is already SmartAccountSignerV2
-            verify_external_signatures(
+            let verification = verify_external_signatures(
                 instructions_sysvar,
                 &[signer.clone()],
                 &expected_message,
                 Some(&[args.voter_key]),
+                args.client_data_params.as_ref(),
             )?;
+
+            consensus_account.apply_counter_updates(&verification.counter_updates)?;
         }
 
         // Process the vote

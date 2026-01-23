@@ -1,8 +1,6 @@
-
 use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::errors::SmartAccountError;
 use crate::events::*;
@@ -10,20 +8,17 @@ use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 use crate::SmartAccountSignerWrapper;
 
-// TODO: Check with Orion if we want to:
-// 1. Add a new smart_account_create_v2 instruction
-// 2. Migrate this to only use V2 signers
-// 3. Keep it as is and migrate if needed via settings_migrate_signers instruction
-
+/// Arguments for creating a smart account with V2 signers.
+/// This version supports all signer types (Native + External).
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct CreateSmartAccountArgs {
+pub struct CreateSmartAccountV2Args {
     /// The authority that can configure the smart account: add/remove signers, change the threshold, etc.
     /// Should be set to `None` for autonomous smart accounts.
     pub settings_authority: Option<Pubkey>,
     /// The number of signatures required to execute a transaction.
     pub threshold: u16,
-    /// The signers on the smart account.
-    pub signers: Vec<LegacySmartAccountSigner>,
+    /// The signers on the smart account (V2 format - supports Native and External signers).
+    pub signers: Vec<SmartAccountSigner>,
     /// How many seconds must pass between transaction voting, settlement, and execution.
     pub time_lock: u32,
     /// The address where the rent for the accounts related to executed, rejected, or cancelled
@@ -34,14 +29,14 @@ pub struct CreateSmartAccountArgs {
 }
 
 #[derive(Accounts)]
-#[instruction(args: CreateSmartAccountArgs)]
-pub struct CreateSmartAccount<'info> {
+#[instruction(args: CreateSmartAccountV2Args)]
+pub struct CreateSmartAccountV2<'info> {
     /// Global program config account.
     #[account(mut, seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
     pub program_config: Account<'info, ProgramConfig>,
 
     /// The treasury where the creation fee is transferred to.
-    /// CHECK: validation is performed in the `MultisigCreate::validate()` method.
+    /// CHECK: validation is performed in the `validate()` method.
     #[account(mut)]
     pub treasury: AccountInfo<'info>,
 
@@ -53,29 +48,29 @@ pub struct CreateSmartAccount<'info> {
     pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
-impl<'info> CreateSmartAccount<'info> {
+impl<'info> CreateSmartAccountV2<'info> {
     fn validate(&self) -> Result<()> {
-        //region treasury
+        // Validate treasury
         require_keys_eq!(
             self.treasury.key(),
             self.program_config.treasury,
             SmartAccountError::InvalidAccount
         );
-        //endregion
 
         Ok(())
     }
 
-    /// Creates a multisig.
+    /// Creates a smart account with V2 signers (supports Native + External).
     #[access_control(ctx.accounts.validate())]
-    pub fn create_smart_account(
+    pub fn create_smart_account_v2(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        args: CreateSmartAccountArgs,
+        args: CreateSmartAccountV2Args,
     ) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
-        // Sort the members by pubkey.
+
+        // Sort the signers by key
         let mut signers = args.signers;
-        signers.sort_by_key(|m| m.key);
+        signers.sort_by_key(|s| s.key());
 
         let settings_seed = program_config.smart_account_index.checked_add(1).unwrap();
         let (settings_pubkey, settings_bump) = Pubkey::find_program_address(
@@ -86,6 +81,10 @@ impl<'info> CreateSmartAccount<'info> {
             ],
             &crate::ID,
         );
+
+        // Create the wrapper directly in V2 format
+        let signers_wrapper = SmartAccountSignerWrapper::from_v2_signers(signers);
+
         // Initialize the settings
         let settings_configuration = Settings {
             seed: settings_seed,
@@ -99,11 +98,13 @@ impl<'info> CreateSmartAccount<'info> {
             // Preset to 0 until archival feature is implemented.
             archivable_after: 0,
             bump: settings_bump,
-            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            signers: signers_wrapper,
             account_utilization: 0,
             policy_seed: Some(0),
             _reserved2: 0,
         };
+
+        settings_configuration.invariant()?;
 
         // Initialize the settings account with the configuration.
         let settings_account_info = settings_configuration.find_and_initialize_settings_account(
@@ -112,11 +113,10 @@ impl<'info> CreateSmartAccount<'info> {
             &ctx.remaining_accounts,
             &ctx.accounts.system_program,
         )?;
+
         // Serialize the settings account.
         settings_configuration
             .try_serialize(&mut &mut settings_account_info.data.borrow_mut()[..])?;
-
-        settings_configuration.invariant()?;
 
         // Check if the creation fee is set and transfer the fee to the treasury if necessary.
         let creation_fee = program_config.smart_account_creation_fee;

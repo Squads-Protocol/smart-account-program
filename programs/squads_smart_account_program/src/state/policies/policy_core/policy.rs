@@ -8,7 +8,7 @@ use crate::{
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
     ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
-    SettingsChangePolicy, SmartAccountSigner, SmartAccountSignerWrapper, SmartAccountSignerV2,
+    SettingsChangePolicy, LegacySmartAccountSigner, SmartAccountSignerWrapper,
     SpendingLimitExecutionArgs, SpendingLimitPolicy,
     Transaction, SEED_POLICY, SEED_PREFIX,
 };
@@ -69,6 +69,7 @@ pub struct Policy {
 }
 
 impl Policy {
+    /// Calculate size for V1 format (fixed 33-byte signers)
     pub fn size(signers_length: usize, policy_data_length: usize) -> usize {
         8  + // anchor discriminator
         32 + // settings
@@ -77,7 +78,25 @@ impl Policy {
         8  + // transaction_index
         8  + // stale_transaction_index
         4  + // signers vector length
-        signers_length * SmartAccountSigner::INIT_SPACE + // signers
+        signers_length * LegacySmartAccountSigner::INIT_SPACE + // signers
+        2  + // threshold
+        4  + // time_lock
+        1  + policy_data_length + // discriminator + policy_data_length
+        8  + // start_timestamp
+        1  + PolicyExpiration::INIT_SPACE + // expiration (discriminator + max data size)
+        32  // rent_collector
+    }
+
+    /// Calculate size based on actual wrapper contents (V1 or V2)
+    pub fn size_for_wrapper(wrapper: &SmartAccountSignerWrapper, policy_data_length: usize) -> usize {
+        let signers_size = wrapper.serialized_size();
+        8  + // anchor discriminator
+        32 + // settings
+        8  + // seed
+        1 + // bump
+        8  + // transaction_index
+        8  + // stale_transaction_index
+        signers_size + // signers (variable size based on V1/V2)
         2  + // threshold
         4  + // time_lock
         1  + policy_data_length + // discriminator + policy_data_length
@@ -96,6 +115,25 @@ impl Policy {
     ) -> Result<bool> {
         let current_account_size = policy.data.borrow().len();
         let required_size = Policy::size(signers_length, policy_data_length);
+
+        if current_account_size >= required_size {
+            return Ok(false);
+        }
+
+        crate::utils::realloc(&policy, required_size, rent_payer, system_program)?;
+        Ok(true)
+    }
+
+    /// Check if the policy account space needs to be reallocated for V2 signers.
+    pub fn realloc_for_wrapper<'a>(
+        policy: AccountInfo<'a>,
+        wrapper: &SmartAccountSignerWrapper,
+        policy_data_length: usize,
+        rent_payer: Option<AccountInfo<'a>>,
+        system_program: Option<AccountInfo<'a>>,
+    ) -> Result<bool> {
+        let current_account_size = policy.data.borrow().len();
+        let required_size = Policy::size_for_wrapper(wrapper, policy_data_length);
 
         if current_account_size >= required_size {
             return Ok(false);
@@ -169,12 +207,12 @@ impl Policy {
         Ok(())
     }
 
-    /// Create policy state safely
+    /// Create policy state safely (V1 signers)
     pub fn create_state(
         settings: Pubkey,
         seed: u64,
         bump: u8,
-        signers: &Vec<SmartAccountSigner>,
+        signers: &Vec<LegacySmartAccountSigner>,
         threshold: u16,
         time_lock: u32,
         policy_state: PolicyState,
@@ -201,10 +239,10 @@ impl Policy {
         })
     }
 
-    /// Update policy state safely. Disallows
+    /// Update policy state safely (V1 signers)
     pub fn update_state(
         &mut self,
-        signers: &Vec<SmartAccountSigner>,
+        signers: &Vec<LegacySmartAccountSigner>,
         threshold: u16,
         time_lock: u32,
         policy_state: PolicyState,

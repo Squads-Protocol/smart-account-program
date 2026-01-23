@@ -86,6 +86,15 @@ pub mod squads_smart_account_program {
         CreateSmartAccount::create_smart_account(ctx, args)
     }
 
+    /// Create a smart account with V2 signers (supports Native + External signers).
+    /// This version initializes the Settings account in V2 format from the start.
+    pub fn create_smart_account_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateSmartAccountV2<'info>>,
+        args: CreateSmartAccountV2Args,
+    ) -> Result<()> {
+        CreateSmartAccountV2::create_smart_account_v2(ctx, args)
+    }
+
     /// Add a new signer to the controlled smart account.
     pub fn add_signer_as_authority(
         ctx: Context<ExecuteSettingsTransactionAsAuthority>,
@@ -148,6 +157,15 @@ pub mod squads_smart_account_program {
         args: RemoveSpendingLimitArgs,
     ) -> Result<()> {
         RemoveSpendingLimitAsAuthority::remove_spending_limit(ctx, args)
+    }
+
+    /// Migrate settings signers from V1 to V2 format.
+    /// This enables external signer support (P256/WebAuthn, secp256k1, Ed25519 external).
+    pub fn settings_migrate_signers(
+        ctx: Context<SettingsMigrateSigners>,
+        args: MigrateSignersArgs,
+    ) -> Result<()> {
+        SettingsMigrateSigners::settings_migrate_signers(ctx, args)
     }
 
     /// Create a new settings transaction.
@@ -333,6 +351,25 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         SyncSettingsTransaction::sync_settings_transaction(ctx, args)
     }
+
+    /// Synchronously execute a transaction with V3 external signer support
+    /// This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)
+    pub fn execute_transaction_sync_v3<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncTransactionV2<'info>>,
+        args: SyncTransactionV2Args,
+    ) -> Result<()> {
+        SyncTransactionV2::sync_transaction_v2(ctx, args)
+    }
+
+    /// Synchronously execute a config transaction with V2 external signer support
+    /// This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)
+    pub fn execute_settings_transaction_sync_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncSettingsTransactionV2<'info>>,
+        args: SyncSettingsTransactionV2Args,
+    ) -> Result<()> {
+        SyncSettingsTransactionV2::sync_settings_transaction_v2(ctx, args)
+    }
+
     /// Log an event
     pub fn log_event<'info>(
         ctx: Context<'_, '_, 'info, 'info, LogEvent<'info>>,
@@ -356,19 +393,23 @@ pub mod squads_smart_account_program {
         ProposalVoteV2::proposal_vote_v2(ctx, args)
     }
 
-    /// Add an external signer to the smart account (P256/WebAuthn, secp256k1, Ed25519 external)
-    pub fn settings_add_external_signer<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SettingsAddExternalSigner<'info>>,
-        args: AddExternalSignerArgs,
+    /// Add a V2 signer (Native or External) to the smart account.
+    /// This is the V2 version of `add_signer_as_authority` that supports all signer types.
+    /// Requires Settings to be migrated to V2 format first.
+    pub fn add_signer_as_authority_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SettingsAddSignerV2<'info>>,
+        args: AddSignerV2Args,
     ) -> Result<()> {
-        SettingsAddExternalSigner::settings_add_external_signer(ctx, args)
+        SettingsAddSignerV2::add_signer_v2(ctx, args)
     }
 
-    /// Remove an external signer from the smart account
-    pub fn settings_remove_external_signer<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SettingsRemoveExternalSigner<'info>>,
-        args: RemoveExternalSignerArgs,
+    /// Remove a V2 signer (Native or External) from the smart account.
+    /// This is the V2 version of `remove_signer_as_authority` that supports all signer types.
+    /// Requires Settings to be migrated to V2 format first.
+    pub fn remove_signer_as_authority_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SettingsRemoveSignerV2<'info>>,
+        args: RemoveSignerV2Args,
     ) -> Result<()> {
-        SettingsRemoveExternalSigner::settings_remove_external_signer(ctx, args)
+        SettingsRemoveSignerV2::remove_signer_v2(ctx, args)
     }
 }

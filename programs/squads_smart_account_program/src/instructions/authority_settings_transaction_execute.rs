@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddSignerArgs {
-    pub new_signer: SmartAccountSigner,
+    pub new_signer: LegacySmartAccountSigner,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }

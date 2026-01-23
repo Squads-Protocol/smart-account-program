@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{Permission, SmartAccountSignerV2, SmartAccountSignerWrapper};
+use crate::{Permission, SmartAccountSigner, SmartAccountSignerWrapper};
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum ConsensusAccountType {
@@ -23,7 +23,7 @@ pub trait Consensus {
     fn stale_transaction_index(&self) -> u64;
 
     /// Get signers as V2 format (canonical view for consensus)
-    fn signers_v2(&self) -> Vec<SmartAccountSignerV2> {
+    fn signers_v2(&self) -> Vec<SmartAccountSigner> {
         self.signers().as_v2()
     }
 
@@ -33,8 +33,14 @@ pub trait Consensus {
     }
 
     /// Check if signer exists (by key or key_id)
-    fn is_signer_v2(&self, key: Pubkey) -> Option<SmartAccountSignerV2> {
+    fn is_signer_v2(&self, key: Pubkey) -> Option<SmartAccountSigner> {
         self.signers().find(&key)
+    }
+
+    /// Find an external signer by their active session key.
+    /// Returns the signer if the pubkey matches an active session key.
+    fn find_signer_by_session_key(&self, pubkey: Pubkey, current_timestamp: u64) -> Option<SmartAccountSigner> {
+        self.signers().find_by_session_key(&pubkey, current_timestamp)
     }
 
     /// Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.

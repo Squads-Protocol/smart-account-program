@@ -9,13 +9,153 @@ use anchor_lang::solana_program::{
 use std::collections::HashSet;
 
 use crate::errors::SmartAccountError;
-use crate::state::{SignerTypeV2, SmartAccountSignerV2};
+use crate::state::{
+    ClientDataJsonReconstructionParams, SignerType, SmartAccountSigner,
+    WEBAUTHN_SIGNATURE_MIN_SIZE,
+};
 
 pub const SECP256R1_PROGRAM_ID: Pubkey = pubkey!("Secp256r1SigVerify1111111111111111111111111");
 
+// ============================================================================
+// WebAuthn Authenticator Data Parser
+// Ported from external-signature-program
+// ============================================================================
+
+/// Wrapper for parsing WebAuthn authenticator data
+pub struct AuthDataParser<'a> {
+    auth_data: &'a [u8],
+}
+
+impl<'a> AuthDataParser<'a> {
+    /// Creates a new AuthDataParser
+    pub fn new(auth_data: &'a [u8]) -> Self {
+        Self { auth_data }
+    }
+
+    /// Gets the RP ID hash (first 32 bytes)
+    pub fn rp_id_hash(&self) -> &'a [u8] {
+        &self.auth_data[0..32]
+    }
+
+    /// Checks if the user is present based on the flags
+    pub fn is_user_present(&self) -> bool {
+        self.auth_data[32] & 0x01 != 0
+    }
+
+    /// Checks if the user is verified based on the flags
+    pub fn is_user_verified(&self) -> bool {
+        self.auth_data[32] & 0x04 != 0
+    }
+
+    /// Gets the counter from the authenticator data (bytes 33-36, big-endian)
+    pub fn get_counter(&self) -> u32 {
+        u32::from_be_bytes([
+            self.auth_data[33],
+            self.auth_data[34],
+            self.auth_data[35],
+            self.auth_data[36],
+        ])
+    }
+}
+
+// ============================================================================
+// ClientDataJSON Reconstruction
+// Ported from external-signature-program
+// ============================================================================
+
+/// Base64URL alphabet for encoding
+const BASE64URL_ALPHABET: &[u8; 64] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+/// Encode bytes as base64url (no padding)
+fn base64url_encode(input: &[u8]) -> Vec<u8> {
+    let mut output = Vec::with_capacity((input.len() * 4 + 2) / 3);
+
+    for chunk in input.chunks(3) {
+        let b0 = chunk[0] as usize;
+        let b1 = chunk.get(1).copied().unwrap_or(0) as usize;
+        let b2 = chunk.get(2).copied().unwrap_or(0) as usize;
+
+        output.push(BASE64URL_ALPHABET[b0 >> 2]);
+        output.push(BASE64URL_ALPHABET[((b0 & 0x03) << 4) | (b1 >> 4)]);
+
+        if chunk.len() > 1 {
+            output.push(BASE64URL_ALPHABET[((b1 & 0x0f) << 2) | (b2 >> 6)]);
+        }
+        if chunk.len() > 2 {
+            output.push(BASE64URL_ALPHABET[b2 & 0x3f]);
+        }
+    }
+
+    output
+}
+
+/// Reconstruct clientDataJSON from compact parameters
+///
+/// This reconstructs the full clientDataJSON that was hashed to produce clientDataHash.
+/// The format is:
+/// {"type":"webauthn.get","challenge":"<base64url>","origin":"<origin>","crossOrigin":<bool>}
+pub fn reconstruct_client_data_json(
+    params: &ClientDataJsonReconstructionParams,
+    rp_id: &[u8],
+    challenge: &[u8],
+) -> Vec<u8> {
+    let mut json = Vec::with_capacity(256);
+
+    // Start JSON object
+    json.extend_from_slice(b"{\"type\":\"webauthn.");
+
+    // Type: "create" or "get"
+    if params.is_create() {
+        json.extend_from_slice(b"create");
+    } else {
+        json.extend_from_slice(b"get");
+    }
+
+    // Challenge (base64url encoded)
+    json.extend_from_slice(b"\",\"challenge\":\"");
+    let encoded_challenge = base64url_encode(challenge);
+    json.extend_from_slice(&encoded_challenge);
+
+    // Origin
+    json.extend_from_slice(b"\",\"origin\":\"");
+    if params.is_http() {
+        json.extend_from_slice(b"http://");
+    } else {
+        json.extend_from_slice(b"https://");
+    }
+    json.extend_from_slice(rp_id);
+
+    // Optional port
+    if let Some(port) = params.get_port() {
+        json.push(b':');
+        // Convert port to string bytes
+        let port_str = port.to_string();
+        json.extend_from_slice(port_str.as_bytes());
+    }
+
+    // Cross-origin
+    json.extend_from_slice(b"\",\"crossOrigin\":");
+    if params.is_cross_origin() {
+        json.extend_from_slice(b"true");
+    } else {
+        json.extend_from_slice(b"false");
+    }
+
+    // Google extra field (some authenticators add this)
+    if params.has_google_extra() {
+        json.extend_from_slice(b",\"androidPackageName\":\"com.google.android.gms\"");
+    }
+
+    // Close JSON object
+    json.push(b'}');
+
+    json
+}
+
 #[derive(Debug)]
 pub struct ParsedPrecompileSignature {
-    pub signer_type: SignerTypeV2,
+    pub signer_type: SignerType,
     pub public_key: Vec<u8>,
     pub message: Vec<u8>,
     pub signature: Vec<u8>,
@@ -24,6 +164,8 @@ pub struct ParsedPrecompileSignature {
 pub struct ExternalSignatureVerification {
     pub verified_key_ids: Vec<Pubkey>,
     pub verified_count: usize,
+    /// Counter updates for WebAuthn signers (key_id -> new_counter)
+    pub counter_updates: Vec<(Pubkey, u64)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -266,15 +408,15 @@ fn extract_signature_payload<T: PrecompileInfo>(
 pub fn parse_precompile_signature(
     precompile_ix: &Instruction,
     instructions_sysvar: &AccountInfo,
-    signer_type: SignerTypeV2,
+    signer_type: SignerType,
     index: usize,
 ) -> Result<ParsedPrecompileSignature> {
     // Verify program ID matches expected precompile
     let expected_program_id = match signer_type {
-        SignerTypeV2::P256Webauthn => SECP256R1_PROGRAM_ID,
-        SignerTypeV2::Secp256k1 => secp256k1_program::ID,
-        SignerTypeV2::Ed25519External => ed25519_program::ID,
-        SignerTypeV2::Native => return Err(SmartAccountError::InvalidSignerType.into()),
+        SignerType::P256Webauthn => SECP256R1_PROGRAM_ID,
+        SignerType::Secp256k1 => secp256k1_program::ID,
+        SignerType::Ed25519External => ed25519_program::ID,
+        SignerType::Native => return Err(SmartAccountError::InvalidSignerType.into()),
     };
     require_keys_eq!(
         precompile_ix.program_id,
@@ -283,16 +425,16 @@ pub fn parse_precompile_signature(
     );
 
     let payload = match signer_type {
-        SignerTypeV2::P256Webauthn => {
+        SignerType::P256Webauthn => {
             extract_signature_payload::<Secp256r1>(&precompile_ix.data, instructions_sysvar, index)?
         }
-        SignerTypeV2::Secp256k1 => {
+        SignerType::Secp256k1 => {
             extract_signature_payload::<LegacySecp256k1>(&precompile_ix.data, instructions_sysvar, index)?
         }
-        SignerTypeV2::Ed25519External => {
+        SignerType::Ed25519External => {
             extract_signature_payload::<Ed25519>(&precompile_ix.data, instructions_sysvar, index)?
         }
-        SignerTypeV2::Native => return Err(SmartAccountError::InvalidSignerType.into()),
+        SignerType::Native => return Err(SmartAccountError::InvalidSignerType.into()),
     };
 
     Ok(ParsedPrecompileSignature {
@@ -304,35 +446,40 @@ pub fn parse_precompile_signature(
 }
 
 /// Verify external signatures from precompile instructions in the transaction
+///
+/// For WebAuthn signers, `client_data_params` must be provided to reconstruct
+/// the clientDataJSON for verification.
 pub fn verify_external_signatures(
     instructions_sysvar: &AccountInfo,
-    external_signers: &[SmartAccountSignerV2],
+    external_signers: &[SmartAccountSigner],
     expected_message: &[u8],
     required_key_ids: Option<&[Pubkey]>,
+    client_data_params: Option<&ClientDataJsonReconstructionParams>,
 ) -> Result<ExternalSignatureVerification> {
     let current_idx = load_current_index_checked(instructions_sysvar)
         .map_err(|_| SmartAccountError::MissingPrecompileInstruction)? as usize;
 
     let mut verified_key_ids = Vec::new();
     let mut used_signatures: HashSet<Vec<u8>> = HashSet::new();
+    let mut counter_updates: Vec<(Pubkey, u64)> = Vec::new();
 
     for ix_idx in 0..current_idx {
         let ix = load_instruction_at_checked(ix_idx, instructions_sysvar)
             .map_err(|_| SmartAccountError::MissingPrecompileInstruction)?;
 
         let signer_type = match &ix.program_id {
-            id if id == &SECP256R1_PROGRAM_ID => SignerTypeV2::P256Webauthn,
-            id if id == &secp256k1_program::ID => SignerTypeV2::Secp256k1,
-            id if id == &ed25519_program::ID => SignerTypeV2::Ed25519External,
+            id if id == &SECP256R1_PROGRAM_ID => SignerType::P256Webauthn,
+            id if id == &secp256k1_program::ID => SignerType::Secp256k1,
+            id if id == &ed25519_program::ID => SignerType::Ed25519External,
             _ => continue,
         };
 
         // Get number of signatures in this precompile instruction
         let num = match signer_type {
-            SignerTypeV2::P256Webauthn => get_num_signatures::<Secp256r1>(&ix.data)?,
-            SignerTypeV2::Secp256k1 => get_num_signatures::<LegacySecp256k1>(&ix.data)?,
-            SignerTypeV2::Ed25519External => get_num_signatures::<Ed25519>(&ix.data)?,
-            SignerTypeV2::Native => 0,
+            SignerType::P256Webauthn => get_num_signatures::<Secp256r1>(&ix.data)?,
+            SignerType::Secp256k1 => get_num_signatures::<LegacySecp256k1>(&ix.data)?,
+            SignerType::Ed25519External => get_num_signatures::<Ed25519>(&ix.data)?,
+            SignerType::Native => 0,
         };
 
         for sig_idx in 0..num {
@@ -352,9 +499,13 @@ pub fn verify_external_signatures(
 
                 if let Some(stored_pubkey) = signer.get_public_key_bytes() {
                     if pubkeys_match(stored_pubkey, &parsed.public_key, signer_type) {
-                        verify_signed_message(&parsed.message, expected_message, signer)?;
+                        let verification = verify_signed_message(&parsed.message, expected_message, signer, client_data_params)?;
                         if !verified_key_ids.contains(&signer.key()) {
                             verified_key_ids.push(signer.key());
+                            // Track counter updates for WebAuthn signers
+                            if let Some(new_counter) = verification.new_counter {
+                                counter_updates.push((signer.key(), new_counter));
+                            }
                         }
                         break;
                     }
@@ -376,21 +527,22 @@ pub fn verify_external_signatures(
     Ok(ExternalSignatureVerification {
         verified_count: verified_key_ids.len(),
         verified_key_ids,
+        counter_updates,
     })
 }
 
-fn pubkeys_match(stored: &[u8], parsed: &[u8], signer_type: SignerTypeV2) -> bool {
+fn pubkeys_match(stored: &[u8], parsed: &[u8], signer_type: SignerType) -> bool {
     match signer_type {
-        SignerTypeV2::P256Webauthn => stored == parsed,
-        SignerTypeV2::Secp256k1 => {
+        SignerType::P256Webauthn => stored == parsed,
+        SignerType::Secp256k1 => {
             // For secp256k1, stored is uncompressed pubkey (64 bytes), parsed is eth_address (20 bytes)
             if stored.len() != 64 || parsed.len() != 20 {
                 return false;
             }
             compute_eth_address(stored).as_slice() == parsed
         }
-        SignerTypeV2::Ed25519External => stored == parsed,
-        SignerTypeV2::Native => false,
+        SignerType::Ed25519External => stored == parsed,
+        SignerType::Native => false,
     }
 }
 
@@ -403,48 +555,114 @@ fn compute_eth_address(pubkey: &[u8]) -> [u8; 20] {
     eth_address
 }
 
+/// Result of verifying a signed message, includes optional counter update for WebAuthn
+struct SignedMessageVerification {
+    /// New counter value for WebAuthn signers (None for other signer types)
+    new_counter: Option<u64>,
+}
+
+/// Verify a signed message using the correct WebAuthn flow
+///
+/// For WebAuthn/P256 signers:
+/// - The signed message format is: authenticatorData || clientDataHash
+/// - We split at (len - 32) to get auth_data and client_data_hash
+/// - We reconstruct the expected clientDataJSON and hash it
+/// - We compare the hashes to verify the challenge matches
+///
+/// For other external signers (Ed25519, Secp256k1):
+/// - Direct message comparison
 fn verify_signed_message(
     signed: &[u8],
-    expected: &[u8],
-    signer: &SmartAccountSignerV2,
-) -> Result<()> {
+    expected_challenge: &[u8],
+    signer: &SmartAccountSigner,
+    client_data_params: Option<&ClientDataJsonReconstructionParams>,
+) -> Result<SignedMessageVerification> {
     match signer {
-        SmartAccountSignerV2::P256Webauthn { data, .. } => {
-            // WebAuthn authenticator data format:
-            // - bytes 0-31: rpIdHash (32 bytes)
-            // - byte 32: flags
-            // - bytes 33-36: signCount (4 bytes, big-endian)
-            // - remaining: optional extensions and attested credential data
-            require!(signed.len() >= 37, SmartAccountError::InvalidPrecompileData);
+        SmartAccountSigner::P256Webauthn { data, .. } => {
+            // Minimum size: authenticatorData (37 min) + clientDataHash (32) = 69 bytes
+            require!(signed.len() >= WEBAUTHN_SIGNATURE_MIN_SIZE, SmartAccountError::InvalidPrecompileData);
 
-            let rp_id_hash = &signed[..32];
+            // Split the message: authenticatorData || clientDataHash
+            // clientDataHash is always the last 32 bytes
+            let (auth_data, client_data_hash) = signed.split_at(signed.len() - 32);
+
+            // Parse authenticator data using AuthDataParser
+            let auth_parser = AuthDataParser::new(auth_data);
+
+            // Validate rpIdHash
             require!(
-                rp_id_hash == data.rp_id_hash,
+                auth_parser.rp_id_hash() == data.rp_id_hash.as_slice(),
                 SmartAccountError::WebauthnRpIdMismatch
             );
 
-            let flags = signed[32];
-            // Check UP (User Present) flag (bit 0)
+            // Check user presence flag
             require!(
-                (flags & 0x01) != 0,
+                auth_parser.is_user_present(),
                 SmartAccountError::WebauthnUserNotPresent
             );
 
-            // Note: Full WebAuthn validation should also:
-            // - Parse clientDataJSON and verify challenge == base64url(expected)
-            // - Verify type == "webauthn.get"
-            // - Validate origin if enforced
-            // - Enforce counter monotonicity and persist updated counter
+            // Parse and validate counter (replay protection)
+            // WebAuthn counters are monotonically increasing - each signature MUST have
+            // a counter strictly greater than the previously stored counter.
+            // Exception: When both are 0, this is the first use and we accept it.
+            let sign_counter = auth_parser.get_counter() as u64;
+            if data.counter > 0 || sign_counter > 0 {
+                require!(
+                    sign_counter > data.counter,
+                    SmartAccountError::WebauthnCounterNotIncremented
+                );
+            }
 
-            Ok(())
-        }
-        _ => {
+            // Reconstruct clientDataJSON and verify hash
+            // We need the reconstruction params to know origin details
+            let params = client_data_params
+                .ok_or(SmartAccountError::MissingClientDataParams)?;
+
+            let rp_id = data.get_rp_id();
+            let reconstructed_client_data = reconstruct_client_data_json(params, rp_id, expected_challenge);
+
+            // Hash the reconstructed clientDataJSON
+            use anchor_lang::solana_program::hash::hash;
+            let reconstructed_hash = hash(&reconstructed_client_data);
+
+            // Compare hashes
             require!(
-                signed == expected,
+                client_data_hash == reconstructed_hash.to_bytes().as_slice(),
                 SmartAccountError::PrecompileMessageMismatch
             );
+
+            // Always return the counter value for persistence.
+            // This ensures that:
+            // 1. Counter 0 can be marked as "used" after first authentication
+            // 2. Any higher counter gets persisted
+            // The caller MUST persist this value to prevent replay attacks.
+            Ok(SignedMessageVerification { new_counter: Some(sign_counter) })
+        }
+        _ => {
+            // For non-WebAuthn signers, direct comparison
+            require!(
+                signed == expected_challenge,
+                SmartAccountError::PrecompileMessageMismatch
+            );
+            Ok(SignedMessageVerification { new_counter: None })
+        }
+    }
+}
+
+/// Update the WebAuthn counter for a signer after successful verification
+///
+/// This should be called after signature verification to persist the new counter.
+/// The caller must have mutable access to the signer's data.
+pub fn update_webauthn_counter(
+    signer: &mut SmartAccountSigner,
+    new_counter: u64,
+) -> Result<()> {
+    match signer {
+        SmartAccountSigner::P256Webauthn { data, .. } => {
+            data.counter = new_counter;
             Ok(())
         }
+        _ => Err(SmartAccountError::InvalidSignerType.into()),
     }
 }
 
@@ -489,6 +707,25 @@ pub fn create_vote_message(proposal_key: &Pubkey, vote: u8, transaction_index: u
     hasher.hash(b"proposal_vote_v2");
     hasher.hash(proposal_key.as_ref());
     hasher.hash(&[vote]);
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for synchronous consensus verification
+/// 
+/// This is used by external signers to prove they're authorizing a sync transaction.
+/// Format: hash("squads-sync" || consensus_account_key || transaction_index)
+pub fn create_sync_consensus_message(
+    consensus_account_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"squads-sync");
+    hasher.hash(consensus_account_key.as_ref());
+    // Note: We use transaction_index as a nonce to prevent replay
     hasher.hash(&transaction_index.to_le_bytes());
 
     hasher.result().to_bytes()

@@ -92,8 +92,6 @@ pub enum SmartAccountError {
     FinalBufferSizeExceeded,
     #[msg("Final buffer size mismatch")]
     FinalBufferSizeMismatch,
-    #[msg("smart_account_create has been deprecated. Use smart_account_create_v2 instead.")]
-    SmartAccountCreateDeprecated,
     #[msg("Signers do not reach consensus threshold")]
     ThresholdNotReached,
     #[msg("Invalid number of signer accounts. Must be greater or equal to the threshold")]
@@ -354,8 +352,38 @@ pub enum SmartAccountError {
     V2InstructionOnV1Account,
     #[msg("Cannot downgrade to V1 - external signers still present")]
     CannotDowngradeWithExternalSigners,
+    #[msg("Signers already migrated to V2 format")]
+    AlreadyMigrated,
     #[msg("Signer has already voted on this proposal")]
     AlreadyVoted,
     #[msg("Signers do not meet consensus threshold")]
     NotEnoughSigners,
+    #[msg("Settings must be migrated to V2 format before using this instruction")]
+    MustMigrateToV2,
+
+    // ===============================================
+    // Session Key Errors
+    // ===============================================
+    #[msg("Session key expiration must be in the future")]
+    InvalidSessionKeyExpiration,
+    #[msg("Session key expiration exceeds maximum allowed (3 months)")]
+    SessionKeyExpirationTooLong,
+    #[msg("Session key is expired")]
+    SessionKeyExpired,
+    #[msg("Session key is not active")]
+    SessionKeyNotActive,
+    #[msg("Invalid session key (cannot be default pubkey)")]
+    InvalidSessionKey,
+    #[msg("Signer with this public key already exists")]
+    DuplicatePublicKey,
+    #[msg("Missing client data params for WebAuthn verification")]
+    MissingClientDataParams,
+    #[msg("Session key is already in use")]
+    DuplicateSessionKey,
+    #[msg("Required external signer not verified")]
+    MissingRequiredExternalSigner,
+    #[msg("Invalid permissions mask (must be < 8)")]
+    InvalidPermissions,
+    #[msg("Maximum number of signers reached")]
+    MaxSignersReached,
 }
