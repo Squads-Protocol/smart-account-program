@@ -92,6 +92,8 @@ pub enum SmartAccountError {
     FinalBufferSizeExceeded,
     #[msg("Final buffer size mismatch")]
     FinalBufferSizeMismatch,
+    #[msg("smart_account_create has been deprecated. Use smart_account_create_v2 instead.")]
+    SmartAccountCreateDeprecated,
     #[msg("Signers do not reach consensus threshold")]
     ThresholdNotReached,
     #[msg("Invalid number of signer accounts. Must be greater or equal to the threshold")]
