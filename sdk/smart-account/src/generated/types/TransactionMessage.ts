@@ -36,7 +36,7 @@ export const transactionMessageBeet =
       ['numSigners', beet.u8],
       ['numWritableSigners', beet.u8],
       ['numWritableNonSigners', beet.u8],
-      ['accountKeys', beet.array(beetSolana.publicKey)],
+      ['accountKeys', smallArray(beet.u8, beetSolana.publicKey)],
       ['instructions', smallArray(beet.u8, compiledInstructionBeet)],
       ['addressTableLookups', smallArray(beet.u8, messageAddressTableLookupBeet)],
     ],

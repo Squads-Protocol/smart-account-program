@@ -41,7 +41,7 @@ const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
     'CompiledAccountConstraintType.ts',
   ],
   'beetSolana.publicKey': [
-    'SmartAccountTransactionMessage.ts',
+    'TransactionMessage.ts',
     'ProgramInteractionPolicyCreationPayload.ts',
   ],
 };
@@ -98,9 +98,41 @@ function processFile(filePath) {
     content = content.replace(/Pubkey: \{ fields: \[Uint8Array\] \}/g, 'Pubkey: { fields: [number[]] }');
   }
 
+  if (fileName === 'SmartAccountCompiledInstruction.ts') {
+    content = content.replace(
+      /\['accountIndexes', smallArray\(beet\.u8, beet\.u8\)\]/g,
+      "['accountIndexes', beet.bytes]"
+    );
+    content = content.replace(
+      /\['data', smallArray\(beet\.u16, beet\.u8\)\]/g,
+      "['data', beet.bytes]"
+    );
+    content = content.replace(/accountIndexes: number\[]/g, 'accountIndexes: Uint8Array');
+    content = content.replace(/data: number\[]/g, 'data: Uint8Array');
+  }
+
+  if (fileName === 'SmartAccountMessageAddressTableLookup.ts') {
+    content = content.replace(
+      /\['writableIndexes', smallArray\(beet\.u8, beet\.u8\)\]/g,
+      "['writableIndexes', beet.bytes]"
+    );
+    content = content.replace(
+      /\['readonlyIndexes', smallArray\(beet\.u8, beet\.u8\)\]/g,
+      "['readonlyIndexes', beet.bytes]"
+    );
+    content = content.replace(/writableIndexes: number\[]/g, 'writableIndexes: Uint8Array');
+    content = content.replace(/readonlyIndexes: number\[]/g, 'readonlyIndexes: Uint8Array');
+  }
+
   // Add smallArray import if file was modified
   if (content !== originalContent) {
-    if (!content.includes("import { smallArray }") && !content.includes("{ smallArray }")) {
+    const usesSmallArray = content.includes('smallArray(');
+
+    if (!usesSmallArray) {
+      content = content.replace(/import \{ smallArray \} from '\.\.\/\.\.\/types'\n/g, '');
+    }
+
+    if (usesSmallArray && !content.includes("import { smallArray }") && !content.includes("{ smallArray }")) {
       content = content.replace(
         /import \* as beet from '@metaplex-foundation\/beet'/,
         `import * as beet from '@metaplex-foundation/beet'\nimport { smallArray } from '../../types'`

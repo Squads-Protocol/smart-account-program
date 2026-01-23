@@ -11,7 +11,7 @@ import {
 } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
 import { Payload } from "@sqds/smart-account/lib/generated";
-import { TransactionPayloadDetails } from "@sqds/smart-account/src/generated/types";
+import { TransactionPayloadDetails } from "@sqds/smart-account/lib/generated/types";
 import assert from "assert";
 import { readFileSync } from "fs";
 import path from "path";
