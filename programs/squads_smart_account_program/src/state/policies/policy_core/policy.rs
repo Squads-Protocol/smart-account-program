@@ -466,4 +466,8 @@ impl Consensus for Policy {
     fn invariant(&self) -> Result<()> {
         self.invariant()
     }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.signers.apply_counter_updates(updates)
+    }
 }

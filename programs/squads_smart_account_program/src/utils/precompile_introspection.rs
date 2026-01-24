@@ -712,6 +712,136 @@ pub fn create_vote_message(proposal_key: &Pubkey, vote: u8, transaction_index: u
     hasher.result().to_bytes()
 }
 
+/// Create message for proposal creation signing
+///
+/// Format: hash("proposal_create_v2" || consensus_account_key || transaction_index || draft)
+pub fn create_proposal_create_message(
+    consensus_account_key: &Pubkey,
+    transaction_index: u64,
+    draft: bool,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"proposal_create_v2");
+    hasher.hash(consensus_account_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(&[draft as u8]);
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for proposal activation signing
+///
+/// Format: hash("proposal_activate_v2" || proposal_key || transaction_index)
+pub fn create_proposal_activate_message(
+    proposal_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"proposal_activate_v2");
+    hasher.hash(proposal_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for async transaction execution signing
+///
+/// Format: hash("transaction_execute_v2" || transaction_key || transaction_index)
+pub fn create_execute_transaction_message(
+    transaction_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"transaction_execute_v2");
+    hasher.hash(transaction_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for async settings transaction execution signing
+///
+/// Format: hash("settings_tx_execute_v2" || transaction_key || transaction_index)
+pub fn create_execute_settings_transaction_message(
+    transaction_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"settings_tx_execute_v2");
+    hasher.hash(transaction_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for transaction buffer creation signing
+///
+/// Format: hash("tx_buffer_create_v2" || consensus_account_key || creator_key || buffer_index || account_index || final_hash || final_size)
+pub fn create_transaction_buffer_create_message(
+    consensus_account_key: &Pubkey,
+    creator_key: &Pubkey,
+    buffer_index: u8,
+    account_index: u8,
+    final_buffer_hash: &[u8; 32],
+    final_buffer_size: u16,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"tx_buffer_create_v2");
+    hasher.hash(consensus_account_key.as_ref());
+    hasher.hash(creator_key.as_ref());
+    hasher.hash(&[buffer_index]);
+    hasher.hash(&[account_index]);
+    hasher.hash(final_buffer_hash);
+    hasher.hash(&final_buffer_size.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for transaction buffer extension signing
+///
+/// Format: hash("tx_buffer_extend_v2" || buffer_key || chunk_hash)
+pub fn create_transaction_buffer_extend_message(
+    buffer_key: &Pubkey,
+    buffer_chunk: &[u8],
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::{hash, Hasher};
+
+    let chunk_hash = hash(buffer_chunk);
+    let mut hasher = Hasher::default();
+    hasher.hash(b"tx_buffer_extend_v2");
+    hasher.hash(buffer_key.as_ref());
+    hasher.hash(chunk_hash.as_ref());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for transaction creation from buffer signing
+///
+/// Format: hash("tx_from_buffer_v2" || buffer_key || transaction_index)
+pub fn create_transaction_from_buffer_message(
+    buffer_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"tx_from_buffer_v2");
+    hasher.hash(buffer_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
 /// Create message for synchronous consensus verification
 /// 
 /// This is used by external signers to prove they're authorizing a sync transaction.
@@ -726,6 +856,40 @@ pub fn create_sync_consensus_message(
     hasher.hash(b"squads-sync");
     hasher.hash(consensus_account_key.as_ref());
     // Note: We use transaction_index as a nonce to prevent replay
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for async transaction creation signing
+///
+/// Format: hash("transaction_create_v2" || consensus_account_key || transaction_index)
+pub fn create_transaction_message(
+    consensus_account_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"transaction_create_v2");
+    hasher.hash(consensus_account_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for settings transaction creation signing
+///
+/// Format: hash("settings_tx_create_v2" || settings_key || transaction_index)
+pub fn create_settings_transaction_create_message(
+    settings_key: &Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"settings_tx_create_v2");
+    hasher.hash(settings_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
 
     hasher.result().to_bytes()

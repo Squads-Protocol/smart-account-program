@@ -89,10 +89,10 @@ pub mod squads_smart_account_program {
     /// Create a smart account with V2 signers (supports Native + External signers).
     /// This version initializes the Settings account in V2 format from the start.
     pub fn create_smart_account_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateSmartAccountV2<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, CreateSmartAccount<'info>>,
         args: CreateSmartAccountV2Args,
     ) -> Result<()> {
-        CreateSmartAccountV2::create_smart_account_v2(ctx, args)
+        CreateSmartAccount::create_smart_account_v2(ctx, args)
     }
 
     /// Add a new signer to the controlled smart account.
@@ -176,12 +176,29 @@ pub mod squads_smart_account_program {
         CreateSettingsTransaction::create_settings_transaction(ctx, args)
     }
 
+    /// Create a new settings transaction with V2 signer support.
+    pub fn create_settings_transaction_v2(
+        ctx: Context<CreateSettingsTransactionV2>,
+        args: CreateSettingsTransactionV2Args,
+    ) -> Result<()> {
+        CreateSettingsTransactionV2::create_settings_transaction_v2(ctx, args)
+    }
+
     /// Execute a settings transaction.
     /// The transaction must be `Approved`.
     pub fn execute_settings_transaction<'info>(
         ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransaction<'info>>,
     ) -> Result<()> {
         ExecuteSettingsTransaction::execute_settings_transaction(ctx)
+    }
+
+    /// Execute a settings transaction with V2 signer support.
+    /// The transaction must be `Approved`.
+    pub fn execute_settings_transaction_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransactionV2<'info>>,
+        args: ExecuteSettingsTransactionV2Args,
+    ) -> Result<()> {
+        ExecuteSettingsTransactionV2::execute_settings_transaction_v2(ctx, args)
     }
 
     /// Create a new vault transaction.
@@ -192,12 +209,28 @@ pub mod squads_smart_account_program {
         CreateTransaction::create_transaction(ctx, args)
     }
 
+    /// Create a new vault transaction with V2 signer support.
+    pub fn create_transaction_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionV2<'info>>,
+        args: CreateTransactionV2Args,
+    ) -> Result<()> {
+        CreateTransactionV2::create_transaction_v2(ctx, args)
+    }
+
     /// Create a transaction buffer account.
     pub fn create_transaction_buffer(
         ctx: Context<CreateTransactionBuffer>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {
         CreateTransactionBuffer::create_transaction_buffer(ctx, args)
+    }
+
+    /// Create a transaction buffer account with V2 signer support.
+    pub fn create_transaction_buffer_v2(
+        ctx: Context<CreateTransactionBufferV2>,
+        args: CreateTransactionBufferV2Args,
+    ) -> Result<()> {
+        CreateTransactionBufferV2::create_transaction_buffer_v2(ctx, args)
     }
 
     /// Close a transaction buffer account.
@@ -213,6 +246,14 @@ pub mod squads_smart_account_program {
         ExtendTransactionBuffer::extend_transaction_buffer(ctx, args)
     }
 
+    /// Extend a transaction buffer account with V2 signer support.
+    pub fn extend_transaction_buffer_v2(
+        ctx: Context<ExtendTransactionBufferV2>,
+        args: ExtendTransactionBufferV2Args,
+    ) -> Result<()> {
+        ExtendTransactionBufferV2::extend_transaction_buffer_v2(ctx, args)
+    }
+
     /// Create a new vault transaction from a completed transaction buffer.
     /// Finalized buffer hash must match `final_buffer_hash`
     pub fn create_transaction_from_buffer<'info>(
@@ -222,12 +263,30 @@ pub mod squads_smart_account_program {
         CreateTransactionFromBuffer::create_transaction_from_buffer(ctx, args)
     }
 
+    /// Create a new vault transaction from a completed transaction buffer with V2 signer support.
+    /// Finalized buffer hash must match `final_buffer_hash`
+    pub fn create_transaction_from_buffer_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionFromBufferV2<'info>>,
+        args: CreateTransactionFromBufferV2Args,
+    ) -> Result<()> {
+        CreateTransactionFromBufferV2::create_transaction_from_buffer_v2(ctx, args)
+    }
+
     /// Execute a smart account transaction.
     /// The transaction must be `Approved`.
     pub fn execute_transaction<'info>(
         ctx: Context<'_, '_, 'info, 'info, ExecuteTransaction<'info>>,
     ) -> Result<()> {
         ExecuteTransaction::execute_transaction(ctx)
+    }
+
+    /// Execute a smart account transaction with V2 signer support.
+    /// The transaction must be `Approved`.
+    pub fn execute_transaction_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteTransactionV2<'info>>,
+        args: ExecuteTransactionV2Args,
+    ) -> Result<()> {
+        ExecuteTransactionV2::execute_transaction_v2(ctx, args)
     }
 
     /// Create a new batch.
@@ -253,9 +312,25 @@ pub mod squads_smart_account_program {
         CreateProposal::create_proposal(ctx, args)
     }
 
+    /// Create a new smart account proposal with V2 signer support.
+    pub fn create_proposal_v2(
+        ctx: Context<CreateProposalV2>,
+        args: CreateProposalV2Args,
+    ) -> Result<()> {
+        CreateProposalV2::create_proposal_v2(ctx, args)
+    }
+
     /// Update status of a smart account proposal from `Draft` to `Active`.
     pub fn activate_proposal(ctx: Context<ActivateProposal>) -> Result<()> {
         ActivateProposal::activate_proposal(ctx)
+    }
+
+    /// Update status of a smart account proposal from `Draft` to `Active` with V2 signer support.
+    pub fn activate_proposal_v2(
+        ctx: Context<ActivateProposalV2>,
+        args: ActivateProposalV2Args,
+    ) -> Result<()> {
+        ActivateProposalV2::activate_proposal_v2(ctx, args)
     }
 
     /// Approve a smart account proposal on behalf of the `member`.
@@ -352,22 +427,22 @@ pub mod squads_smart_account_program {
         SyncSettingsTransaction::sync_settings_transaction(ctx, args)
     }
 
-    /// Synchronously execute a transaction with V3 external signer support
+    /// Synchronously execute a transaction with V2 external signer support
     /// This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)
     pub fn execute_transaction_sync_v3<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SyncTransactionV2<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, SyncTransaction<'info>>,
         args: SyncTransactionV2Args,
     ) -> Result<()> {
-        SyncTransactionV2::sync_transaction_v2(ctx, args)
+        SyncTransaction::sync_transaction_v2(ctx, args)
     }
 
     /// Synchronously execute a config transaction with V2 external signer support
     /// This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)
     pub fn execute_settings_transaction_sync_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SyncSettingsTransactionV2<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, SyncSettingsTransaction<'info>>,
         args: SyncSettingsTransactionV2Args,
     ) -> Result<()> {
-        SyncSettingsTransactionV2::sync_settings_transaction_v2(ctx, args)
+        SyncSettingsTransaction::sync_settings_transaction_v2(ctx, args)
     }
 
     /// Log an event
@@ -385,31 +460,47 @@ pub mod squads_smart_account_program {
         IncrementAccountIndex::increment_account_index(ctx)
     }
 
-    /// Vote on a proposal with V2 signer support (native + external signers)
-    pub fn proposal_vote_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ProposalVoteV2<'info>>,
-        args: ProposalVoteV2Args,
+    /// Approve a smart account proposal with V2 signer support.
+    pub fn approve_proposal_v2(
+        ctx: Context<VoteOnProposalV2>,
+        args: VoteOnProposalV2Args,
     ) -> Result<()> {
-        ProposalVoteV2::proposal_vote_v2(ctx, args)
+        VoteOnProposalV2::approve_proposal_v2(ctx, args)
+    }
+
+    /// Reject a smart account proposal with V2 signer support.
+    pub fn reject_proposal_v2(
+        ctx: Context<VoteOnProposalV2>,
+        args: VoteOnProposalV2Args,
+    ) -> Result<()> {
+        VoteOnProposalV2::reject_proposal_v2(ctx, args)
+    }
+
+    /// Cancel a smart account proposal with V2 signer support.
+    pub fn cancel_proposal_v2(
+        ctx: Context<VoteOnProposalV2>,
+        args: VoteOnProposalV2Args,
+    ) -> Result<()> {
+        VoteOnProposalV2::cancel_proposal_v2(ctx, args)
     }
 
     /// Add a V2 signer (Native or External) to the smart account.
     /// This is the V2 version of `add_signer_as_authority` that supports all signer types.
     /// Requires Settings to be migrated to V2 format first.
     pub fn add_signer_as_authority_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SettingsAddSignerV2<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransactionAsAuthority<'info>>,
         args: AddSignerV2Args,
     ) -> Result<()> {
-        SettingsAddSignerV2::add_signer_v2(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::add_signer_v2(ctx, args)
     }
 
     /// Remove a V2 signer (Native or External) from the smart account.
     /// This is the V2 version of `remove_signer_as_authority` that supports all signer types.
     /// Requires Settings to be migrated to V2 format first.
     pub fn remove_signer_as_authority_v2<'info>(
-        ctx: Context<'_, '_, 'info, 'info, SettingsRemoveSignerV2<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransactionAsAuthority<'info>>,
         args: RemoveSignerV2Args,
     ) -> Result<()> {
-        SettingsRemoveSignerV2::remove_signer_v2(ctx, args)
+        ExecuteSettingsTransactionAsAuthority::remove_signer_v2(ctx, args)
     }
 }

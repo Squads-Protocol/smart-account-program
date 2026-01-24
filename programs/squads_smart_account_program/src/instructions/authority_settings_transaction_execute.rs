@@ -12,9 +12,37 @@ pub struct AddSignerArgs {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct AddSignerV2Args {
+    /// The signer type (0=Native, 1=P256Webauthn, 2=Secp256k1, 3=Ed25519External)
+    pub signer_type: u8,
+    /// For Native: the signer's pubkey (used directly as key).
+    /// For external signers: ignored - key_id is derived from the public key in signer_data.
+    pub key: Pubkey,
+    /// Permissions for the signer
+    pub permissions: Permissions,
+    /// Signer-specific data:
+    /// - Native: empty (0 bytes)
+    /// - P256Webauthn: 74 bytes (compressed_pubkey(33) + rp_id_len(1) + rp_id(32) + counter(8))
+    ///   Note: rp_id_hash is derived from rp_id, not provided by caller
+    /// - Secp256k1: 85 bytes (uncompressed_pubkey(64) + eth_address(20) + has_eth_address(1))
+    /// - Ed25519External: 32 bytes (external_pubkey)
+    pub signer_data: Vec<u8>,
+    /// Optional memo for indexing
+    pub memo: Option<String>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct RemoveSignerArgs {
     pub old_signer: Pubkey,
     /// Memo is used for indexing only.
+    pub memo: Option<String>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct RemoveSignerV2Args {
+    /// The key (for Native) or key_id (for External) of the signer to remove
+    pub key: Pubkey,
+    /// Optional memo for indexing
     pub memo: Option<String>,
 }
 
@@ -80,6 +108,26 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
+    fn validate_v2(&self) -> Result<()> {
+        self.validate()?;
+
+        require!(
+            self.settings.signers.version() == SIGNERS_VERSION_V2,
+            SmartAccountError::MustMigrateToV2
+        );
+
+        Ok(())
+    }
+
+    fn parse_signer(args: &AddSignerV2Args) -> Result<SmartAccountSigner> {
+        SmartAccountSigner::from_raw_data(
+            args.signer_type,
+            args.key,
+            args.permissions,
+            &args.signer_data,
+        )
+    }
+
     /// Add a signer to the settings and reallocate space if necessary.
     ///
     /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
@@ -135,6 +183,50 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate_v2())]
+    pub fn add_signer_v2(ctx: Context<Self>, args: AddSignerV2Args) -> Result<()> {
+        let new_signer = Self::parse_signer(&args)?;
+        let settings = &mut ctx.accounts.settings;
+
+        settings.add_signer_v2_checked(&new_signer)?;
+
+        let new_size = Settings::size_for_wrapper(&settings.signers);
+        let current_size = settings.to_account_info().data_len();
+
+        if new_size > current_size {
+            crate::utils::realloc(
+                &settings.to_account_info(),
+                new_size,
+                ctx.accounts
+                    .rent_payer
+                    .as_ref()
+                    .map(ToAccountInfo::to_account_info),
+                ctx.accounts
+                    .system_program
+                    .as_ref()
+                    .map(ToAccountInfo::to_account_info),
+            )?;
+        }
+
+        settings.invariant()?;
+
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::AddSignerV2 { new_signer },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
+
+        Ok(())
+    }
+
     /// Remove a signer from the settings.
     ///
     /// NOTE: This instruction must be called only by the `settings_authority` if one is set (Controlled Smart Account).
@@ -170,6 +262,38 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
             program: ctx.accounts.program.to_account_info(),
         };
         SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
+        Ok(())
+    }
+
+    #[access_control(ctx.accounts.validate_v2())]
+    pub fn remove_signer_v2(ctx: Context<Self>, args: RemoveSignerV2Args) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
+
+        require!(
+            settings.signers.len() > 1,
+            SmartAccountError::RemoveLastSigner
+        );
+
+        settings.remove_signer(args.key)?;
+
+        settings.invalidate_prior_transactions();
+
+        settings.invariant()?;
+
+        let event = AuthoritySettingsEvent {
+            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings_pubkey: settings.key(),
+            authority: ctx.accounts.settings_authority.key(),
+            change: SettingsAction::RemoveSignerV2 { old_signer: args.key },
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings.to_account_info(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::AuthoritySettingsEvent(event).log(&log_authority_info)?;
+
         Ok(())
     }
 

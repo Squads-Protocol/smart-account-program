@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
+use std::ops::{Deref, DerefMut};
 
 use crate::{Permission, SmartAccountSigner, SmartAccountSignerWrapper};
 
@@ -85,4 +86,220 @@ pub trait Consensus {
 
     // Consensus validation (ported from Settings invariant)
     fn invariant(&self) -> Result<()>;
+
+    /// Apply WebAuthn counter updates after signature verification.
+    /// This must be called after successful consensus validation to prevent replay attacks.
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()>;
+}
+
+impl<'info, T> Consensus for Account<'info, T>
+where
+    T: Consensus + AccountSerialize + AccountDeserialize + Clone,
+{
+    fn account_type(&self) -> ConsensusAccountType {
+        self.deref().account_type()
+    }
+
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        self.deref().check_derivation(key)
+    }
+
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        self.deref().is_active(accounts)
+    }
+
+    fn signers(&self) -> &SmartAccountSignerWrapper {
+        self.deref().signers()
+    }
+
+    fn threshold(&self) -> u16 {
+        self.deref().threshold()
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.deref().time_lock()
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.deref().transaction_index()
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.deref_mut().set_transaction_index(transaction_index)
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.deref().stale_transaction_index()
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.deref_mut().invalidate_prior_transactions()
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.deref().invariant()
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.deref_mut().apply_counter_updates(updates)
+    }
+}
+
+impl<'info, T> Consensus for InterfaceAccount<'info, T>
+where
+    T: Consensus + AccountSerialize + AccountDeserialize + Clone,
+{
+    fn account_type(&self) -> ConsensusAccountType {
+        self.deref().account_type()
+    }
+
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        self.deref().check_derivation(key)
+    }
+
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        self.deref().is_active(accounts)
+    }
+
+    fn signers(&self) -> &SmartAccountSignerWrapper {
+        self.deref().signers()
+    }
+
+    fn threshold(&self) -> u16 {
+        self.deref().threshold()
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.deref().time_lock()
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.deref().transaction_index()
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.deref_mut().set_transaction_index(transaction_index)
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.deref().stale_transaction_index()
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.deref_mut().invalidate_prior_transactions()
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.deref().invariant()
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.deref_mut().apply_counter_updates(updates)
+    }
+}
+
+impl<'info, T> Consensus for Box<Account<'info, T>>
+where
+    T: Consensus + AccountSerialize + AccountDeserialize + Clone,
+{
+    fn account_type(&self) -> ConsensusAccountType {
+        self.deref().account_type()
+    }
+
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        self.deref().check_derivation(key)
+    }
+
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        self.deref().is_active(accounts)
+    }
+
+    fn signers(&self) -> &SmartAccountSignerWrapper {
+        self.deref().signers()
+    }
+
+    fn threshold(&self) -> u16 {
+        self.deref().threshold()
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.deref().time_lock()
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.deref().transaction_index()
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.deref_mut().set_transaction_index(transaction_index)
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.deref().stale_transaction_index()
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.deref_mut().invalidate_prior_transactions()
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.deref().invariant()
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.deref_mut().apply_counter_updates(updates)
+    }
+}
+
+impl<'info, T> Consensus for Box<InterfaceAccount<'info, T>>
+where
+    T: Consensus + AccountSerialize + AccountDeserialize + Clone,
+{
+    fn account_type(&self) -> ConsensusAccountType {
+        self.deref().account_type()
+    }
+
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        self.deref().check_derivation(key)
+    }
+
+    fn is_active(&self, accounts: &[AccountInfo]) -> Result<()> {
+        self.deref().is_active(accounts)
+    }
+
+    fn signers(&self) -> &SmartAccountSignerWrapper {
+        self.deref().signers()
+    }
+
+    fn threshold(&self) -> u16 {
+        self.deref().threshold()
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.deref().time_lock()
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.deref().transaction_index()
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.deref_mut().set_transaction_index(transaction_index)
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.deref().stale_transaction_index()
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.deref_mut().invalidate_prior_transactions()
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.deref().invariant()
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.deref_mut().apply_counter_updates(updates)
+    }
 }

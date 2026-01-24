@@ -7,7 +7,11 @@ use crate::{
     events::*,
     program::SquadsSmartAccountProgram,
     state::*,
-    utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
+    utils::{
+        collect_v2_signer_pubkeys, validate_synchronous_consensus,
+        validate_synchronous_consensus_v2, SyncConsensusV2Args, SyncConsensusV2Result,
+        SynchronousTransactionMessage,
+    },
     SmallVec,
 };
 
@@ -41,6 +45,19 @@ pub struct SyncTransactionArgs {
     pub payload: SyncPayload,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct SyncTransactionV2Args {
+    pub account_index: u8,
+    /// Number of native signers (directly signing the transaction)
+    pub num_native_signers: u8,
+    /// Key IDs of external signers (verified via precompile)
+    pub external_signer_key_ids: Vec<Pubkey>,
+    /// Client data params for WebAuthn verification (required if any WebAuthn signers)
+    pub client_data_params: Option<ClientDataJsonReconstructionParams>,
+    /// The payload to execute
+    pub payload: SyncPayload,
+}
+
 #[derive(Accounts)]
 pub struct SyncTransaction<'info> {
     #[account(
@@ -62,7 +79,7 @@ impl<'info> SyncTransaction<'info> {
     fn validate(
         &self,
         args: &SyncTransactionArgs,
-        remaining_accounts: &[AccountInfo],
+        remaining_accounts: &'info [AccountInfo<'info>],
     ) -> Result<()> {
         let Self {
             consensus_account, ..
@@ -91,43 +108,87 @@ impl<'info> SyncTransaction<'info> {
             }
         }
 
-        // Synchronous consensus validation
         validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+    }
+
+    fn validate_v2(
+        &self,
+        args: &SyncTransactionV2Args,
+        remaining_accounts: &'info [AccountInfo<'info>],
+    ) -> Result<SyncConsensusV2Result> {
+        let Self {
+            consensus_account, ..
+        } = self;
+
+        let consensus_args = SyncConsensusV2Args {
+            num_native_signers: args.num_native_signers,
+            external_signer_key_ids: args.external_signer_key_ids.clone(),
+            client_data_params: args.client_data_params,
+        };
+
+        let consensus_result = validate_synchronous_consensus_v2(
+            consensus_account,
+            &consensus_args,
+            consensus_account.key(),
+            remaining_accounts,
+        )?;
+
+        let remaining_after_consensus = &remaining_accounts[consensus_result.accounts_consumed..];
+
+        consensus_account.is_active(remaining_after_consensus)?;
+
+        if consensus_account.account_type() == ConsensusAccountType::Settings {
+            let settings = consensus_account.read_only_settings()?;
+            settings.validate_account_index_unlocked(args.account_index)?;
+        }
+
+        if consensus_account.account_type() == ConsensusAccountType::Policy {
+            let policy = consensus_account.read_only_policy()?;
+            match &args.payload {
+                SyncPayload::Policy(payload) => {
+                    policy.validate_payload(PolicyExecutionContext::Synchronous, payload)?;
+                }
+                _ => {
+                    return Err(
+                        SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
+                            .into(),
+                    );
+                }
+            }
+        }
+
+        Ok(consensus_result)
     }
 }
 
 impl<'info> SyncTransaction<'info> {
-    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
-    pub fn sync_transaction(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
-        args: SyncTransactionArgs,
+    fn execute_inner(
+        consensus_account: &mut Box<InterfaceAccount<'info, ConsensusAccount>>,
+        account_index: u8,
+        payload: SyncPayload,
+        remaining_accounts: &'info [AccountInfo<'info>],
+        signer_pubkeys: Vec<Pubkey>,
+        program: &Program<'info, SquadsSmartAccountProgram>,
+        program_id: &Pubkey,
     ) -> Result<()> {
-        // Readonly Accounts
-        let consensus_account = &mut ctx.accounts.consensus_account;
-        // Remove the signers from the remaining accounts
-        let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize..];
-
         let consensus_account_key = consensus_account.key();
 
-        // Log authority info
         let log_authority_info = LogAuthorityInfo {
             authority: consensus_account.to_account_info(),
             authority_seeds: consensus_account.get_signer_seeds(),
             bump: consensus_account.bump(),
-            program: ctx.accounts.program.to_account_info(),
+            program: program.to_account_info(),
         };
+
         let event = match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
-                // Get the payload
-                let payload = args.payload.to_transaction_payload()?;
+                let payload = payload.to_transaction_payload()?;
 
                 let settings = consensus_account.read_only_settings()?;
                 let settings_key = consensus_account_key;
-                // Deserialize the instructions
                 let compiled_instructions =
                     SmallVec::<u8, CompiledInstruction>::try_from_slice(&payload)
                         .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
-                // Convert to SmartAccountCompiledInstruction
                 let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
                     Vec::from(compiled_instructions)
                         .into_iter()
@@ -138,13 +199,12 @@ impl<'info> SyncTransaction<'info> {
                     SEED_PREFIX,
                     settings_key.as_ref(),
                     SEED_SMART_ACCOUNT,
-                    &args.account_index.to_le_bytes(),
+                    &account_index.to_le_bytes(),
                 ];
 
                 let (smart_account_pubkey, smart_account_bump) =
-                    Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
+                    Pubkey::find_program_address(smart_account_seeds, program_id);
 
-                // Get the signer seeds for the smart account
                 let smart_account_signer_seeds = &[
                     smart_account_seeds[0],
                     smart_account_seeds[1],
@@ -158,60 +218,43 @@ impl<'info> SyncTransaction<'info> {
                     &smart_account_pubkey,
                     &settings.signers,
                     &settings_compiled_instructions,
-                    &remaining_accounts,
+                    remaining_accounts,
                 )?;
 
-                // Execute the transaction message instructions one-by-one.
-                // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-                // which in turn calls `take()` on
-                // `self.message.instructions`, therefore after this point no more
-                // references or usages of `self.message` should be made to avoid
-                // faulty behavior.
                 executable_message.execute(smart_account_signer_seeds)?;
 
-                // Create the event
-                let event = SynchronousTransactionEventV2 {
+                SynchronousTransactionEventV2 {
                     consensus_account: settings_key,
                     consensus_account_type: ConsensusAccountType::Settings,
                     payload: SynchronousTransactionEventPayload::TransactionPayload {
-                        account_index: args.account_index,
+                        account_index,
                         instructions: executable_message.instructions.to_vec(),
                     },
-                    signers: ctx.remaining_accounts[..args.num_signers as usize]
-                        .iter()
-                        .map(|acc| acc.key.clone())
-                        .collect(),
+                    signers: signer_pubkeys,
                     instruction_accounts: executable_message
                         .accounts
                         .iter()
-                        .map(|a| a.key.clone())
+                        .map(|a| *a.key)
                         .collect(),
-                };
-                event
+                }
             }
             ConsensusAccountType::Policy => {
-                let payload = args.payload.to_policy_payload()?;
+                let payload = payload.to_policy_payload()?;
                 let policy = consensus_account.policy()?;
 
-                // Determine account offset based on policy expiration type
                 let account_offset = policy
                     .expiration
                     .as_ref()
                     .map(|exp| match exp {
-                        // The settings is the first extra remaining account
                         PolicyExpiration::SettingsState(_) => 1,
                         _ => 0,
                     })
                     .unwrap_or(0);
 
-                // Potentially remove the settings account for expiration from
-                // the remaining accounts
                 let remaining_accounts = &remaining_accounts[account_offset..];
 
-                // Execute the policy
                 policy.execute(None, None, payload, &remaining_accounts)?;
 
-                // Policy may updated during execution, log the event
                 let policy_update_event = PolicyEvent {
                     event_type: PolicyEventType::UpdateDuringExecution,
                     settings_pubkey: policy.settings,
@@ -221,31 +264,75 @@ impl<'info> SyncTransaction<'info> {
 
                 SmartAccountEvent::PolicyEvent(policy_update_event).log(&log_authority_info)?;
 
-                // Create the event
-                let event = SynchronousTransactionEventV2 {
+                SynchronousTransactionEventV2 {
                     consensus_account: consensus_account_key,
                     consensus_account_type: ConsensusAccountType::Policy,
                     payload: SynchronousTransactionEventPayload::PolicyPayload {
                         policy_payload: payload.clone(),
                     },
-                    signers: ctx.remaining_accounts[..args.num_signers as usize]
-                        .iter()
-                        .map(|acc| acc.key.clone())
-                        .collect(),
+                    signers: signer_pubkeys,
                     instruction_accounts: remaining_accounts
                         .iter()
-                        .map(|acc| acc.key.clone())
+                        .map(|acc| *acc.key)
                         .collect(),
-                };
-                event
+                }
             }
         };
 
-        // Check the policy invariant
         consensus_account.invariant()?;
 
         SmartAccountEvent::SynchronousTransactionEventV2(event).log(&log_authority_info)?;
 
         Ok(())
+    }
+
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
+    pub fn sync_transaction(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncTransactionArgs,
+    ) -> Result<()> {
+        let consensus_account = &mut ctx.accounts.consensus_account;
+        let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize..];
+        let signer_pubkeys = ctx.remaining_accounts[..args.num_signers as usize]
+            .iter()
+            .map(|acc| *acc.key)
+            .collect::<Vec<_>>();
+
+        Self::execute_inner(
+            consensus_account,
+            args.account_index,
+            args.payload,
+            remaining_accounts,
+            signer_pubkeys,
+            &ctx.accounts.program,
+            ctx.program_id,
+        )
+    }
+
+    pub fn sync_transaction_v2(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncTransactionV2Args,
+    ) -> Result<()> {
+        let consensus_result = ctx.accounts.validate_v2(&args, &ctx.remaining_accounts)?;
+        let consensus_account = &mut ctx.accounts.consensus_account;
+
+        consensus_account.apply_counter_updates(&consensus_result.counter_updates)?;
+
+        let remaining_accounts = &ctx.remaining_accounts[consensus_result.accounts_consumed..];
+        let signer_pubkeys = collect_v2_signer_pubkeys(
+            args.num_native_signers,
+            &args.external_signer_key_ids,
+            &ctx.remaining_accounts,
+        );
+
+        Self::execute_inner(
+            consensus_account,
+            args.account_index,
+            args.payload,
+            remaining_accounts,
+            signer_pubkeys,
+            &ctx.accounts.program,
+            ctx.program_id,
+        )
     }
 }

@@ -5,6 +5,7 @@ mod small_vec;
 mod system;
 mod synchronous_transaction_message;
 mod context_validation;
+mod v2_signer_validation;
 
 pub use context_validation::*;
 pub use ephemeral_signers::*;
@@ -13,3 +14,4 @@ pub use precompile_introspection::*;
 pub use small_vec::*;
 pub use system::*;
 pub use synchronous_transaction_message::*;
+pub use v2_signer_validation::*;

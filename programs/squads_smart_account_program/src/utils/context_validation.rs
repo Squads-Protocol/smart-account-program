@@ -317,7 +317,7 @@ pub fn validate_synchronous_consensus(
     Ok(())
 }
 
-pub fn validate_settings_actions(actions: &Vec<SettingsAction>) -> Result<()> {
+pub fn validate_settings_actions(actions: &[SettingsAction]) -> Result<()> {
     // Config transaction must have at least one action
     require!(!actions.is_empty(), SmartAccountError::NoActions);
 

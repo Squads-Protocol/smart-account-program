@@ -242,4 +242,8 @@ impl Consensus for ConsensusAccount {
     fn invariant(&self) -> Result<()> {
         self.as_consensus().invariant()
     }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        ConsensusAccount::apply_counter_updates(self, updates)
+    }
 }
