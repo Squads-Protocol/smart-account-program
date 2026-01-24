@@ -460,6 +460,35 @@ pub mod squads_smart_account_program {
         IncrementAccountIndex::increment_account_index(ctx)
     }
 
+    /// Increment the account utilization index with V2 signer support.
+    pub fn increment_account_index_v2(
+        ctx: Context<IncrementAccountIndex>,
+        args: IncrementAccountIndexV2Args,
+    ) -> Result<()> {
+        IncrementAccountIndex::increment_account_index_v2(ctx, args)
+    }
+
+    /// Create a batch with V2 signer support.
+    pub fn create_batch_v2(ctx: Context<CreateBatch>, args: CreateBatchV2Args) -> Result<()> {
+        CreateBatch::create_batch_v2(ctx, args)
+    }
+
+    /// Add a transaction to a batch with V2 signer support.
+    pub fn add_transaction_to_batch_v2(
+        ctx: Context<AddTransactionToBatch>,
+        args: AddTransactionToBatchV2Args,
+    ) -> Result<()> {
+        AddTransactionToBatch::add_transaction_to_batch_v2(ctx, args)
+    }
+
+    /// Execute a transaction from a batch with V2 signer support.
+    pub fn execute_batch_transaction_v2(
+        ctx: Context<ExecuteBatchTransaction>,
+        args: ExecuteBatchTransactionV2Args,
+    ) -> Result<()> {
+        ExecuteBatchTransaction::execute_batch_transaction_v2(ctx, args)
+    }
+
     /// Approve a smart account proposal with V2 signer support.
     pub fn approve_proposal_v2(
         ctx: Context<VoteOnProposalV2>,

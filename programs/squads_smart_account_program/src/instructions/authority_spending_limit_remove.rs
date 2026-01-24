@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 use crate::errors::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
-use crate::AuthoritySettingsEvent;
 use crate::LogAuthorityInfo;
 use crate::SmartAccountEvent;
 
@@ -37,12 +36,10 @@ pub struct RemoveSpendingLimitAsAuthority<'info> {
 
 impl RemoveSpendingLimitAsAuthority<'_> {
     fn validate(&self) -> Result<()> {
-        // settings_authority
-        require_keys_eq!(
+        super::authority_spending_limit_add::validate_settings_authority(
+            &self.settings,
             self.settings_authority.key(),
-            self.settings.settings_authority,
-            SmartAccountError::Unauthorized
-        );
+        )?;
 
         // `spending_limit`
         require_keys_eq!(
@@ -62,14 +59,14 @@ impl RemoveSpendingLimitAsAuthority<'_> {
         let settings = &ctx.accounts.settings;
         let spending_limit = &ctx.accounts.spending_limit;
         // Log the event
-        let event = AuthoritySettingsEvent {
-            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
-            settings_pubkey: ctx.accounts.settings.key(),
-            authority: ctx.accounts.settings_authority.key(),
-            change: SettingsAction::RemoveSpendingLimit {
+        let event = super::authority_spending_limit_add::build_authority_settings_event(
+            settings,
+            ctx.accounts.settings.key(),
+            ctx.accounts.settings_authority.key(),
+            SettingsAction::RemoveSpendingLimit {
                 spending_limit: spending_limit.key(),
             },
-        };
+        )?;
         let log_authority_info = LogAuthorityInfo {
             authority: ctx.accounts.settings.to_account_info(),
             authority_seeds: get_settings_signer_seeds(settings.seed),

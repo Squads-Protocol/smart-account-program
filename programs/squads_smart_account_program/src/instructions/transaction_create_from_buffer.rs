@@ -49,6 +49,60 @@ pub struct CreateTransactionFromBufferV2Args {
 }
 
 impl<'info> CreateTransactionFromBuffer<'info> {
+    fn build_create_args_from_buffer<'account>(
+        args: &CreateTransactionArgs,
+        transaction_buffer: &TransactionBuffer,
+        transaction_account_info: &AccountInfo<'account>,
+        rent_payer_account_info: &AccountInfo<'account>,
+        system_program: &AccountInfo<'account>,
+    ) -> Result<CreateTransactionArgs> {
+        let new_len = match args {
+            CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                ephemeral_signers,
+                ..
+            }) => {
+                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?
+            }
+            CreateTransactionArgs::PolicyPayload { .. } => {
+                return Err(SmartAccountError::InvalidInstructionArgs.into())
+            }
+        };
+
+        let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_len).max(1);
+        let top_up_lamports =
+            rent_exempt_lamports.saturating_sub(transaction_account_info.lamports());
+
+        let transfer_context = CpiContext::new(
+            system_program.to_account_info(),
+            system_program::Transfer {
+                from: rent_payer_account_info.clone(),
+                to: transaction_account_info.clone(),
+            },
+        );
+        system_program::transfer(transfer_context, top_up_lamports)?;
+
+        AccountInfo::realloc(transaction_account_info, new_len, true)?;
+
+        let create_args = match args {
+            CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                account_index,
+                ephemeral_signers,
+                memo,
+                ..
+            }) => CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                account_index: *account_index,
+                ephemeral_signers: *ephemeral_signers,
+                transaction_message: transaction_buffer.buffer.clone(),
+                memo: memo.clone(),
+            }),
+            CreateTransactionArgs::PolicyPayload { .. } => {
+                return Err(SmartAccountError::InvalidInstructionArgs.into())
+            }
+        };
+
+        Ok(create_args)
+    }
+
     pub fn validate(&self, args: &CreateTransactionArgs) -> Result<()> {
         let transaction_buffer_account = &self.transaction_buffer;
 
@@ -98,58 +152,13 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         // Read-only accounts
         let transaction_buffer = &ctx.accounts.transaction_buffer;
 
-        // Calculate the new required length of the transaction account,
-        // since it was initialized with an empty transaction message
-        let new_len = match &args {
-            CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                ephemeral_signers,
-                ..
-            }) => {
-                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?
-            }
-            CreateTransactionArgs::PolicyPayload { .. } => {
-                return Err(SmartAccountError::InvalidInstructionArgs.into())
-            }
-        };
-
-        // Calculate the rent exemption for new length
-        let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_len).max(1);
-
-        // Check the difference between the rent exemption and the current lamports
-        let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(transaction_account_info.lamports());
-
-        // System Transfer the remaining difference to the transaction account
-        let transfer_context = CpiContext::new(
-            system_program.to_account_info(),
-            system_program::Transfer {
-                from: rent_payer_account_info.clone(),
-                to: transaction_account_info.clone(),
-            },
-        );
-        system_program::transfer(transfer_context, top_up_lamports)?;
-
-        // Reallocate the transaction account to the new length of the
-        // actual transaction message
-        AccountInfo::realloc(&transaction_account_info, new_len, true)?;
-
-        // Create the args for the `create_transaction` instruction
-        let create_args = match &args {
-            CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                account_index,
-                ephemeral_signers,
-                memo,
-                ..
-            }) => CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                account_index: *account_index,
-                ephemeral_signers: *ephemeral_signers,
-                transaction_message: transaction_buffer.buffer.clone(),
-                memo: memo.clone(),
-            }),
-            CreateTransactionArgs::PolicyPayload { .. } => {
-                return Err(SmartAccountError::InvalidInstructionArgs.into())
-            }
-        };
+        let create_args = Self::build_create_args_from_buffer(
+            &args,
+            transaction_buffer,
+            transaction_account_info,
+            rent_payer_account_info,
+            system_program,
+        )?;
         // Create the context for the `create_transaction` instruction
         let context = Context::new(
             ctx.program_id,
@@ -258,49 +267,13 @@ impl<'info> CreateTransactionFromBufferV2<'info> {
         let system_program = &ctx.accounts.system_program.to_account_info();
         let transaction_buffer = &ctx.accounts.transaction_buffer;
 
-        let new_len = match &args.create_args {
-            CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                ephemeral_signers,
-                ..
-            }) => {
-                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?
-            }
-            CreateTransactionArgs::PolicyPayload { .. } => {
-                return Err(SmartAccountError::InvalidInstructionArgs.into())
-            }
-        };
-
-        let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_len).max(1);
-        let top_up_lamports =
-            rent_exempt_lamports.saturating_sub(transaction_account_info.lamports());
-
-        let transfer_context = CpiContext::new(
-            system_program.to_account_info(),
-            system_program::Transfer {
-                from: rent_payer_account_info.clone(),
-                to: transaction_account_info.clone(),
-            },
-        );
-        system_program::transfer(transfer_context, top_up_lamports)?;
-
-        AccountInfo::realloc(&transaction_account_info, new_len, true)?;
-
-        let create_args = match &args.create_args {
-            CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                account_index,
-                ephemeral_signers,
-                memo,
-                ..
-            }) => CreateTransactionArgs::TransactionPayload(TransactionPayload {
-                account_index: *account_index,
-                ephemeral_signers: *ephemeral_signers,
-                transaction_message: transaction_buffer.buffer.clone(),
-                memo: memo.clone(),
-            }),
-            CreateTransactionArgs::PolicyPayload { .. } => {
-                return Err(SmartAccountError::InvalidInstructionArgs.into())
-            }
-        };
+        let create_args = CreateTransactionFromBuffer::build_create_args_from_buffer(
+            &args.create_args,
+            transaction_buffer,
+            transaction_account_info,
+            rent_payer_account_info,
+            system_program,
+        )?;
 
         validate_create_transaction(
             &ctx.accounts.consensus_account,

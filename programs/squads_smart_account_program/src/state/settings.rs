@@ -27,6 +27,11 @@ pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 pub const FREE_ACCOUNT_MAX_INDEX: u8 = 250;
 pub const RESERVED_ACCOUNT_START: u8 = 251;
 
+enum SignerWrapper {
+    V1(LegacySmartAccountSigner),
+    V2(SmartAccountSigner),
+}
+
 #[account]
 pub struct Settings {
     /// An integer that is used seed the settings PDA. Its incremented by 1
@@ -207,6 +212,37 @@ impl Settings {
         Ok(true)
     }
 
+    /// Check if the settings account space needs to be reallocated to accommodate the wrapper.
+    /// Returns `true` if the account was reallocated.
+    pub fn realloc_if_needed_for_wrapper<'a>(
+        settings: AccountInfo<'a>,
+        signers_wrapper: &SmartAccountSignerWrapper,
+        rent_payer: Option<AccountInfo<'a>>,
+        system_program: Option<AccountInfo<'a>>,
+    ) -> Result<bool> {
+        require_keys_eq!(
+            *settings.owner,
+            id(),
+            SmartAccountError::IllegalAccountOwner
+        );
+
+        let current_account_size = settings.data.borrow().len();
+        let account_size_to_fit_signers = Settings::size_for_wrapper(signers_wrapper);
+
+        if current_account_size >= account_size_to_fit_signers {
+            return Ok(false);
+        }
+
+        realloc(
+            &settings,
+            account_size_to_fit_signers,
+            rent_payer,
+            system_program,
+        )?;
+
+        Ok(true)
+    }
+
     // Makes sure the settings state is valid.
     // This must be called at the end of every instruction that modifies a Settings account.
     pub fn invariant(&self) -> Result<()> {
@@ -330,13 +366,11 @@ impl Settings {
     ) -> Result<()> {
         match action {
             SettingsAction::AddSigner { new_signer } => {
-                self.add_signer(new_signer.to_owned());
-                self.invalidate_prior_transactions();
+                self.apply_add_signer_inner(SignerWrapper::V1(new_signer.clone()))?;
             }
 
             SettingsAction::RemoveSigner { old_signer } => {
-                self.remove_signer(old_signer.to_owned())?;
-                self.invalidate_prior_transactions();
+                self.apply_remove_signer_inner(*old_signer)?;
             }
 
             SettingsAction::ChangeThreshold { new_threshold } => {
@@ -469,20 +503,13 @@ impl Settings {
             }
 
             SettingsAction::AddSignerV2 { new_signer } => {
-                self.add_signer_v2_checked(new_signer)?;
+                self.apply_add_signer_inner(SignerWrapper::V2(new_signer.clone()))?;
 
                 // Realloc handled by caller after modify_with_action returns
             }
 
             SettingsAction::RemoveSignerV2 { old_signer } => {
-                // V2 signer removal - works the same as V1, just different action type
-                require!(
-                    self.signers.len() > 1,
-                    SmartAccountError::RemoveLastSigner
-                );
-
-                self.remove_signer(*old_signer)?;
-                self.invalidate_prior_transactions();
+                self.apply_remove_signer_inner(*old_signer)?;
             }
 
             SettingsAction::PolicyCreateV2 {
@@ -695,6 +722,206 @@ impl Settings {
         }
     }
 
+    fn resolve_policy_expiration(
+        &self,
+        expiration_args: &Option<PolicyExpirationArgs>,
+    ) -> Result<Option<PolicyExpiration>> {
+        if let Some(expiration_args) = expiration_args {
+            match expiration_args {
+                PolicyExpirationArgs::Timestamp(timestamp) => {
+                    Ok(Some(PolicyExpiration::Timestamp(*timestamp)))
+                }
+                PolicyExpirationArgs::SettingsState => {
+                    Ok(Some(PolicyExpiration::SettingsState(
+                        self.generate_core_state_hash()?,
+                    )))
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn build_policy_state_for_create_v1(
+        &self,
+        policy_creation_payload: &PolicyCreationPayload,
+    ) -> Result<PolicyState> {
+        match policy_creation_payload.clone() {
+            PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
+                Ok(PolicyState::InternalFundTransfer(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
+                Ok(PolicyState::ProgramInteraction(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::ProgramInteraction(creation_payload) => {
+                Ok(PolicyState::ProgramInteraction(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
+                let current_timestamp = Clock::get()?.unix_timestamp;
+                if creation_payload.time_constraints.accumulate_unused
+                    && creation_payload.time_constraints.start < current_timestamp
+                {
+                    creation_payload.time_constraints.start = current_timestamp;
+                }
+                Ok(PolicyState::SpendingLimit(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::SettingsChange(creation_payload) => {
+                Ok(PolicyState::SettingsChange(creation_payload.to_policy_state()?))
+            }
+        }
+    }
+
+    fn build_policy_state_for_create_v2(
+        &self,
+        policy_creation_payload: &PolicyCreationPayload,
+    ) -> Result<PolicyState> {
+        match policy_creation_payload.clone() {
+            PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
+                Ok(PolicyState::InternalFundTransfer(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
+                Ok(PolicyState::ProgramInteraction(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::ProgramInteraction(creation_payload) => {
+                Ok(PolicyState::ProgramInteraction(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
+                if creation_payload.time_constraints.start == 0 {
+                    let current_timestamp = Clock::get()?.unix_timestamp;
+                    creation_payload.time_constraints.start = current_timestamp;
+                }
+                Ok(PolicyState::SpendingLimit(
+                    creation_payload.to_policy_state()?,
+                ))
+            }
+            PolicyCreationPayload::SettingsChange(creation_payload) => {
+                Ok(PolicyState::SettingsChange(creation_payload.to_policy_state()?))
+            }
+        }
+    }
+
+    fn build_policy_state_for_update(
+        &self,
+        policy: &Policy,
+        policy_update_payload: &PolicyCreationPayload,
+    ) -> Result<PolicyState> {
+        match (&policy.policy_state, policy_update_payload.clone()) {
+            (
+                PolicyState::InternalFundTransfer(_),
+                PolicyCreationPayload::InternalFundTransfer(creation_payload),
+            ) => Ok(PolicyState::InternalFundTransfer(
+                creation_payload.to_policy_state()?,
+            )),
+            (
+                PolicyState::ProgramInteraction(_),
+                PolicyCreationPayload::ProgramInteraction(creation_payload),
+            ) => Ok(PolicyState::ProgramInteraction(
+                creation_payload.to_policy_state()?,
+            )),
+            (
+                PolicyState::SpendingLimit(_),
+                PolicyCreationPayload::SpendingLimit(creation_payload),
+            ) => Ok(PolicyState::SpendingLimit(
+                creation_payload.to_policy_state()?,
+            )),
+            (
+                PolicyState::SettingsChange(_),
+                PolicyCreationPayload::SettingsChange(creation_payload),
+            ) => Ok(PolicyState::SettingsChange(creation_payload.to_policy_state()?)),
+            (_, _) => err!(SmartAccountError::InvalidPolicyPayload),
+        }
+    }
+
+    fn build_policy_from_wrapper(
+        &self,
+        self_key: &Pubkey,
+        seed: u64,
+        bump: u8,
+        signers_wrapper: SmartAccountSignerWrapper,
+        v1_signers: Option<Vec<LegacySmartAccountSigner>>,
+        threshold: u16,
+        time_lock: u32,
+        policy_state: PolicyState,
+        start_timestamp: Option<i64>,
+        expiration: Option<PolicyExpiration>,
+        rent_collector: Pubkey,
+    ) -> Result<Policy> {
+        let start = start_timestamp.unwrap_or(Clock::get()?.unix_timestamp);
+
+        if let Some(v1_signers) = v1_signers {
+            Policy::create_state(
+                *self_key,
+                seed,
+                bump,
+                &v1_signers,
+                threshold,
+                time_lock,
+                policy_state,
+                start,
+                expiration,
+                rent_collector,
+            )
+        } else {
+            let mut v2_signers = signers_wrapper.as_v2();
+            v2_signers.sort_by_key(|s| s.key());
+
+            Ok(Policy {
+                settings: *self_key,
+                seed,
+                bump,
+                transaction_index: 0,
+                stale_transaction_index: 0,
+                signers: SmartAccountSignerWrapper::from_v2_signers(v2_signers),
+                threshold,
+                time_lock,
+                policy_state,
+                start,
+                expiration,
+                rent_collector,
+            })
+        }
+    }
+
+    fn apply_add_signer_inner(&mut self, signer: SignerWrapper) -> Result<()> {
+        match signer {
+            SignerWrapper::V1(signer) => {
+                self.add_signer(signer);
+                self.invalidate_prior_transactions();
+            }
+            SignerWrapper::V2(signer) => {
+                self.add_signer_v2_checked(&signer)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn apply_remove_signer_inner(&mut self, signer_key: Pubkey) -> Result<()> {
+        require!(
+            self.signers.len() > 1,
+            SmartAccountError::RemoveLastSigner
+        );
+
+        self.remove_signer(signer_key)?;
+        self.invalidate_prior_transactions();
+
+        Ok(())
+    }
+
     #[inline(never)]
     fn handle_policy_create<'info>(
         &mut self,
@@ -756,52 +983,19 @@ impl Settings {
             ],
         )?;
 
-        let policy_state = match policy_creation_payload.clone() {
-            PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
-                PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
-                PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::ProgramInteraction(creation_payload) => {
-                PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
-                let current_timestamp = Clock::get()?.unix_timestamp;
-                if creation_payload.time_constraints.accumulate_unused
-                    && creation_payload.time_constraints.start < current_timestamp
-                {
-                    creation_payload.time_constraints.start = current_timestamp;
-                }
-                PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::SettingsChange(creation_payload) => {
-                PolicyState::SettingsChange(creation_payload.to_policy_state()?)
-            }
-        };
+        let policy_state = self.build_policy_state_for_create_v1(policy_creation_payload)?;
+        let expiration = self.resolve_policy_expiration(expiration_args)?;
 
-        let expiration: Option<PolicyExpiration> = if let Some(expiration_args) = expiration_args {
-            match expiration_args {
-                PolicyExpirationArgs::Timestamp(timestamp) => {
-                    Some(PolicyExpiration::Timestamp(*timestamp))
-                }
-                PolicyExpirationArgs::SettingsState => {
-                    Some(PolicyExpiration::SettingsState(self.generate_core_state_hash()?))
-                }
-            }
-        } else {
-            None
-        };
-
-        let policy = Policy::create_state(
-            *self_key,
+        let policy = self.build_policy_from_wrapper(
+            self_key,
             next_policy_seed,
             policy_bump,
-            signers,
+            SmartAccountSignerWrapper::from_v1_signers(signers.clone()),
+            Some(signers.clone()),
             threshold,
             time_lock,
             policy_state,
-            start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
+            start_timestamp,
             expiration.clone(),
             rent_payer.key(),
         )?;
@@ -865,48 +1059,10 @@ impl Settings {
             .as_ref()
             .ok_or(SmartAccountError::MissingAccount)?;
 
-        let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
-            (
-                PolicyState::InternalFundTransfer(_),
-                PolicyCreationPayload::InternalFundTransfer(creation_payload),
-            ) => PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?),
-            (
-                PolicyState::ProgramInteraction(_),
-                PolicyCreationPayload::ProgramInteraction(creation_payload),
-            ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
-            (
-                PolicyState::SpendingLimit(_),
-                PolicyCreationPayload::SpendingLimit(creation_payload),
-            ) => PolicyState::SpendingLimit(creation_payload.to_policy_state()?),
-            (
-                PolicyState::SettingsChange(_),
-                PolicyCreationPayload::SettingsChange(creation_payload),
-            ) => PolicyState::SettingsChange(creation_payload.to_policy_state()?),
-            (_, _) => {
-                return err!(SmartAccountError::InvalidPolicyPayload);
-            }
-        };
+        let new_policy_state = self.build_policy_state_for_update(&policy, policy_update_payload)?;
+        let expiration = self.resolve_policy_expiration(expiration_args)?;
 
-        let expiration: Option<PolicyExpiration> = if let Some(expiration_args) = expiration_args {
-            match expiration_args {
-                PolicyExpirationArgs::Timestamp(timestamp) => {
-                    Some(PolicyExpiration::Timestamp(*timestamp))
-                }
-                PolicyExpirationArgs::SettingsState => {
-                    Some(PolicyExpiration::SettingsState(self.generate_core_state_hash()?))
-                }
-            }
-        } else {
-            None
-        };
-
-        policy.update_state(
-            signers,
-            threshold,
-            time_lock,
-            new_policy_state,
-            expiration.clone(),
-        )?;
+        policy.update_state(signers, threshold, time_lock, new_policy_state, expiration.clone())?;
 
         policy.invalidate_prior_transactions();
         policy.invariant()?;
@@ -1042,27 +1198,7 @@ impl Settings {
             .as_ref()
             .ok_or(SmartAccountError::MissingAccount)?;
 
-        let policy_state = match policy_creation_payload.clone() {
-            PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
-                PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::LegacyProgramInteraction(creation_payload) => {
-                PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::ProgramInteraction(creation_payload) => {
-                PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
-                if creation_payload.time_constraints.start == 0 {
-                    let current_timestamp = Clock::get()?.unix_timestamp;
-                    creation_payload.time_constraints.start = current_timestamp;
-                }
-                PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
-            }
-            PolicyCreationPayload::SettingsChange(creation_payload) => {
-                PolicyState::SettingsChange(creation_payload.to_policy_state()?)
-            }
-        };
+        let policy_state = self.build_policy_state_for_create_v2(policy_creation_payload)?;
         let policy_data_size = policy_creation_payload.policy_state_size();
 
         let signers_wrapper = SmartAccountSignerWrapper::from_v2_signers(signers.clone());
@@ -1085,54 +1221,29 @@ impl Settings {
             ],
         )?;
 
-        let expiration: Option<PolicyExpiration> = if let Some(expiration_args) = expiration_args {
-            match expiration_args {
-                PolicyExpirationArgs::Timestamp(timestamp) => {
-                    Some(PolicyExpiration::Timestamp(*timestamp))
-                }
-                PolicyExpirationArgs::SettingsState => {
-                    Some(PolicyExpiration::SettingsState(self.generate_core_state_hash()?))
-                }
-            }
+        let expiration = self.resolve_policy_expiration(expiration_args)?;
+
+        let v1_signers: Vec<LegacySmartAccountSigner> =
+            signers.iter().filter_map(|s| s.to_v1()).collect();
+        let v1_signers = if v1_signers.len() == signers.len() {
+            Some(v1_signers)
         } else {
             None
         };
 
-        let v1_signers: Vec<LegacySmartAccountSigner> =
-            signers.iter().filter_map(|s| s.to_v1()).collect();
-
-        let policy = if v1_signers.len() == signers.len() {
-            Policy::create_state(
-                *self_key,
-                next_policy_seed,
-                policy_bump,
-                &v1_signers,
-                threshold,
-                time_lock,
-                policy_state,
-                start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
-                expiration.clone(),
-                rent_payer.key(),
-            )?
-        } else {
-            let mut sorted_signers = signers.clone();
-            sorted_signers.sort_by_key(|s| s.key());
-
-            Policy {
-                settings: *self_key,
-                seed: next_policy_seed,
-                bump: policy_bump,
-                transaction_index: 0,
-                stale_transaction_index: 0,
-                signers: SmartAccountSignerWrapper::from_v2_signers(sorted_signers),
-                threshold,
-                time_lock,
-                policy_state,
-                start: start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
-                expiration: expiration.clone(),
-                rent_collector: rent_payer.key(),
-            }
-        };
+        let policy = self.build_policy_from_wrapper(
+            self_key,
+            next_policy_seed,
+            policy_bump,
+            signers_wrapper.clone(),
+            v1_signers,
+            threshold,
+            time_lock,
+            policy_state,
+            start_timestamp,
+            expiration.clone(),
+            rent_payer.key(),
+        )?;
 
         policy.invariant()?;
         policy.try_serialize(&mut &mut policy_info.data.borrow_mut()[..])?;
@@ -1190,40 +1301,8 @@ impl Settings {
             .as_ref()
             .ok_or(SmartAccountError::MissingAccount)?;
 
-        let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
-            (
-                PolicyState::InternalFundTransfer(_),
-                PolicyCreationPayload::InternalFundTransfer(creation_payload),
-            ) => PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?),
-            (
-                PolicyState::ProgramInteraction(_),
-                PolicyCreationPayload::ProgramInteraction(creation_payload),
-            ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
-            (
-                PolicyState::SpendingLimit(_),
-                PolicyCreationPayload::SpendingLimit(creation_payload),
-            ) => PolicyState::SpendingLimit(creation_payload.to_policy_state()?),
-            (
-                PolicyState::SettingsChange(_),
-                PolicyCreationPayload::SettingsChange(creation_payload),
-            ) => PolicyState::SettingsChange(creation_payload.to_policy_state()?),
-            (_, _) => {
-                return err!(SmartAccountError::InvalidPolicyPayload);
-            }
-        };
-
-        let expiration: Option<PolicyExpiration> = if let Some(expiration_args) = expiration_args {
-            match expiration_args {
-                PolicyExpirationArgs::Timestamp(timestamp) => {
-                    Some(PolicyExpiration::Timestamp(*timestamp))
-                }
-                PolicyExpirationArgs::SettingsState => {
-                    Some(PolicyExpiration::SettingsState(self.generate_core_state_hash()?))
-                }
-            }
-        } else {
-            None
-        };
+        let new_policy_state = self.build_policy_state_for_update(&policy, policy_update_payload)?;
+        let expiration = self.resolve_policy_expiration(expiration_args)?;
 
         let mut sorted_signers = signers.clone();
         sorted_signers.sort_by_key(|s| s.key());

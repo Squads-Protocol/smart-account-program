@@ -2,9 +2,18 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::SmartAccountError,
-    interface::consensus_trait::Consensus,
-    state::{Permission, Settings, FREE_ACCOUNT_MAX_INDEX, SEED_PREFIX, SEED_SETTINGS},
+    state::{
+        ClientDataJsonReconstructionParams, Permission, Settings, FREE_ACCOUNT_MAX_INDEX,
+        SEED_PREFIX, SEED_SETTINGS,
+    },
+    utils::{create_increment_account_index_message, verify_v2_context},
 };
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct IncrementAccountIndexV2Args {
+    pub signer_key: Pubkey,
+    pub client_data_params: Option<ClientDataJsonReconstructionParams>,
+}
 
 #[derive(Accounts)]
 pub struct IncrementAccountIndex<'info> {
@@ -27,7 +36,10 @@ impl IncrementAccountIndex<'_> {
         let settings = &self.settings;
         let signer_key = self.signer.key();
 
-        // Signer must be a member of the smart account
+        Self::validate_signer(settings, signer_key)
+    }
+
+    fn validate_signer(settings: &Settings, signer_key: Pubkey) -> Result<()> {
         let signer = settings
             .signers
             .find(&signer_key)
@@ -56,5 +68,30 @@ impl IncrementAccountIndex<'_> {
         let settings = &mut ctx.accounts.settings;
         settings.account_utilization = settings.account_utilization.checked_add(1).unwrap();
         Ok(())
+    }
+
+    #[access_control(ctx.accounts.validate_v2(&args))]
+    pub fn increment_account_index_v2(
+        ctx: Context<Self>,
+        args: IncrementAccountIndexV2Args,
+    ) -> Result<()> {
+        let expected_message =
+            create_increment_account_index_message(&ctx.accounts.settings.key(), args.signer_key);
+
+        verify_v2_context(
+            &mut ctx.accounts.settings,
+            args.signer_key,
+            &ctx.remaining_accounts,
+            &expected_message,
+            args.client_data_params.as_ref(),
+        )?;
+
+        let settings = &mut ctx.accounts.settings;
+        settings.account_utilization = settings.account_utilization.checked_add(1).unwrap();
+        Ok(())
+    }
+
+    fn validate_v2(&self, args: &IncrementAccountIndexV2Args) -> Result<()> {
+        Self::validate_signer(&self.settings, args.signer_key)
     }
 }

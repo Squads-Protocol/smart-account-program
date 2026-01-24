@@ -190,23 +190,18 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
 
         settings.add_signer_v2_checked(&new_signer)?;
 
-        let new_size = Settings::size_for_wrapper(&settings.signers);
-        let current_size = settings.to_account_info().data_len();
-
-        if new_size > current_size {
-            crate::utils::realloc(
-                &settings.to_account_info(),
-                new_size,
-                ctx.accounts
-                    .rent_payer
-                    .as_ref()
-                    .map(ToAccountInfo::to_account_info),
-                ctx.accounts
-                    .system_program
-                    .as_ref()
-                    .map(ToAccountInfo::to_account_info),
-            )?;
-        }
+        Settings::realloc_if_needed_for_wrapper(
+            settings.to_account_info(),
+            &settings.signers,
+            ctx.accounts
+                .rent_payer
+                .as_ref()
+                .map(ToAccountInfo::to_account_info),
+            ctx.accounts
+                .system_program
+                .as_ref()
+                .map(ToAccountInfo::to_account_info),
+        )?;
 
         settings.invariant()?;
 

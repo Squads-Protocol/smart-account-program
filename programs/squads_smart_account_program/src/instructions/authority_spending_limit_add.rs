@@ -68,12 +68,7 @@ pub struct AddSpendingLimitAsAuthority<'info> {
 
 impl AddSpendingLimitAsAuthority<'_> {
     fn validate(&self, expiration: i64) -> Result<()> {
-        // settings_authority
-        require_keys_eq!(
-            self.settings_authority.key(),
-            self.settings.settings_authority,
-            SmartAccountError::Unauthorized
-        );
+        validate_settings_authority(&self.settings, self.settings_authority.key())?;
 
         // `spending_limit` is partially checked via its seeds.
 
@@ -116,11 +111,11 @@ impl AddSpendingLimitAsAuthority<'_> {
         spending_limit.invariant()?;
 
         // Log the event
-        let event = AuthoritySettingsEvent {
-            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
-            settings_pubkey: ctx.accounts.settings.key(),
-            authority: ctx.accounts.settings_authority.key(),
-            change: SettingsAction::AddSpendingLimit {
+        let event = build_authority_settings_event(
+            settings,
+            ctx.accounts.settings.key(),
+            ctx.accounts.settings_authority.key(),
+            SettingsAction::AddSpendingLimit {
                 seed: args.seed,
                 account_index: args.account_index,
                 mint: args.mint,
@@ -130,7 +125,7 @@ impl AddSpendingLimitAsAuthority<'_> {
                 destinations: args.destinations,
                 expiration: args.expiration,
             },
-        };
+        )?;
         let log_authority_info = LogAuthorityInfo {
             authority: ctx.accounts.settings.to_account_info(),
             authority_seeds: get_settings_signer_seeds(settings.seed),
@@ -141,4 +136,31 @@ impl AddSpendingLimitAsAuthority<'_> {
 
         Ok(())
     }
+}
+
+pub(super) fn validate_settings_authority(
+    settings: &Settings,
+    authority_key: Pubkey,
+) -> Result<()> {
+    require_keys_eq!(
+        authority_key,
+        settings.settings_authority,
+        SmartAccountError::Unauthorized
+    );
+
+    Ok(())
+}
+
+pub(super) fn build_authority_settings_event(
+    settings: &Settings,
+    settings_pubkey: Pubkey,
+    authority: Pubkey,
+    change: SettingsAction,
+) -> Result<AuthoritySettingsEvent> {
+    Ok(AuthoritySettingsEvent {
+        settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+        settings_pubkey,
+        authority,
+        change,
+    })
 }

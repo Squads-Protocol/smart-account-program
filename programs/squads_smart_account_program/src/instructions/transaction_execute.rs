@@ -189,19 +189,23 @@ fn validate_execute_transaction(
         SmartAccountError::Unauthorized
     );
 
-    // proposal
+    validate_proposal_execution_ready(consensus_account.time_lock(), proposal)?;
+    // Stale transaction proposals CAN be executed if they were approved
+    // before becoming stale, hence no check for staleness here.
+
+    Ok(())
+}
+
+pub fn validate_proposal_execution_ready(time_lock: u32, proposal: &Proposal) -> Result<()> {
     match proposal.status {
         ProposalStatus::Approved { timestamp } => {
             require!(
-                Clock::get()?.unix_timestamp - timestamp
-                    >= i64::from(consensus_account.time_lock()),
+                Clock::get()?.unix_timestamp - timestamp >= i64::from(time_lock),
                 SmartAccountError::TimeLockNotReleased
             );
         }
         _ => return err!(SmartAccountError::InvalidProposalStatus),
     }
-    // Stale transaction proposals CAN be executed if they were approved
-    // before becoming stale, hence no check for staleness here.
 
     Ok(())
 }

@@ -93,30 +93,7 @@ impl CloseSettingsTransaction<'_> {
         };
 
         #[allow(deprecated)]
-        let can_close = if let Some(proposal_account) = &proposal_account {
-            match proposal_account.status {
-                // Draft proposals can only be closed if stale,
-                // so they can't be activated anymore.
-                ProposalStatus::Draft { .. } => is_stale,
-                // Active proposals can only be closed if stale,
-                // so they can't be voted on anymore.
-                ProposalStatus::Active { .. } => is_stale,
-                // Approved proposals for ConfigTransactions can be closed if stale,
-                // because they cannot be executed anymore.
-                ProposalStatus::Approved { .. } => is_stale,
-                // Rejected proposals can be closed.
-                ProposalStatus::Rejected { .. } => true,
-                // Executed proposals can be closed.
-                ProposalStatus::Executed { .. } => true,
-                // Cancelled proposals can be closed.
-                ProposalStatus::Cancelled { .. } => true,
-                // Should never really be in this state.
-                ProposalStatus::Executing => false,
-            }
-        } else {
-            // If no Proposal account exists then the ConfigTransaction can only be closed if stale
-            is_stale
-        };
+        let can_close = can_close_settings_transaction_proposal(proposal_account.as_ref(), is_stale);
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
@@ -208,31 +185,7 @@ impl CloseTransaction<'_> {
             )?)
         };
 
-        #[allow(deprecated)]
-        let can_close = if let Some(proposal_account) = &proposal_account {
-            match proposal_account.status {
-                // Draft proposals can only be closed if stale,
-                // so they can't be activated anymore.
-                ProposalStatus::Draft { .. } => is_stale,
-                // Active proposals can only be closed if stale,
-                // so they can't be voted on anymore.
-                ProposalStatus::Active { .. } => is_stale,
-                // Approved proposals for VaultTransactions cannot be closed even if stale,
-                // because they still can be executed.
-                ProposalStatus::Approved { .. } => false,
-                // Rejected proposals can be closed.
-                ProposalStatus::Rejected { .. } => true,
-                // Executed proposals can be closed.
-                ProposalStatus::Executed { .. } => true,
-                // Cancelled proposals can be closed.
-                ProposalStatus::Cancelled { .. } => true,
-                // Should never really be in this state.
-                ProposalStatus::Executing => false,
-            }
-        } else {
-            // If no Proposal account exists then the VaultTransaction can only be closed if stale
-            is_stale
-        };
+        let can_close = can_close_transaction_proposal(proposal_account.as_ref(), is_stale);
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
@@ -348,26 +301,7 @@ impl CloseBatchTransaction<'_> {
 
         let is_proposal_stale = proposal.transaction_index <= settings.stale_transaction_index;
 
-        #[allow(deprecated)]
-        let can_close = match proposal.status {
-            // Transactions of Draft proposals can only be closed if stale,
-            // so the proposal can't be activated anymore.
-            ProposalStatus::Draft { .. } => is_proposal_stale,
-            // Transactions of Active proposals can only be closed if stale,
-            // so the proposal can't be voted on anymore.
-            ProposalStatus::Active { .. } => is_proposal_stale,
-            // Transactions of Approved proposals for `Batch`es cannot be closed even if stale,
-            // because they still can be executed.
-            ProposalStatus::Approved { .. } => false,
-            // Transactions of Rejected proposals can be closed.
-            ProposalStatus::Rejected { .. } => true,
-            // Transactions of Executed proposals can be closed.
-            ProposalStatus::Executed { .. } => true,
-            // Transactions of Cancelled proposals can be closed.
-            ProposalStatus::Cancelled { .. } => true,
-            // Should never really be in this state.
-            ProposalStatus::Executing => false,
-        };
+        let can_close = can_close_batch_proposal(&proposal.status, is_proposal_stale);
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
@@ -465,31 +399,7 @@ impl CloseBatch<'_> {
             )?)
         };
 
-        #[allow(deprecated)]
-        let can_close = if let Some(proposal_account) = &proposal_account {
-            match proposal_account.status {
-                // Draft proposals can only be closed if stale,
-                // so they can't be activated anymore.
-                ProposalStatus::Draft { .. } => is_stale,
-                // Active proposals can only be closed if stale,
-                // so they can't be voted on anymore.
-                ProposalStatus::Active { .. } => is_stale,
-                // Approved proposals for `Batch`s cannot be closed even if stale,
-                // because they still can be executed.
-                ProposalStatus::Approved { .. } => false,
-                // Rejected proposals can be closed.
-                ProposalStatus::Rejected { .. } => true,
-                // Executed proposals can be closed.
-                ProposalStatus::Executed { .. } => true,
-                // Cancelled proposals can be closed.
-                ProposalStatus::Cancelled { .. } => true,
-                // Should never really be in this state.
-                ProposalStatus::Executing => false,
-            }
-        } else {
-            // If no Proposal account exists then the Batch can only be closed if stale
-            is_stale
-        };
+        let can_close = can_close_batch_proposal_from_account(proposal_account.as_ref(), is_stale);
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
 
@@ -513,6 +423,68 @@ impl CloseBatch<'_> {
 
         // Anchor will close the `batch` account for us.
         Ok(())
+    }
+}
+
+#[allow(deprecated)]
+fn can_close_settings_transaction_proposal(
+    proposal: Option<&Proposal>,
+    is_stale: bool,
+) -> bool {
+    if let Some(proposal_account) = proposal {
+        match proposal_account.status {
+            ProposalStatus::Draft { .. } => is_stale,
+            ProposalStatus::Active { .. } => is_stale,
+            ProposalStatus::Approved { .. } => is_stale,
+            ProposalStatus::Rejected { .. } => true,
+            ProposalStatus::Executed { .. } => true,
+            ProposalStatus::Cancelled { .. } => true,
+            ProposalStatus::Executing => false,
+        }
+    } else {
+        is_stale
+    }
+}
+
+#[allow(deprecated)]
+fn can_close_transaction_proposal(proposal: Option<&Proposal>, is_stale: bool) -> bool {
+    if let Some(proposal_account) = proposal {
+        match proposal_account.status {
+            ProposalStatus::Draft { .. } => is_stale,
+            ProposalStatus::Active { .. } => is_stale,
+            ProposalStatus::Approved { .. } => false,
+            ProposalStatus::Rejected { .. } => true,
+            ProposalStatus::Executed { .. } => true,
+            ProposalStatus::Cancelled { .. } => true,
+            ProposalStatus::Executing => false,
+        }
+    } else {
+        is_stale
+    }
+}
+
+#[allow(deprecated)]
+fn can_close_batch_proposal(status: &ProposalStatus, is_stale: bool) -> bool {
+    match status {
+        ProposalStatus::Draft { .. } => is_stale,
+        ProposalStatus::Active { .. } => is_stale,
+        ProposalStatus::Approved { .. } => false,
+        ProposalStatus::Rejected { .. } => true,
+        ProposalStatus::Executed { .. } => true,
+        ProposalStatus::Cancelled { .. } => true,
+        ProposalStatus::Executing => false,
+    }
+}
+
+#[allow(deprecated)]
+fn can_close_batch_proposal_from_account(
+    proposal: Option<&Proposal>,
+    is_stale: bool,
+) -> bool {
+    if let Some(proposal_account) = proposal {
+        can_close_batch_proposal(&proposal_account.status, is_stale)
+    } else {
+        is_stale
     }
 }
 

@@ -47,6 +47,11 @@ impl ProgramConfig<'_> {
         Ok(())
     }
 
+    fn apply_update(program_config: &mut crate::state::ProgramConfig) -> Result<()> {
+        program_config.invariant()?;
+        Ok(())
+    }
+
     #[access_control(ctx.accounts.validate())]
     pub fn set_authority(
         ctx: Context<Self>,
@@ -56,9 +61,7 @@ impl ProgramConfig<'_> {
 
         program_config.authority = args.new_authority;
 
-        program_config.invariant()?;
-
-        Ok(())
+        Self::apply_update(program_config)
     }
 
     #[access_control(ctx.accounts.validate())]
@@ -70,9 +73,7 @@ impl ProgramConfig<'_> {
 
         program_config.smart_account_creation_fee = args.new_smart_account_creation_fee;
 
-        program_config.invariant()?;
-
-        Ok(())
+        Self::apply_update(program_config)
     }
 
     #[access_control(ctx.accounts.validate())]
@@ -84,8 +85,6 @@ impl ProgramConfig<'_> {
 
         program_config.treasury = args.new_treasury;
 
-        program_config.invariant()?;
-
-        Ok(())
+        Self::apply_update(program_config)
     }
 }

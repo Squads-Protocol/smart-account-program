@@ -3,7 +3,20 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
-use crate::utils::*;
+use crate::utils::{
+    create_batch_execute_transaction_message, derive_ephemeral_signers, verify_v2_context,
+    ExecutableTransactionMessage,
+};
+
+use super::transaction_execute::validate_proposal_execution_ready;
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct ExecuteBatchTransactionV2Args {
+    /// The key (Native) or key_id (External) of the signer
+    pub signer_key: Pubkey,
+    /// Client data params for WebAuthn verification (required for WebAuthn signers)
+    pub client_data_params: Option<ClientDataJsonReconstructionParams>,
+}
 
 #[derive(Accounts)]
 pub struct ExecuteBatchTransaction<'info> {
@@ -73,26 +86,9 @@ impl ExecuteBatchTransaction<'_> {
             ..
         } = self;
 
-        // `signer`
-        require!(
-            settings.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            settings.signer_has_permission(signer.key(), Permission::Execute),
-            SmartAccountError::Unauthorized
-        );
+        Self::validate_signer(settings, signer.key())?;
 
-        // `proposal`
-        match proposal.status {
-            ProposalStatus::Approved { timestamp } => {
-                require!(
-                    Clock::get()?.unix_timestamp - timestamp >= i64::from(settings.time_lock),
-                    SmartAccountError::TimeLockNotReleased
-                );
-            }
-            _ => return err!(SmartAccountError::InvalidProposalStatus),
-        };
+        Self::validate_proposal(settings, proposal)?;
         // Stale batch transaction proposals CAN be executed if they were approved
         // before becoming stale, hence no check for staleness here.
 
@@ -103,22 +99,34 @@ impl ExecuteBatchTransaction<'_> {
         Ok(())
     }
 
-    /// Execute a transaction from the batch.
-    #[access_control(ctx.accounts.validate())]
-    pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
-        let proposal = &mut ctx.accounts.proposal;
-        let batch = &mut ctx.accounts.batch;
+    fn validate_signer(settings: &Settings, signer_key: Pubkey) -> Result<()> {
+        require!(
+            settings.is_signer(signer_key).is_some(),
+            SmartAccountError::NotASigner
+        );
+        require!(
+            settings.signer_has_permission(signer_key, Permission::Execute),
+            SmartAccountError::Unauthorized
+        );
 
-        // NOTE: After `take()` is called, the BatchTransaction is reduced to
-        // its default empty value, which means it should no longer be referenced or
-        // used after this point to avoid faulty behavior.
-        // Instead only make use of the returned `transaction` value.
-        let transaction = ctx.accounts.transaction.take();
+        Ok(())
+    }
 
-        let settings_key = settings.key();
-        let batch_key = batch.key();
+    fn validate_proposal(settings: &Settings, proposal: &Proposal) -> Result<()> {
+        validate_proposal_execution_ready(settings.time_lock, proposal)
+    }
 
+    fn execute_inner<'info>(
+        _settings: &mut Settings,
+        proposal: &mut Proposal,
+        batch: &mut Batch,
+        transaction: BatchTransaction,
+        remaining_accounts: &[AccountInfo<'info>],
+        settings_key: Pubkey,
+        batch_key: Pubkey,
+        proposal_key: Pubkey,
+        program_id: &Pubkey,
+    ) -> Result<()> {
         let smart_account_seeds = &[
             SEED_PREFIX,
             settings_key.as_ref(),
@@ -130,16 +138,15 @@ impl ExecuteBatchTransaction<'_> {
         let transaction_message = transaction.message;
         let num_lookups = transaction_message.address_table_lookups.len();
 
-        let message_account_infos = ctx
-            .remaining_accounts
+        let message_account_infos = remaining_accounts
             .get(num_lookups..)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
-        let address_lookup_table_account_infos = ctx
-            .remaining_accounts
+        let address_lookup_table_account_infos = remaining_accounts
             .get(..num_lookups)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        let smart_account_pubkey = Pubkey::create_program_address(smart_account_seeds, ctx.program_id).unwrap();
+        let smart_account_pubkey =
+            Pubkey::create_program_address(smart_account_seeds, program_id).unwrap();
 
         let (ephemeral_signer_keys, ephemeral_signer_seeds) =
             derive_ephemeral_signers(batch_key, &transaction.ephemeral_signer_bumps);
@@ -152,27 +159,19 @@ impl ExecuteBatchTransaction<'_> {
             &ephemeral_signer_keys,
         )?;
 
-        let protected_accounts = &[proposal.key(), batch_key];
+        let protected_accounts = &[proposal_key, batch_key];
 
-        // Execute the transaction message instructions one-by-one.
-        // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-        // which in turn calls `take()` on
-        // `self.message.instructions`, therefore after this point no more
-        // references or usages of `self.message` should be made to avoid
-        // faulty behavior.
         executable_message.execute_message(
             smart_account_seeds,
             &ephemeral_signer_seeds,
             protected_accounts,
         )?;
 
-        // Increment the executed transaction index.
         batch.executed_transaction_index = batch
             .executed_transaction_index
             .checked_add(1)
             .expect("overflow");
 
-        // If this is the last transaction in the batch, set the proposal status to `Executed`.
         if batch.executed_transaction_index == batch.size {
             proposal.status = ProposalStatus::Executed {
                 timestamp: Clock::get()?.unix_timestamp,
@@ -180,6 +179,77 @@ impl ExecuteBatchTransaction<'_> {
         }
 
         batch.invariant()?;
+
+        Ok(())
+    }
+
+    /// Execute a transaction from the batch.
+    #[access_control(ctx.accounts.validate())]
+    pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
+        let settings_key = ctx.accounts.settings.key();
+        let batch_key = ctx.accounts.batch.key();
+        let proposal_key = ctx.accounts.proposal.key();
+        let transaction = ctx.accounts.transaction.take();
+
+        Self::execute_inner(
+            &mut ctx.accounts.settings,
+            &mut ctx.accounts.proposal,
+            &mut ctx.accounts.batch,
+            transaction,
+            &ctx.remaining_accounts,
+            settings_key,
+            batch_key,
+            proposal_key,
+            ctx.program_id,
+        )
+    }
+
+    #[access_control(ctx.accounts.validate_v2(&args))]
+    pub fn execute_batch_transaction_v2(
+        ctx: Context<Self>,
+        args: ExecuteBatchTransactionV2Args,
+    ) -> Result<()> {
+        let expected_message = create_batch_execute_transaction_message(
+            &ctx.accounts.batch.key(),
+            args.signer_key,
+            u64::from(
+                ctx.accounts
+                    .batch
+                    .executed_transaction_index
+                    .checked_add(1)
+                    .unwrap(),
+            ),
+        );
+
+        verify_v2_context(
+            &mut ctx.accounts.settings,
+            args.signer_key,
+            &ctx.remaining_accounts,
+            &expected_message,
+            args.client_data_params.as_ref(),
+        )?;
+
+        let settings_key = ctx.accounts.settings.key();
+        let batch_key = ctx.accounts.batch.key();
+        let proposal_key = ctx.accounts.proposal.key();
+        let transaction = ctx.accounts.transaction.take();
+
+        Self::execute_inner(
+            &mut ctx.accounts.settings,
+            &mut ctx.accounts.proposal,
+            &mut ctx.accounts.batch,
+            transaction,
+            &ctx.remaining_accounts,
+            settings_key,
+            batch_key,
+            proposal_key,
+            ctx.program_id,
+        )
+    }
+
+    fn validate_v2(&self, args: &ExecuteBatchTransactionV2Args) -> Result<()> {
+        Self::validate_signer(&self.settings, args.signer_key)?;
+        Self::validate_proposal(&self.settings, &self.proposal)?;
 
         Ok(())
     }

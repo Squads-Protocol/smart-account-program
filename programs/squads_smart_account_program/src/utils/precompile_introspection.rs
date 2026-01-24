@@ -782,6 +782,77 @@ pub fn create_execute_settings_transaction_message(
     hasher.result().to_bytes()
 }
 
+pub fn create_increment_account_index_message(
+    settings: &Pubkey,
+    signer_key: Pubkey,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"increment_account_index_v2");
+    hasher.hash(settings.as_ref());
+    hasher.hash(signer_key.as_ref());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for batch creation signing
+///
+/// Format: hash("batch_create_v2" || settings_key || creator_key || account_index)
+pub fn create_batch_create_message(
+    settings_key: &Pubkey,
+    creator_key: Pubkey,
+    account_index: u8,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"batch_create_v2");
+    hasher.hash(settings_key.as_ref());
+    hasher.hash(creator_key.as_ref());
+    hasher.hash(&[account_index]);
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for adding a transaction to a batch
+///
+/// Format: hash("batch_add_tx_v2" || batch_key || signer_key || transaction_index)
+pub fn create_batch_add_transaction_message(
+    batch_key: &Pubkey,
+    signer_key: Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"batch_add_tx_v2");
+    hasher.hash(batch_key.as_ref());
+    hasher.hash(signer_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
+/// Create message for executing a transaction from a batch
+///
+/// Format: hash("batch_execute_tx_v2" || batch_key || signer_key || transaction_index)
+pub fn create_batch_execute_transaction_message(
+    batch_key: &Pubkey,
+    signer_key: Pubkey,
+    transaction_index: u64,
+) -> [u8; 32] {
+    use anchor_lang::solana_program::hash::Hasher;
+
+    let mut hasher = Hasher::default();
+    hasher.hash(b"batch_execute_tx_v2");
+    hasher.hash(batch_key.as_ref());
+    hasher.hash(signer_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+
+    hasher.result().to_bytes()
+}
+
 /// Create message for transaction buffer creation signing
 ///
 /// Format: hash("tx_buffer_create_v2" || consensus_account_key || creator_key || buffer_index || account_index || final_hash || final_size)

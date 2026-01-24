@@ -2,7 +2,6 @@
 use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::errors::SmartAccountError;
 use crate::events::*;
@@ -95,6 +94,7 @@ impl<'info> CreateSmartAccount<'info> {
             ],
             &crate::ID,
         );
+        let _settings_pubkey = settings_pubkey;
 
         let settings_account_info = settings.find_and_initialize_settings_account(
             settings_pubkey,
@@ -139,6 +139,32 @@ impl<'info> CreateSmartAccount<'info> {
         Ok(())
     }
 
+    fn build_settings_configuration(
+        settings_seed: u128,
+        settings_bump: u8,
+        settings_authority: Option<Pubkey>,
+        threshold: u16,
+        time_lock: u32,
+        signers: SmartAccountSignerWrapper,
+        _rent_collector: Option<Pubkey>,
+    ) -> Settings {
+        Settings {
+            seed: settings_seed,
+            settings_authority: settings_authority.unwrap_or_default(),
+            threshold,
+            time_lock,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: Some(Pubkey::default()),
+            archivable_after: 0,
+            bump: settings_bump,
+            signers,
+            account_utilization: 0,
+            policy_seed: Some(0),
+            _reserved2: 0,
+        }
+    }
+
     /// Creates a multisig.
     #[access_control(ctx.accounts.validate())]
     pub fn create_smart_account(
@@ -163,23 +189,16 @@ impl<'info> CreateSmartAccount<'info> {
             ],
             &crate::ID,
         );
-        let settings_configuration = Settings {
-            seed: settings_seed,
-            settings_authority: args.settings_authority.unwrap_or_default(),
-            threshold: args.threshold,
-            time_lock: args.time_lock,
-            transaction_index: 0,
-            stale_transaction_index: 0,
-            // Preset to Pubkey::default() until archival feature is implemented.
-            archival_authority: Some(Pubkey::default()),
-            // Preset to 0 until archival feature is implemented.
-            archivable_after: 0,
-            bump: settings_bump,
-            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
-            account_utilization: 0,
-            policy_seed: Some(0),
-            _reserved2: 0,
-        };
+        let _settings_pubkey = settings_pubkey;
+        let settings_configuration = Self::build_settings_configuration(
+            settings_seed,
+            settings_bump,
+            args.settings_authority,
+            args.threshold,
+            args.time_lock,
+            SmartAccountSignerWrapper::from_v1_signers(signers),
+            args.rent_collector,
+        );
 
         Self::create_inner(ctx, settings_configuration)
     }
@@ -206,22 +225,17 @@ impl<'info> CreateSmartAccount<'info> {
             ],
             &crate::ID,
         );
+        let _settings_pubkey = settings_pubkey;
 
-        let settings_configuration = Settings {
-            seed: settings_seed,
-            settings_authority: args.settings_authority.unwrap_or_default(),
-            threshold: args.threshold,
-            time_lock: args.time_lock,
-            transaction_index: 0,
-            stale_transaction_index: 0,
-            archival_authority: Some(Pubkey::default()),
-            archivable_after: 0,
-            bump: settings_bump,
-            signers: SmartAccountSignerWrapper::from_v2_signers(signers),
-            account_utilization: 0,
-            policy_seed: Some(0),
-            _reserved2: 0,
-        };
+        let settings_configuration = Self::build_settings_configuration(
+            settings_seed,
+            settings_bump,
+            args.settings_authority,
+            args.threshold,
+            args.time_lock,
+            SmartAccountSignerWrapper::from_v2_signers(signers),
+            args.rent_collector,
+        );
 
         Self::create_inner(ctx, settings_configuration)
     }

@@ -4,7 +4,6 @@ use crate::{
     errors::*,
     program::SquadsSmartAccountProgram,
     state::*,
-    SmartAccountSignerWrapper,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -76,17 +75,12 @@ impl<'info> SettingsMigrateSigners<'info> {
         settings.signers = Settings::migrate_signers_wrapper(&settings.signers);
 
         // Reallocate if needed (V2 format may have different size)
-        let new_size = Settings::size_for_wrapper(&settings.signers);
-        let current_size = settings.to_account_info().data_len();
-
-        if new_size > current_size {
-            crate::utils::realloc(
-                &settings.to_account_info(),
-                new_size,
-                Some(ctx.accounts.payer.to_account_info()),
-                Some(ctx.accounts.system_program.to_account_info()),
-            )?;
-        }
+        Settings::realloc_if_needed_for_wrapper(
+            settings.to_account_info(),
+            &settings.signers,
+            Some(ctx.accounts.payer.to_account_info()),
+            Some(ctx.accounts.system_program.to_account_info()),
+        )?;
 
         // Emit event
         emit!(SignersMigratedEvent {

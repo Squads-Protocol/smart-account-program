@@ -76,6 +76,40 @@ pub struct SyncTransaction<'info> {
 }
 
 impl<'info> SyncTransaction<'info> {
+    fn validate_account_index(
+        consensus_account: &InterfaceAccount<'info, ConsensusAccount>,
+        account_index: u8,
+    ) -> Result<()> {
+        if consensus_account.account_type() == ConsensusAccountType::Settings {
+            let settings = consensus_account.read_only_settings()?;
+            settings.validate_account_index_unlocked(account_index)?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_payload(
+        consensus_account: &InterfaceAccount<'info, ConsensusAccount>,
+        payload: &SyncPayload,
+    ) -> Result<()> {
+        if consensus_account.account_type() == ConsensusAccountType::Policy {
+            let policy = consensus_account.read_only_policy()?;
+            match payload {
+                SyncPayload::Policy(payload) => {
+                    policy.validate_payload(PolicyExecutionContext::Synchronous, payload)?;
+                }
+                _ => {
+                    return Err(
+                        SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
+                            .into(),
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     fn validate(
         &self,
         args: &SyncTransactionArgs,
@@ -89,24 +123,8 @@ impl<'info> SyncTransaction<'info> {
         consensus_account.is_active(&remaining_accounts[args.num_signers as usize..])?;
 
         // Validate account index is unlocked for Settings-based transactions
-        if consensus_account.account_type() == ConsensusAccountType::Settings {
-            let settings = consensus_account.read_only_settings()?;
-            settings.validate_account_index_unlocked(args.account_index)?;
-        }
-
-        // Validate policy payload if necessary
-        if consensus_account.account_type() == ConsensusAccountType::Policy {
-            let policy = consensus_account.read_only_policy()?;
-            match &args.payload {
-                SyncPayload::Policy(payload) => {
-                    // Validate the payload against the policy state
-                    policy.validate_payload(PolicyExecutionContext::Synchronous, payload)?;
-                }
-                _ => {
-                    return Err(SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction.into());
-                }
-            }
-        }
+        Self::validate_account_index(consensus_account, args.account_index)?;
+        Self::validate_payload(consensus_account, &args.payload)?;
 
         validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
     }
@@ -136,26 +154,8 @@ impl<'info> SyncTransaction<'info> {
         let remaining_after_consensus = &remaining_accounts[consensus_result.accounts_consumed..];
 
         consensus_account.is_active(remaining_after_consensus)?;
-
-        if consensus_account.account_type() == ConsensusAccountType::Settings {
-            let settings = consensus_account.read_only_settings()?;
-            settings.validate_account_index_unlocked(args.account_index)?;
-        }
-
-        if consensus_account.account_type() == ConsensusAccountType::Policy {
-            let policy = consensus_account.read_only_policy()?;
-            match &args.payload {
-                SyncPayload::Policy(payload) => {
-                    policy.validate_payload(PolicyExecutionContext::Synchronous, payload)?;
-                }
-                _ => {
-                    return Err(
-                        SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
-                            .into(),
-                    );
-                }
-            }
-        }
+        Self::validate_account_index(consensus_account, args.account_index)?;
+        Self::validate_payload(consensus_account, &args.payload)?;
 
         Ok(consensus_result)
     }

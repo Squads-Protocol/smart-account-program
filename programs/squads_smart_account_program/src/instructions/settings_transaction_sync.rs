@@ -59,6 +59,18 @@ pub struct SyncSettingsTransaction<'info> {
 }
 
 impl<'info> SyncSettingsTransaction<'info> {
+    fn validate_settings_sync_actions(settings: &Settings, actions: &[SettingsAction]) -> Result<()> {
+        require_keys_eq!(
+            settings.settings_authority,
+            Pubkey::default(),
+            SmartAccountError::NotSupportedForControlled
+        );
+
+        validate_settings_actions(actions)?;
+
+        Ok(())
+    }
+
     fn validate(
         &self,
         args: &SyncSettingsTransactionArgs,
@@ -68,15 +80,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Get the settings
         let settings = consensus_account.read_only_settings()?;
 
-        // Settings must not be controlled
-        require_keys_eq!(
-            settings.settings_authority,
-            Pubkey::default(),
-            SmartAccountError::NotSupportedForControlled
-        );
-
-        // Validates the proposed settings changes
-        validate_settings_actions(&args.actions)?;
+        Self::validate_settings_sync_actions(&settings, &args.actions)?;
 
         // Validates synchronous consensus across the signers
         validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)?;
@@ -92,13 +96,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         let Self { consensus_account, .. } = self;
         let settings = consensus_account.read_only_settings()?;
 
-        require_keys_eq!(
-            settings.settings_authority,
-            Pubkey::default(),
-            SmartAccountError::NotSupportedForControlled
-        );
-
-        validate_settings_actions(&args.actions)?;
+        Self::validate_settings_sync_actions(&settings, &args.actions)?;
 
         let consensus_args = SyncConsensusV2Args {
             num_native_signers: args.num_native_signers,
