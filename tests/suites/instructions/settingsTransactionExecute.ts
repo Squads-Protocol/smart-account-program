@@ -84,7 +84,7 @@ describe("Instructions / settings_transaction_execute", () => {
     );
   });
 
-  it("error: removing asignercauses threshold to be unreachable", async () => {
+  it("error: removing a signer causes threshold to be unreachable", async () => {
     // Create new autonomous smartAccount.
     const settingsPda = (
       await createAutonomousMultisig({

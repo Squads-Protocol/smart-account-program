@@ -205,7 +205,7 @@ describe("Instructions / smart_account_create", () => {
     );
   });
 
-  it("error:signerhas unknown permission", async () => {
+  it("error: signer has unknown permission", async () => {
     const creator = getTestAccountCreationAuthority();
     await fundKeypair(connection, creator);
 
