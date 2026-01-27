@@ -60,7 +60,7 @@ impl IncrementAccountIndex<'_> {
     #[access_control(ctx.accounts.validate())]
     pub fn increment_account_index(ctx: Context<Self>) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
-        settings.account_utilization = settings.account_utilization.checked_add(1).unwrap();
+        settings.increment_account_utilization_index();
 
         let event = IncrementAccountIndexEvent {
             settings_pubkey: settings.key(),

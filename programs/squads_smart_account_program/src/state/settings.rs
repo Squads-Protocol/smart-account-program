@@ -738,6 +738,10 @@ impl Settings {
         self.account_utilization = self.account_utilization.checked_add(1).unwrap();
     }
 
+    pub fn increment_account_utilization_index(&mut self) {
+        self.increment_account_utilization();
+    }
+
     /// Validates that the given account index is unlocked.
     /// Reserved accounts (250-255) bypass this check.
     pub fn validate_account_index_unlocked(&self, index: u8) -> Result<()> {
