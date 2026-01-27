@@ -9,9 +9,9 @@ import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from '../types/SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from '../types/SmartAccountSignerWrapper'
 import { PolicyState, policyStateBeet } from '../types/PolicyState'
 import {
   PolicyExpiration,
@@ -29,7 +29,7 @@ export type PolicyArgs = {
   bump: number
   transactionIndex: beet.bignum
   staleTransactionIndex: beet.bignum
-  signers: SmartAccountSigner[]
+  signers: SmartAccountSignerWrapper
   threshold: number
   timeLock: number
   policyState: PolicyState
@@ -53,7 +53,7 @@ export class Policy implements PolicyArgs {
     readonly bump: number,
     readonly transactionIndex: beet.bignum,
     readonly staleTransactionIndex: beet.bignum,
-    readonly signers: SmartAccountSigner[],
+    readonly signers: SmartAccountSignerWrapper,
     readonly threshold: number,
     readonly timeLock: number,
     readonly policyState: PolicyState,
@@ -122,7 +122,7 @@ export class Policy implements PolicyArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG'
+      'GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, policyBeet)
@@ -222,7 +222,7 @@ export class Policy implements PolicyArgs {
         }
         return x
       })(),
-      signers: this.signers,
+      signers: this.signers.__kind,
       threshold: this.threshold,
       timeLock: this.timeLock,
       policyState: this.policyState.__kind,
@@ -260,7 +260,7 @@ export const policyBeet = new beet.FixableBeetStruct<
     ['bump', beet.u8],
     ['transactionIndex', beet.u64],
     ['staleTransactionIndex', beet.u64],
-    ['signers', beet.array(smartAccountSignerBeet)],
+    ['signers', smartAccountSignerWrapperBeet],
     ['threshold', beet.u16],
     ['timeLock', beet.u32],
     ['policyState', policyStateBeet],

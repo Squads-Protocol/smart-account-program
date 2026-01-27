@@ -406,4 +406,324 @@ mod tests {
         assert!(policy.is_active(now - 100_000).is_err()); // before start
         assert!(policy.is_active(now + 200_000).is_err()); // after expiration
     }
+
+    // ========================================================================
+    // Additional Comprehensive Tests
+    // ========================================================================
+
+    #[test]
+    fn test_period_v2_to_seconds() {
+        assert_eq!(PeriodV2::OneTime.to_seconds(), None);
+        assert_eq!(PeriodV2::Daily.to_seconds(), Some(86400));
+        assert_eq!(PeriodV2::Weekly.to_seconds(), Some(604800));
+        assert_eq!(PeriodV2::Monthly.to_seconds(), Some(2592000));
+        assert_eq!(PeriodV2::Custom(3600).to_seconds(), Some(3600));
+    }
+
+    #[test]
+    fn test_invariant_valid_config() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, Some(now + 86400)),
+            quantity_constraints: make_quantity_constraints(1000, 100, false),
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_zero_max_per_period() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(0, 0, false), // Invalid: zero max_per_period
+            usage: make_usage_state(0, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_negative_start_time() {
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, -1, None), // Invalid: negative start
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, 0),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_expiration_before_start() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, Some(now - 1)), // Invalid: expiration < start
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_accumulate_unused_without_expiration() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, now, None), // Invalid: accumulate without expiration
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_one_time_with_accumulate() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::OneTime, true, now, Some(now + 86400)), // Invalid: OneTime + accumulate
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_remaining_exceeds_max_per_period() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1001, now), // Invalid: remaining > max_per_period
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_exact_quantity_without_max_per_use() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, true), // Invalid: exact quantity but max_per_use = 0
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_max_per_use_exceeds_max_per_period() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 1001, false), // Invalid: max_per_use > max_per_period
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_negative_custom_period() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Custom(-1), false, now, None), // Invalid: negative custom period
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now),
+        };
+        assert!(policy.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_last_reset_out_of_bounds() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, Some(now + 86400)),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now - 1), // Invalid: last_reset < start
+        };
+        assert!(policy.invariant().is_err());
+
+        let policy2 = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, Some(now + 86400)),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now + 86401), // Invalid: last_reset > expiration
+        };
+        assert!(policy2.invariant().is_err());
+    }
+
+    #[test]
+    fn test_check_amount_exceeds_remaining() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(500, now),
+        };
+
+        // Valid: within remaining
+        assert!(policy.check_amount(500).is_ok());
+        assert!(policy.check_amount(100).is_ok());
+
+        // Invalid: exceeds remaining
+        assert!(policy.check_amount(501).is_err());
+    }
+
+    #[test]
+    fn test_check_amount_max_per_use_constraint() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 100, false),
+            usage: make_usage_state(1000, now),
+        };
+
+        // Valid: within max_per_use
+        assert!(policy.check_amount(100).is_ok());
+        assert!(policy.check_amount(50).is_ok());
+
+        // Invalid: exceeds max_per_use
+        assert!(policy.check_amount(101).is_err());
+    }
+
+    #[test]
+    fn test_check_amount_exact_quantity_constraint() {
+        let now = 1_000_000;
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 100, true), // Enforce exact
+            usage: make_usage_state(1000, now),
+        };
+
+        // Valid: exact match
+        assert!(policy.check_amount(100).is_ok());
+
+        // Invalid: not exact
+        assert!(policy.check_amount(99).is_err());
+        assert!(policy.check_amount(101).is_err());
+    }
+
+    #[test]
+    fn test_reset_if_needed_no_reset_required() {
+        let now = 1_000_000;
+        let last_reset = now - 1000; // Less than a day ago
+        let mut policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, 0, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(500, last_reset),
+        };
+
+        policy.reset_if_needed(now);
+
+        // Should not reset
+        assert_eq!(policy.usage.remaining_in_period, 500);
+        assert_eq!(policy.usage.last_reset, last_reset);
+    }
+
+    #[test]
+    fn test_reset_if_needed_one_time_no_reset() {
+        let now = 1_000_000;
+        let last_reset = now - 86400; // 1 day ago
+        let mut policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::OneTime, false, 0, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(500, last_reset),
+        };
+
+        policy.reset_if_needed(now);
+
+        // OneTime should never reset
+        assert_eq!(policy.usage.remaining_in_period, 500);
+        assert_eq!(policy.usage.last_reset, last_reset);
+    }
+
+    #[test]
+    fn test_reset_multiple_periods_accumulate() {
+        let now = 1_000_000;
+        let three_days_ago = now - (3 * 86400);
+        let mut policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, 0, Some(now + 86400)),
+            quantity_constraints: make_quantity_constraints(100, 0, false),
+            usage: make_usage_state(50, three_days_ago),
+        };
+
+        policy.reset_if_needed(now);
+
+        // Should add 3 periods: 50 + (3 * 100) = 350
+        assert_eq!(policy.usage.remaining_in_period, 350);
+    }
+
+    #[test]
+    fn test_decrement_to_zero() {
+        let now = 1_000_000;
+        let mut policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, false, now, None),
+            quantity_constraints: make_quantity_constraints(1000, 0, false),
+            usage: make_usage_state(1000, now),
+        };
+
+        policy.decrement(1000);
+        assert_eq!(policy.usage.remaining_in_period, 0);
+    }
+
+    #[test]
+    fn test_custom_period_reset() {
+        let now = 1_000_000;
+        let custom_period = 3600; // 1 hour
+        let two_hours_ago = now - (2 * custom_period);
+        let mut policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Custom(custom_period), false, 0, None),
+            quantity_constraints: make_quantity_constraints(100, 0, false),
+            usage: make_usage_state(50, two_hours_ago),
+        };
+
+        policy.reset_if_needed(now);
+
+        // Should reset after 2 custom periods
+        assert_eq!(policy.usage.remaining_in_period, 100);
+    }
+
+    #[test]
+    fn test_accumulate_overflow_within_expiration_bounds() {
+        let start = 1_000_000;
+        let expiration = start + (10 * 86400); // 10 days
+        let period_seconds = 86400; // 1 day
+        let max_per_period = 100;
+
+        // Total periods: 10 days / 1 day = 10
+        // Max amount: 10 * 100 = 1000
+        let policy = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, start, Some(expiration)),
+            quantity_constraints: make_quantity_constraints(max_per_period, 0, false),
+            usage: make_usage_state(1000, start), // Exactly at max
+        };
+
+        assert!(policy.invariant().is_ok());
+
+        // Exceeding max should fail
+        let policy2 = SpendingLimitV2 {
+            mint: Pubkey::default(),
+            time_constraints: make_time_constraints(PeriodV2::Daily, true, start, Some(expiration)),
+            quantity_constraints: make_quantity_constraints(max_per_period, 0, false),
+            usage: make_usage_state(1001, start), // Over max
+        };
+
+        assert!(policy2.invariant().is_err());
+    }
 }

@@ -31,6 +31,20 @@ pub struct IncrementAccountIndex<'info> {
     pub signer: Signer<'info>,
 }
 
+#[derive(Accounts)]
+pub struct IncrementAccountIndexV2<'info> {
+    #[account(
+        mut,
+        seeds = [
+            SEED_PREFIX,
+            SEED_SETTINGS,
+            &settings.seed.to_le_bytes(),
+        ],
+        bump = settings.bump,
+    )]
+    pub settings: Account<'info, Settings>,
+}
+
 impl IncrementAccountIndex<'_> {
     fn validate(&self) -> Result<()> {
         let settings = &self.settings;
@@ -70,7 +84,14 @@ impl IncrementAccountIndex<'_> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate_v2(&args))]
+}
+
+impl IncrementAccountIndexV2<'_> {
+    fn validate(&self, args: &IncrementAccountIndexV2Args) -> Result<()> {
+        IncrementAccountIndex::validate_signer(&self.settings, args.signer_key)
+    }
+
+    #[access_control(ctx.accounts.validate(&args))]
     pub fn increment_account_index_v2(
         ctx: Context<Self>,
         args: IncrementAccountIndexV2Args,
@@ -89,9 +110,5 @@ impl IncrementAccountIndex<'_> {
         let settings = &mut ctx.accounts.settings;
         settings.account_utilization = settings.account_utilization.checked_add(1).unwrap();
         Ok(())
-    }
-
-    fn validate_v2(&self, args: &IncrementAccountIndexV2Args) -> Result<()> {
-        Self::validate_signer(&self.settings, args.signer_key)
     }
 }

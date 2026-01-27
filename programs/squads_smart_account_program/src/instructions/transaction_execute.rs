@@ -158,13 +158,15 @@ impl<'info> ExecuteTransactionV2<'info> {
             args.client_data_params.as_ref(),
         )?;
 
+        let (_, remaining_accounts) = split_instructions_sysvar(&ctx.remaining_accounts);
+
         execute_transaction_inner(
             &mut ctx.accounts.consensus_account,
             &mut ctx.accounts.proposal,
             &ctx.accounts.transaction,
             &ctx.accounts.program,
             args.executor_key,
-            &ctx.remaining_accounts,
+            remaining_accounts,
             &ctx.program_id,
         )
     }

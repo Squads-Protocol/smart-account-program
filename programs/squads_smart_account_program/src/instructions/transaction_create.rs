@@ -249,9 +249,9 @@ fn create_transaction_inner<'info>(
     )
 }
 
-pub(crate) fn create_transaction_inner_v2<'info>(
+pub(crate) fn create_transaction_inner_v2<'info, 'a>(
     consensus_account: &mut InterfaceAccount<'info, ConsensusAccount>,
-    transaction: &mut Account<'info, Transaction>,
+    transaction: &mut Account<'a, Transaction>,
     creator_key: Pubkey,
     rent_payer: &Signer<'info>,
     args: CreateTransactionArgs,

@@ -9,20 +9,118 @@ import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
 import { Permissions, permissionsBeet } from './Permissions'
-export type SmartAccountSigner = {
-  key: web3.PublicKey
-  permissions: Permissions
+import { P256WebauthnData, p256WebauthnDataBeet } from './P256WebauthnData'
+import { Secp256k1Data, secp256k1DataBeet } from './Secp256k1Data'
+import {
+  Ed25519ExternalData,
+  ed25519ExternalDataBeet,
+} from './Ed25519ExternalData'
+/**
+ * This type is used to derive the {@link SmartAccountSigner} type as well as the de/serializer.
+ * However don't refer to it in your code but use the {@link SmartAccountSigner} type instead.
+ *
+ * @category userTypes
+ * @category enums
+ * @category generated
+ * @private
+ */
+export type SmartAccountSignerRecord = {
+  Native: { key: web3.PublicKey; permissions: Permissions }
+  P256Webauthn: {
+    keyId: web3.PublicKey
+    permissions: Permissions
+    data: P256WebauthnData
+  }
+  Secp256k1: {
+    keyId: web3.PublicKey
+    permissions: Permissions
+    data: Secp256k1Data
+  }
+  Ed25519External: {
+    keyId: web3.PublicKey
+    permissions: Permissions
+    data: Ed25519ExternalData
+  }
 }
+
+/**
+ * Union type respresenting the SmartAccountSigner data enum defined in Rust.
+ *
+ * NOTE: that it includes a `__kind` property which allows to narrow types in
+ * switch/if statements.
+ * Additionally `isSmartAccountSigner*` type guards are exposed below to narrow to a specific variant.
+ *
+ * @category userTypes
+ * @category enums
+ * @category generated
+ */
+export type SmartAccountSigner =
+  beet.DataEnumKeyAsKind<SmartAccountSignerRecord>
+
+export const isSmartAccountSignerNative = (
+  x: SmartAccountSigner
+): x is SmartAccountSigner & { __kind: 'Native' } => x.__kind === 'Native'
+export const isSmartAccountSignerP256Webauthn = (
+  x: SmartAccountSigner
+): x is SmartAccountSigner & { __kind: 'P256Webauthn' } =>
+  x.__kind === 'P256Webauthn'
+export const isSmartAccountSignerSecp256k1 = (
+  x: SmartAccountSigner
+): x is SmartAccountSigner & { __kind: 'Secp256k1' } => x.__kind === 'Secp256k1'
+export const isSmartAccountSignerEd25519External = (
+  x: SmartAccountSigner
+): x is SmartAccountSigner & { __kind: 'Ed25519External' } =>
+  x.__kind === 'Ed25519External'
 
 /**
  * @category userTypes
  * @category generated
  */
-export const smartAccountSignerBeet =
-  new beet.BeetArgsStruct<SmartAccountSigner>(
-    [
-      ['key', beetSolana.publicKey],
-      ['permissions', permissionsBeet],
-    ],
-    'SmartAccountSigner'
-  )
+export const smartAccountSignerBeet = beet.dataEnum<SmartAccountSignerRecord>([
+  [
+    'Native',
+    new beet.BeetArgsStruct<SmartAccountSignerRecord['Native']>(
+      [
+        ['key', beetSolana.publicKey],
+        ['permissions', permissionsBeet],
+      ],
+      'SmartAccountSignerRecord["Native"]'
+    ),
+  ],
+
+  [
+    'P256Webauthn',
+    new beet.BeetArgsStruct<SmartAccountSignerRecord['P256Webauthn']>(
+      [
+        ['keyId', beetSolana.publicKey],
+        ['permissions', permissionsBeet],
+        ['data', p256WebauthnDataBeet],
+      ],
+      'SmartAccountSignerRecord["P256Webauthn"]'
+    ),
+  ],
+
+  [
+    'Secp256k1',
+    new beet.BeetArgsStruct<SmartAccountSignerRecord['Secp256k1']>(
+      [
+        ['keyId', beetSolana.publicKey],
+        ['permissions', permissionsBeet],
+        ['data', secp256k1DataBeet],
+      ],
+      'SmartAccountSignerRecord["Secp256k1"]'
+    ),
+  ],
+
+  [
+    'Ed25519External',
+    new beet.BeetArgsStruct<SmartAccountSignerRecord['Ed25519External']>(
+      [
+        ['keyId', beetSolana.publicKey],
+        ['permissions', permissionsBeet],
+        ['data', ed25519ExternalDataBeet],
+      ],
+      'SmartAccountSignerRecord["Ed25519External"]'
+    ),
+  ],
+]) as beet.FixableBeet<SmartAccountSigner, SmartAccountSigner>

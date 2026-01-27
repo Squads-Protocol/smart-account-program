@@ -9,9 +9,9 @@ import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from '../types/SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from '../types/SmartAccountSignerWrapper'
 
 /**
  * Arguments used to create {@link Settings}
@@ -28,7 +28,7 @@ export type SettingsArgs = {
   archivalAuthority: beet.COption<web3.PublicKey>
   archivableAfter: beet.bignum
   bump: number
-  signers: SmartAccountSigner[]
+  signers: SmartAccountSignerWrapper
   accountUtilization: number
   policySeed: beet.COption<beet.bignum>
   reserved2: number
@@ -53,7 +53,7 @@ export class Settings implements SettingsArgs {
     readonly archivalAuthority: beet.COption<web3.PublicKey>,
     readonly archivableAfter: beet.bignum,
     readonly bump: number,
-    readonly signers: SmartAccountSigner[],
+    readonly signers: SmartAccountSignerWrapper,
     readonly accountUtilization: number,
     readonly policySeed: beet.COption<beet.bignum>,
     readonly reserved2: number
@@ -120,7 +120,7 @@ export class Settings implements SettingsArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG'
+      'GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, settingsBeet)
@@ -234,7 +234,7 @@ export class Settings implements SettingsArgs {
         return x
       })(),
       bump: this.bump,
-      signers: this.signers,
+      signers: this.signers.__kind,
       accountUtilization: this.accountUtilization,
       policySeed: this.policySeed,
       reserved2: this.reserved2,
@@ -263,7 +263,7 @@ export const settingsBeet = new beet.FixableBeetStruct<
     ['archivalAuthority', beet.coption(beetSolana.publicKey)],
     ['archivableAfter', beet.u64],
     ['bump', beet.u8],
-    ['signers', beet.array(smartAccountSignerBeet)],
+    ['signers', smartAccountSignerWrapperBeet],
     ['accountUtilization', beet.u8],
     ['policySeed', beet.coption(beet.u64)],
     ['reserved2', beet.u8],

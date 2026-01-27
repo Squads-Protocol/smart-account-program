@@ -1509,6 +1509,367 @@ mod tests {
             assert_eq!(expected.permissions, actual.permissions());
         }
     }
+
+    // ========================================================================
+    // Priority 2: Consensus Trait Implementation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_consensus_threshold_calculation() {
+        let signers = vec![
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+        ];
+
+        let settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 2,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        // Test cutoff calculation: num_voters - threshold + 1
+        // With 3 voters and threshold 2, cutoff should be 2
+        assert_eq!(settings.cutoff(), 2);
+        assert_eq!(settings.num_voters(), 3);
+        assert_eq!(settings.threshold(), 2);
+    }
+
+    #[test]
+    fn test_consensus_threshold_edge_cases() {
+        // Edge case: threshold = 1
+        let signers = vec![
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+        ];
+
+        let settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        assert_eq!(settings.cutoff(), 1);
+        assert_eq!(settings.num_voters(), 1);
+    }
+
+    #[test]
+    fn test_consensus_time_lock_validation() {
+        let signers = vec![
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+        ];
+
+        let mut settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 3600,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        assert_eq!(settings.time_lock(), 3600);
+
+        // Zero time lock
+        settings.time_lock = 0;
+        assert_eq!(settings.time_lock(), 0);
+
+        // Max time lock (3 months)
+        settings.time_lock = MAX_TIME_LOCK;
+        assert_eq!(settings.time_lock(), MAX_TIME_LOCK);
+    }
+
+    #[test]
+    fn test_consensus_transaction_index_staleness() {
+        let signers = vec![
+            LegacySmartAccountSigner {
+                key: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+            },
+        ];
+
+        let mut settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 10,
+            stale_transaction_index: 5,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        assert_eq!(settings.transaction_index(), 10);
+        assert_eq!(settings.stale_transaction_index(), 5);
+
+        // Invalidate prior transactions
+        settings.invalidate_prior_transactions();
+        assert_eq!(settings.stale_transaction_index(), 10);
+    }
+
+    #[test]
+    fn test_consensus_signer_lookup_v1_vs_v2() {
+        let key1 = Pubkey::new_unique();
+        let key2 = Pubkey::new_unique();
+
+        // V1 settings
+        let v1_signers = vec![
+            LegacySmartAccountSigner {
+                key: key1,
+                permissions: Permissions::all(),
+            },
+            LegacySmartAccountSigner {
+                key: key2,
+                permissions: Permissions { mask: 0b011 },
+            },
+        ];
+
+        let v1_settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(v1_signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        // Test V1 lookup
+        assert!(v1_settings.is_signer_v2(key1).is_some());
+        assert!(v1_settings.is_signer_v2(key2).is_some());
+        assert!(v1_settings.is_signer_v2(Pubkey::new_unique()).is_none());
+
+        // V2 settings
+        let v2_signers = vec![
+            SmartAccountSigner::Native {
+                key: key1,
+                permissions: Permissions::all(),
+            },
+            SmartAccountSigner::Native {
+                key: key2,
+                permissions: Permissions { mask: 0b011 },
+            },
+        ];
+
+        let v2_settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v2_signers(v2_signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        // Test V2 lookup
+        assert!(v2_settings.is_signer_v2(key1).is_some());
+        assert!(v2_settings.is_signer_v2(key2).is_some());
+        assert!(v2_settings.is_signer_v2(Pubkey::new_unique()).is_none());
+    }
+
+    #[test]
+    fn test_consensus_permission_aggregation() {
+        let key1 = Pubkey::new_unique();
+        let key2 = Pubkey::new_unique();
+        let key3 = Pubkey::new_unique();
+
+        let signers = vec![
+            LegacySmartAccountSigner {
+                key: key1,
+                permissions: Permissions::from_vec(&[Permission::Initiate]),
+            },
+            LegacySmartAccountSigner {
+                key: key2,
+                permissions: Permissions::from_vec(&[Permission::Vote]),
+            },
+            LegacySmartAccountSigner {
+                key: key3,
+                permissions: Permissions::from_vec(&[Permission::Execute]),
+            },
+        ];
+
+        let settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v1_signers(signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        assert_eq!(settings.num_proposers(), 1);
+        assert_eq!(settings.num_voters(), 1);
+        assert_eq!(settings.num_executors(), 1);
+
+        assert!(settings.signer_has_permission(key1, Permission::Initiate));
+        assert!(!settings.signer_has_permission(key1, Permission::Vote));
+        assert!(!settings.signer_has_permission(key1, Permission::Execute));
+
+        assert!(!settings.signer_has_permission(key2, Permission::Initiate));
+        assert!(settings.signer_has_permission(key2, Permission::Vote));
+        assert!(!settings.signer_has_permission(key2, Permission::Execute));
+
+        assert!(!settings.signer_has_permission(key3, Permission::Initiate));
+        assert!(!settings.signer_has_permission(key3, Permission::Vote));
+        assert!(settings.signer_has_permission(key3, Permission::Execute));
+    }
+
+    #[test]
+    fn test_consensus_session_key_lookup() {
+        let session_key = Pubkey::new_unique();
+        let current_time = 1000000;
+
+        let v2_signers = vec![
+            SmartAccountSigner::Ed25519External {
+                key_id: Pubkey::new_unique(),
+                permissions: Permissions::all(),
+                data: crate::state::signer_v2::Ed25519ExternalData {
+                    external_pubkey: [0xAB; 32],
+                    session_key_data: crate::state::signer_v2::SessionKeyData {
+                        key: session_key,
+                        expiration: current_time + 3600,
+                    },
+                },
+            },
+        ];
+
+        let settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v2_signers(v2_signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        // Should find signer by session key
+        assert!(settings.find_signer_by_session_key(session_key, current_time).is_some());
+
+        // Should not find expired session key
+        let expired_time = current_time + 3601;
+        assert!(settings.find_signer_by_session_key(session_key, expired_time).is_none());
+
+        // Should not find non-existent session key
+        assert!(settings.find_signer_by_session_key(Pubkey::new_unique(), current_time).is_none());
+    }
+
+    #[test]
+    fn test_consensus_counter_updates() {
+        let key_id = Pubkey::new_unique();
+        let v2_signers = vec![
+            SmartAccountSigner::P256Webauthn {
+                key_id,
+                permissions: Permissions::all(),
+                data: crate::state::signer_v2::P256WebauthnData {
+                    compressed_pubkey: [0x02; 33],
+                    rp_id_len: 8,
+                    rp_id: [0x00; 32],
+                    rp_id_hash: [0xAB; 32],
+                    counter: 100,
+                    session_key_data: crate::state::signer_v2::SessionKeyData::default(),
+                },
+            },
+        ];
+
+        let mut settings = Settings {
+            seed: 1,
+            settings_authority: Pubkey::default(),
+            threshold: 1,
+            time_lock: 0,
+            transaction_index: 0,
+            stale_transaction_index: 0,
+            archival_authority: None,
+            archivable_after: 0,
+            bump: 0,
+            signers: SmartAccountSignerWrapper::from_v2_signers(v2_signers),
+            account_utilization: 0,
+            policy_seed: None,
+            _reserved2: 0,
+        };
+
+        // Apply counter updates
+        let updates = vec![(key_id, 101)];
+        assert!(settings.apply_counter_updates(&updates).is_ok());
+
+        // Verify counter was updated
+        if let Some(signer) = settings.is_signer_v2(key_id) {
+            assert_eq!(signer.get_counter(), Some(101));
+        } else {
+            panic!("Expected to find signer");
+        }
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone, Debug)]

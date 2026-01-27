@@ -1,7 +1,9 @@
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
-use crate::instructions::{create_transaction_inner_v2, validate_create_transaction, *};
+use crate::events::*;
+use crate::instructions::{validate_create_transaction, TransactionMessage, *};
 use crate::interface::consensus::ConsensusAccount;
+use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 use crate::utils::{create_transaction_from_buffer_message, verify_v2_context};
@@ -209,7 +211,8 @@ pub struct CreateTransactionFromBufferV2<'info> {
         ],
         bump
     )]
-    pub transaction: Account<'info, Transaction>,
+    /// CHECK: PDA derived for the next transaction index; initialized and owned by the program.
+    pub transaction: AccountInfo<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -262,17 +265,63 @@ impl<'info> CreateTransactionFromBufferV2<'info> {
             args.client_data_params.as_ref(),
         )?;
 
-        let transaction_account_info = &ctx.accounts.transaction.to_account_info();
-        let rent_payer_account_info = &ctx.accounts.rent_payer.to_account_info();
-        let system_program = &ctx.accounts.system_program.to_account_info();
+        let transaction_account_info = &ctx.accounts.transaction;
+        let rent_payer_account_info = ctx.accounts.rent_payer.to_account_info();
+        let system_program = ctx.accounts.system_program.to_account_info();
         let transaction_buffer = &ctx.accounts.transaction_buffer;
+
+        if transaction_account_info.data_is_empty() {
+            let new_len = match &args.create_args {
+                CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                    ephemeral_signers,
+                    ..
+                }) => Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?,
+                CreateTransactionArgs::PolicyPayload { .. } => {
+                    return Err(SmartAccountError::InvalidInstructionArgs.into())
+                }
+            };
+
+            let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_len).max(1);
+            let consensus_key = ctx.accounts.consensus_account.key();
+            let transaction_index = ctx
+                .accounts
+                .consensus_account
+                .transaction_index()
+                .checked_add(1)
+                .unwrap();
+            let transaction_index_bytes = transaction_index.to_le_bytes();
+            let transaction_seeds: &[&[u8]] = &[
+                SEED_PREFIX,
+                consensus_key.as_ref(),
+                SEED_TRANSACTION,
+                transaction_index_bytes.as_ref(),
+                &[ctx.bumps.transaction],
+            ];
+            let signer_seeds: &[&[&[u8]]] = &[transaction_seeds];
+
+            let create_context = CpiContext::new_with_signer(
+                system_program.clone(),
+                system_program::CreateAccount {
+                    from: rent_payer_account_info.clone(),
+                    to: transaction_account_info.clone(),
+                },
+                signer_seeds,
+            );
+
+            system_program::create_account(
+                create_context,
+                rent_exempt_lamports,
+                new_len as u64,
+                ctx.program_id,
+            )?;
+        }
 
         let create_args = CreateTransactionFromBuffer::build_create_args_from_buffer(
             &args.create_args,
             transaction_buffer,
             transaction_account_info,
-            rent_payer_account_info,
-            system_program,
+            &rent_payer_account_info,
+            &system_program,
         )?;
 
         validate_create_transaction(
@@ -282,14 +331,93 @@ impl<'info> CreateTransactionFromBufferV2<'info> {
             args.creator_key,
         )?;
 
-        create_transaction_inner_v2(
-            &mut ctx.accounts.consensus_account,
-            &mut ctx.accounts.transaction,
-            args.creator_key,
-            &ctx.accounts.rent_payer,
-            create_args,
-            &ctx.accounts.program,
-            *ctx.program_id,
-        )
+        let transaction_key = transaction_account_info.key();
+
+        let transaction_index = ctx
+            .accounts
+            .consensus_account
+            .transaction_index()
+            .checked_add(1)
+            .unwrap();
+
+        let payload = match (create_args, ctx.accounts.consensus_account.account_type()) {
+            (
+                CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                    account_index,
+                    ephemeral_signers,
+                    transaction_message,
+                    memo: _,
+                }),
+                ConsensusAccountType::Settings,
+            ) => {
+                let transaction_message_parsed =
+                    TransactionMessage::deserialize(&mut transaction_message.as_slice())?;
+
+                let ephemeral_signer_bumps: Vec<u8> = (0..ephemeral_signers)
+                    .map(|ephemeral_signer_index| {
+                        let ephemeral_signer_seeds = &[
+                            SEED_PREFIX,
+                            transaction_key.as_ref(),
+                            SEED_EPHEMERAL_SIGNER,
+                            &ephemeral_signer_index.to_le_bytes(),
+                        ];
+
+                        let (_, bump) =
+                            Pubkey::find_program_address(ephemeral_signer_seeds, ctx.program_id);
+                        bump
+                    })
+                    .collect();
+
+                Payload::TransactionPayload(TransactionPayloadDetails {
+                    account_index,
+                    ephemeral_signer_bumps,
+                    message: transaction_message_parsed.try_into()?,
+                })
+            }
+            (CreateTransactionArgs::PolicyPayload { payload }, ConsensusAccountType::Policy) => {
+                Payload::PolicyPayload(PolicyActionPayloadDetails { payload })
+            }
+            _ => {
+                return Err(SmartAccountError::InvalidTransactionMessage.into());
+            }
+        };
+
+        let transaction = Transaction {
+            consensus_account: ctx.accounts.consensus_account.key(),
+            creator: args.creator_key,
+            rent_collector: ctx.accounts.rent_payer.key(),
+            index: transaction_index,
+            payload,
+        };
+
+        let mut data = transaction_account_info.try_borrow_mut_data()?;
+        transaction.try_serialize(&mut &mut data[..])?;
+
+        ctx.accounts
+            .consensus_account
+            .set_transaction_index(transaction_index)?;
+
+        ctx.accounts.consensus_account.invariant()?;
+
+        let event = TransactionEvent {
+            event_type: TransactionEventType::Create,
+            consensus_account: ctx.accounts.consensus_account.key(),
+            consensus_account_type: ctx.accounts.consensus_account.account_type(),
+            transaction_pubkey: transaction_key,
+            transaction_index,
+            signer: Some(args.creator_key),
+            transaction_content: Some(TransactionContent::Transaction(transaction)),
+            memo: None,
+        };
+
+        let log_authority_info = LogAuthorityInfo {
+            authority: ctx.accounts.consensus_account.to_account_info(),
+            authority_seeds: ctx.accounts.consensus_account.get_signer_seeds(),
+            bump: ctx.accounts.consensus_account.bump(),
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::TransactionEvent(event).log(&log_authority_info)?;
+
+        Ok(())
     }
 }

@@ -15,6 +15,7 @@ export enum PolicyEventType {
   Update,
   UpdateDuringExecution,
   Remove,
+  MigrateSigners,
 }
 
 /**

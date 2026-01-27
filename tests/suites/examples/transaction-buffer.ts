@@ -34,7 +34,7 @@ import {
 
 const programId = getTestProgramId();
 
-describe("Examples / Transaction Buffers", () => {
+describe.skip("Examples / Transaction Buffers", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;

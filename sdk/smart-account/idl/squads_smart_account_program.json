@@ -165,6 +165,57 @@
       ]
     },
     {
+      "name": "createSmartAccountV2",
+      "docs": [
+        "Create a smart account with V2 signers (supports Native + External signers).",
+        "This version initializes the Settings account in V2 format from the start."
+      ],
+      "accounts": [
+        {
+          "name": "programConfig",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Global program config account."
+          ]
+        },
+        {
+          "name": "treasury",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The treasury where the creation fee is transferred to."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The creator of the smart account."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateSmartAccountV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "addSignerAsAuthority",
       "docs": [
         "Add a new signer to the controlled smart account."
@@ -588,6 +639,57 @@
       ]
     },
     {
+      "name": "settingsMigrateSigners",
+      "docs": [
+        "Migrate settings signers from V1 to V2 format.",
+        "This enables external signer support (P256/WebAuthn, secp256k1, Ed25519 external)."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settingsAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The settings authority must sign to migrate signers"
+          ]
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "Payer for any required account reallocation"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "System program for reallocation"
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "MigrateSignersArgs"
+          }
+        }
+      ]
+    },
+    {
       "name": "createSettingsTransaction",
       "docs": [
         "Create a new settings transaction."
@@ -635,6 +737,50 @@
           "name": "args",
           "type": {
             "defined": "CreateSettingsTransactionArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createSettingsTransactionV2",
+      "docs": [
+        "Create a new settings transaction with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateSettingsTransactionV2Args"
           }
         }
       ]
@@ -707,6 +853,70 @@
       "args": []
     },
     {
+      "name": "executeSettingsTransactionV2",
+      "docs": [
+        "Execute a settings transaction with V2 signer support.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The settings account of the smart account that owns the transaction."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged/credited in case the settings transaction causes space reallocation"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExecuteSettingsTransactionV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "createTransaction",
       "docs": [
         "Create a new vault transaction."
@@ -759,6 +969,50 @@
       ]
     },
     {
+      "name": "createTransactionV2",
+      "docs": [
+        "Create a new vault transaction with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "createTransactionBuffer",
       "docs": [
         "Create a transaction buffer account."
@@ -801,6 +1055,45 @@
           "name": "args",
           "type": {
             "defined": "CreateTransactionBufferArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createTransactionBufferV2",
+      "docs": [
+        "Create a transaction buffer account with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionBufferV2Args"
           }
         }
       ]
@@ -862,6 +1155,32 @@
           "name": "args",
           "type": {
             "defined": "ExtendTransactionBufferArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "extendTransactionBufferV2",
+      "docs": [
+        "Extend a transaction buffer account with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExtendTransactionBufferV2Args"
           }
         }
       ]
@@ -935,6 +1254,59 @@
       ]
     },
     {
+      "name": "createTransactionFromBufferV2",
+      "docs": [
+        "Create a new vault transaction from a completed transaction buffer with V2 signer support.",
+        "Finalized buffer hash must match `final_buffer_hash`"
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The transaction to create."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionFromBufferV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "executeTransaction",
       "docs": [
         "Execute a smart account transaction.",
@@ -974,6 +1346,49 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "executeTransactionV2",
+      "docs": [
+        "Execute a smart account transaction with V2 signer support.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExecuteTransactionV2Args"
+          }
+        }
+      ]
     },
     {
       "name": "createBatch",
@@ -1188,6 +1603,50 @@
       ]
     },
     {
+      "name": "createProposalV2",
+      "docs": [
+        "Create a new smart account proposal with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the proposal account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateProposalV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "activateProposal",
       "docs": [
         "Update status of a smart account proposal from `Draft` to `Active`."
@@ -1210,6 +1669,32 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "activateProposalV2",
+      "docs": [
+        "Update status of a smart account proposal from `Draft` to `Active` with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ActivateProposalV2Args"
+          }
+        }
+      ]
     },
     {
       "name": "approveProposal",
@@ -1839,6 +2324,80 @@
       ]
     },
     {
+      "name": "executeTransactionSyncV3",
+      "docs": [
+        "Synchronously execute a transaction with V2 external signer support",
+        "This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)"
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SyncTransactionV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeSettingsTransactionSyncV2",
+      "docs": [
+        "Synchronously execute a config transaction with V2 external signer support",
+        "This version supports both native and external signers (P256/WebAuthn, secp256k1, Ed25519 external)"
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged/credited in case the settings transaction causes space reallocation,",
+            "for example when adding a new signer, adding or removing a spending limit.",
+            "This is usually the same as `signer`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SyncSettingsTransactionV2Args"
+          }
+        }
+      ]
+    },
+    {
       "name": "logEvent",
       "docs": [
         "Log an event"
@@ -1878,6 +2437,565 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "incrementAccountIndexV2",
+      "docs": [
+        "Increment the account utilization index with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "IncrementAccountIndexV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "createBatchV2",
+      "docs": [
+        "Create a batch with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The signer of the settings that is creating the batch."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateBatchV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addTransactionToBatchV2",
+      "docs": [
+        "Add a transaction to a batch with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Settings account this batch belongs to."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`BatchTransaction` account to initialize and add to the `batch`."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Signer of the smart account."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddTransactionToBatchV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeBatchTransactionV2",
+      "docs": [
+        "Execute a transaction from a batch with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Settings account this batch belongs to."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Signer of the settings."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch.",
+            "If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Batch transaction to execute."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExecuteBatchTransactionV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "approveProposalV2",
+      "docs": [
+        "Approve a smart account proposal with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "Optional payer for reallocation (required for cancel)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "System program for reallocation"
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rejectProposalV2",
+      "docs": [
+        "Reject a smart account proposal with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "Optional payer for reallocation (required for cancel)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "System program for reallocation"
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancelProposalV2",
+      "docs": [
+        "Cancel a smart account proposal with V2 signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "payer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "Optional payer for reallocation (required for cancel)"
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "System program for reallocation"
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addSignerAsAuthorityV2",
+      "docs": [
+        "Add a V2 signer (Native or External) to the smart account.",
+        "This is the V2 version of `add_signer_as_authority` that supports all signer types.",
+        "Requires Settings to be migrated to V2 format first."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settingsAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Settings `settings_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddSignerV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeSignerAsAuthorityV2",
+      "docs": [
+        "Remove a V2 signer (Native or External) from the smart account.",
+        "This is the V2 version of `remove_signer_as_authority` that supports all signer types.",
+        "Requires Settings to be migrated to V2 format first."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "settingsAuthority",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "Settings `settings_authority` that must authorize the configuration change."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the settings account needs to reallocate space,",
+            "for example when adding a new signer or a spending limit.",
+            "This is usually the same as `settings_authority`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RemoveSignerV2Args"
+          }
+        }
+      ]
+    },
+    {
+      "name": "addSessionKey",
+      "docs": [
+        "Add a session key to an existing V2 external signer.",
+        "Session keys allow external signers to delegate temporary signing authority to a native Solana key."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "parentSigner",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The parent signer's authority that must authorize the session key addition.",
+            "For native signers, this is a transaction signer.",
+            "For external signers, their signature is verified via precompile introspection."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the settings account needs to reallocate space.",
+            "This is usually the same as `parent_signer`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddSessionKeyArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "removeSessionKey",
+      "docs": [
+        "Remove a session key from an existing V2 external signer.",
+        "This revokes the temporary signing authority that was delegated to the session key."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "parentSigner",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The parent signer's authority that must authorize the session key removal.",
+            "For native signers, this is a transaction signer.",
+            "For external signers, their signature is verified via precompile introspection."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged or credited in case the settings account needs to reallocate space.",
+            "This is usually the same as `parent_signer`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RemoveSessionKeyArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2136,12 +3254,10 @@
           {
             "name": "signers",
             "docs": [
-              "Signers attached to the policy with their permissions."
+              "Signers attached to the policy with their permissions (V1 or V2 format)."
             ],
             "type": {
-              "vec": {
-                "defined": "SmartAccountSigner"
-              }
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -2475,12 +3591,10 @@
           {
             "name": "signers",
             "docs": [
-              "Signers attached to the smart account"
+              "Signers attached to the smart account (V1 or V2 format with custom serialization)"
             ],
             "type": {
-              "vec": {
-                "defined": "SmartAccountSigner"
-              }
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -2728,6 +3842,32 @@
   ],
   "types": [
     {
+      "name": "ActivateProposalV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "activatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the activating signer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "AddSignerArgs",
       "type": {
         "kind": "struct",
@@ -2735,13 +3875,66 @@
           {
             "name": "newSigner",
             "type": {
-              "defined": "SmartAccountSigner"
+              "defined": "LegacySmartAccountSigner"
             }
           },
           {
             "name": "memo",
             "docs": [
               "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AddSignerV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signerType",
+            "docs": [
+              "The signer type (0=Native, 1=P256Webauthn, 2=Secp256k1, 3=Ed25519External)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "key",
+            "docs": [
+              "For Native: the signer's pubkey (used directly as key).",
+              "For external signers: ignored - key_id is derived from the public key in signer_data."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "permissions",
+            "docs": [
+              "Permissions for the signer"
+            ],
+            "type": {
+              "defined": "Permissions"
+            }
+          },
+          {
+            "name": "signerData",
+            "docs": [
+              "Signer-specific data:",
+              "- Native: empty (0 bytes)",
+              "- P256Webauthn: 74 bytes (compressed_pubkey(33) + rp_id_len(1) + rp_id(32) + counter(8))",
+              "Note: rp_id_hash is derived from rp_id, not provided by caller",
+              "- Secp256k1: 85 bytes (uncompressed_pubkey(64) + eth_address(20) + has_eth_address(1))",
+              "- Ed25519External: 32 bytes (external_pubkey)"
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo for indexing"
             ],
             "type": {
               "option": "string"
@@ -2763,6 +3956,30 @@
             "name": "memo",
             "docs": [
               "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoveSignerV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "docs": [
+              "The key (for Native) or key_id (for External) of the signer to remove"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo for indexing"
             ],
             "type": {
               "option": "string"
@@ -2979,6 +4196,43 @@
       }
     },
     {
+      "name": "AddTransactionToBatchV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "ephemeralSigners",
+            "docs": [
+              "Number of ephemeral signing PDAs required by the transaction."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          },
+          {
+            "name": "signerKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the signer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateBatchArgs",
       "type": {
         "kind": "struct",
@@ -2994,6 +4248,91 @@
             "name": "memo",
             "type": {
               "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateBatchV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "docs": [
+              "Index of the smart account this batch belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExecuteBatchTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signerKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the signer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "IncrementAccountIndexV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signerKey",
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
             }
           }
         ]
@@ -3121,12 +4460,188 @@
       }
     },
     {
+      "name": "CreateProposalV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Index of the smart account transaction this proposal is associated with."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "draft",
+            "docs": [
+              "Whether the proposal should be initialized with status `Draft`."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "proposerKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the proposer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo"
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "VoteOnProposalArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VoteOnProposalV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "voterKey",
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "AddSessionKeyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "parentSignerKey",
+            "docs": [
+              "The key (for Native) or key_id (for External) of the parent signer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "sessionKey",
+            "docs": [
+              "The session key pubkey (native Solana key that can sign temporarily)"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "expiration",
+            "docs": [
+              "Session key expiration timestamp (Unix seconds)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Optional client data params for WebAuthn verification"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo for indexing"
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoveSessionKeyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "parentSignerKey",
+            "docs": [
+              "The key (for Native) or key_id (for External) of the parent signer"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Optional client data params for WebAuthn verification"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo for indexing"
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MigrateSignersArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "memo",
+            "docs": [
+              "Optional memo for indexing"
+            ],
             "type": {
               "option": "string"
             }
@@ -3157,6 +4672,72 @@
       }
     },
     {
+      "name": "CreateSettingsTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "actions",
+            "type": {
+              "vec": {
+                "defined": "SettingsAction"
+              }
+            }
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExecuteSettingsTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "executorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the executor"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "SyncSettingsTransactionArgs",
       "type": {
         "kind": "struct",
@@ -3167,6 +4748,58 @@
               "The number of signers to reach threshold and adequate permissions"
             ],
             "type": "u8"
+          },
+          {
+            "name": "actions",
+            "docs": [
+              "The settings actions to execute"
+            ],
+            "type": {
+              "vec": {
+                "defined": "SettingsAction"
+              }
+            }
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SyncSettingsTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numNativeSigners",
+            "docs": [
+              "Number of native signers (directly signing the transaction)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "externalSignerKeyIds",
+            "docs": [
+              "Key IDs of external signers (verified via precompile)"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required if any WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
           },
           {
             "name": "actions",
@@ -3214,6 +4847,72 @@
             "name": "signers",
             "docs": [
               "The signers on the smart account."
+            ],
+            "type": {
+              "vec": {
+                "defined": "LegacySmartAccountSigner"
+              }
+            }
+          },
+          {
+            "name": "timeLock",
+            "docs": [
+              "How many seconds must pass between transaction voting, settlement, and execution."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "rentCollector",
+            "docs": [
+              "The address where the rent for the accounts related to executed, rejected, or cancelled",
+              "transactions can be reclaimed. If set to `None`, the rent reclamation feature is turned off."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "memo",
+            "docs": [
+              "Memo is used for indexing only."
+            ],
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateSmartAccountV2Args",
+      "docs": [
+        "Arguments for creating a smart account with V2 signers.",
+        "This version supports all signer types (Native + External)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "settingsAuthority",
+            "docs": [
+              "The authority that can configure the smart account: add/remove signers, change the threshold, etc.",
+              "Should be set to `None` for autonomous smart accounts."
+            ],
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "threshold",
+            "docs": [
+              "The number of signatures required to execute a transaction."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "signers",
+            "docs": [
+              "The signers on the smart account (V2 format - supports Native and External signers)."
             ],
             "type": {
               "vec": {
@@ -3299,6 +4998,72 @@
       }
     },
     {
+      "name": "CreateTransactionBufferV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bufferIndex",
+            "docs": [
+              "Index of the buffer account to seed the account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountIndex",
+            "docs": [
+              "Index of the smart account this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "finalBufferHash",
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalBufferSize",
+            "docs": [
+              "Final size of the buffer."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": [
+              "Initial slice of the buffer."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "ExtendTransactionBufferArgs",
       "type": {
         "kind": "struct",
@@ -3306,6 +5071,74 @@
           {
             "name": "buffer",
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtendTransactionBufferV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buffer",
+            "docs": [
+              "Buffer to extend the TransactionBuffer with."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateTransactionFromBufferV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "createArgs",
+            "docs": [
+              "Transaction creation args"
+            ],
+            "type": {
+              "defined": "CreateTransactionArgs"
+            }
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
           }
         ]
       }
@@ -3331,6 +5164,38 @@
             "name": "memo",
             "type": {
               "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "createArgs",
+            "type": {
+              "defined": "CreateTransactionArgs"
+            }
+          },
+          {
+            "name": "creatorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
             }
           }
         ]
@@ -3505,6 +5370,80 @@
             "name": "payload",
             "type": {
               "defined": "SyncPayload"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SyncTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountIndex",
+            "type": "u8"
+          },
+          {
+            "name": "numNativeSigners",
+            "docs": [
+              "Number of native signers (directly signing the transaction)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "externalSignerKeyIds",
+            "docs": [
+              "Key IDs of external signers (verified via precompile)"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required if any WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
+            }
+          },
+          {
+            "name": "payload",
+            "docs": [
+              "The payload to execute"
+            ],
+            "type": {
+              "defined": "SyncPayload"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExecuteTransactionV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "executorKey",
+            "docs": [
+              "The key (Native) or key_id (External) of the executor"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification (required for WebAuthn signers)"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
             }
           }
         ]
@@ -4600,7 +6539,7 @@
       }
     },
     {
-      "name": "SmartAccountSigner",
+      "name": "LegacySmartAccountSigner",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4628,6 +6567,200 @@
           {
             "name": "mask",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionKeyData",
+      "docs": [
+        "Session key data shared by all external signer types.",
+        "Extracted into a separate struct to eliminate code duplication."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "docs": [
+              "Optional session key pubkey. Pubkey::default() means no session key."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "expiration",
+            "docs": [
+              "Session key expiration timestamp (Unix seconds). 0 if no session key."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "P256WebauthnData",
+      "docs": [
+        "P256/WebAuthn signer data for passkey authentication.",
+        "",
+        "## Fields",
+        "- `compressed_pubkey`: 33 bytes - Compressed P256 public key for signature verification",
+        "- `rp_id_len`: 1 byte - Actual length of RP ID (since rp_id is zero-padded to 32 bytes)",
+        "- `rp_id`: 32 bytes - Relying Party ID string, used for origin verification",
+        "- `rp_id_hash`: 32 bytes - SHA256 of RP ID, provided by authenticator in auth data",
+        "- `counter`: 8 bytes - WebAuthn counter for replay protection (MUST be monotonically increasing)",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "compressedPubkey",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "rpIdLen",
+            "type": "u8"
+          },
+          {
+            "name": "rpId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "rpIdHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
+          },
+          {
+            "name": "sessionKeyData",
+            "docs": [
+              "Session key for temporary native key delegation"
+            ],
+            "type": {
+              "defined": "SessionKeyData"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientDataJsonReconstructionParams",
+      "docs": [
+        "Parameters for reconstructing clientDataJSON on-chain",
+        "Packed into a single byte + optional port to minimize storage"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "typeAndFlags",
+            "docs": [
+              "High 4 bits: type (0x00 = create, 0x10 = get)",
+              "Low 4 bits: flags (cross_origin, http, google_extra)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "port",
+            "docs": [
+              "Optional port number (0 means no port)"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256k1Data",
+      "docs": [
+        "Secp256k1 signer data for Ethereum-style authentication.",
+        "",
+        "## Fields",
+        "- `uncompressed_pubkey`: 64 bytes - Uncompressed secp256k1 public key (no 0x04 prefix)",
+        "- `eth_address`: 20 bytes - keccak256(pubkey)[12..32], the Ethereum address",
+        "- `has_eth_address`: 1 byte - Whether eth_address has been validated",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "uncompressedPubkey",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "ethAddress",
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          },
+          {
+            "name": "hasEthAddress",
+            "type": "bool"
+          },
+          {
+            "name": "sessionKeyData",
+            "type": {
+              "defined": "SessionKeyData"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ed25519ExternalData",
+      "docs": [
+        "Ed25519 external signer data for hardware keys or off-chain Ed25519 signers.",
+        "",
+        "This is for Ed25519 keys that are NOT native Solana transaction signers.",
+        "Instead, they're verified via the Ed25519 precompile introspection.",
+        "",
+        "## Fields",
+        "- `external_pubkey`: 32 bytes - Ed25519 public key verified via precompile",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "externalPubkey",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sessionKeyData",
+            "type": {
+              "defined": "SessionKeyData"
+            }
           }
         ]
       }
@@ -4672,6 +6805,44 @@
             "name": "payload",
             "type": {
               "defined": "PolicyPayload"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SyncConsensusV2Args",
+      "docs": [
+        "Arguments for V2 synchronous consensus validation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numNativeSigners",
+            "docs": [
+              "Number of native signers (directly signing the transaction)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "externalSignerKeyIds",
+            "docs": [
+              "Key IDs of external signers (verified via precompile)"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "clientDataParams",
+            "docs": [
+              "Client data params for WebAuthn verification"
+            ],
+            "type": {
+              "option": {
+                "defined": "ClientDataJsonReconstructionParams"
+              }
             }
           }
         ]
@@ -4729,6 +6900,9 @@
           },
           {
             "name": "Remove"
+          },
+          {
+            "name": "MigrateSigners"
           }
         ]
       }
@@ -4772,23 +6946,6 @@
           },
           {
             "name": "Close"
-          }
-        ]
-      }
-    },
-    {
-      "name": "Vote",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Approve"
-          },
-          {
-            "name": "Reject"
-          },
-          {
-            "name": "Cancel"
           }
         ]
       }
@@ -5087,7 +7244,7 @@
               {
                 "name": "newSigner",
                 "type": {
-                  "defined": "SmartAccountSigner"
+                  "defined": "LegacySmartAccountSigner"
                 }
               }
             ]
@@ -5422,7 +7579,7 @@
               {
                 "name": "newSigner",
                 "type": {
-                  "defined": "SmartAccountSigner"
+                  "defined": "LegacySmartAccountSigner"
                 }
               }
             ]
@@ -5574,7 +7731,7 @@
                 ],
                 "type": {
                   "vec": {
-                    "defined": "SmartAccountSigner"
+                    "defined": "LegacySmartAccountSigner"
                   }
                 }
               },
@@ -5631,7 +7788,7 @@
                 ],
                 "type": {
                   "vec": {
-                    "defined": "SmartAccountSigner"
+                    "defined": "LegacySmartAccountSigner"
                   }
                 }
               },
@@ -5680,6 +7837,348 @@
                   "The policy account to remove."
                 ],
                 "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "PolicyMigrateSigners",
+            "fields": [
+              {
+                "name": "policy",
+                "docs": [
+                  "The policy account to migrate."
+                ],
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "AddSignerV2",
+            "fields": [
+              {
+                "name": "newSigner",
+                "type": {
+                  "defined": "SmartAccountSigner"
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveSignerV2",
+            "fields": [
+              {
+                "name": "oldSigner",
+                "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "PolicyCreateV2",
+            "fields": [
+              {
+                "name": "seed",
+                "docs": [
+                  "Key that is used to seed the Policy PDA."
+                ],
+                "type": "u64"
+              },
+              {
+                "name": "policyCreationPayload",
+                "docs": [
+                  "The policy creation payload containing policy-specific configuration."
+                ],
+                "type": {
+                  "defined": "PolicyCreationPayload"
+                }
+              },
+              {
+                "name": "signers",
+                "docs": [
+                  "Signers attached to the policy with their permissions (V2 format)."
+                ],
+                "type": {
+                  "vec": {
+                    "defined": "SmartAccountSigner"
+                  }
+                }
+              },
+              {
+                "name": "threshold",
+                "docs": [
+                  "Threshold for approvals on the policy."
+                ],
+                "type": "u16"
+              },
+              {
+                "name": "timeLock",
+                "docs": [
+                  "How many seconds must pass between approval and execution."
+                ],
+                "type": "u32"
+              },
+              {
+                "name": "startTimestamp",
+                "docs": [
+                  "Timestamp when the policy becomes active."
+                ],
+                "type": {
+                  "option": "i64"
+                }
+              },
+              {
+                "name": "expirationArgs",
+                "docs": [
+                  "Policy expiration - either time-based or state-based."
+                ],
+                "type": {
+                  "option": {
+                    "defined": "PolicyExpirationArgs"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "PolicyUpdateV2",
+            "fields": [
+              {
+                "name": "policy",
+                "docs": [
+                  "The policy account to update."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "signers",
+                "docs": [
+                  "Signers attached to the policy with their permissions (V2 format)."
+                ],
+                "type": {
+                  "vec": {
+                    "defined": "SmartAccountSigner"
+                  }
+                }
+              },
+              {
+                "name": "threshold",
+                "docs": [
+                  "Threshold for approvals on the policy."
+                ],
+                "type": "u16"
+              },
+              {
+                "name": "timeLock",
+                "docs": [
+                  "How many seconds must pass between approval and execution."
+                ],
+                "type": "u32"
+              },
+              {
+                "name": "policyUpdatePayload",
+                "docs": [
+                  "The policy update payload containing policy-specific configuration."
+                ],
+                "type": {
+                  "defined": "PolicyCreationPayload"
+                }
+              },
+              {
+                "name": "expirationArgs",
+                "docs": [
+                  "Policy expiration - either time-based or state-based."
+                ],
+                "type": {
+                  "option": {
+                    "defined": "PolicyExpirationArgs"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "SetSessionKey",
+            "fields": [
+              {
+                "name": "signerKey",
+                "docs": [
+                  "The key_id of the external signer to set the session key for."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "sessionKey",
+                "docs": [
+                  "The new session key (must be a valid Solana pubkey)."
+                ],
+                "type": "publicKey"
+              },
+              {
+                "name": "expiration",
+                "docs": [
+                  "Expiration timestamp (unix timestamp in seconds).",
+                  "Must be in the future and not exceed SESSION_KEY_EXPIRATION_LIMIT (3 months)."
+                ],
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "ClearSessionKey",
+            "fields": [
+              {
+                "name": "signerKey",
+                "docs": [
+                  "The key_id of the external signer to clear the session key for."
+                ],
+                "type": "publicKey"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignerType",
+      "docs": [
+        "V2 signer type discriminator (explicit u8 values for stability)"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Native"
+          },
+          {
+            "name": "P256Webauthn"
+          },
+          {
+            "name": "Secp256k1"
+          },
+          {
+            "name": "Ed25519External"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmartAccountSigner",
+      "docs": [
+        "Unified V2 signer enum",
+        "Each variant contains:",
+        "- key_id: Pubkey (deterministically derived from signer type + public key)",
+        "- permissions: Permissions (same bitmask as V1)",
+        "- type-specific data"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Native",
+            "fields": [
+              {
+                "name": "key",
+                "type": "publicKey"
+              },
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              }
+            ]
+          },
+          {
+            "name": "P256Webauthn",
+            "fields": [
+              {
+                "name": "keyId",
+                "type": "publicKey"
+              },
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "P256WebauthnData"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Secp256k1",
+            "fields": [
+              {
+                "name": "keyId",
+                "type": "publicKey"
+              },
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "Secp256k1Data"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Ed25519External",
+            "fields": [
+              {
+                "name": "keyId",
+                "type": "publicKey"
+              },
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "Ed25519ExternalData"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmartAccountSignerWrapper",
+      "docs": [
+        "Wrapper for signers that supports both V1 and V2 formats",
+        "Uses custom Borsh serialization to maintain V1 backward compatibility"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V1",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "LegacySmartAccountSigner"
+                }
+              }
+            ]
+          },
+          {
+            "name": "V2",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "SmartAccountSigner"
+                }
               }
             ]
           }
@@ -5732,6 +8231,23 @@
           }
         ]
       }
+    }
+  ],
+  "events": [
+    {
+      "name": "SignersMigratedEvent",
+      "fields": [
+        {
+          "name": "settings",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "signersCount",
+          "type": "u16",
+          "index": false
+        }
+      ]
     }
   ],
   "errors": [
@@ -6389,10 +8905,195 @@
       "code": 6130,
       "name": "MaxAccountIndexReached",
       "msg": "Cannot exceed maximum free account index (250)"
+    },
+    {
+      "code": 6131,
+      "name": "UnsupportedSignerVersion",
+      "msg": "Unsupported signer version in account data"
+    },
+    {
+      "code": 6132,
+      "name": "DeserializationFailed",
+      "msg": "Failed to deserialize account data"
+    },
+    {
+      "code": 6133,
+      "name": "SerializationFailed",
+      "msg": "Failed to serialize account data"
+    },
+    {
+      "code": 6134,
+      "name": "CannotSerializeExternalAsV1",
+      "msg": "Cannot serialize external signers as V1 format"
+    },
+    {
+      "code": 6135,
+      "name": "SignerAlreadyExists",
+      "msg": "Signer already exists with this key_id"
+    },
+    {
+      "code": 6136,
+      "name": "ExternalSignerNotFound",
+      "msg": "External signer not found"
+    },
+    {
+      "code": 6137,
+      "name": "UseAddSignerForNative",
+      "msg": "Use add_signer instruction for native signers"
+    },
+    {
+      "code": 6138,
+      "name": "InvalidSignerType",
+      "msg": "Invalid signer type for this operation"
+    },
+    {
+      "code": 6139,
+      "name": "InvalidAccountData",
+      "msg": "Invalid account data"
+    },
+    {
+      "code": 6140,
+      "name": "MissingPrecompileInstruction",
+      "msg": "Missing precompile instruction for external signature"
+    },
+    {
+      "code": 6141,
+      "name": "InvalidPrecompileProgram",
+      "msg": "Invalid precompile program ID"
+    },
+    {
+      "code": 6142,
+      "name": "PrecompilePublicKeyMismatch",
+      "msg": "Precompile public key does not match signer"
+    },
+    {
+      "code": 6143,
+      "name": "PrecompileMessageMismatch",
+      "msg": "Precompile message does not match expected"
+    },
+    {
+      "code": 6144,
+      "name": "InvalidPrecompileData",
+      "msg": "Invalid precompile instruction data"
+    },
+    {
+      "code": 6145,
+      "name": "PrecompileSignatureCountMismatch",
+      "msg": "Precompile signature count mismatch"
+    },
+    {
+      "code": 6146,
+      "name": "WebauthnRpIdMismatch",
+      "msg": "WebAuthn RP ID hash mismatch"
+    },
+    {
+      "code": 6147,
+      "name": "WebauthnUserNotPresent",
+      "msg": "WebAuthn user presence flag not set"
+    },
+    {
+      "code": 6148,
+      "name": "WebauthnCounterNotIncremented",
+      "msg": "WebAuthn counter not incremented"
+    },
+    {
+      "code": 6149,
+      "name": "DuplicateExternalSignature",
+      "msg": "External signature already used in this transaction"
+    },
+    {
+      "code": 6150,
+      "name": "V1InstructionOnV2Account",
+      "msg": "V1 instruction called on V2 account - use V2 instruction"
+    },
+    {
+      "code": 6151,
+      "name": "V2InstructionOnV1Account",
+      "msg": "V2 instruction called on V1 account - migrate first or use V1"
+    },
+    {
+      "code": 6152,
+      "name": "CannotDowngradeWithExternalSigners",
+      "msg": "Cannot downgrade to V1 - external signers still present"
+    },
+    {
+      "code": 6153,
+      "name": "AlreadyMigrated",
+      "msg": "Signers already migrated to V2 format"
+    },
+    {
+      "code": 6154,
+      "name": "AlreadyVoted",
+      "msg": "Signer has already voted on this proposal"
+    },
+    {
+      "code": 6155,
+      "name": "NotEnoughSigners",
+      "msg": "Signers do not meet consensus threshold"
+    },
+    {
+      "code": 6156,
+      "name": "MustMigrateToV2",
+      "msg": "Settings must be migrated to V2 format before using this instruction"
+    },
+    {
+      "code": 6157,
+      "name": "InvalidSessionKeyExpiration",
+      "msg": "Session key expiration must be in the future"
+    },
+    {
+      "code": 6158,
+      "name": "SessionKeyExpirationTooLong",
+      "msg": "Session key expiration exceeds maximum allowed (3 months)"
+    },
+    {
+      "code": 6159,
+      "name": "SessionKeyExpired",
+      "msg": "Session key is expired"
+    },
+    {
+      "code": 6160,
+      "name": "SessionKeyNotActive",
+      "msg": "Session key is not active"
+    },
+    {
+      "code": 6161,
+      "name": "InvalidSessionKey",
+      "msg": "Invalid session key (cannot be default pubkey)"
+    },
+    {
+      "code": 6162,
+      "name": "DuplicatePublicKey",
+      "msg": "Signer with this public key already exists"
+    },
+    {
+      "code": 6163,
+      "name": "MissingClientDataParams",
+      "msg": "Missing client data params for WebAuthn verification"
+    },
+    {
+      "code": 6164,
+      "name": "DuplicateSessionKey",
+      "msg": "Session key is already in use"
+    },
+    {
+      "code": 6165,
+      "name": "MissingRequiredExternalSigner",
+      "msg": "Required external signer not verified"
+    },
+    {
+      "code": 6166,
+      "name": "InvalidPermissions",
+      "msg": "Invalid permissions mask (must be < 8)"
+    },
+    {
+      "code": 6167,
+      "name": "MaxSignersReached",
+      "msg": "Maximum number of signers reached"
     }
   ],
   "metadata": {
-    "address": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "address": "GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD",
     "origin": "anchor",
     "binaryVersion": "0.32.1",
     "libVersion": "=0.29.0"

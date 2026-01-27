@@ -5,7 +5,7 @@ import {
   Signer,
   TransactionSignature,
 } from "@solana/web3.js";
-import { SmartAccountSigner } from "../generated";
+import { LegacySmartAccountSigner } from "../generated";
 import * as transactions from "../transactions";
 import { translateAndThrowAnchorError } from "../errors";
 
@@ -27,7 +27,7 @@ export async function addSignerAsAuthority({
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
   rentPayer: Signer;
-  newSigner: SmartAccountSigner;
+  newSigner: LegacySmartAccountSigner;
   memo?: string;
   signers?: Signer[];
   sendOptions?: SendOptions;

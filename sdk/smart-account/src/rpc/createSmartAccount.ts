@@ -6,7 +6,7 @@ import {
   TransactionSignature,
 } from "@solana/web3.js";
 import { translateAndThrowAnchorError } from "../errors";
-import { SmartAccountSigner } from "../generated";
+import { LegacySmartAccountSigner } from "../generated";
 import * as transactions from "../transactions";
 
 /** Creates a new multisig. */
@@ -30,7 +30,7 @@ export async function createSmartAccount({
   settings: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
-  signers: SmartAccountSigner[];
+  signers: LegacySmartAccountSigner[];
   timeLock: number;
   rentCollector: PublicKey | null;
   memo?: string;

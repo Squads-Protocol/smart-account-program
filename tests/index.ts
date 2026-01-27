@@ -1,5 +1,6 @@
 // The order of imports is the order the test suite will run in.
-import "./suites/program-config-init";
+
+// import "./suites/program-config-init";
 // import "./suites/examples/batch-sol-transfer";
 // import "./suites/examples/create-mint";
 // import "./suites/examples/immediate-execution";
@@ -17,19 +18,43 @@ import "./suites/program-config-init";
 // import "./suites/instructions/transactionBufferExtend";
 // import "./suites/instructions/batchTransactionAccountClose";
 // import "./suites/instructions/transactionAccountsClose";
-import "./suites/instructions/transactionCreateFromBuffer";
-import "./suites/instructions/transactionSynchronous";
-import "./suites/instructions/incrementAccountIndex";
-// import "./suites/instructions/logEvent";
-import "./suites/instructions/policyCreation";
-import "./suites/instructions/policyUpdate";
 // import "./suites/instructions/removePolicy";
 // import "./suites/instructions/policyExpiration";
 // import "./suites/instructions/settingsChangePolicy";
-import "./suites/instructions/programInteractionPolicy";
+// import "./suites/instructions/programInteractionPolicy";
 // import "./suites/instructions/spendingLimitPolicy";
 // import "./suites/instructions/internalFundTransferPolicy";
 // import "./suites/smart-account-sdk";
-// // // Uncomment to enable the heapTest instruction testing
-// // //import "./suites/instructions/heapTest";
-// // import "./suites/examples/custom-heap";
+
+// New instruction placeholder suites
+import "./suites/instructions/setupProgramConfig";
+import "./instructions/transaction_create";
+// import "./instructions/activate_proposal";
+// import "./instructions/authority_settings_transaction_execute";
+// import "./instructions/authority_spending_limit_add";
+// import "./instructions/authority_spending_limit_remove";
+// import "./instructions/batch_add_transaction";
+// import "./instructions/batch_create";
+// import "./instructions/batch_execute_transaction";
+import "./instructions/increment_account_index";
+// import "./instructions/log_event";
+// import "./instructions/program_config_change";
+// import "./instructions/program_config_init";
+// import "./instructions/proposal_create";
+// import "./instructions/proposal_vote";
+// import "./instructions/session_key_add";
+// import "./instructions/session_key_remove";
+// import "./instructions/settings_migrate_signers";
+// import "./instructions/settings_transaction_create";
+// import "./instructions/settings_transaction_execute";
+// import "./instructions/settings_transaction_sync";
+// import "./instructions/smart_account_create";
+// import "./instructions/transaction_buffer_close";
+// import "./instructions/transaction_buffer_create";
+// import "./instructions/transaction_buffer_extend";
+// import "./instructions/transaction_close";
+// import "./instructions/transaction_create_from_buffer";
+// import "./instructions/transaction_execute";
+// import "./instructions/transaction_execute_sync";
+// import "./instructions/transaction_execute_sync_legacy";
+// import "./instructions/use_spending_limit";

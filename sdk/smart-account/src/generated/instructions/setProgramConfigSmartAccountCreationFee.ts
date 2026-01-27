@@ -69,7 +69,7 @@ export const setProgramConfigSmartAccountCreationFeeInstructionDiscriminator = [
 export function createSetProgramConfigSmartAccountCreationFeeInstruction(
   accounts: SetProgramConfigSmartAccountCreationFeeInstructionAccounts,
   args: SetProgramConfigSmartAccountCreationFeeInstructionArgs,
-  programId = new web3.PublicKey('SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG')
+  programId = new web3.PublicKey('GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD')
 ) {
   const [data] = setProgramConfigSmartAccountCreationFeeStruct.serialize({
     instructionDiscriminator:

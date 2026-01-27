@@ -6,21 +6,16 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
-/**
- * @category enums
- * @category generated
- */
-export enum Vote {
-  Approve,
-  Reject,
-  Cancel,
+export type MigrateSignersArgs = {
+  memo: beet.COption<string>
 }
 
 /**
  * @category userTypes
  * @category generated
  */
-export const voteBeet = beet.fixedScalarEnum(Vote) as beet.FixedSizeBeet<
-  Vote,
-  Vote
->
+export const migrateSignersArgsBeet =
+  new beet.FixableBeetArgsStruct<MigrateSignersArgs>(
+    [['memo', beet.coption(beet.utf8String)]],
+    'MigrateSignersArgs'
+  )

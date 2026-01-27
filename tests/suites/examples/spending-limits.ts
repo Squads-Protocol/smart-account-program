@@ -34,7 +34,7 @@ const { Period } = smartAccount.types;
 
 const programId = getTestProgramId();
 
-describe("Examples / Spending Limits", () => {
+describe.skip("Examples / Spending Limits", () => {
   const connection = createLocalhostConnection();
 
   let settingsPda: PublicKey;

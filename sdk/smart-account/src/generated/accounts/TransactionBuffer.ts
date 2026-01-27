@@ -100,7 +100,7 @@ export class TransactionBuffer implements TransactionBufferArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG'
+      'GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, transactionBufferBeet)

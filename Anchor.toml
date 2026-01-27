@@ -7,7 +7,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-multisig = "SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk"
+multisig = "GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD"
 
 [registry]
 url = "https://api.apr.dev"
@@ -29,3 +29,11 @@ program = "tests/fixtures/noop.so"
 
 [scripts]
 test = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/index.ts"
+test-proposals = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/proposals.ts"
+test-transactions = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/transactions.ts"
+test-batches = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/batches.ts"
+test-settings = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/settings.ts"
+test-sync = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/sync-execution.ts"
+test-policies = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/policies.ts"
+test-sdk = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/sdk.ts"
+test-accounts = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/accounts.ts"

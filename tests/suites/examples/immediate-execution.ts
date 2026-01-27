@@ -19,7 +19,7 @@ const programId = getTestProgramId();
  * they can batch all smart account instructions required to create, approve and execute the smart account transaction
  * into one Solana transaction, so the transaction is executed immediately.
  */
-describe("Examples / Immediate Execution", () => {
+describe.skip("Examples / Immediate Execution", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;

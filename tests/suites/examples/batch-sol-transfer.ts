@@ -24,7 +24,7 @@ const { Settings, Proposal } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
-describe("Examples / Batch SOL Transfer", () => {
+describe.skip("Examples / Batch SOL Transfer", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;

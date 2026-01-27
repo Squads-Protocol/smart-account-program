@@ -3475,6 +3475,889 @@ createErrorFromNameLookup.set(
 )
 
 /**
+ * UnsupportedSignerVersion: 'Unsupported signer version in account data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class UnsupportedSignerVersionError extends Error {
+  readonly code: number = 0x17f3
+  readonly name: string = 'UnsupportedSignerVersion'
+  constructor() {
+    super('Unsupported signer version in account data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, UnsupportedSignerVersionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f3, () => new UnsupportedSignerVersionError())
+createErrorFromNameLookup.set(
+  'UnsupportedSignerVersion',
+  () => new UnsupportedSignerVersionError()
+)
+
+/**
+ * DeserializationFailed: 'Failed to deserialize account data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DeserializationFailedError extends Error {
+  readonly code: number = 0x17f4
+  readonly name: string = 'DeserializationFailed'
+  constructor() {
+    super('Failed to deserialize account data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DeserializationFailedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f4, () => new DeserializationFailedError())
+createErrorFromNameLookup.set(
+  'DeserializationFailed',
+  () => new DeserializationFailedError()
+)
+
+/**
+ * SerializationFailed: 'Failed to serialize account data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SerializationFailedError extends Error {
+  readonly code: number = 0x17f5
+  readonly name: string = 'SerializationFailed'
+  constructor() {
+    super('Failed to serialize account data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SerializationFailedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f5, () => new SerializationFailedError())
+createErrorFromNameLookup.set(
+  'SerializationFailed',
+  () => new SerializationFailedError()
+)
+
+/**
+ * CannotSerializeExternalAsV1: 'Cannot serialize external signers as V1 format'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CannotSerializeExternalAsV1Error extends Error {
+  readonly code: number = 0x17f6
+  readonly name: string = 'CannotSerializeExternalAsV1'
+  constructor() {
+    super('Cannot serialize external signers as V1 format')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CannotSerializeExternalAsV1Error)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17f6,
+  () => new CannotSerializeExternalAsV1Error()
+)
+createErrorFromNameLookup.set(
+  'CannotSerializeExternalAsV1',
+  () => new CannotSerializeExternalAsV1Error()
+)
+
+/**
+ * SignerAlreadyExists: 'Signer already exists with this key_id'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SignerAlreadyExistsError extends Error {
+  readonly code: number = 0x17f7
+  readonly name: string = 'SignerAlreadyExists'
+  constructor() {
+    super('Signer already exists with this key_id')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SignerAlreadyExistsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f7, () => new SignerAlreadyExistsError())
+createErrorFromNameLookup.set(
+  'SignerAlreadyExists',
+  () => new SignerAlreadyExistsError()
+)
+
+/**
+ * ExternalSignerNotFound: 'External signer not found'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class ExternalSignerNotFoundError extends Error {
+  readonly code: number = 0x17f8
+  readonly name: string = 'ExternalSignerNotFound'
+  constructor() {
+    super('External signer not found')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ExternalSignerNotFoundError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f8, () => new ExternalSignerNotFoundError())
+createErrorFromNameLookup.set(
+  'ExternalSignerNotFound',
+  () => new ExternalSignerNotFoundError()
+)
+
+/**
+ * UseAddSignerForNative: 'Use add_signer instruction for native signers'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class UseAddSignerForNativeError extends Error {
+  readonly code: number = 0x17f9
+  readonly name: string = 'UseAddSignerForNative'
+  constructor() {
+    super('Use add_signer instruction for native signers')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, UseAddSignerForNativeError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f9, () => new UseAddSignerForNativeError())
+createErrorFromNameLookup.set(
+  'UseAddSignerForNative',
+  () => new UseAddSignerForNativeError()
+)
+
+/**
+ * InvalidSignerType: 'Invalid signer type for this operation'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSignerTypeError extends Error {
+  readonly code: number = 0x17fa
+  readonly name: string = 'InvalidSignerType'
+  constructor() {
+    super('Invalid signer type for this operation')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSignerTypeError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fa, () => new InvalidSignerTypeError())
+createErrorFromNameLookup.set(
+  'InvalidSignerType',
+  () => new InvalidSignerTypeError()
+)
+
+/**
+ * InvalidAccountData: 'Invalid account data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidAccountDataError extends Error {
+  readonly code: number = 0x17fb
+  readonly name: string = 'InvalidAccountData'
+  constructor() {
+    super('Invalid account data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidAccountDataError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fb, () => new InvalidAccountDataError())
+createErrorFromNameLookup.set(
+  'InvalidAccountData',
+  () => new InvalidAccountDataError()
+)
+
+/**
+ * MissingPrecompileInstruction: 'Missing precompile instruction for external signature'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingPrecompileInstructionError extends Error {
+  readonly code: number = 0x17fc
+  readonly name: string = 'MissingPrecompileInstruction'
+  constructor() {
+    super('Missing precompile instruction for external signature')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingPrecompileInstructionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17fc,
+  () => new MissingPrecompileInstructionError()
+)
+createErrorFromNameLookup.set(
+  'MissingPrecompileInstruction',
+  () => new MissingPrecompileInstructionError()
+)
+
+/**
+ * InvalidPrecompileProgram: 'Invalid precompile program ID'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPrecompileProgramError extends Error {
+  readonly code: number = 0x17fd
+  readonly name: string = 'InvalidPrecompileProgram'
+  constructor() {
+    super('Invalid precompile program ID')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPrecompileProgramError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fd, () => new InvalidPrecompileProgramError())
+createErrorFromNameLookup.set(
+  'InvalidPrecompileProgram',
+  () => new InvalidPrecompileProgramError()
+)
+
+/**
+ * PrecompilePublicKeyMismatch: 'Precompile public key does not match signer'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PrecompilePublicKeyMismatchError extends Error {
+  readonly code: number = 0x17fe
+  readonly name: string = 'PrecompilePublicKeyMismatch'
+  constructor() {
+    super('Precompile public key does not match signer')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PrecompilePublicKeyMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17fe,
+  () => new PrecompilePublicKeyMismatchError()
+)
+createErrorFromNameLookup.set(
+  'PrecompilePublicKeyMismatch',
+  () => new PrecompilePublicKeyMismatchError()
+)
+
+/**
+ * PrecompileMessageMismatch: 'Precompile message does not match expected'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PrecompileMessageMismatchError extends Error {
+  readonly code: number = 0x17ff
+  readonly name: string = 'PrecompileMessageMismatch'
+  constructor() {
+    super('Precompile message does not match expected')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PrecompileMessageMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17ff,
+  () => new PrecompileMessageMismatchError()
+)
+createErrorFromNameLookup.set(
+  'PrecompileMessageMismatch',
+  () => new PrecompileMessageMismatchError()
+)
+
+/**
+ * InvalidPrecompileData: 'Invalid precompile instruction data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPrecompileDataError extends Error {
+  readonly code: number = 0x1800
+  readonly name: string = 'InvalidPrecompileData'
+  constructor() {
+    super('Invalid precompile instruction data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPrecompileDataError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1800, () => new InvalidPrecompileDataError())
+createErrorFromNameLookup.set(
+  'InvalidPrecompileData',
+  () => new InvalidPrecompileDataError()
+)
+
+/**
+ * PrecompileSignatureCountMismatch: 'Precompile signature count mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PrecompileSignatureCountMismatchError extends Error {
+  readonly code: number = 0x1801
+  readonly name: string = 'PrecompileSignatureCountMismatch'
+  constructor() {
+    super('Precompile signature count mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PrecompileSignatureCountMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1801,
+  () => new PrecompileSignatureCountMismatchError()
+)
+createErrorFromNameLookup.set(
+  'PrecompileSignatureCountMismatch',
+  () => new PrecompileSignatureCountMismatchError()
+)
+
+/**
+ * WebauthnRpIdMismatch: 'WebAuthn RP ID hash mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnRpIdMismatchError extends Error {
+  readonly code: number = 0x1802
+  readonly name: string = 'WebauthnRpIdMismatch'
+  constructor() {
+    super('WebAuthn RP ID hash mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnRpIdMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1802, () => new WebauthnRpIdMismatchError())
+createErrorFromNameLookup.set(
+  'WebauthnRpIdMismatch',
+  () => new WebauthnRpIdMismatchError()
+)
+
+/**
+ * WebauthnUserNotPresent: 'WebAuthn user presence flag not set'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnUserNotPresentError extends Error {
+  readonly code: number = 0x1803
+  readonly name: string = 'WebauthnUserNotPresent'
+  constructor() {
+    super('WebAuthn user presence flag not set')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnUserNotPresentError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1803, () => new WebauthnUserNotPresentError())
+createErrorFromNameLookup.set(
+  'WebauthnUserNotPresent',
+  () => new WebauthnUserNotPresentError()
+)
+
+/**
+ * WebauthnCounterNotIncremented: 'WebAuthn counter not incremented'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnCounterNotIncrementedError extends Error {
+  readonly code: number = 0x1804
+  readonly name: string = 'WebauthnCounterNotIncremented'
+  constructor() {
+    super('WebAuthn counter not incremented')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnCounterNotIncrementedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1804,
+  () => new WebauthnCounterNotIncrementedError()
+)
+createErrorFromNameLookup.set(
+  'WebauthnCounterNotIncremented',
+  () => new WebauthnCounterNotIncrementedError()
+)
+
+/**
+ * DuplicateExternalSignature: 'External signature already used in this transaction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicateExternalSignatureError extends Error {
+  readonly code: number = 0x1805
+  readonly name: string = 'DuplicateExternalSignature'
+  constructor() {
+    super('External signature already used in this transaction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicateExternalSignatureError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1805,
+  () => new DuplicateExternalSignatureError()
+)
+createErrorFromNameLookup.set(
+  'DuplicateExternalSignature',
+  () => new DuplicateExternalSignatureError()
+)
+
+/**
+ * V1InstructionOnV2Account: 'V1 instruction called on V2 account - use V2 instruction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class V1InstructionOnV2AccountError extends Error {
+  readonly code: number = 0x1806
+  readonly name: string = 'V1InstructionOnV2Account'
+  constructor() {
+    super('V1 instruction called on V2 account - use V2 instruction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, V1InstructionOnV2AccountError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1806, () => new V1InstructionOnV2AccountError())
+createErrorFromNameLookup.set(
+  'V1InstructionOnV2Account',
+  () => new V1InstructionOnV2AccountError()
+)
+
+/**
+ * V2InstructionOnV1Account: 'V2 instruction called on V1 account - migrate first or use V1'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class V2InstructionOnV1AccountError extends Error {
+  readonly code: number = 0x1807
+  readonly name: string = 'V2InstructionOnV1Account'
+  constructor() {
+    super('V2 instruction called on V1 account - migrate first or use V1')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, V2InstructionOnV1AccountError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1807, () => new V2InstructionOnV1AccountError())
+createErrorFromNameLookup.set(
+  'V2InstructionOnV1Account',
+  () => new V2InstructionOnV1AccountError()
+)
+
+/**
+ * CannotDowngradeWithExternalSigners: 'Cannot downgrade to V1 - external signers still present'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class CannotDowngradeWithExternalSignersError extends Error {
+  readonly code: number = 0x1808
+  readonly name: string = 'CannotDowngradeWithExternalSigners'
+  constructor() {
+    super('Cannot downgrade to V1 - external signers still present')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, CannotDowngradeWithExternalSignersError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1808,
+  () => new CannotDowngradeWithExternalSignersError()
+)
+createErrorFromNameLookup.set(
+  'CannotDowngradeWithExternalSigners',
+  () => new CannotDowngradeWithExternalSignersError()
+)
+
+/**
+ * AlreadyMigrated: 'Signers already migrated to V2 format'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AlreadyMigratedError extends Error {
+  readonly code: number = 0x1809
+  readonly name: string = 'AlreadyMigrated'
+  constructor() {
+    super('Signers already migrated to V2 format')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AlreadyMigratedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1809, () => new AlreadyMigratedError())
+createErrorFromNameLookup.set(
+  'AlreadyMigrated',
+  () => new AlreadyMigratedError()
+)
+
+/**
+ * AlreadyVoted: 'Signer has already voted on this proposal'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class AlreadyVotedError extends Error {
+  readonly code: number = 0x180a
+  readonly name: string = 'AlreadyVoted'
+  constructor() {
+    super('Signer has already voted on this proposal')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, AlreadyVotedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x180a, () => new AlreadyVotedError())
+createErrorFromNameLookup.set('AlreadyVoted', () => new AlreadyVotedError())
+
+/**
+ * NotEnoughSigners: 'Signers do not meet consensus threshold'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class NotEnoughSignersError extends Error {
+  readonly code: number = 0x180b
+  readonly name: string = 'NotEnoughSigners'
+  constructor() {
+    super('Signers do not meet consensus threshold')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NotEnoughSignersError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x180b, () => new NotEnoughSignersError())
+createErrorFromNameLookup.set(
+  'NotEnoughSigners',
+  () => new NotEnoughSignersError()
+)
+
+/**
+ * MustMigrateToV2: 'Settings must be migrated to V2 format before using this instruction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MustMigrateToV2Error extends Error {
+  readonly code: number = 0x180c
+  readonly name: string = 'MustMigrateToV2'
+  constructor() {
+    super(
+      'Settings must be migrated to V2 format before using this instruction'
+    )
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MustMigrateToV2Error)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x180c, () => new MustMigrateToV2Error())
+createErrorFromNameLookup.set(
+  'MustMigrateToV2',
+  () => new MustMigrateToV2Error()
+)
+
+/**
+ * InvalidSessionKeyExpiration: 'Session key expiration must be in the future'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSessionKeyExpirationError extends Error {
+  readonly code: number = 0x180d
+  readonly name: string = 'InvalidSessionKeyExpiration'
+  constructor() {
+    super('Session key expiration must be in the future')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSessionKeyExpirationError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x180d,
+  () => new InvalidSessionKeyExpirationError()
+)
+createErrorFromNameLookup.set(
+  'InvalidSessionKeyExpiration',
+  () => new InvalidSessionKeyExpirationError()
+)
+
+/**
+ * SessionKeyExpirationTooLong: 'Session key expiration exceeds maximum allowed (3 months)'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SessionKeyExpirationTooLongError extends Error {
+  readonly code: number = 0x180e
+  readonly name: string = 'SessionKeyExpirationTooLong'
+  constructor() {
+    super('Session key expiration exceeds maximum allowed (3 months)')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SessionKeyExpirationTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x180e,
+  () => new SessionKeyExpirationTooLongError()
+)
+createErrorFromNameLookup.set(
+  'SessionKeyExpirationTooLong',
+  () => new SessionKeyExpirationTooLongError()
+)
+
+/**
+ * SessionKeyExpired: 'Session key is expired'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SessionKeyExpiredError extends Error {
+  readonly code: number = 0x180f
+  readonly name: string = 'SessionKeyExpired'
+  constructor() {
+    super('Session key is expired')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SessionKeyExpiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x180f, () => new SessionKeyExpiredError())
+createErrorFromNameLookup.set(
+  'SessionKeyExpired',
+  () => new SessionKeyExpiredError()
+)
+
+/**
+ * SessionKeyNotActive: 'Session key is not active'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SessionKeyNotActiveError extends Error {
+  readonly code: number = 0x1810
+  readonly name: string = 'SessionKeyNotActive'
+  constructor() {
+    super('Session key is not active')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SessionKeyNotActiveError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1810, () => new SessionKeyNotActiveError())
+createErrorFromNameLookup.set(
+  'SessionKeyNotActive',
+  () => new SessionKeyNotActiveError()
+)
+
+/**
+ * InvalidSessionKey: 'Invalid session key (cannot be default pubkey)'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSessionKeyError extends Error {
+  readonly code: number = 0x1811
+  readonly name: string = 'InvalidSessionKey'
+  constructor() {
+    super('Invalid session key (cannot be default pubkey)')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSessionKeyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1811, () => new InvalidSessionKeyError())
+createErrorFromNameLookup.set(
+  'InvalidSessionKey',
+  () => new InvalidSessionKeyError()
+)
+
+/**
+ * DuplicatePublicKey: 'Signer with this public key already exists'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicatePublicKeyError extends Error {
+  readonly code: number = 0x1812
+  readonly name: string = 'DuplicatePublicKey'
+  constructor() {
+    super('Signer with this public key already exists')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicatePublicKeyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1812, () => new DuplicatePublicKeyError())
+createErrorFromNameLookup.set(
+  'DuplicatePublicKey',
+  () => new DuplicatePublicKeyError()
+)
+
+/**
+ * MissingClientDataParams: 'Missing client data params for WebAuthn verification'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingClientDataParamsError extends Error {
+  readonly code: number = 0x1813
+  readonly name: string = 'MissingClientDataParams'
+  constructor() {
+    super('Missing client data params for WebAuthn verification')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingClientDataParamsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1813, () => new MissingClientDataParamsError())
+createErrorFromNameLookup.set(
+  'MissingClientDataParams',
+  () => new MissingClientDataParamsError()
+)
+
+/**
+ * DuplicateSessionKey: 'Session key is already in use'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicateSessionKeyError extends Error {
+  readonly code: number = 0x1814
+  readonly name: string = 'DuplicateSessionKey'
+  constructor() {
+    super('Session key is already in use')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicateSessionKeyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1814, () => new DuplicateSessionKeyError())
+createErrorFromNameLookup.set(
+  'DuplicateSessionKey',
+  () => new DuplicateSessionKeyError()
+)
+
+/**
+ * MissingRequiredExternalSigner: 'Required external signer not verified'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingRequiredExternalSignerError extends Error {
+  readonly code: number = 0x1815
+  readonly name: string = 'MissingRequiredExternalSigner'
+  constructor() {
+    super('Required external signer not verified')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingRequiredExternalSignerError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1815,
+  () => new MissingRequiredExternalSignerError()
+)
+createErrorFromNameLookup.set(
+  'MissingRequiredExternalSigner',
+  () => new MissingRequiredExternalSignerError()
+)
+
+/**
+ * InvalidPermissions: 'Invalid permissions mask (must be < 8)'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPermissionsError extends Error {
+  readonly code: number = 0x1816
+  readonly name: string = 'InvalidPermissions'
+  constructor() {
+    super('Invalid permissions mask (must be < 8)')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPermissionsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1816, () => new InvalidPermissionsError())
+createErrorFromNameLookup.set(
+  'InvalidPermissions',
+  () => new InvalidPermissionsError()
+)
+
+/**
+ * MaxSignersReached: 'Maximum number of signers reached'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MaxSignersReachedError extends Error {
+  readonly code: number = 0x1817
+  readonly name: string = 'MaxSignersReached'
+  constructor() {
+    super('Maximum number of signers reached')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MaxSignersReachedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1817, () => new MaxSignersReachedError())
+createErrorFromNameLookup.set(
+  'MaxSignersReached',
+  () => new MaxSignersReachedError()
+)
+
+/**
  * Attempts to resolve a custom program error from the provided error code.
  * @category Errors
  * @category generated

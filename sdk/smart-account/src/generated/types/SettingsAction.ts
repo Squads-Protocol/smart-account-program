@@ -9,9 +9,9 @@ import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from './SmartAccountSigner'
+  LegacySmartAccountSigner,
+  legacySmartAccountSignerBeet,
+} from './LegacySmartAccountSigner'
 import { Period, periodBeet } from './Period'
 import {
   PolicyCreationPayload,
@@ -21,6 +21,10 @@ import {
   PolicyExpirationArgs,
   policyExpirationArgsBeet,
 } from './PolicyExpirationArgs'
+import {
+  SmartAccountSigner,
+  smartAccountSignerBeet,
+} from './SmartAccountSigner'
 /**
  * This type is used to derive the {@link SettingsAction} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link SettingsAction} type instead.
@@ -31,7 +35,7 @@ import {
  * @private
  */
 export type SettingsActionRecord = {
-  AddSigner: { newSigner: SmartAccountSigner }
+  AddSigner: { newSigner: LegacySmartAccountSigner }
   RemoveSigner: { oldSigner: web3.PublicKey }
   ChangeThreshold: { newThreshold: number }
   SetTimeLock: { newTimeLock: number }
@@ -50,7 +54,7 @@ export type SettingsActionRecord = {
   PolicyCreate: {
     seed: beet.bignum
     policyCreationPayload: PolicyCreationPayload
-    signers: SmartAccountSigner[]
+    signers: LegacySmartAccountSigner[]
     threshold: number
     timeLock: number
     startTimestamp: beet.COption<beet.bignum>
@@ -58,13 +62,39 @@ export type SettingsActionRecord = {
   }
   PolicyUpdate: {
     policy: web3.PublicKey
-    signers: SmartAccountSigner[]
+    signers: LegacySmartAccountSigner[]
     threshold: number
     timeLock: number
     policyUpdatePayload: PolicyCreationPayload
     expirationArgs: beet.COption<PolicyExpirationArgs>
   }
   PolicyRemove: { policy: web3.PublicKey }
+  PolicyMigrateSigners: { policy: web3.PublicKey }
+  AddSignerV2: { newSigner: SmartAccountSigner }
+  RemoveSignerV2: { oldSigner: web3.PublicKey }
+  PolicyCreateV2: {
+    seed: beet.bignum
+    policyCreationPayload: PolicyCreationPayload
+    signers: SmartAccountSigner[]
+    threshold: number
+    timeLock: number
+    startTimestamp: beet.COption<beet.bignum>
+    expirationArgs: beet.COption<PolicyExpirationArgs>
+  }
+  PolicyUpdateV2: {
+    policy: web3.PublicKey
+    signers: SmartAccountSigner[]
+    threshold: number
+    timeLock: number
+    policyUpdatePayload: PolicyCreationPayload
+    expirationArgs: beet.COption<PolicyExpirationArgs>
+  }
+  SetSessionKey: {
+    signerKey: web3.PublicKey
+    sessionKey: web3.PublicKey
+    expiration: beet.bignum
+  }
+  ClearSessionKey: { signerKey: web3.PublicKey }
 }
 
 /**
@@ -118,6 +148,33 @@ export const isSettingsActionPolicyRemove = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'PolicyRemove' } =>
   x.__kind === 'PolicyRemove'
+export const isSettingsActionPolicyMigrateSigners = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyMigrateSigners' } =>
+  x.__kind === 'PolicyMigrateSigners'
+export const isSettingsActionAddSignerV2 = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'AddSignerV2' } => x.__kind === 'AddSignerV2'
+export const isSettingsActionRemoveSignerV2 = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'RemoveSignerV2' } =>
+  x.__kind === 'RemoveSignerV2'
+export const isSettingsActionPolicyCreateV2 = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyCreateV2' } =>
+  x.__kind === 'PolicyCreateV2'
+export const isSettingsActionPolicyUpdateV2 = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'PolicyUpdateV2' } =>
+  x.__kind === 'PolicyUpdateV2'
+export const isSettingsActionSetSessionKey = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'SetSessionKey' } =>
+  x.__kind === 'SetSessionKey'
+export const isSettingsActionClearSessionKey = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'ClearSessionKey' } =>
+  x.__kind === 'ClearSessionKey'
 
 /**
  * @category userTypes
@@ -127,7 +184,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
   [
     'AddSigner',
     new beet.BeetArgsStruct<SettingsActionRecord['AddSigner']>(
-      [['newSigner', smartAccountSignerBeet]],
+      [['newSigner', legacySmartAccountSignerBeet]],
       'SettingsActionRecord["AddSigner"]'
     ),
   ],
@@ -197,7 +254,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
       [
         ['seed', beet.u64],
         ['policyCreationPayload', policyCreationPayloadBeet],
-        ['signers', beet.array(smartAccountSignerBeet)],
+        ['signers', beet.array(legacySmartAccountSignerBeet)],
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['startTimestamp', beet.coption(beet.i64)],
@@ -212,7 +269,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
     new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyUpdate']>(
       [
         ['policy', beetSolana.publicKey],
-        ['signers', beet.array(smartAccountSignerBeet)],
+        ['signers', beet.array(legacySmartAccountSignerBeet)],
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['policyUpdatePayload', policyCreationPayloadBeet],
@@ -227,6 +284,81 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
     new beet.BeetArgsStruct<SettingsActionRecord['PolicyRemove']>(
       [['policy', beetSolana.publicKey]],
       'SettingsActionRecord["PolicyRemove"]'
+    ),
+  ],
+
+  [
+    'PolicyMigrateSigners',
+    new beet.BeetArgsStruct<SettingsActionRecord['PolicyMigrateSigners']>(
+      [['policy', beetSolana.publicKey]],
+      'SettingsActionRecord["PolicyMigrateSigners"]'
+    ),
+  ],
+
+  [
+    'AddSignerV2',
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['AddSignerV2']>(
+      [['newSigner', smartAccountSignerBeet]],
+      'SettingsActionRecord["AddSignerV2"]'
+    ),
+  ],
+
+  [
+    'RemoveSignerV2',
+    new beet.BeetArgsStruct<SettingsActionRecord['RemoveSignerV2']>(
+      [['oldSigner', beetSolana.publicKey]],
+      'SettingsActionRecord["RemoveSignerV2"]'
+    ),
+  ],
+
+  [
+    'PolicyCreateV2',
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyCreateV2']>(
+      [
+        ['seed', beet.u64],
+        ['policyCreationPayload', policyCreationPayloadBeet],
+        ['signers', beet.array(smartAccountSignerBeet)],
+        ['threshold', beet.u16],
+        ['timeLock', beet.u32],
+        ['startTimestamp', beet.coption(beet.i64)],
+        ['expirationArgs', beet.coption(policyExpirationArgsBeet)],
+      ],
+      'SettingsActionRecord["PolicyCreateV2"]'
+    ),
+  ],
+
+  [
+    'PolicyUpdateV2',
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyUpdateV2']>(
+      [
+        ['policy', beetSolana.publicKey],
+        ['signers', beet.array(smartAccountSignerBeet)],
+        ['threshold', beet.u16],
+        ['timeLock', beet.u32],
+        ['policyUpdatePayload', policyCreationPayloadBeet],
+        ['expirationArgs', beet.coption(policyExpirationArgsBeet)],
+      ],
+      'SettingsActionRecord["PolicyUpdateV2"]'
+    ),
+  ],
+
+  [
+    'SetSessionKey',
+    new beet.BeetArgsStruct<SettingsActionRecord['SetSessionKey']>(
+      [
+        ['signerKey', beetSolana.publicKey],
+        ['sessionKey', beetSolana.publicKey],
+        ['expiration', beet.u64],
+      ],
+      'SettingsActionRecord["SetSessionKey"]'
+    ),
+  ],
+
+  [
+    'ClearSessionKey',
+    new beet.BeetArgsStruct<SettingsActionRecord['ClearSessionKey']>(
+      [['signerKey', beetSolana.publicKey]],
+      'SettingsActionRecord["ClearSessionKey"]'
     ),
   ],
 ]) as beet.FixableBeet<SettingsAction, SettingsAction>

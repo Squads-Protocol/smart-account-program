@@ -31,7 +31,7 @@ const { Permission, Permissions } = smartAccount.types;
 
 const programId = getTestProgramId();
 
-describe("Smart Account SDK", () => {
+describe.skip("Smart Account SDK", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;

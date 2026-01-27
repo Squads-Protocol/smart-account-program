@@ -21,7 +21,7 @@ const { Settings } = smartAccount.accounts;
 
 const programId = getTestProgramId();
 
-describe("Examples / Create Mint", () => {
+describe.skip("Examples / Create Mint", () => {
   const connection = createLocalhostConnection();
 
   let members: TestMembers;

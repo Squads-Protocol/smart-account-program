@@ -1,4 +1,8 @@
-import { createCreateTransactionInstruction, PROGRAM_ID } from "../generated";
+import {
+  createCreateTransactionInstruction,
+  CreateTransactionArgs,
+  PROGRAM_ID,
+} from "../generated";
 import {
   AddressLookupTableAccount,
   PublicKey,
@@ -17,61 +21,80 @@ export function createTransaction({
   transactionMessage,
   addressLookupTableAccounts,
   memo,
+  createArgs,
+  consensusAccount,
   programId = PROGRAM_ID,
 }: {
   settingsPda: PublicKey;
   transactionIndex: bigint;
   creator: PublicKey;
   rentPayer?: PublicKey;
-  accountIndex: number;
+  accountIndex?: number;
   /** Number of additional signing PDAs required by the transaction. */
-  ephemeralSigners: number;
+  ephemeralSigners?: number;
   /** Transaction message to wrap into a multisig transaction. */
-  transactionMessage: TransactionMessage;
+  transactionMessage?: TransactionMessage;
   /** `AddressLookupTableAccount`s referenced in `transaction_message`. */
   addressLookupTableAccounts?: AddressLookupTableAccount[];
   memo?: string;
+  createArgs?: CreateTransactionArgs;
+  consensusAccount?: PublicKey;
   programId?: PublicKey;
 }) {
-  const [smartAccountPda] = getSmartAccountPda({
-    settingsPda,
-    accountIndex,
-    programId,
-  });
-
+  const targetConsensusAccount = consensusAccount ?? settingsPda;
   const [transactionPda] = getTransactionPda({
-    settingsPda,
+    settingsPda: targetConsensusAccount,
     transactionIndex,
     programId,
   });
 
-  const { transactionMessageBytes, compiledMessage } =
-    transactionMessageToMultisigTransactionMessageBytes({
-      message: transactionMessage,
-      addressLookupTableAccounts,
-      smartAccountPda,
+  let resolvedArgs: CreateTransactionArgs;
+  if (createArgs) {
+    resolvedArgs = createArgs;
+  } else {
+    if (
+      transactionMessage == null ||
+      accountIndex == null ||
+      ephemeralSigners == null
+    ) {
+      throw new Error(
+        "transactionMessage, accountIndex, and ephemeralSigners are required when createArgs is not provided"
+      );
+    }
+    const [smartAccountPda] = getSmartAccountPda({
+      settingsPda,
+      accountIndex,
+      programId,
     });
+    const { transactionMessageBytes } =
+      transactionMessageToMultisigTransactionMessageBytes({
+        message: transactionMessage,
+        addressLookupTableAccounts,
+        smartAccountPda,
+      });
+    resolvedArgs = {
+      __kind: "TransactionPayload",
+      fields: [
+        {
+          accountIndex,
+          ephemeralSigners,
+          transactionMessage: transactionMessageBytes,
+          memo: memo ?? null,
+        },
+      ],
+    } as CreateTransactionArgs;
+  }
 
   return createCreateTransactionInstruction(
     {
-      consensusAccount: settingsPda,
+      consensusAccount: targetConsensusAccount,
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
       program: programId,
     },
     {
-      args: {
-        __kind: "TransactionPayload",
-        fields: [
-          {
-            accountIndex,
-            ephemeralSigners,
-            transactionMessage: transactionMessageBytes,
-            memo: memo ?? null,
-          },
-        ],
-      },
+      args: resolvedArgs,
     },
     programId
   );

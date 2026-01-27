@@ -29,7 +29,26 @@ pub fn verify_v2_signer_signature<C: Consensus>(
         .any(|acc| acc.key == &signer_key && acc.is_signer);
 
     if is_native_signer {
-        return Ok(vec![]);
+        // CRITICAL FIX: Check if this native signer is actually a session key
+        // If so, validate that the session key is not expired
+        let current_timestamp = Clock::get()?.unix_timestamp as u64;
+
+        // Check if signer_key matches any active session key
+        if let Some(_parent_signer) = consensus_account.find_signer_by_session_key(signer_key, current_timestamp) {
+            // Session key is valid and not expired - allow the signature
+            return Ok(vec![]);
+        }
+
+        // Check if signer_key is a direct native signer (not a session key)
+        if let Some(direct_signer) = consensus_account.is_signer_v2(signer_key) {
+            if matches!(direct_signer.signer_type(), SignerType::Native) {
+                // Direct native signer - allow the signature
+                return Ok(vec![]);
+            }
+        }
+
+        // Native transaction signer present, but it's neither a valid session key nor a direct signer
+        return Err(SmartAccountError::NotASigner.into());
     }
 
     let signer = consensus_account

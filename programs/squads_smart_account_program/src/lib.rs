@@ -37,7 +37,7 @@ security_txt! {
 }
 
 #[cfg(not(feature = "testing"))]
-declare_id!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG");
+declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
 
 #[cfg(feature = "testing")]
 declare_id!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
@@ -462,10 +462,10 @@ pub mod squads_smart_account_program {
 
     /// Increment the account utilization index with V2 signer support.
     pub fn increment_account_index_v2(
-        ctx: Context<IncrementAccountIndex>,
+        ctx: Context<IncrementAccountIndexV2>,
         args: IncrementAccountIndexV2Args,
     ) -> Result<()> {
-        IncrementAccountIndex::increment_account_index_v2(ctx, args)
+        IncrementAccountIndexV2::increment_account_index_v2(ctx, args)
     }
 
     /// Create a batch with V2 signer support.
@@ -531,5 +531,23 @@ pub mod squads_smart_account_program {
         args: RemoveSignerV2Args,
     ) -> Result<()> {
         ExecuteSettingsTransactionAsAuthority::remove_signer_v2(ctx, args)
+    }
+
+    /// Add a session key to an existing V2 external signer.
+    /// Session keys allow external signers to delegate temporary signing authority to a native Solana key.
+    pub fn add_session_key<'info>(
+        ctx: Context<'_, '_, 'info, 'info, AddSessionKey<'info>>,
+        args: AddSessionKeyArgs,
+    ) -> Result<()> {
+        AddSessionKey::add_session_key(ctx, args)
+    }
+
+    /// Remove a session key from an existing V2 external signer.
+    /// This revokes the temporary signing authority that was delegated to the session key.
+    pub fn remove_session_key<'info>(
+        ctx: Context<'_, '_, 'info, 'info, RemoveSessionKey<'info>>,
+        args: RemoveSessionKeyArgs,
+    ) -> Result<()> {
+        RemoveSessionKey::remove_session_key(ctx, args)
     }
 }

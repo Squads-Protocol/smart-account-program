@@ -4,8 +4,8 @@ use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
 use crate::utils::{
-    create_batch_execute_transaction_message, derive_ephemeral_signers, verify_v2_context,
-    ExecutableTransactionMessage,
+    create_batch_execute_transaction_message, derive_ephemeral_signers, split_instructions_sysvar,
+    verify_v2_context, ExecutableTransactionMessage,
 };
 
 use super::transaction_execute::validate_proposal_execution_ready;
@@ -229,6 +229,8 @@ impl ExecuteBatchTransaction<'_> {
             args.client_data_params.as_ref(),
         )?;
 
+        let (_, remaining_accounts) = split_instructions_sysvar(&ctx.remaining_accounts);
+
         let settings_key = ctx.accounts.settings.key();
         let batch_key = ctx.accounts.batch.key();
         let proposal_key = ctx.accounts.proposal.key();
@@ -239,7 +241,7 @@ impl ExecuteBatchTransaction<'_> {
             &mut ctx.accounts.proposal,
             &mut ctx.accounts.batch,
             transaction,
-            &ctx.remaining_accounts,
+            remaining_accounts,
             settings_key,
             batch_key,
             proposal_key,

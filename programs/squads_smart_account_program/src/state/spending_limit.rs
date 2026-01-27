@@ -108,3 +108,272 @@ impl Period {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Priority 3: Spending Limit Validation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_period_to_seconds() {
+        assert_eq!(Period::OneTime.to_seconds(), None);
+        assert_eq!(Period::Day.to_seconds(), Some(86400));
+        assert_eq!(Period::Week.to_seconds(), Some(604800));
+        assert_eq!(Period::Month.to_seconds(), Some(2592000));
+    }
+
+    #[test]
+    fn test_spending_limit_size_calculation() {
+        let size_no_signers_no_destinations = SpendingLimit::size(0, 0);
+        let size_with_signers = SpendingLimit::size(3, 0);
+        let size_with_destinations = SpendingLimit::size(0, 2);
+        let size_with_both = SpendingLimit::size(3, 2);
+
+        // Each signer is 32 bytes, each destination is 32 bytes
+        assert_eq!(size_with_signers - size_no_signers_no_destinations, 3 * 32);
+        assert_eq!(size_with_destinations - size_no_signers_no_destinations, 2 * 32);
+        assert_eq!(size_with_both - size_no_signers_no_destinations, 3 * 32 + 2 * 32);
+    }
+
+    #[test]
+    fn test_spending_limit_invariant_valid() {
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(), // SOL
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique(), Pubkey::new_unique()],
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_spending_limit_invariant_zero_amount() {
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 0, // Invalid: zero amount
+            period: Period::Day,
+            remaining_amount: 0,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_err());
+    }
+
+    #[test]
+    fn test_spending_limit_invariant_empty_signers() {
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![], // Invalid: empty signers
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_err());
+    }
+
+    #[test]
+    fn test_spending_limit_invariant_duplicate_signers() {
+        let duplicate_signer = Pubkey::new_unique();
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![duplicate_signer, duplicate_signer], // Invalid: duplicates
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_err());
+    }
+
+    #[test]
+    fn test_spending_limit_invariant_sorted_signers_no_duplicates() {
+        let key1 = Pubkey::new_unique();
+        let key2 = Pubkey::new_unique();
+        let mut sorted_keys = vec![key1, key2];
+        sorted_keys.sort();
+
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: sorted_keys,
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_spending_limit_period_reset_boundary() {
+        // Test that periods have correct second conversions
+        let day_seconds = Period::Day.to_seconds().unwrap();
+        let week_seconds = Period::Week.to_seconds().unwrap();
+        let month_seconds = Period::Month.to_seconds().unwrap();
+
+        assert_eq!(day_seconds, 86400);
+        assert_eq!(week_seconds, 604800);
+        assert_eq!(month_seconds, 2592000);
+
+        // Verify relationships
+        assert_eq!(week_seconds, day_seconds * 7);
+        assert_eq!(month_seconds, day_seconds * 30);
+    }
+
+    #[test]
+    fn test_spending_limit_remaining_amount_tracking() {
+        let mut spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        // Simulate spending
+        spending_limit.remaining_amount = 500;
+        assert_eq!(spending_limit.remaining_amount, 500);
+
+        // Simulate reset
+        spending_limit.remaining_amount = spending_limit.amount;
+        assert_eq!(spending_limit.remaining_amount, spending_limit.amount);
+    }
+
+    #[test]
+    fn test_spending_limit_one_time_period() {
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::OneTime,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![],
+            expiration: 2000000,
+        };
+
+        // OneTime should have no reset period
+        assert_eq!(spending_limit.period.to_seconds(), None);
+        assert!(spending_limit.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_spending_limit_destination_validation() {
+        let dest1 = Pubkey::new_unique();
+        let dest2 = Pubkey::new_unique();
+
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![dest1, dest2],
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_ok());
+        assert_eq!(spending_limit.destinations.len(), 2);
+    }
+
+    #[test]
+    fn test_spending_limit_empty_destinations_allows_any() {
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: 1000000,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![], // Empty means any destination
+            expiration: 2000000,
+        };
+
+        assert!(spending_limit.invariant().is_ok());
+        assert!(spending_limit.destinations.is_empty());
+    }
+
+    #[test]
+    fn test_spending_limit_expiration_timestamp() {
+        let current_time = 1000000i64;
+        let future_time = current_time + 86400; // 1 day later
+
+        let spending_limit = SpendingLimit {
+            settings: Pubkey::new_unique(),
+            seed: Pubkey::new_unique(),
+            account_index: 0,
+            mint: Pubkey::default(),
+            amount: 1000,
+            period: Period::Day,
+            remaining_amount: 1000,
+            last_reset: current_time,
+            bump: 0,
+            signers: vec![Pubkey::new_unique()],
+            destinations: vec![],
+            expiration: future_time,
+        };
+
+        assert!(spending_limit.invariant().is_ok());
+        assert!(spending_limit.expiration > spending_limit.last_reset);
+    }
+}

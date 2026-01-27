@@ -33,7 +33,7 @@ const ignoredTypes = new Set([
 module.exports = {
   idlGenerator: "anchor",
   programName: PROGRAM_NAME,
-  programId: "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+  programId: "GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD",
   idlDir,
   sdkDir,
   binaryInstallDir,

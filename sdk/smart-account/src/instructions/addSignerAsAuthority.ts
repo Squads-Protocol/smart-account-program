@@ -1,7 +1,7 @@
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   createAddSignerAsAuthorityInstruction,
-  SmartAccountSigner,
+  LegacySmartAccountSigner,
   PROGRAM_ID,
 } from "../generated";
 
@@ -16,7 +16,7 @@ export function addSignerAsAuthority({
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
   rentPayer: PublicKey;
-  newSigner: SmartAccountSigner;
+  newSigner: LegacySmartAccountSigner;
   memo?: string;
   programId?: PublicKey;
 }) {

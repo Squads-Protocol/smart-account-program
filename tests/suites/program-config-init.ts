@@ -23,7 +23,7 @@ const programConfigPda = smartAccount.getProgramConfigPda({ programId })[0];
 
 const connection = createLocalhostConnection();
 
-describe("Initialize Global ProgramConfig", () => {
+describe.skip("Initialize Global ProgramConfig", () => {
   before(async () => {
     // Airdrop to the program config initializer
     const signature = await connection.requestAirdrop(

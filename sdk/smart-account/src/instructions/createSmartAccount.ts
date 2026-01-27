@@ -6,7 +6,7 @@ import {
 import {
   createCreateSmartAccountInstruction,
   PROGRAM_ID,
-  SmartAccountSigner,
+  LegacySmartAccountSigner,
 } from "../generated";
 import { getProgramConfigPda } from "../pda";
 
@@ -28,7 +28,7 @@ export function createSmartAccount({
   settings?: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
-  signers: SmartAccountSigner[];
+  signers: LegacySmartAccountSigner[];
   timeLock: number;
   rentCollector: PublicKey | null;
   memo?: string;

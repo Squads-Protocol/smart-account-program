@@ -68,7 +68,7 @@ export const setProgramConfigTreasuryInstructionDiscriminator = [
 export function createSetProgramConfigTreasuryInstruction(
   accounts: SetProgramConfigTreasuryInstructionAccounts,
   args: SetProgramConfigTreasuryInstructionArgs,
-  programId = new web3.PublicKey('SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG')
+  programId = new web3.PublicKey('GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD')
 ) {
   const [data] = setProgramConfigTreasuryStruct.serialize({
     instructionDiscriminator: setProgramConfigTreasuryInstructionDiscriminator,

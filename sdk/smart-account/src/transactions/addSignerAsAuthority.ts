@@ -4,7 +4,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { SmartAccountSigner } from "../generated";
+import { LegacySmartAccountSigner } from "../generated";
 import * as instructions from "../instructions/index";
 
 /**
@@ -26,7 +26,7 @@ export function addSignerAsAuthority({
   settingsPda: PublicKey;
   settingsAuthority: PublicKey;
   rentPayer: PublicKey;
-  newSigner: SmartAccountSigner;
+  newSigner: LegacySmartAccountSigner;
   memo?: string;
   programId?: PublicKey;
 }): VersionedTransaction {

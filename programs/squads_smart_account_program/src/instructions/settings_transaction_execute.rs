@@ -5,7 +5,9 @@ use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
-use crate::utils::{create_execute_settings_transaction_message, verify_v2_context};
+use crate::utils::{
+    create_execute_settings_transaction_message, split_instructions_sysvar, verify_v2_context,
+};
 use crate::LogAuthorityInfo;
 use crate::ProposalEvent;
 use crate::ProposalEventType;
@@ -182,6 +184,8 @@ impl<'info> ExecuteSettingsTransactionV2<'info> {
             args.client_data_params.as_ref(),
         )?;
 
+        let (_, remaining_accounts) = split_instructions_sysvar(&ctx.remaining_accounts);
+
         execute_settings_transaction_inner(
             &mut ctx.accounts.settings,
             &mut ctx.accounts.proposal,
@@ -190,7 +194,7 @@ impl<'info> ExecuteSettingsTransactionV2<'info> {
             args.executor_key,
             &ctx.accounts.rent_payer,
             &ctx.accounts.system_program,
-            &ctx.remaining_accounts,
+            remaining_accounts,
             &ctx.program_id,
         )
     }
@@ -280,9 +284,9 @@ fn execute_settings_transaction_inner<'info>(
     }
 
     // Make sure the smart account can fit the updated state: added signers or newly set rent_collector.
-    Settings::realloc_if_needed(
+    Settings::realloc_if_needed_for_wrapper(
         settings.to_account_info(),
-        settings.signers.len(),
+        &settings.signers,
         rent_payer.as_ref().map(ToAccountInfo::to_account_info),
         system_program.as_ref().map(ToAccountInfo::to_account_info),
     )?;
