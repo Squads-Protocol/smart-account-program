@@ -734,12 +734,8 @@ impl Settings {
         Ok(())
     }
 
-    pub fn increment_account_utilization(&mut self) {
-        self.account_utilization = self.account_utilization.checked_add(1).unwrap();
-    }
-
     pub fn increment_account_utilization_index(&mut self) {
-        self.increment_account_utilization();
+        self.account_utilization = self.account_utilization.checked_add(1).unwrap();
     }
 
     /// Validates that the given account index is unlocked.
