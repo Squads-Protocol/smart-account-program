@@ -19,10 +19,9 @@ use crate::{
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 // Account index constants
-// Free accounts: 0-250 (251 accounts)
-// Reserved accounts: 251-255 (5 accounts) - bypass index validation
-pub const FREE_ACCOUNT_MAX_INDEX: u8 = 250;
-pub const RESERVED_ACCOUNT_START: u8 = 251;
+// Free accounts: 0-249 (250 accounts)
+// Reserved accounts: 250-255 (6 accounts) - bypass index validation
+pub const FREE_ACCOUNT_MAX_INDEX: u8 = 249;
 
 #[account]
 pub struct Settings {
@@ -740,10 +739,10 @@ impl Settings {
     }
 
     /// Validates that the given account index is unlocked.
-    /// Reserved accounts (251-255) bypass this check.
+    /// Reserved accounts (250-255) bypass this check.
     pub fn validate_account_index_unlocked(&self, index: u8) -> Result<()> {
-        // Reserved accounts (251-255) bypass the check
-        if index >= RESERVED_ACCOUNT_START {
+        // Reserved accounts (250-255) bypass the check
+        if index > FREE_ACCOUNT_MAX_INDEX {
             return Ok(());
         }
         require!(
