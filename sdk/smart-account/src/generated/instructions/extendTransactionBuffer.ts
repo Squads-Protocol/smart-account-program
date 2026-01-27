@@ -39,7 +39,7 @@ export const extendTransactionBufferStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _extendTransactionBuffer_ instruction
  *
- * @property [] settings
+ * @property [] consensusAccount
  * @property [_writable_] transactionBuffer
  * @property [**signer**] creator
  * @category Instructions
@@ -47,7 +47,7 @@ export const extendTransactionBufferStruct = new beet.FixableBeetArgsStruct<
  * @category generated
  */
 export type ExtendTransactionBufferInstructionAccounts = {
-  settings: web3.PublicKey
+  consensusAccount: web3.PublicKey
   transactionBuffer: web3.PublicKey
   creator: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -78,7 +78,7 @@ export function createExtendTransactionBufferInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.settings,
+      pubkey: accounts.consensusAccount,
       isWritable: false,
       isSigner: false,
     },

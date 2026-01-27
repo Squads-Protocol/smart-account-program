@@ -1,7 +1,6 @@
-use account_events::{AddSpendingLimitEvent, RemoveSpendingLimitEvent};
 use anchor_lang::prelude::*;
 
-use crate::{errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
+use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
@@ -16,10 +15,10 @@ pub struct SyncSettingsTransactionArgs {
 pub struct SyncSettingsTransaction<'info> {
     #[account(
         mut,
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
+        constraint = consensus_account.account_type() == ConsensusAccountType::Settings
     )]
-    pub settings: Box<Account<'info, Settings>>,
+    pub consensus_account: Box<InterfaceAccount<'info, ConsensusAccount>>,
 
     /// The account that will be charged/credited in case the settings transaction causes space reallocation,
     /// for example when adding a new signer, adding or removing a spending limit.
@@ -41,7 +40,9 @@ impl<'info> SyncSettingsTransaction<'info> {
         args: &SyncSettingsTransactionArgs,
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
-        let Self { settings, .. } = self;
+        let Self { consensus_account, .. } = self;
+        // Get the settings
+        let settings = consensus_account.read_only_settings()?;
 
         // Settings must not be controlled
         require_keys_eq!(
@@ -54,7 +55,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         validate_settings_actions(&args.actions)?;
 
         // Validates synchronous consensus across the signers
-        validate_synchronous_consensus(settings, args.num_signers, remaining_accounts)?;
+        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)?;
 
         Ok(())
     }
@@ -64,9 +65,22 @@ impl<'info> SyncSettingsTransaction<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
-        let settings_key = settings.key();
+        // Wrapper consensus account
+        let consensus_account = &mut ctx.accounts.consensus_account;
+        let settings_key = consensus_account.key();
+        let settings_account_info = consensus_account.to_account_info();
+
+        let settings = consensus_account.settings()?;
+
         let rent = Rent::get()?;
+
+        // Build the log authority info
+        let log_authority_info = LogAuthorityInfo {
+            authority: settings_account_info.clone(),
+            authority_seeds: get_settings_signer_seeds(settings.seed),
+            bump: settings.bump,
+            program: ctx.accounts.program.to_account_info(),
+        };
 
         // Execute the actions one by one
         for action in args.actions.iter() {
@@ -78,12 +92,13 @@ impl<'info> SyncSettingsTransaction<'info> {
                 &ctx.accounts.system_program,
                 &ctx.remaining_accounts,
                 &ctx.program_id,
+                Some(&log_authority_info),
             )?;
         }
 
         // Make sure the smart account can fit the updated state: added signers or newly set archival_authority.
         Settings::realloc_if_needed(
-            settings.to_account_info(),
+            settings_account_info,
             settings.signers.len(),
             ctx.accounts
                 .rent_payer
@@ -98,65 +113,19 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Make sure the settings state is valid after applying the actions
         settings.invariant()?;
 
-        // Log the events
+        // Log the event
         let event = SynchronousSettingsTransactionEvent {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
                 .map(|acc| acc.key.clone())
                 .collect::<Vec<_>>(),
-            settings: Settings::try_from_slice(&settings.try_to_vec()?)?,
+            settings: settings.clone(),
             changes: args.actions.clone(),
         };
-        let log_authority_info = LogAuthorityInfo {
-            authority: settings.to_account_info(),
-            authority_seeds: get_settings_signer_seeds(settings.seed),
-            bump: settings.bump,
-            program: ctx.accounts.program.to_account_info(),
-        };
+
         SmartAccountEvent::SynchronousSettingsTransactionEvent(event).log(&log_authority_info)?;
 
-        for action in args.actions.iter() {
-            match action {
-                SettingsAction::AddSpendingLimit { seed, .. } => {
-                    let spending_limit_pubkey = Pubkey::find_program_address(
-                        &[
-                            SEED_PREFIX,
-                            settings_key.as_ref(),
-                            SEED_SPENDING_LIMIT,
-                            seed.as_ref(),
-                        ],
-                        &ctx.accounts.program.key(),
-                    )
-                    .0;
-
-                    let spending_limit_data = ctx
-                        .remaining_accounts
-                        .iter()
-                        .find(|acc| acc.key == &spending_limit_pubkey)
-                        .ok_or(SmartAccountError::MissingAccount)?
-                        .try_borrow_data()?;
-
-
-                    let event = AddSpendingLimitEvent {
-                        settings_pubkey: settings_key,
-                        spending_limit_pubkey: spending_limit_pubkey,
-                        spending_limit: SpendingLimit::try_from_slice(&spending_limit_data[8..])?,
-                    };
-                    SmartAccountEvent::AddSpendingLimitEvent(event).log(&log_authority_info)?;
-                }
-                SettingsAction::RemoveSpendingLimit { spending_limit, .. } => {
-                    let event = RemoveSpendingLimitEvent {
-                        settings_pubkey: settings_key,
-                        spending_limit_pubkey: spending_limit.key(),
-                    };
-                    SmartAccountEvent::RemoveSpendingLimitEvent(event).log(&log_authority_info)?;
-                }
-                _ => {
-                    continue;
-                }
-            }
-        }
         Ok(())
     }
 }

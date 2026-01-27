@@ -64,7 +64,7 @@ impl SpendingLimit {
         signers_length * 32 + // signers
         4  + // destinations vector length
         destinations_length * 32 + // destinations
-        8    // expiration
+        8 // expiration
     }
 
     pub fn invariant(&self) -> Result<()> {

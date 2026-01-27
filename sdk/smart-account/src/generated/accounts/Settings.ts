@@ -30,7 +30,7 @@ export type SettingsArgs = {
   bump: number
   signers: SmartAccountSigner[]
   accountUtilization: number
-  reserved1: number
+  policySeed: beet.COption<beet.bignum>
   reserved2: number
 }
 
@@ -55,7 +55,7 @@ export class Settings implements SettingsArgs {
     readonly bump: number,
     readonly signers: SmartAccountSigner[],
     readonly accountUtilization: number,
-    readonly reserved1: number,
+    readonly policySeed: beet.COption<beet.bignum>,
     readonly reserved2: number
   ) {}
 
@@ -75,7 +75,7 @@ export class Settings implements SettingsArgs {
       args.bump,
       args.signers,
       args.accountUtilization,
-      args.reserved1,
+      args.policySeed,
       args.reserved2
     )
   }
@@ -236,7 +236,7 @@ export class Settings implements SettingsArgs {
       bump: this.bump,
       signers: this.signers,
       accountUtilization: this.accountUtilization,
-      reserved1: this.reserved1,
+      policySeed: this.policySeed,
       reserved2: this.reserved2,
     }
   }
@@ -265,7 +265,7 @@ export const settingsBeet = new beet.FixableBeetStruct<
     ['bump', beet.u8],
     ['signers', beet.array(smartAccountSignerBeet)],
     ['accountUtilization', beet.u8],
-    ['reserved1', beet.u8],
+    ['policySeed', beet.coption(beet.u64)],
     ['reserved2', beet.u8],
   ],
   Settings.fromArgs,

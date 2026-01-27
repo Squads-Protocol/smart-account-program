@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-use std::borrow::Borrow;
 
 use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;
@@ -97,7 +95,7 @@ impl<'info> CreateSmartAccount<'info> {
             bump: settings_bump,
             signers,
             account_utilization: 0,
-            _reserved1: 0,
+            policy_seed: Some(0),
             _reserved2: 0,
         };
 
@@ -128,7 +126,6 @@ impl<'info> CreateSmartAccount<'info> {
                 ),
                 creation_fee,
             )?;
-            msg!("Creation fee: {}", creation_fee / LAMPORTS_PER_SOL);
         }
 
         // Increment the smart account index.

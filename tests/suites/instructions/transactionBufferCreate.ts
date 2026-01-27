@@ -101,12 +101,12 @@ describe("Instructions / transaction_buffer_create", () => {
     // Convert to a SHA256 hash.
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -119,8 +119,8 @@ describe("Instructions / transaction_buffer_create", () => {
           createKey: Keypair.generate(),
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
-          buffer: messageBuffer,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+          buffer: messageBuffer.transactionMessageBytes,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
       programId
@@ -167,7 +167,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix = smartAccount.generated.createCloseTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
       },
@@ -237,12 +237,12 @@ describe("Instructions / transaction_buffer_create", () => {
     // Convert to a SHA256 hash.
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -255,8 +255,8 @@ describe("Instructions / transaction_buffer_create", () => {
           createKey: Keypair.generate(),
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
-          buffer: messageBuffer,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+          buffer: messageBuffer.transactionMessageBytes,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
       programId
@@ -288,7 +288,7 @@ describe("Instructions / transaction_buffer_create", () => {
 
     const ix2 = smartAccount.generated.createCloseTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
       },
@@ -369,13 +369,13 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create a hash of the message buffer
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: nonMember.publicKey,
         rentPayer: nonMember.publicKey,
@@ -386,8 +386,8 @@ describe("Instructions / transaction_buffer_create", () => {
           bufferIndex: bufferIndex,
           accountIndex: 0,
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
-          buffer: messageBuffer,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+          buffer: messageBuffer.transactionMessageBytes,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
       programId
@@ -457,13 +457,13 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create a hash of the message buffer
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: memberWithoutInitiatePermissions.publicKey,
         rentPayer: memberWithoutInitiatePermissions.publicKey,
@@ -474,8 +474,8 @@ describe("Instructions / transaction_buffer_create", () => {
           bufferIndex: bufferIndex,
           accountIndex: 0,
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
-          buffer: messageBuffer,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+          buffer: messageBuffer.transactionMessageBytes,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
       programId
@@ -544,13 +544,13 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create a hash of the message buffer
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -561,8 +561,8 @@ describe("Instructions / transaction_buffer_create", () => {
           bufferIndex: 0,
           accountIndex: 0,
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
-          buffer: messageBuffer,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+          buffer: messageBuffer.transactionMessageBytes,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
       programId
@@ -616,7 +616,7 @@ describe("Instructions / transaction_buffer_create", () => {
     // Create the instruction to create a transaction buffer
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,

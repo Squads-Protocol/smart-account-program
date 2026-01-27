@@ -10,7 +10,7 @@ use crate::{TransactionMessage, SmartAccountTransactionMessage};
 #[account]
 #[derive(InitSpace)]
 pub struct Batch {
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Pubkey,
     /// Signer of the smart account who submitted the batch.
     pub creator: Pubkey,

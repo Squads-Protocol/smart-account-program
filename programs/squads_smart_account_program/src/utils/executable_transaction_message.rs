@@ -9,6 +9,7 @@ use anchor_lang::solana_program::program::invoke_signed;
 
 use crate::errors::*;
 use crate::state::*;
+use crate::LogEvent;
 
 /// Sanitized and validated combination of a `MsTransactionMessage` and `AccountInfo`s it references.
 pub struct ExecutableTransactionMessage<'a, 'info> {
@@ -208,6 +209,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     SmartAccountError::ProtectedAccount
                 );
             }
+            LogEvent::check_instruction(ix)?;
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
         }
         Ok(())
@@ -255,7 +257,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 
-        for sa_compiled_instruction in core::mem::take(&mut self.message.instructions) {
+        for sa_compiled_instruction in std::mem::take(&mut self.message.instructions) {
             let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = sa_compiled_instruction
                 .account_indexes
                 .iter()
@@ -292,8 +294,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
             let mut account_infos: Vec<AccountInfo> = ix_accounts
                 .into_iter()
-                .map(|(account_info, _)| account_info)
+                .map(|(account_info, _)| (*account_info.key, account_info))
+                .collect::<HashMap<Pubkey, AccountInfo>>()
+                .into_values()
                 .collect();
+
             // Add Program ID
             account_infos.push(ix_program_account_info.clone());
 

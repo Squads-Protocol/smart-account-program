@@ -626,9 +626,9 @@ __metadata:
     "@metaplex-foundation/solita": 0.20.0
     "@solana/spl-token": ^0.3.6
     "@solana/web3.js": ^1.70.3
-    "@types/bn.js": ^5.1.1
+    "@types/bn.js": ^5.1.5
     "@types/invariant": 2.2.35
-    "@types/node": 18.11.17
+    "@types/node": 24.0.15
     assert: ^2.0.0
     bn.js: ^5.2.1
     buffer: 6.0.3
@@ -667,11 +667,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/bn.js@npm:^5.1.1":
+"@types/bn.js@npm:^5.1.5":
   version: 5.2.0
   resolution: "@types/bn.js@npm:5.2.0"
   dependencies:
-    "@types/node": "npm:*"
+    "@types/node": "*"
   checksum: 38fb5512e51edd8386d560ac60d9489014cfcea41d8c383ec9070b176f8ea640189afc1b57fe8cbbe570dec8909d8e05fa129097f0dd4e2a34ebdd69cec4b790
   languageName: node
   linkType: hard
@@ -725,10 +725,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:18.11.17":
-  version: 18.11.17
-  resolution: "@types/node@npm:18.11.17"
-  checksum: 1933afd068d5c75c068c6c4df6d10edb3b0b2bb6503d544e2f0496ac007c90596e6a5e284a8ef032451bc16f871b7e46719d7d2bea60e9b25d13a77d52161cac
+"@types/node@npm:24.0.15":
+  version: 24.0.15
+  resolution: "@types/node@npm:24.0.15"
+  dependencies:
+    undici-types: ~7.8.0
+  checksum: 27f31e6976587efdfd13c0024703d7e11e6a27a6af48d488c6e5662733c9e8d47ac059e38cd9d491425f68f0c5e8e2bc060859b0b66afe79af0697acb0c25e4d
   languageName: node
   linkType: hard
 

@@ -23,7 +23,15 @@ const ignoredTypes = new Set([
   "AddSpendingLimitEvent",
   "RemoveSpendingLimitEvent",
   "UseSpendingLimitEvent",
+  "TransactionEvent",
+  "ProposalEvent",
+  "SettingsChangePolicyEvent",
   "SmartAccountEvent",
+  "ConsensusAccount",
+  "SynchronousTransactionEventV2",
+  "AuthoritySettingsEvent",
+  "AuthorityChangeEvent",
+  "TransactionContent"
 ]);
 
 module.exports = {
@@ -35,9 +43,32 @@ module.exports = {
   binaryInstallDir,
   programDir,
   idlHook: (idl) => {
+    // Transform the IDL to replace SmallVec types
+    const transformType = (obj) => {
+      if (typeof obj === "string" && obj === "SmallVec<u16,u8>") {
+        return "bytes"; // Replace with bytes type
+      }
+      if (typeof obj === "object" && obj !== null) {
+        if (obj.defined === "SmallVec<u16,u8>") {
+          return "bytes"; // Replace just the type reference
+        }
+        if (Array.isArray(obj)) {
+          return obj.map(transformType);
+        }
+        const transformed = {};
+        for (const [key, value] of Object.entries(obj)) {
+          transformed[key] = transformType(value);
+        }
+        return transformed;
+      }
+      return obj;
+    };
+
+    const transformedIdl = transformType(idl);
+
     return {
-      ...idl,
-      types: idl.types.filter((type) => {
+      ...transformedIdl,
+      types: transformedIdl.types.filter((type) => {
         return !ignoredTypes.has(type.name);
       }),
     };

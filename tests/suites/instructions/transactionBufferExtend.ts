@@ -104,13 +104,13 @@ describe("Instructions / transaction_buffer_extend", () => {
 
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     const createIx =
       smartAccount.generated.createCreateTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: creator.publicKey,
           rentPayer: creator.publicKey,
@@ -121,8 +121,8 @@ describe("Instructions / transaction_buffer_extend", () => {
             bufferIndex: Number(transactionIndex),
             accountIndex: 0,
             finalBufferHash: Array.from(messageHash),
-            finalBufferSize: messageBuffer.length,
-            buffer: messageBuffer.slice(0, 750),
+            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            buffer: messageBuffer.transactionMessageBytes.slice(0, 750),
           } as CreateTransactionBufferArgs,
         } as CreateTransactionBufferInstructionArgs,
         programId
@@ -153,7 +153,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const closeIx =
       smartAccount.generated.createCloseTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: creator.publicKey,
         },
@@ -220,15 +220,15 @@ describe("Instructions / transaction_buffer_extend", () => {
     // Convert message buffer to a SHA256 hash.
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Slice the first 750 bytes of the message buffer.
-    const firstHalf = messageBuffer.slice(0, 750);
+    const firstHalf = messageBuffer.transactionMessageBytes.slice(0, 750);
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -240,7 +240,7 @@ describe("Instructions / transaction_buffer_extend", () => {
           accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
           buffer: firstHalf,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
@@ -285,12 +285,15 @@ describe("Instructions / transaction_buffer_extend", () => {
     assert.equal(txBufferDeser1.buffer.length, 750);
 
     // Slice that last bytes of the message buffer.
-    const secondHalf = messageBuffer.slice(750, messageBuffer.byteLength);
+    const secondHalf = messageBuffer.transactionMessageBytes.slice(
+      750,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     const secondIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
@@ -329,7 +332,10 @@ describe("Instructions / transaction_buffer_extend", () => {
       );
 
     // Buffer fully uploaded. Check that length is as expected.
-    assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
+    assert.equal(
+      txBufferDeser2.buffer.length,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Close the transaction buffer account.
     await closeTransactionBuffer(members.proposer, transactionBuffer);
@@ -355,7 +361,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const dummyData = Buffer.alloc(100, 1);
     const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: nonMember.publicKey,
       },
@@ -399,7 +405,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const largeData = Buffer.alloc(500, 1);
     const ix = smartAccount.generated.createExtendTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.almighty.publicKey,
       },
@@ -444,7 +450,7 @@ describe("Instructions / transaction_buffer_extend", () => {
     const extendIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.almighty.publicKey,
         },

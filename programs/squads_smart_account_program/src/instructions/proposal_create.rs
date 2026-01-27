@@ -1,6 +1,10 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
+use crate::interface::consensus::ConsensusAccount;
+use crate::events::*;
+use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -15,18 +19,17 @@ pub struct CreateProposalArgs {
 #[instruction(args: CreateProposalArgs)]
 pub struct CreateProposal<'info> {
     #[account(
-        seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
-    pub settings: Account<'info, Settings>,
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         init,
         payer = rent_payer,
-        space = Proposal::size(settings.signers.len()),
+        space = Proposal::size(consensus_account.signers_len()),
         seeds = [
             SEED_PREFIX,
-            settings.key().as_ref(),
+            consensus_account.key().as_ref(),
             SEED_TRANSACTION,
             &args.transaction_index.to_le_bytes(),
             SEED_PROPOSAL,
@@ -43,41 +46,44 @@ pub struct CreateProposal<'info> {
     pub rent_payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
+    pub program: Program<'info, SquadsSmartAccountProgram>,
 }
 
 impl CreateProposal<'_> {
-    fn validate(&self, args: &CreateProposalArgs) -> Result<()> {
+    fn validate(&self, ctx: &Context<Self>, args: &CreateProposalArgs) -> Result<()> {
         let Self {
-            settings, creator, ..
+            consensus_account, creator, ..
         } = self;
         let creator_key = creator.key();
+
+        // Check if the consensus account is active
+        consensus_account.is_active(&ctx.remaining_accounts)?;
 
         // args
         // We can only create a proposal for an existing transaction.
         require!(
-            args.transaction_index <= settings.transaction_index,
+            args.transaction_index <= consensus_account.transaction_index(),
             SmartAccountError::InvalidTransactionIndex
         );
 
         // We can't create a proposal for a stale transaction.
         require!(
-            args.transaction_index > settings.stale_transaction_index,
+            args.transaction_index > consensus_account.stale_transaction_index(),
             SmartAccountError::StaleProposal
         );
 
         // creator
         // Has to be a signer on the smart account.
         require!(
-            self.settings.is_signer(self.creator.key()).is_some(),
+            consensus_account.is_signer(creator.key()).is_some(),
             SmartAccountError::NotASigner
         );
 
         // Must have at least one of the following permissions: Initiate or Vote.
         require!(
-            self.settings
+            consensus_account
                 .signer_has_permission(creator_key, Permission::Initiate)
-                || self
-                    .settings
+                || consensus_account
                     .signer_has_permission(creator_key, Permission::Vote),
             SmartAccountError::Unauthorized
         );
@@ -86,13 +92,13 @@ impl CreateProposal<'_> {
     }
 
     /// Create a new  proposal.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&ctx, &args))]
     pub fn create_proposal(ctx: Context<Self>, args: CreateProposalArgs) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
-        let settings = &ctx.accounts.settings;
+        let consensus_account = &ctx.accounts.consensus_account;
         let rent_payer = &mut ctx.accounts.rent_payer;
 
-        proposal.settings = settings.key();
+        proposal.settings = consensus_account.key();
         proposal.transaction_index = args.transaction_index;
         proposal.rent_collector = rent_payer.key();
         proposal.status = if args.draft {
@@ -108,6 +114,25 @@ impl CreateProposal<'_> {
         proposal.approved = vec![];
         proposal.rejected = vec![];
         proposal.cancelled = vec![];
+
+        // Log the event
+        let event = ProposalEvent {
+            event_type: ProposalEventType::Create,
+            consensus_account: consensus_account.key(),
+            consensus_account_type: consensus_account.account_type(),
+            proposal_pubkey: proposal.key(),
+            transaction_index: args.transaction_index,
+            signer: Some(ctx.accounts.creator.key()),
+            proposal: Some(proposal.clone().into_inner()),
+            memo: None,
+        };
+        let log_authority_info = LogAuthorityInfo {
+            authority: consensus_account.to_account_info(),
+            authority_seeds: consensus_account.get_signer_seeds(),
+            bump: consensus_account.bump(),
+            program: ctx.accounts.program.to_account_info(),
+        };
+        SmartAccountEvent::ProposalEvent(event).log(&log_authority_info)?;
 
         Ok(())
     }

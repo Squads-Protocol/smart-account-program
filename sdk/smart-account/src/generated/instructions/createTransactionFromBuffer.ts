@@ -39,11 +39,12 @@ export const createTransactionFromBufferStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _createTransactionFromBuffer_ instruction
  *
- * @property [_writable_] transactionCreateItemSettings
+ * @property [_writable_] transactionCreateItemConsensusAccount
  * @property [_writable_] transactionCreateItemTransaction
  * @property [**signer**] transactionCreateItemCreator
  * @property [_writable_, **signer**] transactionCreateItemRentPayer
  * @property [] transactionCreateItemSystemProgram
+ * @property [] transactionCreateItemProgram
  * @property [_writable_] transactionBuffer
  * @property [_writable_, **signer**] creator
  * @category Instructions
@@ -51,11 +52,12 @@ export const createTransactionFromBufferStruct = new beet.FixableBeetArgsStruct<
  * @category generated
  */
 export type CreateTransactionFromBufferInstructionAccounts = {
-  transactionCreateItemSettings: web3.PublicKey
+  transactionCreateItemConsensusAccount: web3.PublicKey
   transactionCreateItemTransaction: web3.PublicKey
   transactionCreateItemCreator: web3.PublicKey
   transactionCreateItemRentPayer: web3.PublicKey
   transactionCreateItemSystemProgram: web3.PublicKey
+  transactionCreateItemProgram: web3.PublicKey
   transactionBuffer: web3.PublicKey
   creator: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
@@ -87,7 +89,7 @@ export function createCreateTransactionFromBufferInstruction(
   })
   const keys: web3.AccountMeta[] = [
     {
-      pubkey: accounts.transactionCreateItemSettings,
+      pubkey: accounts.transactionCreateItemConsensusAccount,
       isWritable: true,
       isSigner: false,
     },
@@ -108,6 +110,11 @@ export function createCreateTransactionFromBufferInstruction(
     },
     {
       pubkey: accounts.transactionCreateItemSystemProgram,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.transactionCreateItemProgram,
       isWritable: false,
       isSigner: false,
     },

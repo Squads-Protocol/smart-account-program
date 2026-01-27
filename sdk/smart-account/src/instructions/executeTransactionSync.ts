@@ -25,7 +25,7 @@ export function executeTransactionSync({
 }) {
   const ix = createExecuteTransactionSyncInstruction(
     {
-      settings: settingsPda,
+      consensusAccount: settingsPda,
       program: programId,
       anchorRemainingAccounts: instruction_accounts,
     },

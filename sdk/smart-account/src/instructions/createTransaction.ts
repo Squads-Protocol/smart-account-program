@@ -1,7 +1,4 @@
-import {
-  createCreateTransactionInstruction,
-  PROGRAM_ID,
-} from "../generated";
+import { createCreateTransactionInstruction, PROGRAM_ID } from "../generated";
 import {
   AddressLookupTableAccount,
   PublicKey,
@@ -48,7 +45,7 @@ export function createTransaction({
     programId,
   });
 
-  const transactionMessageBytes =
+  const { transactionMessageBytes, compiledMessage } =
     transactionMessageToMultisigTransactionMessageBytes({
       message: transactionMessage,
       addressLookupTableAccounts,
@@ -57,17 +54,23 @@ export function createTransaction({
 
   return createCreateTransactionInstruction(
     {
-      settings: settingsPda,
+      consensusAccount: settingsPda,
       transaction: transactionPda,
       creator,
       rentPayer: rentPayer ?? creator,
+      program: programId,
     },
     {
       args: {
-        accountIndex,
-        ephemeralSigners,
-        transactionMessage: transactionMessageBytes,
-        memo: memo ?? null,
+        __kind: "TransactionPayload",
+        fields: [
+          {
+            accountIndex,
+            ephemeralSigners,
+            transactionMessage: transactionMessageBytes,
+            memo: memo ?? null,
+          },
+        ],
       },
     },
     programId

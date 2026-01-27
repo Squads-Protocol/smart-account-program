@@ -1,19 +1,22 @@
 #![allow(deprecated)]
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::id;
 use crate::utils;
 use crate::utils::realloc;
-
-use anchor_lang::system_program;
+use crate::LogAuthorityInfo;
+use crate::ProposalEvent;
+use crate::ProposalEventType;
+use crate::SmartAccountEvent;
 
 /// Stores the data required for tracking the status of a smart account proposal.
 /// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `Transaction` or a `SettingsTransaction`;
 /// the latter can be executed only after the `Proposal` has been approved and its time lock is released.
 #[account]
 pub struct Proposal {
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Pubkey,
     /// Index of the smart account transaction this proposal is associated with.
     pub transaction_index: u64,
@@ -165,16 +168,30 @@ impl Proposal {
         proposal_account: Option<Proposal>,
         proposal_info: AccountInfo<'info>,
         proposal_rent_collector: AccountInfo<'info>,
+        log_authority_info: &LogAuthorityInfo<'info>,
+        consensus_account_type: ConsensusAccountType,
     ) -> Result<()> {
         if let Some(proposal) = proposal_account {
             require!(
                 proposal_rent_collector.key() == proposal.rent_collector,
                 SmartAccountError::InvalidRentCollector
             );
+            let proposal_key = proposal_info.key();
             utils::close(
                 proposal_info,
                 proposal_rent_collector,
             )?;
+            let event = ProposalEvent {
+                event_type: ProposalEventType::Close,
+                consensus_account: log_authority_info.authority.key(),
+                consensus_account_type,
+                proposal_pubkey: proposal_key,
+                transaction_index: proposal.transaction_index,
+                signer: None,
+                memo: None,
+                proposal: None,
+            };
+            SmartAccountEvent::ProposalEvent(event).log(&log_authority_info)?;
         }
         Ok(())
     }

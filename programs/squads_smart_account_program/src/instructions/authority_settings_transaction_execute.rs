@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    errors::*, program::SquadsSmartAccountProgram, state::*, AuthorityChangeEvent,
-    AuthoritySettingsEvent, LogAuthorityInfo, SmartAccountEvent,
+    consensus_trait::Consensus, errors::*, program::SquadsSmartAccountProgram, state::*, AuthorityChangeEvent, AuthoritySettingsEvent, LogAuthorityInfo, SmartAccountEvent
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]

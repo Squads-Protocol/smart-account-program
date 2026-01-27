@@ -27,7 +27,6 @@
     "@metaplex-foundation/cusper": "^0.0.2",
     "@solana/spl-token": "^0.3.6",
     "@solana/web3.js": "^1.70.3",
-    "@types/bn.js": "^5.1.1",
     "assert": "^2.0.0",
     "bn.js": "^5.2.1",
     "buffer": "6.0.3",
@@ -35,8 +34,9 @@
   },
   "devDependencies": {
     "@metaplex-foundation/solita": "0.20.0",
+    "@types/bn.js": "^5.1.5",
     "@types/invariant": "2.2.35",
-    "@types/node": "18.11.17",
+    "@types/node": "24.0.15",
     "tsup": "^8.0.2",
     "typedoc": "^0.25.7",
     "typescript": "*"

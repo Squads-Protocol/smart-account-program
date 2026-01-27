@@ -27,6 +27,7 @@ export const closeSettingsTransactionStruct = new beet.BeetArgsStruct<{
  * @property [_writable_] transaction
  * @property [_writable_] proposalRentCollector
  * @property [_writable_] transactionRentCollector
+ * @property [] program
  * @category Instructions
  * @category CloseSettingsTransaction
  * @category generated
@@ -38,6 +39,7 @@ export type CloseSettingsTransactionInstructionAccounts = {
   proposalRentCollector: web3.PublicKey
   transactionRentCollector: web3.PublicKey
   systemProgram?: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -88,6 +90,11 @@ export function createCloseSettingsTransactionInstruction(
     },
     {
       pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
+    {
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

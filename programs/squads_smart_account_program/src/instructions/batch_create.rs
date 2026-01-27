@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
 
@@ -15,7 +16,7 @@ pub struct CreateBatch<'info> {
     #[account(
         mut,
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        bump
     )]
     pub settings: Account<'info, Settings>,
 
@@ -46,7 +47,9 @@ pub struct CreateBatch<'info> {
 impl CreateBatch<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            settings, creator, ..
+            settings,
+            creator,
+            ..
         } = self;
 
         // creator
@@ -72,7 +75,10 @@ impl CreateBatch<'_> {
         let settings_key = settings.key();
 
         // Increment the transaction index.
-        let index = settings.transaction_index.checked_add(1).expect("overflow");
+        let index = settings
+            .transaction_index
+            .checked_add(1)
+            .expect("overflow");
 
         let smart_account_seeds = &[
             SEED_PREFIX,
@@ -95,8 +101,8 @@ impl CreateBatch<'_> {
 
         batch.invariant()?;
 
-        // Updated last transaction index in the settings account.
-        settings.transaction_index = index;
+        // Updated last transaction index in the consensus account.
+        settings.set_transaction_index(index)?;
 
         settings.invariant()?;
 

@@ -24,6 +24,7 @@ import {
   createAutonomousSmartAccountV2,
   createLocalhostConnection,
   createTestTransferInstruction,
+  extractTransactionPayloadDetails,
   generateSmartAccountSigners,
   getLogs,
   getNextAccountIndex,
@@ -112,15 +113,15 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     const messageHash = crypto
       .createHash("sha256")
-      .update(messageBuffer)
+      .update(messageBuffer.transactionMessageBytes)
       .digest();
 
     // Slice the message buffer into two parts.
-    const firstSlice = messageBuffer.slice(0, 700);
+    const firstSlice = messageBuffer.transactionMessageBytes.slice(0, 700);
 
     const ix = smartAccount.generated.createCreateTransactionBufferInstruction(
       {
-        settings: settingsPda,
+        consensusAccount: settingsPda,
         transactionBuffer,
         creator: members.proposer.publicKey,
         rentPayer: members.proposer.publicKey,
@@ -128,11 +129,12 @@ describe("Instructions / transaction_create_from_buffer", () => {
       },
       {
         args: {
+          __kind: "TransactionPayload",
           bufferIndex: bufferIndex,
           accountIndex: 0,
           // Must be a SHA256 hash of the message buffer.
           finalBufferHash: Array.from(messageHash),
-          finalBufferSize: messageBuffer.length,
+          finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
           buffer: firstSlice,
         } as CreateTransactionBufferArgs,
       } as CreateTransactionBufferInstructionArgs,
@@ -175,13 +177,16 @@ describe("Instructions / transaction_create_from_buffer", () => {
     // First chunk uploaded. Check that length is as expected.
     assert.equal(txBufferDeser1.buffer.length, 700);
 
-    const secondSlice = messageBuffer.slice(700, messageBuffer.byteLength);
+    const secondSlice = messageBuffer.transactionMessageBytes.slice(
+      700,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Extned the buffer.
     const secondIx =
       smartAccount.generated.createExtendTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
         },
@@ -221,7 +226,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     // Final chunk uploaded. Check that length is as expected.
 
-    assert.equal(txBufferDeser2.buffer.length, messageBuffer.byteLength);
+    assert.equal(
+      txBufferDeser2.buffer.length,
+      messageBuffer.transactionMessageBytes.byteLength
+    );
 
     // Derive transaction PDA.
     const [transactionPda] = smartAccount.getTransactionPda({
@@ -249,20 +257,26 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const thirdIx =
       smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
-          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemConsensusAccount: settingsPda,
           transactionCreateItemTransaction: transactionPda,
           transactionCreateItemCreator: members.proposer.publicKey,
           transactionCreateItemRentPayer: members.proposer.publicKey,
           transactionCreateItemSystemProgram: SystemProgram.programId,
           transactionBuffer: transactionBuffer,
           creator: members.proposer.publicKey,
+          transactionCreateItemProgram: programId,
         },
         {
           args: {
-            accountIndex: 0,
-            ephemeralSigners: 0,
-            transactionMessage: new Uint8Array(6).fill(0),
-            memo: null,
+            __kind: "TransactionPayload",
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: new Uint8Array(6).fill(0),
+                memo: null,
+              },
+            ],
           } as CreateTransactionArgs,
         } as CreateTransactionInstructionArgs,
         programId
@@ -305,7 +319,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
       );
 
     // Ensure final transaction has 43 instructions
-    assert.equal(transactionInfo.message.instructions.length, 43);
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
+    assert.equal(transactionPayloadDetails.message.instructions.length, 43);
   });
 
   it("error: create from buffer with mismatched hash", async () => {
@@ -349,7 +366,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const createIx =
       smartAccount.generated.createCreateTransactionBufferInstruction(
         {
-          settings: settingsPda,
+          consensusAccount: settingsPda,
           transactionBuffer,
           creator: members.proposer.publicKey,
           rentPayer: members.proposer.publicKey,
@@ -357,11 +374,12 @@ describe("Instructions / transaction_create_from_buffer", () => {
         },
         {
           args: {
+            __kind: "TransactionPayload",
             bufferIndex,
             accountIndex: 0,
             finalBufferHash: Array.from(dummyHash),
-            finalBufferSize: messageBuffer.length,
-            buffer: messageBuffer,
+            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            buffer: messageBuffer.transactionMessageBytes,
           } as CreateTransactionBufferArgs,
         } as CreateTransactionBufferInstructionArgs,
         programId
@@ -395,21 +413,26 @@ describe("Instructions / transaction_create_from_buffer", () => {
     const createFromBufferIx =
       smartAccount.generated.createCreateTransactionFromBufferInstruction(
         {
-          transactionCreateItemSettings: settingsPda,
+          transactionCreateItemConsensusAccount: settingsPda,
           transactionCreateItemTransaction: transactionPda,
           transactionCreateItemCreator: members.proposer.publicKey,
           transactionCreateItemRentPayer: members.proposer.publicKey,
           transactionCreateItemSystemProgram: SystemProgram.programId,
           creator: members.proposer.publicKey,
           transactionBuffer: transactionBuffer,
+          transactionCreateItemProgram: programId,
         },
         {
           args: {
-            accountIndex: 0,
-            ephemeralSigners: 0,
-            transactionMessage: new Uint8Array(6).fill(0),
-            memo: null,
-            anchorRemainingAccounts: [transactionBufferMeta],
+            __kind: "TransactionPayload",
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: new Uint8Array(6).fill(0),
+                memo: null,
+              },
+            ],
           } as CreateTransactionArgs,
         } as CreateTransactionInstructionArgs,
         programId
@@ -450,7 +473,10 @@ describe("Instructions / transaction_create_from_buffer", () => {
       );
 
     // Check that we're dealing with the same account from first test.
-    assert.equal(transactionInfo.message.instructions.length, 43);
+    let transactionPayloadDetails = extractTransactionPayloadDetails(
+      transactionInfo.payload
+    );
+    assert.equal(transactionPayloadDetails.message.instructions.length, 43);
 
     const fourthSignature = await smartAccount.rpc.createProposal({
       connection,

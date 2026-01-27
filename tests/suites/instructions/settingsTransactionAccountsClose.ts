@@ -538,6 +538,7 @@ describe("Instructions / settings_transaction_accounts_close", () => {
           transactionIndex: 1n,
           programId,
         })[0],
+        program: programId,
       },
       programId
     );
@@ -666,6 +667,7 @@ describe("Instructions / settings_transaction_accounts_close", () => {
           transactionIndex: 1n,
           programId,
         })[0],
+        program: programId,
       },
       programId
     );
@@ -713,6 +715,7 @@ describe("Instructions / settings_transaction_accounts_close", () => {
           transactionIndex: approvedTransactionIndex,
           programId,
         })[0],
+        program: programId,
       },
       programId
     );

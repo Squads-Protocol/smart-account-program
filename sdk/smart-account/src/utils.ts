@@ -3,6 +3,7 @@ import {
   AccountMeta,
   AddressLookupTableAccount,
   Connection,
+  MessageV0,
   PublicKey,
   TransactionInstruction,
   TransactionMessage,
@@ -15,6 +16,10 @@ import { getEphemeralSignerPda } from "./pda";
 import { transactionMessageBeet } from "./types";
 import { compileToSynchronousMessageAndAccounts } from "./utils/compileToSynchronousMessage";
 import { compileToWrappedMessageV0 } from "./utils/compileToWrappedMessageV0";
+import {
+  compileToSynchronousMessageAndAccountsV2,
+  compileToSynchronousMessageAndAccountsV2WithHooks,
+} from "./utils/compileToSynchronousMessageV2";
 
 export function toUtfBytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
@@ -107,7 +112,10 @@ export function transactionMessageToMultisigTransactionMessageBytes({
   message: TransactionMessage;
   addressLookupTableAccounts?: AddressLookupTableAccount[];
   smartAccountPda: PublicKey;
-}): Uint8Array {
+}): {
+  transactionMessageBytes: Uint8Array;
+  compiledMessage: MessageV0;
+} {
   // // Make sure authority is marked as non-signer in all instructions,
   // // otherwise the message will be serialized in incorrect format.
   // message.instructions.forEach((instruction) => {
@@ -151,7 +159,10 @@ export function transactionMessageToMultisigTransactionMessageBytes({
     addressTableLookups: compiledMessage.addressTableLookups,
   });
 
-  return transactionMessageBytes;
+  return {
+    transactionMessageBytes,
+    compiledMessage,
+  };
 }
 
 export function instructionsToSynchronousTransactionDetails({
@@ -178,6 +189,60 @@ export function instructionsToSynchronousTransactionDetails({
   };
 }
 
+export function instructionsToSynchronousTransactionDetailsV2({
+  vaultPda,
+  members,
+  transaction_instructions,
+}: {
+  vaultPda: PublicKey;
+  members: PublicKey[];
+  transaction_instructions: TransactionInstruction[];
+}): {
+  instructions: Uint8Array;
+  accounts: AccountMeta[];
+} {
+  const { instructions, accounts } = compileToSynchronousMessageAndAccountsV2({
+    vaultPda,
+    members,
+    instructions: transaction_instructions,
+  });
+
+  return {
+    instructions,
+    accounts,
+  };
+}
+
+export function instructionsToSynchronousTransactionDetailsV2WithHooks({
+  vaultPda,
+  members,
+  preHookAccounts,
+  postHookAccounts,
+  transaction_instructions,
+}: {
+  vaultPda: PublicKey;
+  members: PublicKey[];
+  preHookAccounts: AccountMeta[];
+  postHookAccounts: AccountMeta[];
+  transaction_instructions: TransactionInstruction[];
+}): {
+  instructions: Uint8Array;
+  accounts: AccountMeta[];
+} {
+  const { instructions, accounts } =
+    compileToSynchronousMessageAndAccountsV2WithHooks({
+      vaultPda,
+      members,
+      preHookAccounts,
+      postHookAccounts,
+      instructions: transaction_instructions,
+    });
+
+  return {
+    instructions,
+    accounts,
+  };
+}
 /** Populate remaining accounts required for execution of the transaction. */
 export async function accountsForTransactionExecute({
   connection,

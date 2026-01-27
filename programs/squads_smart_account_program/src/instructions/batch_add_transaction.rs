@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-
+use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
 use crate::TransactionMessage;
@@ -17,7 +17,7 @@ pub struct AddTransactionToBatch<'info> {
     /// Settings account this batch belongs to.
     #[account(
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
-        bump = settings.bump,
+        bump
     )]
     pub settings: Account<'info, Settings>,
 

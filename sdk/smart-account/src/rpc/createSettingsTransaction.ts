@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   Connection,
   PublicKey,
   SendOptions,
@@ -21,6 +22,7 @@ export async function createSettingsTransaction({
   memo,
   signers,
   sendOptions,
+  remainingAccounts,
   programId,
 }: {
   connection: Connection;
@@ -35,6 +37,7 @@ export async function createSettingsTransaction({
   memo?: string;
   signers?: Signer[];
   sendOptions?: SendOptions;
+  remainingAccounts?: AccountMeta[];
   programId?: PublicKey;
 }): Promise<TransactionSignature> {
   const blockhash = (await connection.getLatestBlockhash()).blockhash;
@@ -48,6 +51,7 @@ export async function createSettingsTransaction({
     rentPayer,
     actions,
     memo,
+    remainingAccounts,
     programId,
   });
 

@@ -8,7 +8,7 @@ pub const MAX_BUFFER_SIZE: usize = 4000;
 #[account]
 #[derive(Default, Debug)]
 pub struct TransactionBuffer {
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Pubkey,
     /// Signer of the smart account who created the TransactionBuffer.
     pub creator: Pubkey,

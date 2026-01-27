@@ -1,16 +1,20 @@
-use crate::{errors::*, state::*};
+use crate::{consensus::ConsensusAccount, consensus_trait::Consensus, errors::*, state::*};
 use anchor_lang::prelude::*;
 
 pub fn validate_synchronous_consensus(
-    settings: &Account<Settings>,
+    consensus_account: &ConsensusAccount,
     num_signers: u8,
     remaining_accounts: &[AccountInfo],
 ) -> Result<()> {
     // Settings must not be time locked
-    require_eq!(settings.time_lock, 0, SmartAccountError::TimeLockNotZero);
+    require_eq!(
+        consensus_account.time_lock(),
+        0,
+        SmartAccountError::TimeLockNotZero
+    );
 
     // Get signers from remaining accounts using threshold
-    let required_signer_count = settings.threshold as usize;
+    let required_signer_count = consensus_account.threshold() as usize;
     let signer_count = num_signers as usize;
     require!(
         signer_count >= required_signer_count,
@@ -28,7 +32,7 @@ pub fn validate_synchronous_consensus(
 
     // Check permissions for all signers
     for signer in signers.iter() {
-        if let Some(member_index) = settings.is_signer(signer.key()) {
+        if let Some(member_index) = consensus_account.is_signer(signer.key()) {
             // Check that the signer is indeed a signer
             if !signer.is_signer {
                 return err!(SmartAccountError::MissingSignature);
@@ -39,7 +43,7 @@ pub fn validate_synchronous_consensus(
             }
             seen_signers.push(signer.key());
 
-            let signer_permissions = settings.signers[member_index].permissions;
+            let signer_permissions = consensus_account.signers()[member_index].permissions;
             // Add to the aggregated permissions mask
             aggregated_permissions.mask |= signer_permissions.mask;
 
@@ -54,13 +58,13 @@ pub fn validate_synchronous_consensus(
 
     // Check if we have all required permissions (Initiate | Vote | Execute = 7)
     require!(
-        aggregated_permissions.mask == 7,
+        aggregated_permissions.mask == Permissions::all().mask,
         SmartAccountError::InsufficientAggregatePermissions
     );
 
     // Verify threshold is met across all voting permissions
     require!(
-        vote_permission_count >= settings.threshold as usize,
+        vote_permission_count >= consensus_account.threshold() as usize,
         SmartAccountError::InsufficientVotePermissions
     );
 

@@ -4,23 +4,26 @@ use anchor_lang::solana_program::program::invoke_signed;
 
 use crate::errors::*;
 use crate::state::*;
+use crate::LogEvent;
 
 /// Sanitized and validated combination of transaction instructions and accounts
-pub struct SynchronousTransactionMessage<'info> {
-    pub instructions: Vec<SmartAccountCompiledInstruction>,
+pub struct SynchronousTransactionMessage<'a, 'info> {
+    pub instructions: &'a [SmartAccountCompiledInstruction],
     pub accounts: Vec<AccountInfo<'info>>,
 }
 
-impl<'info> SynchronousTransactionMessage<'info> {
+impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
     pub fn new_validated(
         settings_key: &Pubkey,
-        settings: &Settings,
         smart_account_pubkey: &Pubkey,
-        instructions: Vec<SmartAccountCompiledInstruction>,
+        consensus_account_signers: &[SmartAccountSigner],
+        instructions: &'a [SmartAccountCompiledInstruction],
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
+
         // Validate instruction indices first
-        for instruction in &instructions {
+        for instruction in instructions {
+
             require!(
                 (instruction.program_id_index as usize) < remaining_accounts.len(),
                 SmartAccountError::InvalidTransactionMessage
@@ -36,7 +39,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
         let mut accounts = Vec::with_capacity(remaining_accounts.len());
 
         // Process accounts and modify signer states
-        for (i, account) in remaining_accounts.iter().enumerate() {
+        for (_, account) in remaining_accounts.iter().enumerate() {
             let mut account_info = account.clone();
 
             // For remaining accounts:
@@ -48,7 +51,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
             } else if account.key == settings_key {
                 // This prevents dangerous re-entrancy
                 account_info.is_writable = false;
-            } else if settings.is_signer(account.key.to_owned()).is_some() && account.is_signer {
+            } else if consensus_account_signers.iter().any(|signer| &signer.key == account.key) && account.is_signer {
                 // We may want to remove this so that a signer can be a rent
                 // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;
@@ -65,7 +68,7 @@ impl<'info> SynchronousTransactionMessage<'info> {
 
     /// Executes all instructions in the message via CPI calls
     pub fn execute(&self, smart_account_seeds: &[&[u8]]) -> Result<()> {
-        for instruction in &self.instructions {
+        for instruction in self.instructions {
             let program_id = self.accounts[instruction.program_id_index as usize].key;
 
             // Build account metas for this instruction
@@ -88,6 +91,9 @@ impl<'info> SynchronousTransactionMessage<'info> {
                 accounts: account_metas,
                 data: instruction.data.clone(),
             };
+
+            // Check that we're not calling our self logging instruction
+            LogEvent::check_instruction(&ix)?;
 
             let accounts_slice: Vec<AccountInfo> = instruction
                 .account_indexes

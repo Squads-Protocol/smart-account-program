@@ -7,7 +7,7 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { LogEventArgs, logEventArgsBeet } from '../types/LogEventArgs'
+import { LogEventArgsV2, logEventArgsV2Beet } from '../types/LogEventArgsV2'
 
 /**
  * @category Instructions
@@ -15,7 +15,7 @@ import { LogEventArgs, logEventArgsBeet } from '../types/LogEventArgs'
  * @category generated
  */
 export type LogEventInstructionArgs = {
-  args: LogEventArgs
+  args: LogEventArgsV2
 }
 /**
  * @category Instructions
@@ -29,7 +29,7 @@ export const logEventStruct = new beet.FixableBeetArgsStruct<
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', logEventArgsBeet],
+    ['args', logEventArgsV2Beet],
   ],
   'LogEventInstructionArgs'
 )

@@ -23,5 +23,9 @@ url = "https://api.devnet.solana.com"
 address = "8UuqDAqe9UQx9e9Sjj4Gs3msrWGfzb4CJHGK3U3tcCEX"
 filename = "tests/fixtures/pre-rent-collector/multisig-account.json"
 
+[[test.genesis]]
+address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+program = "tests/fixtures/noop.so"
+
 [scripts]
 test = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/index.ts"

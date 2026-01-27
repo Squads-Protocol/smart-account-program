@@ -1,7 +1,21 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
+use solana_program::hash::hash;
 
-use crate::{errors::*, id, state::*, utils::*, SettingsAction};
+use crate::AddSpendingLimitEvent;
+use crate::LogAuthorityInfo;
+use crate::PolicyEvent;
+use crate::PolicyEventType;
+use crate::RemoveSpendingLimitEvent;
+use crate::SmartAccountEvent;
+use crate::{
+    errors::*,
+    id,
+    interface::consensus_trait::{Consensus, ConsensusAccountType},
+    state::*,
+    utils::*,
+    SettingsAction,
+};
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
 #[account]
@@ -47,12 +61,33 @@ pub struct Settings {
     pub signers: Vec<SmartAccountSigner>,
     /// Counter for how many sub accounts are in use (improves off-chain indexing)
     pub account_utilization: u8,
+    /// Seed used for deterministic policy creation.
+    pub policy_seed: Option<u64>,
     // Reserved for future use
-    pub _reserved1: u8,
     pub _reserved2: u8,
 }
 
 impl Settings {
+    /// Generates a hash of the core settings: Signers, threshold, and time_lock
+    pub fn generate_core_state_hash(&self) -> Result<[u8; 32]> {
+        let mut data_to_hash = Vec::new();
+
+        // Signers
+        for signer in &self.signers {
+            data_to_hash.extend_from_slice(signer.key.as_ref());
+            // Add signer permissions (1 byte)
+            data_to_hash.push(signer.permissions.mask);
+        }
+        // Threshold
+        data_to_hash.extend_from_slice(&self.threshold.to_le_bytes());
+
+        // Timelock
+        data_to_hash.extend_from_slice(&self.time_lock.to_le_bytes());
+
+        let hash_result = hash(&data_to_hash);
+
+        Ok(hash_result.to_bytes())
+    }
     pub fn find_and_initialize_settings_account<'info>(
         &self,
         settings_account_key: Pubkey,
@@ -114,29 +149,8 @@ impl Settings {
         4  + // signers vector length
         signers_length * SmartAccountSigner::INIT_SPACE + // signers
         1  + // sub_account_utilization
-        1  + // _reserved_1
+        1  + 8 + // policy_seed
         1 // _reserved_2
-    }
-
-    pub fn num_voters(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Vote))
-            .count()
-    }
-
-    pub fn num_proposers(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Initiate))
-            .count()
-    }
-
-    pub fn num_executors(signers: &[SmartAccountSigner]) -> usize {
-        signers
-            .iter()
-            .filter(|m| m.permissions.has(Permission::Execute))
-            .count()
     }
 
     /// Check if the settings account space needs to be reallocated to accommodate `signers_length`.
@@ -197,15 +211,15 @@ impl Settings {
         );
 
         // There must be at least one signer with Initiate permission.
-        let num_proposers = Self::num_proposers(signers);
+        let num_proposers = Self::num_proposers(&self);
         require!(num_proposers > 0, SmartAccountError::NoProposers);
 
         // There must be at least one signer with Execute permission.
-        let num_executors = Self::num_executors(signers);
+        let num_executors = Self::num_executors(&self);
         require!(num_executors > 0, SmartAccountError::NoExecutors);
 
         // There must be at least one signer with Vote permission.
-        let num_voters = Self::num_voters(signers);
+        let num_voters = Self::num_voters(&self);
         require!(num_voters > 0, SmartAccountError::NoVoters);
 
         // Threshold must be greater than 0.
@@ -230,38 +244,6 @@ impl Settings {
         );
 
         Ok(())
-    }
-
-    /// Makes the transactions created up until this moment stale.
-    /// Should be called whenever any settings parameter related to the voting consensus is changed.
-    pub fn invalidate_prior_transactions(&mut self) {
-        self.stale_transaction_index = self.transaction_index;
-    }
-
-    /// Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
-    /// `None` otherwise.
-    pub fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
-        self.signers
-            .binary_search_by_key(&signer_pubkey, |m| m.key)
-            .ok()
-    }
-
-    pub fn signer_has_permission(&self, signer_pubkey: Pubkey, permission: Permission) -> bool {
-        match self.is_signer(signer_pubkey) {
-            Some(index) => self.signers[index].permissions.has(permission),
-            _ => false,
-        }
-    }
-
-    /// How many "reject" votes are enough to make the transaction "Rejected".
-    /// The cutoff must be such that it is impossible for the remaining voters to reach the approval threshold.
-    /// For example: total voters = 7, threshold = 3, cutoff = 5.
-    pub fn cutoff(&self) -> usize {
-        Self::num_voters(&self.signers)
-            .checked_sub(usize::from(self.threshold))
-            .unwrap()
-            .checked_add(1)
-            .unwrap()
     }
 
     /// Add `new_signer` to the settings `signers` vec and sort the vec.
@@ -294,6 +276,7 @@ impl Settings {
         system_program: &Option<Program<'info, System>>,
         remaining_accounts: &'info [AccountInfo<'info>],
         program_id: &Pubkey,
+        log_authority_info: Option<&LogAuthorityInfo<'info>>,
     ) -> Result<()> {
         match action {
             SettingsAction::AddSigner { new_signer } => {
@@ -385,6 +368,16 @@ impl Settings {
                 spending_limit.invariant()?;
                 spending_limit
                     .try_serialize(&mut &mut spending_limit_info.data.borrow_mut()[..])?;
+
+                // Log the event
+                let event = AddSpendingLimitEvent {
+                    settings_pubkey: self_key.to_owned(),
+                    spending_limit_pubkey: spending_limit_key,
+                    spending_limit: spending_limit.clone(),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::AddSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::RemoveSpendingLimit {
@@ -408,13 +401,319 @@ impl Settings {
                 );
 
                 spending_limit.close(rent_payer.to_account_info())?;
+
+                // Log the closing event
+                let event = RemoveSpendingLimitEvent {
+                    settings_pubkey: self_key.to_owned(),
+                    spending_limit_pubkey: *spending_limit_key,
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::RemoveSpendingLimitEvent(event).log(&log_authority_info)?;
+                }
             }
 
             SettingsAction::SetArchivalAuthority {
-                new_archival_authority,
+                new_archival_authority: _,
             } => {
                 // Marked as NotImplemented until archival feature is implemented.
                 return err!(SmartAccountError::NotImplemented);
+            }
+
+            SettingsAction::PolicyCreate {
+                seed,
+                policy_creation_payload,
+                signers,
+                threshold,
+                time_lock,
+                start_timestamp,
+                expiration_args,
+            } => {
+                // Increment the policy seed if it exists, otherwise set it to
+                // 1 (First policy is being created)
+                let next_policy_seed = if let Some(policy_seed) = self.policy_seed {
+                    let next_policy_seed = policy_seed.checked_add(1).unwrap();
+
+                    // Increment the policy seed
+                    self.policy_seed = Some(next_policy_seed);
+                    next_policy_seed
+                } else {
+                    self.policy_seed = Some(1);
+                    1
+                };
+                // Policies get created at a deterministic address based on the
+                // seed in the settings.
+                let (policy_pubkey, policy_bump) = Pubkey::find_program_address(
+                    &[
+                        crate::SEED_PREFIX,
+                        SEED_POLICY,
+                        self_key.as_ref(),
+                        &next_policy_seed.to_le_bytes(),
+                    ],
+                    program_id,
+                );
+
+                let policy_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == &policy_pubkey)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                // Calculate policy data size based on the creation payload
+                let policy_specific_data_size = policy_creation_payload.policy_state_size();
+
+                let policy_size = Policy::size(signers.len(), policy_specific_data_size);
+
+                let rent_payer = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+                let system_program = system_program
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                // Create the policy account (following the pattern from create_spending_limit)
+                create_account(
+                    &rent_payer.to_account_info(),
+                    &policy_info,
+                    &system_program.to_account_info(),
+                    &id(),
+                    rent,
+                    policy_size,
+                    vec![
+                        crate::SEED_PREFIX.to_vec(),
+                        SEED_POLICY.to_vec(),
+                        self_key.as_ref().to_vec(),
+                        next_policy_seed.to_le_bytes().to_vec(),
+                        vec![policy_bump],
+                    ],
+                )?;
+
+                // Convert creation payload to policy type
+                // TODO: Get rid of this clone
+                let policy_state = match policy_creation_payload.clone() {
+                    PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
+                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::ProgramInteraction(creation_payload) => {
+                        PolicyState::ProgramInteraction(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::SpendingLimit(mut creation_payload) => {
+                        // If accumulate unused is true, and the policy has a
+                        // start date in the past, set it to the current
+                        // timestamp to avoid unintended accumulated usage
+                        let current_timestamp = Clock::get()?.unix_timestamp;
+                        if creation_payload.time_constraints.accumulate_unused
+                            && creation_payload.time_constraints.start < current_timestamp
+                        {
+                            creation_payload.time_constraints.start = current_timestamp;
+                        }
+                        PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
+                    }
+                    PolicyCreationPayload::SettingsChange(creation_payload) => {
+                        PolicyState::SettingsChange(creation_payload.to_policy_state()?)
+                    }
+                };
+
+                let expiration: Option<PolicyExpiration> =
+                    if let Some(expiration_args) = expiration_args {
+                        match expiration_args {
+                            // Use the provided timestamp
+                            PolicyExpirationArgs::Timestamp(timestamp) => {
+                                Some(PolicyExpiration::Timestamp(*timestamp))
+                            }
+                            // Generate the core state hash and use it
+                            PolicyExpirationArgs::SettingsState => Some(
+                                PolicyExpiration::SettingsState(self.generate_core_state_hash()?),
+                            ),
+                        }
+                    } else {
+                        None
+                    };
+
+                // Create and serialize the policy
+                let policy = Policy::create_state(
+                    *self_key,
+                    next_policy_seed,
+                    policy_bump,
+                    &signers,
+                    *threshold,
+                    *time_lock,
+                    policy_state,
+                    // If no start was submitted, use the current timestamp
+                    start_timestamp.unwrap_or(Clock::get()?.unix_timestamp),
+                    expiration.clone(),
+                    rent_payer.key(),
+                )?;
+
+                // Check the policy invariant
+                policy.invariant()?;
+                policy.try_serialize(&mut &mut policy_info.data.borrow_mut()[..])?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Create,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: policy_pubkey,
+                    policy: Some(policy),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
+            }
+
+            SettingsAction::PolicyUpdate {
+                policy: policy_key,
+                signers,
+                threshold,
+                time_lock,
+                policy_update_payload,
+                expiration_args,
+            } => {
+                // Find the policy account
+                let policy_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == policy_key)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                // Verify the policy account is writable
+                require!(policy_info.is_writable, ErrorCode::AccountNotMutable);
+
+                // Deserialize the policy account and verify it belongs to this
+                // settings account
+                let mut policy = Account::<Policy>::try_from(policy_info)?;
+
+                require_keys_eq!(
+                    policy.settings,
+                    self_key.to_owned(),
+                    SmartAccountError::InvalidAccount
+                );
+
+                // Calculate policy data size based on the creation payload
+                let policy_specific_data_size = policy_update_payload.policy_state_size();
+                let policy_size = Policy::size(signers.len(), policy_specific_data_size);
+
+                // Get the rent payer and system program
+                let rent_payer = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+                let system_program = system_program
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                // Only accept updates to the same policy type
+                let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
+                    (
+                        PolicyState::InternalFundTransfer(_),
+                        PolicyCreationPayload::InternalFundTransfer(creation_payload),
+                    ) => PolicyState::InternalFundTransfer(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::ProgramInteraction(_),
+                        PolicyCreationPayload::ProgramInteraction(creation_payload),
+                    ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::SpendingLimit(_),
+                        PolicyCreationPayload::SpendingLimit(creation_payload),
+                    ) => PolicyState::SpendingLimit(creation_payload.to_policy_state()?),
+                    (
+                        PolicyState::SettingsChange(_),
+                        PolicyCreationPayload::SettingsChange(creation_payload),
+                    ) => PolicyState::SettingsChange(creation_payload.to_policy_state()?),
+                    (_, _) => {
+                        return err!(SmartAccountError::InvalidPolicyPayload);
+                    }
+                };
+
+                // Determine the new expiration
+                let expiration: Option<PolicyExpiration> =
+                    if let Some(expiration_args) = expiration_args {
+                        match expiration_args {
+                            // Use the provided timestamp
+                            PolicyExpirationArgs::Timestamp(timestamp) => {
+                                Some(PolicyExpiration::Timestamp(*timestamp))
+                            }
+                            // Generate the core state hash and use it
+                            PolicyExpirationArgs::SettingsState => Some(
+                                PolicyExpiration::SettingsState(self.generate_core_state_hash()?),
+                            ),
+                        }
+                    } else {
+                        None
+                    };
+
+                // Update the policy
+                policy.update_state(
+                    signers,
+                    *threshold,
+                    *time_lock,
+                    new_policy_state,
+                    expiration.clone(),
+                )?;
+
+                // Invalidate prior transaction due to the update
+                policy.invalidate_prior_transactions();
+
+                // Check the policy invariant
+                policy.invariant()?;
+
+                // Realloc the policy account if needed
+                Policy::realloc_if_needed(
+                    policy_info.clone(),
+                    signers.len(),
+                    policy_size,
+                    Some(rent_payer.to_account_info()),
+                    Some(system_program.to_account_info()),
+                )?;
+
+                // Exit the policy account
+                policy.exit(program_id)?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Update,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: *policy_key,
+                    policy: Some(policy.clone().into_inner()),
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
+            }
+
+            SettingsAction::PolicyRemove { policy: policy_key } => {
+                let policy_info = remaining_accounts
+                    .iter()
+                    .find(|acc| acc.key == policy_key)
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                let rent_collector = rent_payer
+                    .as_ref()
+                    .ok_or(SmartAccountError::MissingAccount)?;
+
+                let policy = Account::<Policy>::try_from(policy_info)?;
+
+                // Verify the policy belongs to this settings account
+                require_keys_eq!(
+                    policy.settings,
+                    self_key.to_owned(),
+                    SmartAccountError::InvalidAccount
+                );
+                // Verify the policy rent collector matche the account getting reimbursed
+                require_keys_eq!(
+                    policy.rent_collector,
+                    rent_collector.key(),
+                    SmartAccountError::InvalidRentCollector
+                );
+
+                policy.close(rent_collector.to_account_info())?;
+
+                // Log the event
+                let event = PolicyEvent {
+                    event_type: PolicyEventType::Remove,
+                    settings_pubkey: self_key.to_owned(),
+                    policy_pubkey: *policy_key,
+                    policy: None,
+                };
+                if let Some(log_authority_info) = log_authority_info {
+                    SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
+                }
             }
         }
 
@@ -459,5 +758,63 @@ impl Permissions {
 
     pub fn has(&self, permission: Permission) -> bool {
         self.mask & (permission as u8) != 0
+    }
+
+    pub fn all() -> Self {
+        Self { mask: 0b111 }
+    }
+}
+
+// Implement Consensus for Settings
+impl Consensus for Settings {
+    fn account_type(&self) -> ConsensusAccountType {
+        ConsensusAccountType::Settings
+    }
+
+    fn check_derivation(&self, key: Pubkey) -> Result<()> {
+        let (address, _bump) = Pubkey::find_program_address(
+            &[SEED_PREFIX, SEED_SETTINGS, self.seed.to_le_bytes().as_ref()],
+            &crate::ID,
+        );
+        require_keys_eq!(address, key, SmartAccountError::InvalidAccount);
+        Ok(())
+    }
+
+    /// Settings are always active, and don't have an expiration.
+    fn is_active(&self, _accounts: &[AccountInfo]) -> Result<()> {
+        Ok(())
+    }
+
+    fn signers(&self) -> &[SmartAccountSigner] {
+        &self.signers
+    }
+
+    fn threshold(&self) -> u16 {
+        self.threshold
+    }
+
+    fn time_lock(&self) -> u32 {
+        self.time_lock
+    }
+
+    fn transaction_index(&self) -> u64 {
+        self.transaction_index
+    }
+
+    fn set_transaction_index(&mut self, transaction_index: u64) -> Result<()> {
+        self.transaction_index = transaction_index;
+        Ok(())
+    }
+
+    fn stale_transaction_index(&self) -> u64 {
+        self.stale_transaction_index
+    }
+
+    fn invalidate_prior_transactions(&mut self) {
+        self.stale_transaction_index = self.transaction_index;
+    }
+
+    fn invariant(&self) -> Result<()> {
+        self.invariant()
     }
 }

@@ -1,4 +1,5 @@
 import {
+  AccountMeta,
   Connection,
   PublicKey,
   SendOptions,
@@ -19,6 +20,7 @@ export async function executeSettingsTransactionSync({
   actions,
   memo,
   signers,
+  remainingAccounts,
   sendOptions,
   programId,
 }: {
@@ -27,6 +29,7 @@ export async function executeSettingsTransactionSync({
   settingsPda: PublicKey;
   actions: SettingsAction[];
   signers: Signer[];
+  remainingAccounts?: AccountMeta[];
   memo?: string;
   sendOptions?: SendOptions;
   programId?: PublicKey;
@@ -37,13 +40,14 @@ export async function executeSettingsTransactionSync({
     blockhash,
     feePayer: feePayer.publicKey,
     settingsPda,
-    signers: signers.map(signer => signer.publicKey),
+    signers: signers.map((signer) => signer.publicKey),
     settingsActions: actions,
     memo,
+    remainingAccounts,
     programId,
   });
 
-  tx.sign([feePayer, ...(signers)]);
+  tx.sign([feePayer, ...signers]);
 
   try {
     return await connection.sendTransaction(tx, sendOptions);

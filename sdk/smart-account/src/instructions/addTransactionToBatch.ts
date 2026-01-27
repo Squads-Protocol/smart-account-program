@@ -62,7 +62,7 @@ export function addTransactionToBatch({
     programId,
   });
 
-  const transactionMessageBytes =
+  const { transactionMessageBytes, compiledMessage } =
     transactionMessageToMultisigTransactionMessageBytes({
       message: transactionMessage,
       addressLookupTableAccounts,
