@@ -151,7 +151,7 @@ describe("Flows / Policy Creation", () => {
 
     const policyCreationPayload: smartAccount.generated.PolicyCreationPayload =
       {
-        __kind: "ProgramInteraction",
+        __kind: "LegacyProgramInteraction",
         fields: [
           {
             accountIndex: 0, // Apply to account index 0
