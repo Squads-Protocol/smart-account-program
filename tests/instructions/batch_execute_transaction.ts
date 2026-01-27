@@ -40,4 +40,12 @@ describe("Instructions / batch_execute_transaction", () => {
   skip.it("should_execute_no_op_instructions_v2");
   skip.it("should_fail_on_executed_transaction_index_overflow_v1");
   skip.it("should_fail_on_executed_transaction_index_overflow_v2");
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

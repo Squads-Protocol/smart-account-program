@@ -36,4 +36,12 @@ describe("Instructions / settings_transaction_create", () => {
   skip.it("should_reject_oversized_memo_v2");
   skip.it("should_fail_with_insufficient_rent_payer_balance_v1");
   skip.it("should_fail_with_insufficient_rent_payer_balance_v2");
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

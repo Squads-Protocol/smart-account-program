@@ -29,4 +29,12 @@ describe("Instructions / transaction_close", () => {
   skip.it("should_close_settings_transaction_with_stale_active_v1");
   skip.it("should_close_batch_with_stale_proposal_not_approved_v1");
   skip.it("should_fail_close_batch_with_stale_approved_proposal_v1");
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

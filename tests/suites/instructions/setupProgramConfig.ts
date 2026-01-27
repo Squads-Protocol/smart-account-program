@@ -55,5 +55,17 @@ before(async () => {
   const sig = await connection.sendRawTransaction(tx.serialize(), {
     skipPreflight: true,
   });
-  await connection.confirmTransaction(sig);
+  const confirmation = await connection.confirmTransaction(sig);
+  if (confirmation.value.err) {
+    const txResult = await connection.getTransaction(sig, {
+      commitment: "confirmed",
+      maxSupportedTransactionVersion: 0,
+    });
+    const logs = txResult?.meta?.logMessages ?? [];
+    throw new Error(
+      `ProgramConfig init failed: ${JSON.stringify(
+        confirmation.value.err
+      )}\n${logs.join("\n")}`
+    );
+  }
 });

@@ -8,7 +8,13 @@ import {
   getTestProgramId,
   TestMembers,
 } from "../utils";
-import { createSettings as createSettingsHelper } from "./utils/transactionCreate";
+import {
+  createSettings as createSettingsHelper,
+  createSettingsV2 as createSettingsV2Helper,
+  createSettingsV2WithEd25519External,
+  createSettingsV2WithWebAuthn,
+  createSettingsV2WithSecp256k1,
+} from "./utils/settings";
 
 const { Settings } = smartAccount.accounts;
 
@@ -25,6 +31,8 @@ describe("Instructions / increment_account_index", () => {
 
   const createSettings = (timeLock = 0) =>
     createSettingsHelper({ connection, members, programId, timeLock });
+  const createSettingsV2 = (timeLock = 0) =>
+    createSettingsV2Helper({ connection, members, programId, timeLock });
 
   const getAccountUtilization = async (settingsPda: PublicKey) => {
     const settingsAccount = await Settings.fromAccountAddress(
@@ -292,4 +300,67 @@ describe("Instructions / increment_account_index", () => {
   });
   skip.it("should_increment_at_max_minus_one_v1");
   skip.it("should_increment_at_max_minus_one_v2");
+
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  // TODO: Enable external signer V2 settings tests once external signer serialization is fixed.
+
+  skip.it("should_increment_account_index_v2_with_native_settings_v2", async () => {
+    const settingsPda = await createSettingsV2();
+    const before = await getAccountUtilization(settingsPda);
+
+    await incrementAccountIndexV2(settingsPda);
+
+    const after = await getAccountUtilization(settingsPda);
+    assert.strictEqual(after, before + 1);
+  });
+
+  skip.it("should_increment_account_index_v2_with_p256_webauthn_settings_v2", async () => {
+    const { settingsPda } = await createSettingsV2WithWebAuthn({
+      connection,
+      members,
+      programId,
+    });
+    const before = await getAccountUtilization(settingsPda);
+
+    await incrementAccountIndexV2(settingsPda);
+
+    const after = await getAccountUtilization(settingsPda);
+    assert.strictEqual(after, before + 1);
+  });
+
+  skip.it("should_increment_account_index_v2_with_secp256k1_settings_v2", async () => {
+    const { settingsPda } = await createSettingsV2WithSecp256k1({
+      connection,
+      members,
+      programId,
+    });
+    const before = await getAccountUtilization(settingsPda);
+
+    await incrementAccountIndexV2(settingsPda);
+
+    const after = await getAccountUtilization(settingsPda);
+    assert.strictEqual(after, before + 1);
+  });
+
+  skip.it("should_increment_account_index_v2_with_ed25519_external_settings_v2", async () => {
+    const { settingsPda } = await createSettingsV2WithEd25519External({
+      connection,
+      members,
+      programId,
+    });
+    const before = await getAccountUtilization(settingsPda);
+
+    await incrementAccountIndexV2(settingsPda);
+
+    const after = await getAccountUtilization(settingsPda);
+    assert.strictEqual(after, before + 1);
+  });
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

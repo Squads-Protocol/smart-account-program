@@ -745,6 +745,10 @@ pub fn create_proposal_activate_message(
     hasher.hash(proposal_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
 
+    // TODO: if it's a passKey we need to have the additional data as well.
+
+    // TODO: add nonce + 1.
+
     hasher.result().to_bytes()
 }
 

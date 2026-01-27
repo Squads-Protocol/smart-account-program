@@ -15,4 +15,12 @@ describe("Instructions / settings_migrate_signers", () => {
   // Edge Case Tests
   skip.it("should_migrate_with_min_signer_set_v1");
   skip.it("should_migrate_with_max_signer_set_v1");
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

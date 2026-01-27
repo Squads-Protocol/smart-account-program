@@ -6,6 +6,8 @@ use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
 use crate::utils::{create_proposal_activate_message, verify_v2_context};
 
+// TODO: rework the signer to be: Signer 
+
 #[derive(Accounts)]
 pub struct ActivateProposal<'info> {
     #[account(
@@ -31,6 +33,20 @@ pub struct ActivateProposal<'info> {
     pub proposal: Account<'info, Proposal>,
 }
 
+// TODO: is_valid_signer that accepts both V1 and V2 validations.
+
+// if account_info.is_signer() = consensus.is_signer() if not means key_id
+// then find key_id: enum -> we know if we need to use instruction introspection 
+// or if we need to use the additional data.
+//
+// Then check if there is a session key active. If yes remaining account.signer() after the sysvar
+//
+// Then create the message since the message don't always need the additional data
+
+// Check fucntion args: Takes in the key_id (signer or not), consensus, additional_args, remaining_accounts, 
+// message (this message is the current one that we have without additional args. We add the additional args 
+// in the function if needed or keep as it is)
+
 impl ActivateProposal<'_> {
     fn validate(&self) -> Result<()> {
         validate_activate_proposal(&*self.settings, &self.proposal, self.signer.key())
@@ -46,10 +62,12 @@ impl ActivateProposal<'_> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct ActivateProposalV2Args {
     /// The key (Native) or key_id (External) of the activating signer
-    pub activator_key: Pubkey,
+    pub activator_key: Pubkey, // TODO: NO NEED THIS BECAUSE ACTIVATOR KEY BECOMES SIGNER
     /// Client data params for WebAuthn verification (required for WebAuthn signers)
     pub client_data_params: Option<ClientDataJsonReconstructionParams>,
 }
+
+// TODO: client_data_params -> extra_verification data: SmallVec(u16)[u8] 
 
 #[derive(Accounts)]
 pub struct ActivateProposalV2<'info> {
@@ -75,6 +93,7 @@ pub struct ActivateProposalV2<'info> {
 
 impl ActivateProposalV2<'_> {
     fn validate(&self, args: &ActivateProposalV2Args) -> Result<()> {
+        
         validate_activate_proposal(&*self.consensus_account, &self.proposal, args.activator_key)
     }
 
@@ -98,10 +117,12 @@ impl ActivateProposalV2<'_> {
     }
 }
 
+// TODO: use a message with the discriminator
+
 fn validate_activate_proposal<C: Consensus>(
     consensus: &C,
     proposal: &Proposal,
-    signer_key: Pubkey,
+    signer_key: Pubkey
 ) -> Result<()> {
     // Signer is part of the settings
     require!(
@@ -131,5 +152,6 @@ fn activate_proposal_inner(proposal: &mut Proposal) -> Result<()> {
     proposal.status = ProposalStatus::Active {
         timestamp: Clock::get()?.unix_timestamp,
     };
+
     Ok(())
 }

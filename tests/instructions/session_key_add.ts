@@ -21,4 +21,12 @@ describe("Instructions / session_key_add", () => {
   // Edge Case Tests
   skip.it("should_add_session_key_with_min_expiration_v1");
   skip.it("should_add_session_key_with_max_allowed_expiration_v1");
+  // -------------------------------------------------------------------------------------
+  // Settings V2 Tests
+  // -------------------------------------------------------------------------------------
+
+  skip.it("should_run_with_native_settings_v2");
+  skip.it("should_run_with_p256_webauthn_settings_v2");
+  skip.it("should_run_with_secp256k1_settings_v2");
+  skip.it("should_run_with_ed25519_external_settings_v2");
 });

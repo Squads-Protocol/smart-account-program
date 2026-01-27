@@ -11,8 +11,16 @@ import {
   createTestTransferInstruction,
   TestMembers,
 } from "../../utils";
+import {
+  buildEd25519ExternalSigner,
+  buildNativeSigner,
+  buildP256WebauthnSigner,
+  buildSecp256k1Signer,
+  createSmartAccountV2WithSigners,
+} from "./v2Signers";
 
 const { Settings } = smartAccount.accounts;
+const { Permission, Permissions } = smartAccount.types;
 
 export type TransactionArgs = {
   settingsPda: PublicKey;
@@ -63,6 +71,143 @@ export const createSettings = async ({
       programId,
     })
   )[0];
+
+export const createSettingsV2 = async ({
+  connection,
+  members,
+  programId,
+  timeLock = 0,
+}: {
+  connection: Connection;
+  members: TestMembers;
+  programId: PublicKey;
+  timeLock?: number;
+}) => {
+  const signers = [
+    buildNativeSigner(members.almighty.publicKey, Permissions.all()).signer,
+    buildNativeSigner(
+      members.proposer.publicKey,
+      Permissions.fromPermissions([Permission.Initiate])
+    ).signer,
+    buildNativeSigner(
+      members.voter.publicKey,
+      Permissions.fromPermissions([Permission.Vote])
+    ).signer,
+    buildNativeSigner(
+      members.executor.publicKey,
+      Permissions.fromPermissions([Permission.Execute])
+    ).signer,
+  ];
+
+  return createSmartAccountV2WithSigners({
+    connection,
+    programId,
+    creator: members.almighty,
+    signers,
+    timeLock,
+    threshold: 1,
+  });
+};
+
+const buildBaseV2Signers = (members: TestMembers) => [
+  buildNativeSigner(members.almighty.publicKey, Permissions.all()).signer,
+  buildNativeSigner(
+    members.proposer.publicKey,
+    Permissions.fromPermissions([Permission.Initiate])
+  ).signer,
+  buildNativeSigner(
+    members.voter.publicKey,
+    Permissions.fromPermissions([Permission.Vote])
+  ).signer,
+  buildNativeSigner(
+    members.executor.publicKey,
+    Permissions.fromPermissions([Permission.Execute])
+  ).signer,
+];
+
+export const createSettingsV2WithWebAuthn = async ({
+  connection,
+  members,
+  programId,
+  timeLock = 0,
+}: {
+  connection: Connection;
+  members: TestMembers;
+  programId: PublicKey;
+  timeLock?: number;
+}) => {
+  const sessionKey = Keypair.generate();
+  const { signer, keyId } = await buildP256WebauthnSigner({
+    connection,
+    sessionKey,
+  });
+  const settingsPda = await createSmartAccountV2WithSigners({
+    connection,
+    programId,
+    creator: members.almighty,
+    signers: [...buildBaseV2Signers(members), signer],
+    timeLock,
+    threshold: 1,
+  });
+
+  return { settingsPda, keyId, sessionKey };
+};
+
+export const createSettingsV2WithSecp256k1 = async ({
+  connection,
+  members,
+  programId,
+  timeLock = 0,
+}: {
+  connection: Connection;
+  members: TestMembers;
+  programId: PublicKey;
+  timeLock?: number;
+}) => {
+  const sessionKey = Keypair.generate();
+  const { signer, keyId } = await buildSecp256k1Signer({
+    connection,
+    sessionKey,
+  });
+  const settingsPda = await createSmartAccountV2WithSigners({
+    connection,
+    programId,
+    creator: members.almighty,
+    signers: [...buildBaseV2Signers(members), signer],
+    timeLock,
+    threshold: 1,
+  });
+
+  return { settingsPda, keyId, sessionKey };
+};
+
+export const createSettingsV2WithEd25519External = async ({
+  connection,
+  members,
+  programId,
+  timeLock = 0,
+}: {
+  connection: Connection;
+  members: TestMembers;
+  programId: PublicKey;
+  timeLock?: number;
+}) => {
+  const sessionKey = Keypair.generate();
+  const { signer, keyId } = await buildEd25519ExternalSigner({
+    connection,
+    sessionKey,
+  });
+  const settingsPda = await createSmartAccountV2WithSigners({
+    connection,
+    programId,
+    creator: members.almighty,
+    signers: [...buildBaseV2Signers(members), signer],
+    timeLock,
+    threshold: 1,
+  });
+
+  return { settingsPda, keyId, sessionKey };
+};
 
 export const buildTestMessage = async ({
   connection,

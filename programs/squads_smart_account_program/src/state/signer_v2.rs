@@ -257,6 +257,9 @@ impl ClientDataJsonReconstructionParams {
     }
 }
 
+// TODO: Check this for the message: https://github.com/Squads-Grid/external-signature-program/blob/0a6d1afd2aba79cb4f6356a4ad0d7fbcec0f887a/src/state/p256_webauthn/trait_impl.rs#L119
+
+
 // ============================================================================
 // Secp256k1 Signer Data
 // ============================================================================
@@ -415,6 +418,12 @@ pub enum SmartAccountSigner {
         permissions: Permissions,
         data: Ed25519ExternalData,
     },
+
+    // TODO: scrap key_id just use a convention that is the uncompressed key [..32] or whatever
+
+    // TODO: P256-NATIVE to use it with the precompile.
+
+    // TODO: add nonce in each of them.
 }
 
 impl SmartAccountSigner {
