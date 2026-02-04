@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::SmartAccountError,
     events::{IncrementAccountIndexEvent, LogAuthorityInfo, SmartAccountEvent},
-    interface::consensus_trait::Consensus,
     program::SquadsSmartAccountProgram,
     state::{
         get_settings_signer_seeds, ClientDataJsonReconstructionParams, Permission, Settings, FREE_ACCOUNT_MAX_INDEX,

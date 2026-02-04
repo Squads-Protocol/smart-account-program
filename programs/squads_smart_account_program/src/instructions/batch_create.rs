@@ -123,7 +123,7 @@ impl CreateBatch<'_> {
     }
 
     /// Create a new batch.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&args))]
     pub fn create_batch(ctx: Context<Self>, args: CreateBatchArgs) -> Result<()> {
         let settings_key = ctx.accounts.settings.key();
 
