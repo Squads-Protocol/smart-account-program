@@ -24,6 +24,7 @@ export const incrementAccountIndexStruct = new beet.BeetArgsStruct<{
  *
  * @property [_writable_] settings
  * @property [**signer**] signer
+ * @property [] program
  * @category Instructions
  * @category IncrementAccountIndex
  * @category generated
@@ -31,6 +32,7 @@ export const incrementAccountIndexStruct = new beet.BeetArgsStruct<{
 export type IncrementAccountIndexInstructionAccounts = {
   settings: web3.PublicKey
   signer: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
@@ -63,6 +65,11 @@ export function createIncrementAccountIndexInstruction(
       pubkey: accounts.signer,
       isWritable: false,
       isSigner: true,
+    },
+    {
+      pubkey: accounts.program,
+      isWritable: false,
+      isSigner: false,
     },
   ]
 

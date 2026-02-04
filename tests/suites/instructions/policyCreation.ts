@@ -34,7 +34,7 @@ describe("Flows / Policy Creation", () => {
     // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
     for (let i = 0; i < 3; i++) {
       const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
-        { settings: settingsPda, signer: members.almighty.publicKey },
+        { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
         programId
       );
       const msg = new web3.TransactionMessage({
