@@ -10,6 +10,7 @@ pub use account_events::*;
 #[derive(BorshSerialize, BorshDeserialize)]
 pub enum SmartAccountEvent {
     CreateSmartAccountEvent(CreateSmartAccountEvent),
+    IncrementAccountIndexEvent(IncrementAccountIndexEvent),
     SynchronousTransactionEvent(SynchronousTransactionEvent),
     SynchronousSettingsTransactionEvent(SynchronousSettingsTransactionEvent),
     AddSpendingLimitEvent(AddSpendingLimitEvent),

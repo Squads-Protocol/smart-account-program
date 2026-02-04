@@ -2434,6 +2434,11 @@
           "name": "signer",
           "isMut": false,
           "isSigner": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
         }
       ],
       "args": []

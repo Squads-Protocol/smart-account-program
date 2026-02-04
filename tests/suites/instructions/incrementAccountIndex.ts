@@ -26,7 +26,7 @@ function createIncrementAccountIndexInstruction(
   programId: PublicKey
 ) {
   return smartAccount.generated.createIncrementAccountIndexInstruction(
-    { settings: settingsPda, signer },
+    { settings: settingsPda, signer, program: programId },
     programId
   );
 }

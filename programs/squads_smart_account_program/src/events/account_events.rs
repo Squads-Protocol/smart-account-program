@@ -13,6 +13,12 @@ pub struct CreateSmartAccountEvent {
 }
 
 #[derive(BorshSerialize, BorshDeserialize)]
+pub struct IncrementAccountIndexEvent {
+    pub settings_pubkey: Pubkey,
+    pub settings_state: Settings,
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
 pub struct SynchronousTransactionEventV2 {
     pub consensus_account: Pubkey,
     pub consensus_account_type: ConsensusAccountType,

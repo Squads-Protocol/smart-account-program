@@ -57,8 +57,10 @@ pub struct CreateBatch<'info> {
 }
 
 impl CreateBatch<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(&self, args: &CreateBatchArgs) -> Result<()> {
         let Self { settings, creator, .. } = self;
+
+        settings.validate_account_index_unlocked(args.account_index)?;
 
         Self::validate_signer(settings, creator.key())
     }
@@ -86,6 +88,7 @@ impl CreateBatch<'_> {
         settings_key: Pubkey,
         program_id: &Pubkey,
     ) -> Result<()> {
+        // Increment the transaction index.
         let index = settings
             .transaction_index
             .checked_add(1)
@@ -167,6 +170,7 @@ impl CreateBatch<'_> {
     }
 
     fn validate_v2(&self, args: &CreateBatchV2Args) -> Result<()> {
+        self.settings.validate_account_index_unlocked(args.account_index)?;
         Self::validate_signer(&self.settings, args.creator_key)
     }
 }
