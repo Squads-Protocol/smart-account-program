@@ -24,8 +24,7 @@ pub enum PolicyCreationPayload {
 impl PolicyCreationPayload {
     /// Calculate the size of the resulting policy data after creation
     pub fn policy_state_size(&self) -> usize {
-        // 1 for the Wrapper enum type
-        1 + match self {
+        match self {
             PolicyCreationPayload::InternalFundTransfer(payload) => payload.policy_state_size(),
             PolicyCreationPayload::SpendingLimit(payload) => payload.policy_state_size(),
             PolicyCreationPayload::SettingsChange(payload) => payload.policy_state_size(),

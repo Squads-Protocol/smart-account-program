@@ -314,6 +314,8 @@ impl Settings {
                 destinations,
                 expiration,
             } => {
+                self.validate_account_index_unlocked(*account_index)?;
+
                 let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                     &[
                         SEED_PREFIX,

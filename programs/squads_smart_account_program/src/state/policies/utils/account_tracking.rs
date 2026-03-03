@@ -1,15 +1,18 @@
-use anchor_lang::{prelude::*, Ids};
+use anchor_lang::{prelude::*, solana_program::hash::hash, Ids};
 use anchor_spl::token_interface::{TokenAccount, TokenInterface};
 
 use crate::{
     errors::SmartAccountError, state::policies::utils::spending_limit_v2::SpendingLimitV2,
 };
 
+const BASE_TOKEN_ACCOUNT_LEN: usize = 165;
+
 pub struct TrackedTokenAccount<'info> {
     pub account: &'info AccountInfo<'info>,
     pub balance: u64,
     pub delegate: Option<(Pubkey, u64)>,
     pub authority: Pubkey,
+    pub extensions_hash: Option<[u8; 32]>,
 }
 
 pub struct TrackedExecutingAccount<'info> {
@@ -61,12 +64,26 @@ pub fn check_pre_balances<'info>(
                 };
                 let authority = token_account.owner;
 
+                // For Token-2022 accounts, hash the extension data to detect
+                // modifications during CPI (e.g. adding CpiGuard, MemoTransfer)
+                let extensions_hash = {
+                    let data = account.data.borrow();
+                    if *account.owner == anchor_spl::token_2022::ID
+                        && data.len() > BASE_TOKEN_ACCOUNT_LEN
+                    {
+                        Some(hash(&data[BASE_TOKEN_ACCOUNT_LEN..]).to_bytes())
+                    } else {
+                        None
+                    }
+                };
+
                 // Add the token account to the tracked token accounts
                 tracked_token_accounts.push(TrackedTokenAccount {
                     account,
                     balance,
                     delegate,
                     authority,
+                    extensions_hash,
                 });
             }
         }
@@ -189,6 +206,22 @@ impl<'info> Balances<'info> {
                 tracked_token_account.authority,
                 SmartAccountError::ProgramInteractionIllegalTokenAccountModification
             );
+
+            // For Token-2022 accounts, verify extension data hasn't been modified
+            if let Some(pre_hash) = tracked_token_account.extensions_hash {
+                let data = tracked_token_account.account.data.borrow();
+                if data.len() > BASE_TOKEN_ACCOUNT_LEN {
+                    let post_hash = hash(&data[BASE_TOKEN_ACCOUNT_LEN..]).to_bytes();
+                    require!(
+                        pre_hash == post_hash,
+                        SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+                    );
+                } else {
+                    return Err(
+                        SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
+                    );
+                }
+            }
         }
         Ok(())
     }

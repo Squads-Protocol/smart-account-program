@@ -382,6 +382,10 @@ impl InternalFundTransferPolicy {
                         && destination_token_account.mint == args.mint,
                     SmartAccountError::InvalidAccount
                 );
+                require!(
+                    Option::<Pubkey>::from(destination_token_account.delegate).is_none(),
+                    SmartAccountError::InternalFundTransferPolicyDestinationHasDelegate
+                );
                 // Check the token program
                 require_eq!(TokenInterface::ids().contains(&token_program.key()), true);
 

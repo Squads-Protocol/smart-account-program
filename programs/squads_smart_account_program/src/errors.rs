@@ -236,6 +236,8 @@ pub enum SmartAccountError {
     InternalFundTransferPolicyInvariantAmountZero,
     #[msg("Internal fund transfer policy invariant violation: cannot have duplicate mints")]
     InternalFundTransferPolicyInvariantDuplicateMints,
+    #[msg("Internal fund transfer policy: destination token account has a delegate")]
+    InternalFundTransferPolicyDestinationHasDelegate,
 
     // ===============================================
     // Consensus Account Errors

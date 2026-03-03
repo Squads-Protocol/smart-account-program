@@ -94,6 +94,7 @@ impl AddSpendingLimitAsAuthority<'_> {
     #[access_control(ctx.accounts.validate(args.expiration))]
     pub fn add_spending_limit(ctx: Context<Self>, args: AddSpendingLimitArgs) -> Result<()> {
         let settings = &ctx.accounts.settings;
+        settings.validate_account_index_unlocked(args.account_index)?;
         let spending_limit = &mut ctx.accounts.spending_limit;
 
         // Make sure there are no duplicate keys in this direct invocation by sorting so the invariant will catch

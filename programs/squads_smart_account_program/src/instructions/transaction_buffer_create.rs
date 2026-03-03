@@ -10,8 +10,6 @@ use crate::state::*;
 pub struct CreateTransactionBufferArgs {
     /// Index of the buffer account to seed the account derivation
     pub buffer_index: u8,
-    /// Index of the smart account this transaction belongs to.
-    pub account_index: u8,
     /// Hash of the final assembled transaction message.
     pub final_buffer_hash: [u8; 32],
     /// Final size of the buffer.
@@ -96,7 +94,6 @@ impl CreateTransactionBuffer<'_> {
         // Initialize the transaction fields.
         transaction_buffer.settings = consensus_account.key();
         transaction_buffer.creator = creator.key();
-        transaction_buffer.account_index = args.account_index;
         transaction_buffer.buffer_index = buffer_index;
         transaction_buffer.final_buffer_hash = args.final_buffer_hash;
         transaction_buffer.final_buffer_size = args.final_buffer_size;
