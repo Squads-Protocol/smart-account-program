@@ -261,6 +261,23 @@ describe("Smart Account SDK", () => {
           programId,
         })
       )[0];
+
+      // Increment account index to unlock accountIndex 1 for batch
+      const incrementIx =
+        smartAccount.generated.createIncrementAccountIndexInstruction(
+          { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+          programId
+        );
+      const msg = new TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [incrementIx],
+      }).compileToV0Message();
+      const tx = new VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
     });
 
     it("create a batch transaction", async () => {
@@ -794,7 +811,7 @@ describe("Smart Account SDK", () => {
       // Increment account index to unlock accountIndex 1 for spending limits
       const incrementIx =
         smartAccount.generated.createIncrementAccountIndexInstruction(
-          { settings: controlledsettingsPda, signer: members.almighty.publicKey },
+          { settings: controlledsettingsPda, signer: members.almighty.publicKey, program: programId },
           programId
         );
       const msg = new TransactionMessage({
@@ -924,7 +941,7 @@ describe("Smart Account SDK", () => {
       // Increment account index to unlock accountIndex 1 for spending limits
       const incrementIx =
         smartAccount.generated.createIncrementAccountIndexInstruction(
-          { settings: controlledsettingsPda, signer: members.almighty.publicKey },
+          { settings: controlledsettingsPda, signer: members.almighty.publicKey, program: programId },
           programId
         );
       const incMsg = new TransactionMessage({
@@ -1003,7 +1020,7 @@ describe("Smart Account SDK", () => {
       // Increment account index on the wrong smart account too
       const wrongIncIx =
         smartAccount.generated.createIncrementAccountIndexInstruction(
-          { settings: wrongControlledsettingsPda, signer: members.almighty.publicKey },
+          { settings: wrongControlledsettingsPda, signer: members.almighty.publicKey, program: programId },
           programId
         );
       const wrongIncMsg = new TransactionMessage({
