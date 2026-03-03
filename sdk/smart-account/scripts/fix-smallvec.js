@@ -88,7 +88,7 @@ function processFile(filePath) {
   }
 
   if (fileName === 'CompiledHook.ts') {
-    // instruction_data: SmallVec<u16, u8> (note: u16 length prefix)
+    // instructionData: SmallVec<u16, u8> (note: u16 length prefix)
     content = content.replace(/\['instructionData', beet\.bytes\]/g, "['instructionData', smallArray(beet.u16, beet.u8)]");
     content = content.replace(/instructionData: Uint8Array/g, 'instructionData: number[]');
   }

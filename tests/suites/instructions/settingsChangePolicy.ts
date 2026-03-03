@@ -199,6 +199,18 @@ describe("Flow / SettingsChangePolicy", () => {
       },
       instruction_accounts: instructionAccounts,
     });
+    await connection.confirmTransaction(signature);
+
+    // Verify the settings change was persisted on-chain
+    const updatedSettings = await Settings.fromAccountAddress(
+      connection,
+      settingsPda,
+      { commitment: "confirmed" }
+    );
+    const newSignerExists = updatedSettings.signers.some(
+      (signer) => signer.key.equals(allowedKeypair.publicKey)
+    );
+    assert.ok(newSignerExists, "New signer should be added to settings");
 
     // Wrong action index
     await assert.rejects(

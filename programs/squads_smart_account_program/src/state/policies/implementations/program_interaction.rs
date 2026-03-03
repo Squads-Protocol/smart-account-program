@@ -705,7 +705,11 @@ impl LimitedTimeConstraints {
             Some(_) => 8, // expiration value
             None => 0,
         } +
-        1 // period enum discriminator (PeriodV2 is small enum)
+        1 + // period enum discriminator
+        match self.period {
+            PeriodV2::Custom(_) => 8, // Custom variant contains i64
+            _ => 0, // Other variants have no associated data
+        }
     }
 }
 
