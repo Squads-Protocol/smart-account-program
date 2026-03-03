@@ -3,6 +3,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
 import * as assert from "assert";
@@ -790,6 +791,23 @@ describe("Smart Account SDK", () => {
         })
       )[0];
 
+      // Increment account index to unlock accountIndex 1 for spending limits
+      const incrementIx =
+        smartAccount.generated.createIncrementAccountIndexInstruction(
+          { settings: controlledsettingsPda, signer: members.almighty.publicKey },
+          programId
+        );
+      const msg = new TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [incrementIx],
+      }).compileToV0Message();
+      const tx = new VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+
       feePayer = await generateFundedKeypair(connection);
 
       spendingLimitCreateKey = Keypair.generate().publicKey;
@@ -903,6 +921,23 @@ describe("Smart Account SDK", () => {
         })
       )[0];
 
+      // Increment account index to unlock accountIndex 1 for spending limits
+      const incrementIx =
+        smartAccount.generated.createIncrementAccountIndexInstruction(
+          { settings: controlledsettingsPda, signer: members.almighty.publicKey },
+          programId
+        );
+      const incMsg = new TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [incrementIx],
+      }).compileToV0Message();
+      const incTx = new VersionedTransaction(incMsg);
+      incTx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(incTx.serialize())
+      );
+
       feePayer = await generateFundedKeypair(connection);
 
       spendingLimitCreateKey = Keypair.generate().publicKey;
@@ -964,6 +999,23 @@ describe("Smart Account SDK", () => {
           programId,
         })
       )[0];
+
+      // Increment account index on the wrong smart account too
+      const wrongIncIx =
+        smartAccount.generated.createIncrementAccountIndexInstruction(
+          { settings: wrongControlledsettingsPda, signer: members.almighty.publicKey },
+          programId
+        );
+      const wrongIncMsg = new TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [wrongIncIx],
+      }).compileToV0Message();
+      const wrongIncTx = new VersionedTransaction(wrongIncMsg);
+      wrongIncTx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(wrongIncTx.serialize())
+      );
 
       const wrongCreateKey = Keypair.generate().publicKey;
       const wrongSpendingLimitPda = smartAccount.getSpendingLimitPda({

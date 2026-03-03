@@ -40,8 +40,10 @@ const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
     'CompiledInstructionConstraint.ts',
     'CompiledAccountConstraintType.ts',
   ],
+  // NOTE: SmartAccountTransactionMessage.ts is intentionally NOT here.
+  // The stored state uses Vec<Pubkey> (4-byte prefix), not SmallVec.
+  // Only the instruction-level TransactionMessage uses SmallVec<u8, Pubkey>.
   'beetSolana.publicKey': [
-    'SmartAccountTransactionMessage.ts',
     'ProgramInteractionPolicyCreationPayload.ts',
   ],
 };
