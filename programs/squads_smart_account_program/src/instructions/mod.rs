@@ -24,6 +24,7 @@ pub use transaction_execute::*;
 pub use transaction_execute_sync::*;
 pub use transaction_execute_sync_legacy::*;
 pub use use_spending_limit::*;
+pub use set_account_index::*;
 
 mod activate_proposal;
 mod authority_settings_transaction_execute;
@@ -51,3 +52,4 @@ mod transaction_execute;
 mod transaction_execute_sync;
 mod transaction_execute_sync_legacy;
 mod use_spending_limit;
+mod set_account_index;
