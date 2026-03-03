@@ -41,7 +41,8 @@ const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
     'CompiledAccountConstraintType.ts',
   ],
   'beetSolana.publicKey': [
-    'SmartAccountTransactionMessage.ts',
+    // Note: SmartAccountTransactionMessage uses Vec<Pubkey>, NOT SmallVec
+    // Only ProgramInteractionPolicyCreationPayload uses SmallVec<u8, Pubkey>
     'ProgramInteractionPolicyCreationPayload.ts',
   ],
 };
@@ -87,7 +88,7 @@ function processFile(filePath) {
   }
 
   if (fileName === 'CompiledHook.ts') {
-    // Note: instructionData uses SmallVec<u16, u8> in Rust (u16 length prefix)
+    // instructionData: SmallVec<u16, u8> (note: u16 length prefix)
     content = content.replace(/\['instructionData', beet\.bytes\]/g, "['instructionData', smallArray(beet.u16, beet.u8)]");
     content = content.replace(/instructionData: Uint8Array/g, 'instructionData: number[]');
   }
