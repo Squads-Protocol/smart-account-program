@@ -1,4 +1,5 @@
 pub use self::settings::*;
+pub use signer_v2::*;
 pub use batch::*;
 pub use policies::*;
 pub use program_config::*;
@@ -16,6 +17,7 @@ mod program_config;
 mod proposal;
 mod seeds;
 mod settings;
+pub mod signer_v2;
 mod settings_transaction;
 mod spending_limit;
 mod legacy_transaction;

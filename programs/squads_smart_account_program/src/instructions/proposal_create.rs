@@ -6,6 +6,8 @@ use crate::interface::consensus::ConsensusAccount;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_proposal_create_message;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateProposalArgs {
@@ -19,6 +21,7 @@ pub struct CreateProposalArgs {
 #[instruction(args: CreateProposalArgs)]
 pub struct CreateProposal<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
@@ -38,8 +41,8 @@ pub struct CreateProposal<'info> {
     )]
     pub proposal: Account<'info, Proposal>,
 
-    /// The signer on the smart account that is creating the proposal.
-    pub creator: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub creator: AccountInfo<'info>,
 
     /// The payer for the proposal account rent.
     #[account(mut)]
@@ -50,14 +53,18 @@ pub struct CreateProposal<'info> {
 }
 
 impl CreateProposal<'_> {
-    fn validate(&self, ctx: &Context<Self>, args: &CreateProposalArgs) -> Result<()> {
+    fn validate(
+        &mut self,
+        args: &CreateProposalArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account, creator, ..
         } = self;
-        let creator_key = creator.key();
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(&remaining_accounts)?;
 
         // args
         // We can only create a proposal for an existing transaction.
@@ -72,31 +79,54 @@ impl CreateProposal<'_> {
             SmartAccountError::StaleProposal
         );
 
-        // creator
-        // Has to be a signer on the smart account.
-        require!(
-            consensus_account.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_proposal_create_message(
+            &consensus_account.key(),
+            args.transaction_index,
+            args.draft,
         );
 
+        // Verify signer (native, session key, or external) and check Initiate OR Vote permission
+        // We pass None for permission and check separately since we need OR logic
+        let canonical_key = consensus_account.verify_signer(
+            creator,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            None,
+        )?;
+
         // Must have at least one of the following permissions: Initiate or Vote.
+        // Use canonical_key (parent signer key for session keys) for permission check.
         require!(
-            consensus_account
-                .signer_has_permission(creator_key, Permission::Initiate)
-                || consensus_account
-                    .signer_has_permission(creator_key, Permission::Vote),
+            consensus_account.signer_has_permission(canonical_key, Permission::Initiate)
+                || consensus_account.signer_has_permission(canonical_key, Permission::Vote),
             SmartAccountError::Unauthorized
         );
 
         Ok(())
     }
 
-    /// Create a new  proposal.
-    #[access_control(ctx.accounts.validate(&ctx, &args))]
+    /// Create a new proposal.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_proposal(ctx: Context<Self>, args: CreateProposalArgs) -> Result<()> {
+        Self::create_proposal_inner(ctx, args)
+    }
+
+    /// Create a new proposal with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_proposal_v2(ctx: Context<Self>, args: CreateProposalArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::create_proposal_inner(ctx, args)
+    }
+
+    fn create_proposal_inner(ctx: Context<Self>, args: CreateProposalArgs) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
         let consensus_account = &ctx.accounts.consensus_account;
         let rent_payer = &mut ctx.accounts.rent_payer;
+        let creator = &ctx.accounts.creator;
+
+        // Use canonical key (parent signer key for session keys) for event logging
+        let canonical_key = consensus_account.resolve_canonical_key(creator.key(), creator.is_signer)?;
 
         proposal.settings = consensus_account.key();
         proposal.transaction_index = args.transaction_index;
@@ -122,7 +152,7 @@ impl CreateProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: args.transaction_index,
-            signer: Some(ctx.accounts.creator.key()),
+            signer: Some(canonical_key),
             proposal: Some(proposal.clone().into_inner()),
             memo: None,
         };

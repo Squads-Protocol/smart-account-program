@@ -3,19 +3,22 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_batch_execute_transaction_message;
 use crate::utils::*;
 
 #[derive(Accounts)]
 pub struct ExecuteBatchTransaction<'info> {
     /// Settings account this batch belongs to.
     #[account(
+        mut,
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump
     )]
     pub settings: Account<'info, Settings>,
 
-    /// Signer of the settings.
-    pub signer: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub signer: AccountInfo<'info>,
 
     /// The proposal account associated with the batch.
     /// If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`.
@@ -65,23 +68,34 @@ pub struct ExecuteBatchTransaction<'info> {
 }
 
 impl ExecuteBatchTransaction<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(
+        &mut self,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             settings,
             signer,
             proposal,
+            batch,
             ..
         } = self;
 
-        // `signer`
-        require!(
-            settings.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_batch_execute_transaction_message(
+            &batch.key(),
+            signer.key(),
+            batch.index,
         );
-        require!(
-            settings.signer_has_permission(signer.key(), Permission::Execute),
-            SmartAccountError::Unauthorized
-        );
+
+        // Verify signer (native, session key, or external) and check Execute permission
+        settings.verify_signer(
+            signer,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Execute),
+        )?;
 
         // `proposal`
         match proposal.status {
@@ -104,8 +118,18 @@ impl ExecuteBatchTransaction<'_> {
     }
 
     /// Execute a transaction from the batch.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn execute_batch_transaction(ctx: Context<Self>) -> Result<()> {
+        Self::execute_batch_transaction_inner(ctx)
+    }
+
+    /// Execute a transaction from the batch with V2 signer support.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn execute_batch_transaction_v2(ctx: Context<Self>, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::execute_batch_transaction_inner(ctx)
+    }
+
+    fn execute_batch_transaction_inner(ctx: Context<Self>) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let proposal = &mut ctx.accounts.proposal;
         let batch = &mut ctx.accounts.batch;

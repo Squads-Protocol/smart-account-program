@@ -8,10 +8,13 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { LegacySmartAccountSigner } from './LegacySmartAccountSigner'
+import { SmartAccountSigner } from './SmartAccountSigner'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from './SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from './SmartAccountSignerWrapper'
+import { customSmartAccountSignerWrapperBeet } from '../../types'
 import { Period, periodBeet } from './Period'
 import {
   PolicyCreationPayload,
@@ -31,7 +34,7 @@ import {
  * @private
  */
 export type SettingsActionRecord = {
-  AddSigner: { newSigner: SmartAccountSigner }
+  AddSigner: { newSigner: LegacySmartAccountSigner[] | SmartAccountSigner[] }
   RemoveSigner: { oldSigner: web3.PublicKey }
   ChangeThreshold: { newThreshold: number }
   SetTimeLock: { newTimeLock: number }
@@ -50,7 +53,7 @@ export type SettingsActionRecord = {
   PolicyCreate: {
     seed: beet.bignum
     policyCreationPayload: PolicyCreationPayload
-    signers: SmartAccountSigner[]
+    signers: LegacySmartAccountSigner[] | SmartAccountSigner[]
     threshold: number
     timeLock: number
     startTimestamp: beet.COption<beet.bignum>
@@ -58,13 +61,14 @@ export type SettingsActionRecord = {
   }
   PolicyUpdate: {
     policy: web3.PublicKey
-    signers: SmartAccountSigner[]
+    signers: LegacySmartAccountSigner[] | SmartAccountSigner[]
     threshold: number
     timeLock: number
     policyUpdatePayload: PolicyCreationPayload
     expirationArgs: beet.COption<PolicyExpirationArgs>
   }
   PolicyRemove: { policy: web3.PublicKey }
+  MigrateToV2: void /* scalar variant */
 }
 
 /**
@@ -118,6 +122,9 @@ export const isSettingsActionPolicyRemove = (
   x: SettingsAction
 ): x is SettingsAction & { __kind: 'PolicyRemove' } =>
   x.__kind === 'PolicyRemove'
+export const isSettingsActionMigrateToV2 = (
+  x: SettingsAction
+): x is SettingsAction & { __kind: 'MigrateToV2' } => x.__kind === 'MigrateToV2'
 
 /**
  * @category userTypes
@@ -126,8 +133,8 @@ export const isSettingsActionPolicyRemove = (
 export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
   [
     'AddSigner',
-    new beet.BeetArgsStruct<SettingsActionRecord['AddSigner']>(
-      [['newSigner', smartAccountSignerBeet]],
+    new beet.FixableBeetArgsStruct<SettingsActionRecord['AddSigner']>(
+      [['newSigner', customSmartAccountSignerWrapperBeet]],
       'SettingsActionRecord["AddSigner"]'
     ),
   ],
@@ -197,7 +204,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
       [
         ['seed', beet.u64],
         ['policyCreationPayload', policyCreationPayloadBeet],
-        ['signers', beet.array(smartAccountSignerBeet)],
+        ['signers', customSmartAccountSignerWrapperBeet],
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['startTimestamp', beet.coption(beet.i64)],
@@ -212,7 +219,7 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
     new beet.FixableBeetArgsStruct<SettingsActionRecord['PolicyUpdate']>(
       [
         ['policy', beetSolana.publicKey],
-        ['signers', beet.array(smartAccountSignerBeet)],
+        ['signers', customSmartAccountSignerWrapperBeet],
         ['threshold', beet.u16],
         ['timeLock', beet.u32],
         ['policyUpdatePayload', policyCreationPayloadBeet],
@@ -229,4 +236,5 @@ export const settingsActionBeet = beet.dataEnum<SettingsActionRecord>([
       'SettingsActionRecord["PolicyRemove"]'
     ),
   ],
+  ['MigrateToV2', beet.unit],
 ]) as beet.FixableBeet<SettingsAction, SettingsAction>

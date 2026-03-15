@@ -7,12 +7,19 @@ import {
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  createSignerObject,
+  createSignerArray,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flows / Policy Expiration", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flows / Policy Expiration [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -30,6 +37,24 @@ describe("Flows / Policy Expiration", () => {
         programId,
       })
     )[0];
+
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    for (let i = 0; i < 3; i++) {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+        programId
+      );
+      const msg = new web3.TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new web3.VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+    }
 
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
@@ -55,7 +80,7 @@ describe("Flows / Policy Expiration", () => {
       programId,
     });
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -85,7 +110,7 @@ describe("Flows / Policy Expiration", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -96,7 +121,7 @@ describe("Flows / Policy Expiration", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -107,7 +132,7 @@ describe("Flows / Policy Expiration", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -129,17 +154,14 @@ describe("Flows / Policy Expiration", () => {
     assert.strictEqual(settingsAccount.policySeed?.toString(), "1");
 
     // Add a member to the smart account settings
-    signature = await smartAccount.rpc.executeSettingsTransactionSync({
+    signature = await rpc.executeSettingsTransactionSync({
       connection,
       feePayer: members.proposer,
       settingsPda,
       actions: [
         {
           __kind: "AddSigner",
-          newSigner: {
-            key: web3.PublicKey.unique(),
-            permissions: { mask: 7 },
-          },
+          newSigner: createSignerArray(web3.PublicKey.unique(), { mask: 7 }),
         },
       ],
       signers: [members.almighty],
@@ -163,17 +185,23 @@ describe("Flows / Policy Expiration", () => {
     };
 
     // Reject due to lack of settings account submission
-    assert.rejects(
+    await assert.rejects(
       async () => {
-        await smartAccount.rpc.executePolicyPayloadSync({
+        await rpc.executePolicyPayloadSync({
           connection,
           feePayer: members.voter,
           policy: policyPda,
           accountIndex: 0,
           policyPayload,
           numSigners: 1,
-          // Not submitting the settings account is a violation
-          instruction_accounts: [],
+          // Signer must be in remaining accounts; settings account is omitted
+          instruction_accounts: [
+            {
+              pubkey: members.voter.publicKey,
+              isWritable: false,
+              isSigner: true,
+            },
+          ],
           signers: [members.voter],
           programId,
         });
@@ -189,18 +217,22 @@ describe("Flows / Policy Expiration", () => {
     );
 
     // Reject due to mismatching settings account submission
-    assert.rejects(
+    await assert.rejects(
       async () => {
-        await smartAccount.rpc.executePolicyPayloadSync({
+        await rpc.executePolicyPayloadSync({
           connection,
           feePayer: members.voter,
           policy: policyPda,
           accountIndex: 0,
           policyPayload,
           numSigners: 1,
-          // Not submitting the settings account is a violation
           instruction_accounts: [
-            // Passing a random account as remaining account 0
+            {
+              pubkey: members.voter.publicKey,
+              isWritable: false,
+              isSigner: true,
+            },
+            // Passing a random account as the settings account
             {
               pubkey: members.proposer.publicKey,
               isWritable: true,
@@ -222,18 +254,22 @@ describe("Flows / Policy Expiration", () => {
     );
 
     // Reject due to settings hash expiration
-    assert.rejects(
+    await assert.rejects(
       async () => {
-        await smartAccount.rpc.executePolicyPayloadSync({
+        await rpc.executePolicyPayloadSync({
           connection,
           feePayer: members.voter,
           policy: policyPda,
           accountIndex: 0,
           policyPayload,
           numSigners: 1,
-          // Not submitting the settings account is a violation
           instruction_accounts: [
-            // Passing a random account as remaining account 0
+            {
+              pubkey: members.voter.publicKey,
+              isWritable: false,
+              isSigner: true,
+            },
+            // Correct settings account but state hash is expired
             {
               pubkey: settingsPda,
               isWritable: false,
@@ -253,7 +289,7 @@ describe("Flows / Policy Expiration", () => {
     );
 
     // Update the policy to use the new settings hash
-    signature = await smartAccount.rpc.executeSettingsTransactionSync({
+    signature = await rpc.executeSettingsTransactionSync({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -307,7 +343,7 @@ describe("Flows / Policy Expiration", () => {
     await connection.confirmTransaction(airdropSignature);
 
     // Execute the policy payload
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
+    signature = await rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -354,3 +390,4 @@ describe("Flows / Policy Expiration", () => {
     assert.strictEqual(destinationBalance, 1_000_000_000);
   });
 });
+}

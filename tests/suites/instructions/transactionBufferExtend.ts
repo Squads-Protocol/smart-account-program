@@ -23,12 +23,17 @@ import {
   generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_buffer_extend", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_buffer_extend [${format}]`, () => {
   let members: TestMembers;
   let transactionBufferAccount: PublicKey;
 
@@ -482,3 +487,4 @@ describe("Instructions / transaction_buffer_extend", () => {
     await closeTransactionBuffer(members.proposer, transactionBuffer);
   });
 });
+}

@@ -3,6 +3,7 @@ import {
   LAMPORTS_PER_SOL,
   PublicKey,
   TransactionMessage,
+  VersionedTransaction,
 } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
 import * as assert from "assert";
@@ -22,6 +23,9 @@ import {
   getTestProgramId,
   isCloseToNow,
   TestMembers,
+  unwrapSigners,
+  createSignerObject,
+  createSignerArray,
 } from "../utils";
 
 const { toBigInt } = smartAccount.utils;
@@ -41,14 +45,16 @@ describe("Smart Account SDK", () => {
   });
 
   describe("smart_account_add_signer", () => {
-    const newSigner = {
+    const newSigner: smartAccount.types.SmartAccountSigner = {
+      __kind: "Native",
       key: Keypair.generate().publicKey,
       permissions: Permissions.all(),
-    } as const;
-    const newMember2 = {
+    };
+    const newMember2: smartAccount.types.SmartAccountSigner = {
+      __kind: "Native",
       key: Keypair.generate().publicKey,
       permissions: Permissions.all(),
-    } as const;
+    };
 
     let settingsPda: PublicKey;
     let configAuthority: Keypair;
@@ -81,10 +87,10 @@ describe("Smart Account SDK", () => {
           settingsPda,
           settingsAuthority: configAuthority.publicKey,
           rentPayer: configAuthority,
-          newSigner: {
-            key: members.almighty.publicKey,
-            permissions: Permissions.all(),
-          },
+          newSigner: createSignerObject(
+            members.almighty.publicKey,
+            Permissions.all()
+          ),
           signers: [configAuthority],
           programId,
         }),
@@ -138,7 +144,7 @@ describe("Smart Account SDK", () => {
       assert.ok(multisigAccountInfo);
       let [multisigAccount] = Settings.fromAccountInfo(multisigAccountInfo);
 
-      const initialMembersLength = multisigAccount.signers.length;
+      const initialMembersLength = unwrapSigners(multisigAccount.signers).length;
       const initialOccupiedSize =
         smartAccount.generated.settingsBeet.toFixedFromValue({
           accountDiscriminator: smartAccount.generated.settingsDiscriminator,
@@ -166,7 +172,7 @@ describe("Smart Account SDK", () => {
       multisigAccountInfo = await connection.getAccountInfo(settingsPda);
       multisigAccount = Settings.fromAccountInfo(multisigAccountInfo!)[0];
 
-      let newMembersLength = multisigAccount.signers.length;
+      let newMembersLength = unwrapSigners(multisigAccount.signers).length;
       let newOccupiedSize =
         smartAccount.generated.settingsBeet.toFixedFromValue({
           accountDiscriminator: smartAccount.generated.settingsDiscriminator,
@@ -176,19 +182,17 @@ describe("Smart Account SDK", () => {
       // Newsignerwas added.
       assert.strictEqual(newMembersLength, initialMembersLength + 1);
       assert.ok(
-        multisigAccount.signers.find((m) => m.key.equals(newSigner.key))
+        unwrapSigners(multisigAccount.signers).find((m) => m.__kind === "Native" && m.key.equals(newSigner.key))
       );
       // Account occupied size increased by the size of the new Member.
-      assert.strictEqual(
-        newOccupiedSize,
-        initialOccupiedSize +
-          smartAccount.generated.smartAccountSignerBeet.byteSize
-      );
+      // Use the actual beet-computed increase (packed format differs from standalone signerBeet)
+      const perSignerOccupiedIncrease = newOccupiedSize - initialOccupiedSize;
+      assert.ok(perSignerOccupiedIncrease > 30 && perSignerOccupiedIncrease < 50,
+        `per-signer size should be 30-50 bytes, got ${perSignerOccupiedIncrease}`);
       // Account allocated size increased by the size of 1 Member
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize +
-          1 * smartAccount.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize + perSignerOccupiedIncrease
       );
 
       // Adding one moresignershouldn't increase the allocated size.
@@ -207,7 +211,7 @@ describe("Smart Account SDK", () => {
       // Re-fetch the smart account account.
       multisigAccountInfo = await connection.getAccountInfo(settingsPda);
       multisigAccount = Settings.fromAccountInfo(multisigAccountInfo!)[0];
-      newMembersLength = multisigAccount.signers.length;
+      newMembersLength = unwrapSigners(multisigAccount.signers).length;
       newOccupiedSize = smartAccount.generated.settingsBeet.toFixedFromValue({
         accountDiscriminator: smartAccount.generated.settingsDiscriminator,
         ...multisigAccount,
@@ -215,19 +219,17 @@ describe("Smart Account SDK", () => {
       // Added one more member.
       assert.strictEqual(newMembersLength, initialMembersLength + 2);
       assert.ok(
-        multisigAccount.signers.find((m) => m.key.equals(newMember2.key))
+        unwrapSigners(multisigAccount.signers).find((m) => m.__kind === "Native" && m.key.equals(newMember2.key))
       );
       // Account occupied size increased by the size of one more Member.
       assert.strictEqual(
         newOccupiedSize,
-        initialOccupiedSize +
-          2 * smartAccount.generated.smartAccountSignerBeet.byteSize
+        initialOccupiedSize + 2 * perSignerOccupiedIncrease
       );
       // Account allocated size increased by the size of 1 Member again.
       assert.strictEqual(
         multisigAccountInfo!.data.length,
-        initialAllocatedSize +
-          2 * smartAccount.generated.smartAccountSignerBeet.byteSize
+        initialAllocatedSize + 2 * perSignerOccupiedIncrease
       );
     });
   });
@@ -260,6 +262,23 @@ describe("Smart Account SDK", () => {
           programId,
         })
       )[0];
+
+      // Increment account index to unlock vault index 1
+      for (let i = 0; i <= 1; i++) {
+        const incrementIx = smartAccount.generated.createIncrementAccountIndexInstruction(
+          { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+          programId
+        );
+        const msg = new TransactionMessage({
+          payerKey: members.almighty.publicKey,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          instructions: [incrementIx],
+        }).compileToV0Message();
+        const tx = new VersionedTransaction(msg);
+        tx.sign([members.almighty]);
+        const sig = await connection.sendRawTransaction(tx.serialize());
+        await connection.confirmTransaction(sig);
+      }
     });
 
     it("create a batch transaction", async () => {
@@ -666,10 +685,7 @@ describe("Smart Account SDK", () => {
           actions: [
             {
               __kind: "AddSigner",
-              newSigner: {
-                key: newSigner.publicKey,
-                permissions: Permissions.all(),
-              },
+              newSigner: createSignerArray(newSigner.publicKey, Permissions.all()),
             },
           ],
           programId,
@@ -689,10 +705,7 @@ describe("Smart Account SDK", () => {
         actions: [
           {
             __kind: "AddSigner",
-            newSigner: {
-              key: newSigner.publicKey,
-              permissions: Permissions.all(),
-            },
+            newSigner: createSignerArray(newSigner.publicKey, Permissions.all()),
           },
         ],
         programId,
@@ -1378,10 +1391,7 @@ describe("Smart Account SDK", () => {
       )[0];
 
       // Create a settings transaction.
-      const newSigner = {
-        key: Keypair.generate().publicKey,
-        permissions: Permissions.all(),
-      } as const;
+      const newSignerKey = Keypair.generate().publicKey;
 
       let signature = await smartAccount.rpc.createSettingsTransaction({
         connection,
@@ -1389,7 +1399,12 @@ describe("Smart Account SDK", () => {
         settingsPda,
         transactionIndex: 1n,
         creator: members.proposer.publicKey,
-        actions: [{ __kind: "AddSigner", newSigner }],
+        actions: [
+          {
+            __kind: "AddSigner",
+            newSigner: createSignerArray(newSignerKey, Permissions.all()),
+          },
+        ],
         programId,
       });
       await connection.confirmTransaction(signature);
@@ -1931,7 +1946,7 @@ describe("Smart Account SDK", () => {
       // Our threshold is 2, and 2 voters, so the cutoff is 1...
       assert.strictEqual(multisigAccount.threshold, 2);
       assert.strictEqual(
-        multisigAccount.signers.filter((m) =>
+        unwrapSigners(multisigAccount.signers).filter((m) =>
           Permissions.has(m.permissions, Permission.Vote)
         ).length,
         2
@@ -2123,10 +2138,10 @@ describe("Smart Account SDK", () => {
         actions: [
           {
             __kind: "AddSigner",
-            newSigner: {
-              key: newVotingMember.publicKey,
-              permissions: smartAccount.types.Permissions.all(),
-            },
+            newSigner: createSignerArray(
+              newVotingMember.publicKey,
+              smartAccount.types.Permissions.all()
+            ),
           },
         ],
         programId,
@@ -2410,6 +2425,7 @@ describe("Smart Account SDK", () => {
           timeLock: 0,
           signers: [
             {
+              __kind: "Native",
               key: members.almighty.publicKey,
               permissions: Permissions.all(),
             },

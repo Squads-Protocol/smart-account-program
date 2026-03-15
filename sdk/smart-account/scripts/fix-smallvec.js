@@ -41,7 +41,6 @@ const SMALLVEC_U8_BEET_TYPES_FILE_SPECIFIC = {
     'CompiledAccountConstraintType.ts',
   ],
   'beetSolana.publicKey': [
-    'SmartAccountTransactionMessage.ts',
     'ProgramInteractionPolicyCreationPayload.ts',
   ],
 };

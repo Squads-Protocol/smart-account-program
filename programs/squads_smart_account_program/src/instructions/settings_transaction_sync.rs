@@ -1,10 +1,16 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
-use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
+use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, state::signer_v2::ExtraVerificationData, state::signer_v2::precompile::create_sync_consensus_message, utils::*, SmallVec};
 
+/// Arguments for synchronous settings transaction
+///
+/// # BREAKING CHANGE (v2)
+/// `num_signers` now represents the TOTAL count of ALL signers (native + external).
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
-    /// The number of signers to reach threshold and adequate permissions
+    /// Total count of ALL signers (native + external) in remaining_accounts.
+    /// Instructions sysvar must be at position num_signers if external signers present.
     pub num_signers: u8,
     /// The settings actions to execute
     pub actions: Vec<SettingsAction>,
@@ -36,9 +42,10 @@ pub struct SyncSettingsTransaction<'info> {
 
 impl<'info> SyncSettingsTransaction<'info> {
     fn validate(
-        &self,
+        &mut self,
         args: &SyncSettingsTransactionArgs,
         remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
     ) -> Result<()> {
         let Self { consensus_account, .. } = self;
         // Get the settings
@@ -54,14 +61,46 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Validates the proposed settings changes
         validate_settings_actions(&args.actions)?;
 
+        // Build message for external signer verification.
+        // Hash the actions payload so external signers commit to the exact settings changes.
+        let actions_bytes = args.actions.try_to_vec()
+            .map_err(|_| SmartAccountError::InvalidPayload)?;
+        let payload_hash = hash(&actions_bytes);
+        let message = create_sync_consensus_message(
+            &consensus_account.key(),
+            consensus_account.transaction_index(),
+            &payload_hash.to_bytes(),
+        );
+
         // Validates synchronous consensus across the signers
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)?;
+        let evd: &[ExtraVerificationData] = match &extra_verification_data {
+            Some(v) => v,
+            None => &[],
+        };
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts, message, evd)?;
 
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn sync_settings_transaction(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncSettingsTransactionArgs,
+    ) -> Result<()> {
+        Self::sync_settings_transaction_inner(ctx, args)
+    }
+
+    /// Sync settings transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn sync_settings_transaction_v2(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncSettingsTransactionArgs,
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
+    ) -> Result<()> {
+        Self::sync_settings_transaction_inner(ctx, args)
+    }
+
+    fn sync_settings_transaction_inner(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: SyncSettingsTransactionArgs,
     ) -> Result<()> {
@@ -99,7 +138,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Make sure the smart account can fit the updated state: added signers or newly set archival_authority.
         Settings::realloc_if_needed(
             settings_account_info,
-            settings.signers.len(),
+            &settings.signers,
             ctx.accounts
                 .rent_payer
                 .as_ref()

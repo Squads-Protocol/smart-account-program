@@ -43,13 +43,13 @@ export function executeSettingsTransaction({
     }));
   }
   if (policies) {
-    remainingAccounts = policies.map((policy) => ({
+    remainingAccounts.push(...policies.map((policy) => ({
       pubkey: policy,
       isWritable: true,
       isSigner: false,
-    }));
+    })));
   }
-  return createExecuteSettingsTransactionInstruction(
+  const ix = createExecuteSettingsTransactionInstruction(
     {
       settings: settingsPda,
       signer: signer,
@@ -62,4 +62,7 @@ export function executeSettingsTransaction({
     },
     programId
   );
+  const signerMeta = ix.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return ix;
 }

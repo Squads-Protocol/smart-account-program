@@ -606,10 +606,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer on the smart account that is creating the transaction."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -657,10 +654,7 @@
         {
           "name": "signer",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer on the smart account that is executing the transaction."
-          ]
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -725,10 +719,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The member of the multisig that is creating the transaction."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -777,10 +768,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer on the smart account that is creating the transaction."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -851,10 +839,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer on the smart account that created the TransactionBuffer."
-          ]
+          "isSigner": false
         }
       ],
       "args": [
@@ -889,10 +874,7 @@
             {
               "name": "creator",
               "isMut": false,
-              "isSigner": true,
-              "docs": [
-                "The member of the multisig that is creating the transaction."
-              ]
+              "isSigner": false
             },
             {
               "name": "rentPayer",
@@ -922,7 +904,7 @@
         {
           "name": "creator",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         }
       ],
       "args": [
@@ -965,7 +947,7 @@
         {
           "name": "signer",
           "isMut": false,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "program",
@@ -994,10 +976,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer of the settings that is creating the batch."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -1060,10 +1039,7 @@
         {
           "name": "signer",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "Signer of the smart account."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -1105,10 +1081,7 @@
         {
           "name": "signer",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "Signer of the settings."
-          ]
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -1154,10 +1127,7 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
-          "docs": [
-            "The signer on the smart account that is creating the proposal."
-          ]
+          "isSigner": false
         },
         {
           "name": "rentPayer",
@@ -1195,13 +1165,13 @@
       "accounts": [
         {
           "name": "settings",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": true
+          "isMut": false,
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -1226,7 +1196,7 @@
         {
           "name": "signer",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -1269,7 +1239,7 @@
         {
           "name": "signer",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -1312,7 +1282,7 @@
         {
           "name": "signer",
           "isMut": true,
-          "isSigner": true
+          "isSigner": false
         },
         {
           "name": "proposal",
@@ -1883,6 +1853,1038 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "createSettingsTransactionV2",
+      "docs": [
+        "Create a new settings transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateSettingsTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeSettingsTransactionV2",
+      "docs": [
+        "Execute a settings transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The settings account of the smart account that owns the transaction."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged/credited in case the settings transaction causes space reallocation,",
+            "for example when adding a new signer, adding or removing a spending limit.",
+            "This is usually the same as `signer`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createTransactionV2",
+      "docs": [
+        "Create a new vault transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeTransactionV2",
+      "docs": [
+        "Execute a smart account transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the transaction."
+          ]
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createTransactionBufferV2",
+      "docs": [
+        "Create a transaction buffer with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionBufferArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "extendTransactionBufferV2",
+      "docs": [
+        "Extend a transaction buffer with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExtendTransactionBufferArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createTransactionFromBufferV2",
+      "docs": [
+        "Create a new vault transaction from buffer with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "transactionCreate",
+          "accounts": [
+            {
+              "name": "consensusAccount",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "transaction",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "creator",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "rentPayer",
+              "isMut": true,
+              "isSigner": true,
+              "docs": [
+                "The payer for the transaction account rent."
+              ]
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            },
+            {
+              "name": "program",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createBatchV2",
+      "docs": [
+        "Create a new batch with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateBatchArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "addTransactionToBatchV2",
+      "docs": [
+        "Add a transaction to a batch with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Settings account this batch belongs to."
+          ]
+        },
+        {
+          "name": "proposal",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "`BatchTransaction` account to initialize and add to the `batch`."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the batch transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "AddTransactionToBatchArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeBatchTransactionV2",
+      "docs": [
+        "Execute a transaction from a batch with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Settings account this batch belongs to."
+          ]
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The proposal account associated with the batch.",
+            "If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`."
+          ]
+        },
+        {
+          "name": "batch",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "Batch transaction to execute."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createProposalV2",
+      "docs": [
+        "Create a new proposal with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the proposal account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateProposalArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "activateProposalV2",
+      "docs": [
+        "Activate a proposal with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "approveProposalV2",
+      "docs": [
+        "Approve a proposal with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rejectProposalV2",
+      "docs": [
+        "Reject a proposal with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancelProposalV2",
+      "docs": [
+        "Cancel a proposal with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "proposal",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "VoteOnProposalArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeTransactionSyncV2External",
+      "docs": [
+        "Synchronously execute a transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SyncTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "vec": {
+                "defined": "ExtraVerificationData"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeSettingsTransactionSyncV2",
+      "docs": [
+        "Synchronously execute a settings transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "isOptional": true,
+          "docs": [
+            "The account that will be charged/credited in case the settings transaction causes space reallocation,",
+            "for example when adding a new signer, adding or removing a spending limit.",
+            "This is usually the same as `signer`, but can be a different account if needed."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": true,
+          "docs": [
+            "We might need it in case reallocation is needed."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SyncSettingsTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "vec": {
+                "defined": "ExtraVerificationData"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "executeTransactionSyncLegacyV2",
+      "docs": [
+        "Legacy synchronous transaction with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "LegacySyncTransactionArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "vec": {
+                "defined": "ExtraVerificationData"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "createSessionKey",
+      "docs": [
+        "Create a session key for an external signer.",
+        "The external signer must prove ownership via precompile or syscall verification."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The external signer authorizing session key creation.",
+            "This is the signer's key_id (truncated pubkey)."
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateSessionKeyArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "revokeSessionKey",
+      "docs": [
+        "Revoke a session key from an external signer.",
+        "Can be authorized by the external signer (via precompile/syscall) or",
+        "the current session key holder (via native signature)."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "authority",
+          "isMut": false,
+          "isSigner": false,
+          "docs": [
+            "The authority revoking the session key. Can be either:",
+            "1. The external signer (verified via precompile/syscall)",
+            "2. The current session key holder (verified via is_signer)"
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RevokeSessionKeyArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2141,12 +3143,10 @@
           {
             "name": "signers",
             "docs": [
-              "Signers attached to the policy with their permissions."
+              "Signers attached to the policy with their permissions (V1 or V2 format)."
             ],
             "type": {
-              "vec": {
-                "defined": "SmartAccountSigner"
-              }
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -2480,12 +3480,10 @@
           {
             "name": "signers",
             "docs": [
-              "Signers attached to the smart account"
+              "Signers attached to the smart account (V1 or V2 format)"
             ],
             "type": {
-              "vec": {
-                "defined": "SmartAccountSigner"
-              }
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -2740,7 +3738,7 @@
           {
             "name": "newSigner",
             "type": {
-              "defined": "SmartAccountSigner"
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -3005,6 +4003,28 @@
       }
     },
     {
+      "name": "CreateSessionKeyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sessionKey",
+            "docs": [
+              "The new session key pubkey (a native Solana keypair)"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "sessionKeyExpiration",
+            "docs": [
+              "Session key expiration timestamp (Unix seconds)"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "LogEventArgs",
       "type": {
         "kind": "struct",
@@ -3140,6 +4160,21 @@
       }
     },
     {
+      "name": "RevokeSessionKeyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signerKey",
+            "docs": [
+              "The key_id of the external signer whose session key to revoke"
+            ],
+            "type": "publicKey"
+          }
+        ]
+      }
+    },
+    {
       "name": "CreateSettingsTransactionArgs",
       "type": {
         "kind": "struct",
@@ -3163,13 +4198,20 @@
     },
     {
       "name": "SyncSettingsTransactionArgs",
+      "docs": [
+        "Arguments for synchronous settings transaction",
+        "",
+        "# BREAKING CHANGE (v2)",
+        "`num_signers` now represents the TOTAL count of ALL signers (native + external)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "numSigners",
             "docs": [
-              "The number of signers to reach threshold and adequate permissions"
+              "Total count of ALL signers (native + external) in remaining_accounts.",
+              "Instructions sysvar must be at position num_signers if external signers present."
             ],
             "type": "u8"
           },
@@ -3221,9 +4263,7 @@
               "The signers on the smart account."
             ],
             "type": {
-              "vec": {
-                "defined": "SmartAccountSigner"
-              }
+              "defined": "SmartAccountSignerWrapper"
             }
           },
           {
@@ -3466,6 +4506,12 @@
     },
     {
       "name": "LegacySyncTransactionArgs",
+      "docs": [
+        "Arguments for synchronous transaction execution (legacy)",
+        "",
+        "# BREAKING CHANGE (v2)",
+        "`num_signers` now represents the TOTAL count of ALL signers (native + external)."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3479,7 +4525,8 @@
           {
             "name": "numSigners",
             "docs": [
-              "The number of signers to reach threshold and adequate permissions"
+              "Total count of ALL signers (native + external) in remaining_accounts.",
+              "Instructions sysvar must be at position num_signers if external signers present."
             ],
             "type": "u8"
           },
@@ -3495,6 +4542,14 @@
     },
     {
       "name": "SyncTransactionArgs",
+      "docs": [
+        "Arguments for synchronous transaction execution",
+        "",
+        "# BREAKING CHANGE (v2)",
+        "`num_signers` now represents the TOTAL count of ALL signers (native + external),",
+        "not just native signers. The instructions sysvar (if external signers are present)",
+        "must be placed at position `num_signers` in remaining_accounts."
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -3504,6 +4559,12 @@
           },
           {
             "name": "numSigners",
+            "docs": [
+              "Total count of ALL signers (native + external) in remaining_accounts.",
+              "- Native signers have AccountInfo.is_signer = true",
+              "- External signers have AccountInfo.is_signer = false",
+              "- Instructions sysvar must be at position num_signers"
+            ],
             "type": "u8"
           },
           {
@@ -4605,7 +5666,7 @@
       }
     },
     {
-      "name": "SmartAccountSigner",
+      "name": "LegacySmartAccountSigner",
       "type": {
         "kind": "struct",
         "fields": [
@@ -4633,6 +5694,202 @@
           {
             "name": "mask",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClientDataJsonReconstructionParams",
+      "docs": [
+        "Parameters for reconstructing clientDataJSON on-chain.",
+        "Packed into a single byte + optional port to minimize storage.",
+        "",
+        "Only used by the precompile verification path for P256/WebAuthn signers."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "typeAndFlags",
+            "docs": [
+              "High 4 bits: type (0x00 = create, 0x10 = get)",
+              "Low 4 bits: flags (cross_origin, http, google_extra)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "port",
+            "docs": [
+              "Optional port number (0 means no port)"
+            ],
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ed25519ExternalData",
+      "docs": [
+        "Ed25519 external signer data for hardware keys or off-chain Ed25519 signers.",
+        "",
+        "This is for Ed25519 keys that are NOT native Solana transaction signers.",
+        "Instead, they're verified via the Ed25519 precompile introspection.",
+        "",
+        "## Fields",
+        "- `external_pubkey`: 32 bytes - Ed25519 public key verified via precompile",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "externalPubkey",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "sessionKeyData",
+            "type": {
+              "defined": "SessionKeyData"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256k1Data",
+      "docs": [
+        "Secp256k1 signer data for Ethereum-style authentication.",
+        "",
+        "## Fields",
+        "- `uncompressed_pubkey`: 64 bytes - Uncompressed secp256k1 public key (no 0x04 prefix)",
+        "- `eth_address`: 20 bytes - keccak256(pubkey)[12..32], the Ethereum address",
+        "- `has_eth_address`: 1 byte - Whether eth_address has been validated",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "uncompressedPubkey",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "ethAddress",
+            "type": {
+              "array": [
+                "u8",
+                20
+              ]
+            }
+          },
+          {
+            "name": "hasEthAddress",
+            "type": "bool"
+          },
+          {
+            "name": "sessionKeyData",
+            "type": {
+              "defined": "SessionKeyData"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionKeyData",
+      "docs": [
+        "Session key data shared by all external signer types.",
+        "Extracted into a separate struct to eliminate code duplication."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "docs": [
+              "Optional session key pubkey. Pubkey::default() means no session key."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "expiration",
+            "docs": [
+              "Session key expiration timestamp (Unix seconds). 0 if no session key."
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "P256WebauthnData",
+      "docs": [
+        "P256/WebAuthn signer data for passkey authentication.",
+        "",
+        "## Fields",
+        "- `compressed_pubkey`: 33 bytes - Compressed P256 public key for signature verification",
+        "- `rp_id_len`: 1 byte - Actual length of RP ID (since rp_id is zero-padded to 32 bytes)",
+        "- `rp_id`: 32 bytes - Relying Party ID string, used for origin verification",
+        "- `rp_id_hash`: 32 bytes - SHA256 of RP ID, provided by authenticator in auth data",
+        "- `counter`: 8 bytes - WebAuthn counter for replay protection (MUST be monotonically increasing)",
+        "- `session_key`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "compressedPubkey",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "rpIdLen",
+            "type": "u8"
+          },
+          {
+            "name": "rpId",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "rpIdHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "counter",
+            "type": "u64"
+          },
+          {
+            "name": "sessionKeyData",
+            "docs": [
+              "Session key for temporary native key delegation"
+            ],
+            "type": {
+              "defined": "SessionKeyData"
+            }
           }
         ]
       }
@@ -4844,6 +6101,56 @@
             "fields": [
               {
                 "defined": "PolicyPayload"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClassifiedSigner",
+      "docs": [
+        "Result of signer classification"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Native",
+            "fields": [
+              {
+                "name": "signer",
+                "type": {
+                  "defined": "SmartAccountSigner"
+                }
+              }
+            ]
+          },
+          {
+            "name": "SessionKey",
+            "fields": [
+              {
+                "name": "parentSigner",
+                "type": {
+                  "defined": "SmartAccountSigner"
+                }
+              },
+              {
+                "name": "sessionKeyData",
+                "type": {
+                  "defined": "SessionKeyData"
+                }
+              }
+            ]
+          },
+          {
+            "name": "External",
+            "fields": [
+              {
+                "name": "signer",
+                "type": {
+                  "defined": "SmartAccountSigner"
+                }
               }
             ]
           }
@@ -5092,7 +6399,7 @@
               {
                 "name": "newSigner",
                 "type": {
-                  "defined": "SmartAccountSigner"
+                  "defined": "SmartAccountSignerWrapper"
                 }
               }
             ]
@@ -5427,7 +6734,7 @@
               {
                 "name": "newSigner",
                 "type": {
-                  "defined": "SmartAccountSigner"
+                  "defined": "SmartAccountSignerWrapper"
                 }
               }
             ]
@@ -5578,9 +6885,7 @@
                   "Signers attached to the policy with their permissions."
                 ],
                 "type": {
-                  "vec": {
-                    "defined": "SmartAccountSigner"
-                  }
+                  "defined": "SmartAccountSignerWrapper"
                 }
               },
               {
@@ -5635,9 +6940,7 @@
                   "Signers attached to the policy with their permissions."
                 ],
                 "type": {
-                  "vec": {
-                    "defined": "SmartAccountSigner"
-                  }
+                  "defined": "SmartAccountSignerWrapper"
                 }
               },
               {
@@ -5685,6 +6988,291 @@
                   "The policy account to remove."
                 ],
                 "type": "publicKey"
+              }
+            ]
+          },
+          {
+            "name": "MigrateToV2"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Ed25519SyscallError",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InvalidArgument"
+          },
+          {
+            "name": "InvalidPublicKey"
+          },
+          {
+            "name": "InvalidSignature"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtraVerificationData",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "P256WebauthnPrecompile",
+            "fields": [
+              {
+                "name": "clientDataParams",
+                "type": {
+                  "defined": "ClientDataJsonReconstructionParams"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Ed25519Precompile"
+          },
+          {
+            "name": "Secp256k1Precompile"
+          },
+          {
+            "name": "Ed25519Syscall",
+            "fields": [
+              {
+                "name": "signature",
+                "type": {
+                  "array": [
+                    "u8",
+                    64
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Secp256k1Syscall",
+            "fields": [
+              {
+                "name": "signature",
+                "type": {
+                  "array": [
+                    "u8",
+                    64
+                  ]
+                }
+              },
+              {
+                "name": "recoveryId",
+                "type": "u8"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignerMatchKey",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "P256",
+            "fields": [
+              {
+                "array": [
+                  "u8",
+                  33
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Secp256k1",
+            "fields": [
+              {
+                "array": [
+                  "u8",
+                  20
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Ed25519",
+            "fields": [
+              {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256k1SyscallError",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InvalidArgument"
+          },
+          {
+            "name": "InvalidSignature"
+          },
+          {
+            "name": "RecoveryFailed"
+          },
+          {
+            "name": "AddressMismatch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmartAccountSigner",
+      "docs": [
+        "Unified V2 signer enum",
+        "Each variant contains:",
+        "- permissions: Permissions (same bitmask as V1)",
+        "- type-specific data"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Native",
+            "fields": [
+              {
+                "name": "key",
+                "type": "publicKey"
+              },
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              }
+            ]
+          },
+          {
+            "name": "P256Webauthn",
+            "fields": [
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "P256WebauthnData"
+                }
+              },
+              {
+                "name": "nonce",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "Secp256k1",
+            "fields": [
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "Secp256k1Data"
+                }
+              },
+              {
+                "name": "nonce",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "Ed25519External",
+            "fields": [
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "Ed25519ExternalData"
+                }
+              },
+              {
+                "name": "nonce",
+                "type": "u64"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SignerType",
+      "docs": [
+        "V2 signer type discriminator (explicit u8 values for stability)"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Native"
+          },
+          {
+            "name": "P256Webauthn"
+          },
+          {
+            "name": "Secp256k1"
+          },
+          {
+            "name": "Ed25519External"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmartAccountSignerWrapper",
+      "docs": [
+        "Wrapper for signers that supports both V1 and V2 formats",
+        "Uses custom Borsh serialization to maintain V1 backward compatibility"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "V1",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "LegacySmartAccountSigner"
+                }
+              }
+            ]
+          },
+          {
+            "name": "V2",
+            "fields": [
+              {
+                "vec": {
+                  "defined": "SmartAccountSigner"
+                }
               }
             ]
           }
@@ -6027,379 +7615,474 @@
     },
     {
       "code": 6057,
-      "name": "PlaceholderError",
-      "msg": "Placeholder error"
-    },
-    {
-      "code": 6058,
       "name": "InvalidPolicyPayload",
       "msg": "Invalid policy payload"
     },
     {
-      "code": 6059,
+      "code": 6058,
       "name": "InvalidEmptyPolicy",
       "msg": "Invalid empty policy"
     },
     {
-      "code": 6060,
+      "code": 6059,
       "name": "TransactionForAnotherPolicy",
       "msg": "Transaction is for another policy"
     },
     {
-      "code": 6061,
+      "code": 6060,
       "name": "ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction",
       "msg": "Program interaction sync payload not allowed with async transaction"
     },
     {
-      "code": 6062,
+      "code": 6061,
       "name": "ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction",
       "msg": "Program interaction sync payload not allowed with sync transaction"
     },
     {
-      "code": 6063,
+      "code": 6062,
       "name": "ProgramInteractionDataTooShort",
       "msg": "Program interaction data constraint failed: instruction data too short"
     },
     {
-      "code": 6064,
+      "code": 6063,
       "name": "ProgramInteractionInvalidNumericValue",
       "msg": "Program interaction data constraint failed: invalid numeric value"
     },
     {
-      "code": 6065,
+      "code": 6064,
       "name": "ProgramInteractionInvalidByteSequence",
       "msg": "Program interaction data constraint failed: invalid byte sequence"
     },
     {
-      "code": 6066,
+      "code": 6065,
       "name": "ProgramInteractionUnsupportedSliceOperator",
       "msg": "Program interaction data constraint failed: unsupported operator for byte slice"
     },
     {
-      "code": 6067,
+      "code": 6066,
       "name": "ProgramInteractionDataParsingError",
       "msg": "Program interaction constraint failed: instruction data parsing error"
     },
     {
-      "code": 6068,
+      "code": 6067,
       "name": "ProgramInteractionProgramIdMismatch",
       "msg": "Program interaction constraint failed: program ID mismatch"
     },
     {
-      "code": 6069,
+      "code": 6068,
       "name": "ProgramInteractionAccountConstraintViolated",
       "msg": "Program interaction constraint violation: account constraint"
     },
     {
-      "code": 6070,
+      "code": 6069,
       "name": "ProgramInteractionConstraintIndexOutOfBounds",
       "msg": "Program interaction constraint violation: instruction constraint index out of bounds"
     },
     {
-      "code": 6071,
+      "code": 6070,
       "name": "ProgramInteractionInstructionCountMismatch",
       "msg": "Program interaction constraint violation: instruction count mismatch"
     },
     {
-      "code": 6072,
+      "code": 6071,
       "name": "ProgramInteractionInsufficientLamportAllowance",
       "msg": "Program interaction constraint violation: insufficient remaining lamport allowance"
     },
     {
-      "code": 6073,
+      "code": 6072,
       "name": "ProgramInteractionInsufficientTokenAllowance",
       "msg": "Program interaction constraint violation: insufficient remaining token allowance"
     },
     {
-      "code": 6074,
+      "code": 6073,
       "name": "ProgramInteractionModifiedIllegalBalance",
       "msg": "Program interaction constraint violation: modified illegal balance"
     },
     {
-      "code": 6075,
+      "code": 6074,
       "name": "ProgramInteractionIllegalTokenAccountModification",
       "msg": "Program interaction constraint violation: illegal token account modification"
     },
     {
-      "code": 6076,
+      "code": 6075,
       "name": "ProgramInteractionDuplicateSpendingLimit",
       "msg": "Program interaction invariant violation: duplicate spending limit for the same mint"
     },
     {
-      "code": 6077,
+      "code": 6076,
       "name": "ProgramInteractionTooManyInstructionConstraints",
       "msg": "Program interaction constraint violation: too many instruction constraints. Max is 20"
     },
     {
-      "code": 6078,
+      "code": 6077,
       "name": "ProgramInteractionTooManySpendingLimits",
       "msg": "Program interaction constraint violation: too many spending limits. Max is 10"
     },
     {
-      "code": 6079,
+      "code": 6078,
       "name": "ProgramInteractionInvalidPubkeyTableIndex",
       "msg": "Program interaction constraint violation: invalid pubkey table index"
     },
     {
-      "code": 6080,
+      "code": 6079,
       "name": "ProgramInteractionTooManyUniquePubkeys",
       "msg": "Program interaction constraint violation: too many unique pubkeys. Max is 240 (indices 240-255 reserved for builtin programs)"
     },
     {
-      "code": 6081,
+      "code": 6080,
       "name": "ProgramInteractionTemplateHookError",
       "msg": "Program interaction hook violation: template hook error"
     },
     {
-      "code": 6082,
+      "code": 6081,
       "name": "ProgramInteractionHookAuthorityCannotBePartOfHookAccounts",
       "msg": "Program interaction hook violation: hook authority cannot be part of hook accounts"
     },
     {
-      "code": 6083,
+      "code": 6082,
       "name": "SpendingLimitNotActive",
       "msg": "Spending limit is not active"
     },
     {
-      "code": 6084,
+      "code": 6083,
       "name": "SpendingLimitExpired",
       "msg": "Spending limit is expired"
     },
     {
-      "code": 6085,
+      "code": 6084,
       "name": "SpendingLimitPolicyInvariantAccumulateUnused",
       "msg": "Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true"
     },
     {
-      "code": 6086,
+      "code": 6085,
       "name": "SpendingLimitViolatesExactQuantityConstraint",
       "msg": "Amount violates exact quantity constraint"
     },
     {
-      "code": 6087,
+      "code": 6086,
       "name": "SpendingLimitViolatesMaxPerUseConstraint",
       "msg": "Amount violates max per use constraint"
     },
     {
-      "code": 6088,
+      "code": 6087,
       "name": "SpendingLimitInsufficientRemainingAmount",
       "msg": "Spending limit is insufficient"
     },
     {
-      "code": 6089,
+      "code": 6088,
       "name": "SpendingLimitInvariantMaxPerPeriodZero",
       "msg": "Spending limit invariant violation: max per period must be non-zero"
     },
     {
-      "code": 6090,
+      "code": 6089,
       "name": "SpendingLimitInvariantStartTimePositive",
       "msg": "Spending limit invariant violation: start time must be positive"
     },
     {
-      "code": 6091,
+      "code": 6090,
       "name": "SpendingLimitInvariantExpirationSmallerThanStart",
       "msg": "Spending limit invariant violation: expiration must be greater than start"
     },
     {
-      "code": 6092,
+      "code": 6091,
       "name": "SpendingLimitInvariantOverflowEnabledMustHaveExpiration",
       "msg": "Spending limit invariant violation: overflow enabled must have expiration"
     },
     {
-      "code": 6093,
+      "code": 6092,
       "name": "SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled",
       "msg": "Spending limit invariant violation: one time period cannot have overflow enabled"
     },
     {
-      "code": 6094,
+      "code": 6093,
       "name": "SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount",
       "msg": "Spending limit invariant violation: remaining amount must be less than max amount"
     },
     {
-      "code": 6095,
+      "code": 6094,
       "name": "SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: remaining amount must be less than or equal to max per period"
     },
     {
-      "code": 6096,
+      "code": 6095,
       "name": "SpendingLimitInvariantExactQuantityMaxPerUseZero",
       "msg": "Spending limit invariant violation: exact quantity must have max per use non-zero"
     },
     {
-      "code": 6097,
+      "code": 6096,
       "name": "SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod",
       "msg": "Spending limit invariant violation: max per use must be less than or equal to max per period"
     },
     {
-      "code": 6098,
+      "code": 6097,
       "name": "SpendingLimitInvariantCustomPeriodNegative",
       "msg": "Spending limit invariant violation: custom period must be positive"
     },
     {
-      "code": 6099,
+      "code": 6098,
       "name": "SpendingLimitPolicyInvariantDuplicateDestinations",
       "msg": "Spending limit policy invariant violation: cannot have duplicate destinations for the same mint"
     },
     {
-      "code": 6100,
+      "code": 6099,
       "name": "SpendingLimitInvariantLastResetOutOfBounds",
       "msg": "Spending limit invariant violation: last reset must be between start and expiration"
     },
     {
-      "code": 6101,
+      "code": 6100,
       "name": "SpendingLimitInvariantLastResetSmallerThanStart",
       "msg": "Spending limit invariant violation: last reset must be greater than start"
     },
     {
-      "code": 6102,
+      "code": 6101,
       "name": "InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: source account index is not allowed"
     },
     {
-      "code": 6103,
+      "code": 6102,
       "name": "InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: destination account index is not allowed"
     },
     {
-      "code": 6104,
+      "code": 6103,
       "name": "InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame",
       "msg": "Internal fund transfer policy invariant violation: source and destination cannot be the same"
     },
     {
-      "code": 6105,
+      "code": 6104,
       "name": "InternalFundTransferPolicyInvariantMintNotAllowed",
       "msg": "Internal fund transfer policy invariant violation: mint is not allowed"
     },
     {
-      "code": 6106,
+      "code": 6105,
       "name": "InternalFundTransferPolicyInvariantAmountZero",
       "msg": "Internal fund transfer policy invariant violation: amount must be greater than 0"
     },
     {
-      "code": 6107,
+      "code": 6106,
       "name": "InternalFundTransferPolicyInvariantDuplicateMints",
       "msg": "Internal fund transfer policy invariant violation: cannot have duplicate mints"
     },
     {
-      "code": 6108,
+      "code": 6107,
       "name": "ConsensusAccountNotSettings",
       "msg": "Consensus account is not a settings"
     },
     {
-      "code": 6109,
+      "code": 6108,
       "name": "ConsensusAccountNotPolicy",
       "msg": "Consensus account is not a policy"
     },
     {
-      "code": 6110,
+      "code": 6109,
       "name": "SettingsChangePolicyActionsMustBeNonZero",
       "msg": "Settings change policy invariant violation: actions must be non-zero"
     },
     {
-      "code": 6111,
+      "code": 6110,
       "name": "SettingsChangeInvalidSettingsKey",
       "msg": "Settings change policy violation: submitted settings account must match policy settings key"
     },
     {
-      "code": 6112,
+      "code": 6111,
       "name": "SettingsChangeInvalidSettingsAccount",
       "msg": "Settings change policy violation: submitted settings account must be writable"
     },
     {
-      "code": 6113,
+      "code": 6112,
       "name": "SettingsChangeInvalidRentPayer",
       "msg": "Settings change policy violation: rent payer must be writable and signer"
     },
     {
-      "code": 6114,
+      "code": 6113,
       "name": "SettingsChangeInvalidSystemProgram",
       "msg": "Settings change policy violation: system program must be the system program"
     },
     {
-      "code": 6115,
+      "code": 6114,
       "name": "SettingsChangeAddSignerViolation",
       "msg": "Settings change policy violation: signer does not match allowed signer"
     },
     {
-      "code": 6116,
+      "code": 6115,
       "name": "SettingsChangeAddSignerPermissionsViolation",
       "msg": "Settings change policy violation: signer permissions does not match allowed signer permissions"
     },
     {
-      "code": 6117,
+      "code": 6116,
       "name": "SettingsChangeRemoveSignerViolation",
       "msg": "Settings change policy violation: signer removal does not mach allowed signer removal"
     },
     {
-      "code": 6118,
+      "code": 6117,
       "name": "SettingsChangeChangeTimelockViolation",
       "msg": "Settings change policy violation: time lock does not match allowed time lock"
     },
     {
-      "code": 6119,
+      "code": 6118,
       "name": "SettingsChangeActionMismatch",
       "msg": "Settings change policy violation: action does not match allowed action"
     },
     {
-      "code": 6120,
+      "code": 6119,
       "name": "SettingsChangePolicyInvariantDuplicateActions",
       "msg": "Settings change policy invariant violation: cannot have duplicate actions"
     },
     {
-      "code": 6121,
+      "code": 6120,
       "name": "SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch",
       "msg": "Settings change policy invariant violation: action indices must match actions length"
     },
     {
-      "code": 6122,
+      "code": 6121,
       "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
       "msg": "Settings change policy invariant violation: action index out of bounds"
     },
     {
-      "code": 6123,
+      "code": 6122,
       "name": "PolicyNotActiveYet",
       "msg": "Policy is not active yet"
     },
     {
-      "code": 6124,
+      "code": 6123,
       "name": "PolicyInvariantInvalidExpiration",
       "msg": "Policy invariant violation: invalid policy expiration"
     },
     {
-      "code": 6125,
+      "code": 6124,
       "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
       "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
     },
     {
-      "code": 6126,
+      "code": 6125,
       "name": "PolicyExpirationViolationSettingsAccountNotPresent",
       "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
     },
     {
-      "code": 6127,
+      "code": 6126,
       "name": "PolicyExpirationViolationHashExpired",
       "msg": "Policy expiration violation: state hash has expired"
     },
     {
-      "code": 6128,
+      "code": 6127,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
     },
     {
-      "code": 6129,
+      "code": 6128,
       "name": "AccountIndexLocked",
       "msg": "Account index is locked, must increment_account_index first"
     },
     {
-      "code": 6130,
+      "code": 6129,
       "name": "MaxAccountIndexReached",
       "msg": "Cannot exceed maximum free account index (250)"
+    },
+    {
+      "code": 6130,
+      "name": "SerializationFailed",
+      "msg": "Serialization failed"
+    },
+    {
+      "code": 6131,
+      "name": "MissingPrecompileInstruction",
+      "msg": "Missing precompile instruction"
+    },
+    {
+      "code": 6132,
+      "name": "InvalidSessionKey",
+      "msg": "Invalid session key"
+    },
+    {
+      "code": 6133,
+      "name": "InvalidSessionKeyExpiration",
+      "msg": "Invalid session key expiration"
+    },
+    {
+      "code": 6134,
+      "name": "SessionKeyExpirationTooLong",
+      "msg": "Session key expiration too long"
+    },
+    {
+      "code": 6135,
+      "name": "InvalidPermissions",
+      "msg": "Invalid permissions"
+    },
+    {
+      "code": 6136,
+      "name": "InvalidSignerType",
+      "msg": "Invalid signer type"
+    },
+    {
+      "code": 6137,
+      "name": "InvalidPrecompileData",
+      "msg": "Invalid precompile data"
+    },
+    {
+      "code": 6138,
+      "name": "InvalidPrecompileProgram",
+      "msg": "Invalid precompile program"
+    },
+    {
+      "code": 6139,
+      "name": "DuplicateExternalSignature",
+      "msg": "Duplicate external signature"
+    },
+    {
+      "code": 6140,
+      "name": "WebauthnRpIdMismatch",
+      "msg": "Webauthn RP ID mismatch"
+    },
+    {
+      "code": 6141,
+      "name": "WebauthnUserNotPresent",
+      "msg": "Webauthn user not present"
+    },
+    {
+      "code": 6142,
+      "name": "WebauthnCounterNotIncremented",
+      "msg": "Webauthn counter not incremented"
+    },
+    {
+      "code": 6143,
+      "name": "MissingClientDataParams",
+      "msg": "Missing client data params"
+    },
+    {
+      "code": 6144,
+      "name": "PrecompileMessageMismatch",
+      "msg": "Precompile message mismatch"
+    },
+    {
+      "code": 6145,
+      "name": "MissingExtraVerificationData",
+      "msg": "Missing extra verification data for external signer"
+    },
+    {
+      "code": 6146,
+      "name": "InvalidSignature",
+      "msg": "Invalid signature"
+    },
+    {
+      "code": 6147,
+      "name": "PrecompileRequired",
+      "msg": "Precompile verification required for this signer type"
+    },
+    {
+      "code": 6148,
+      "name": "SignerTypeMismatch",
+      "msg": "SmartAccountSigner type mismatch"
+    },
+    {
+      "code": 6149,
+      "name": "NonceExhausted",
+      "msg": "Nonce exhausted (u64 overflow)"
     }
   ],
   "metadata": {
     "address": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
     "origin": "anchor",
-    "binaryVersion": "0.32.1",
+    "binaryVersion": "0.29.0",
     "libVersion": "=0.29.0"
   }
 }

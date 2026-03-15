@@ -6,13 +6,19 @@ import {
   createLocalhostConnection,
   generateSmartAccountSigners,
   getTestProgramId,
-  TestMembers,
+  TestMembers, 
+  createSignerObject,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flows / Policy Creation", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flows / Policy Creation [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -73,7 +79,7 @@ describe("Flows / Policy Creation", () => {
       programId,
     });
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -101,7 +107,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -112,7 +118,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -123,7 +129,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -210,7 +216,7 @@ describe("Flows / Policy Creation", () => {
       programId,
     });
 
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -238,7 +244,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Create and approve proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -248,7 +254,7 @@ describe("Flows / Policy Creation", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -259,7 +265,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Execute settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -336,7 +342,7 @@ describe("Flows / Policy Creation", () => {
       programId,
     });
 
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -364,7 +370,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Create and approve proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -374,7 +380,7 @@ describe("Flows / Policy Creation", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -385,7 +391,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Execute settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -448,7 +454,7 @@ describe("Flows / Policy Creation", () => {
       programId,
     });
 
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -476,7 +482,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Create and approve proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -486,7 +492,7 @@ describe("Flows / Policy Creation", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -497,7 +503,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Execute settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -576,7 +582,7 @@ describe("Flows / Policy Creation", () => {
     });
 
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -587,7 +593,12 @@ describe("Flows / Policy Creation", () => {
           __kind: "PolicyCreate",
           seed: policySeed,
           policyCreationPayload,
-          signers: [{ key: members.voter.publicKey, permissions: { mask: 7 } }],
+          signers: [
+            {
+              key: members.voter.publicKey,
+              permissions: { mask: 7 },
+            },
+          ],
           threshold: 1,
           timeLock: 0,
           startTimestamp: null,
@@ -599,7 +610,7 @@ describe("Flows / Policy Creation", () => {
     await connection.confirmTransaction(signature);
 
     // Create and approve proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -609,7 +620,7 @@ describe("Flows / Policy Creation", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -639,3 +650,4 @@ describe("Flows / Policy Creation", () => {
     );
   });
 });
+}

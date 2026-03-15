@@ -1326,36 +1326,13 @@ createErrorFromNameLookup.set(
 )
 
 /**
- * PlaceholderError: 'Placeholder error'
- *
- * @category Errors
- * @category generated
- */
-export class PlaceholderErrorError extends Error {
-  readonly code: number = 0x17a9
-  readonly name: string = 'PlaceholderError'
-  constructor() {
-    super('Placeholder error')
-    if (typeof Error.captureStackTrace === 'function') {
-      Error.captureStackTrace(this, PlaceholderErrorError)
-    }
-  }
-}
-
-createErrorFromCodeLookup.set(0x17a9, () => new PlaceholderErrorError())
-createErrorFromNameLookup.set(
-  'PlaceholderError',
-  () => new PlaceholderErrorError()
-)
-
-/**
  * InvalidPolicyPayload: 'Invalid policy payload'
  *
  * @category Errors
  * @category generated
  */
 export class InvalidPolicyPayloadError extends Error {
-  readonly code: number = 0x17aa
+  readonly code: number = 0x17a9
   readonly name: string = 'InvalidPolicyPayload'
   constructor() {
     super('Invalid policy payload')
@@ -1365,7 +1342,7 @@ export class InvalidPolicyPayloadError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17aa, () => new InvalidPolicyPayloadError())
+createErrorFromCodeLookup.set(0x17a9, () => new InvalidPolicyPayloadError())
 createErrorFromNameLookup.set(
   'InvalidPolicyPayload',
   () => new InvalidPolicyPayloadError()
@@ -1378,7 +1355,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InvalidEmptyPolicyError extends Error {
-  readonly code: number = 0x17ab
+  readonly code: number = 0x17aa
   readonly name: string = 'InvalidEmptyPolicy'
   constructor() {
     super('Invalid empty policy')
@@ -1388,7 +1365,7 @@ export class InvalidEmptyPolicyError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17ab, () => new InvalidEmptyPolicyError())
+createErrorFromCodeLookup.set(0x17aa, () => new InvalidEmptyPolicyError())
 createErrorFromNameLookup.set(
   'InvalidEmptyPolicy',
   () => new InvalidEmptyPolicyError()
@@ -1401,7 +1378,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class TransactionForAnotherPolicyError extends Error {
-  readonly code: number = 0x17ac
+  readonly code: number = 0x17ab
   readonly name: string = 'TransactionForAnotherPolicy'
   constructor() {
     super('Transaction is for another policy')
@@ -1412,7 +1389,7 @@ export class TransactionForAnotherPolicyError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17ac,
+  0x17ab,
   () => new TransactionForAnotherPolicyError()
 )
 createErrorFromNameLookup.set(
@@ -1427,7 +1404,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionAsyncPayloadNotAllowedWithSyncTransactionError extends Error {
-  readonly code: number = 0x17ad
+  readonly code: number = 0x17ac
   readonly name: string =
     'ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction'
   constructor() {
@@ -1442,7 +1419,7 @@ export class ProgramInteractionAsyncPayloadNotAllowedWithSyncTransactionError ex
 }
 
 createErrorFromCodeLookup.set(
-  0x17ad,
+  0x17ac,
   () => new ProgramInteractionAsyncPayloadNotAllowedWithSyncTransactionError()
 )
 createErrorFromNameLookup.set(
@@ -1457,7 +1434,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionSyncPayloadNotAllowedWithAsyncTransactionError extends Error {
-  readonly code: number = 0x17ae
+  readonly code: number = 0x17ad
   readonly name: string =
     'ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction'
   constructor() {
@@ -1472,7 +1449,7 @@ export class ProgramInteractionSyncPayloadNotAllowedWithAsyncTransactionError ex
 }
 
 createErrorFromCodeLookup.set(
-  0x17ae,
+  0x17ad,
   () => new ProgramInteractionSyncPayloadNotAllowedWithAsyncTransactionError()
 )
 createErrorFromNameLookup.set(
@@ -1487,7 +1464,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionDataTooShortError extends Error {
-  readonly code: number = 0x17af
+  readonly code: number = 0x17ae
   readonly name: string = 'ProgramInteractionDataTooShort'
   constructor() {
     super(
@@ -1500,7 +1477,7 @@ export class ProgramInteractionDataTooShortError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17af,
+  0x17ae,
   () => new ProgramInteractionDataTooShortError()
 )
 createErrorFromNameLookup.set(
@@ -1515,7 +1492,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInvalidNumericValueError extends Error {
-  readonly code: number = 0x17b0
+  readonly code: number = 0x17af
   readonly name: string = 'ProgramInteractionInvalidNumericValue'
   constructor() {
     super('Program interaction data constraint failed: invalid numeric value')
@@ -1526,7 +1503,7 @@ export class ProgramInteractionInvalidNumericValueError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b0,
+  0x17af,
   () => new ProgramInteractionInvalidNumericValueError()
 )
 createErrorFromNameLookup.set(
@@ -1541,7 +1518,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInvalidByteSequenceError extends Error {
-  readonly code: number = 0x17b1
+  readonly code: number = 0x17b0
   readonly name: string = 'ProgramInteractionInvalidByteSequence'
   constructor() {
     super('Program interaction data constraint failed: invalid byte sequence')
@@ -1552,7 +1529,7 @@ export class ProgramInteractionInvalidByteSequenceError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b1,
+  0x17b0,
   () => new ProgramInteractionInvalidByteSequenceError()
 )
 createErrorFromNameLookup.set(
@@ -1567,7 +1544,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionUnsupportedSliceOperatorError extends Error {
-  readonly code: number = 0x17b2
+  readonly code: number = 0x17b1
   readonly name: string = 'ProgramInteractionUnsupportedSliceOperator'
   constructor() {
     super(
@@ -1583,7 +1560,7 @@ export class ProgramInteractionUnsupportedSliceOperatorError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b2,
+  0x17b1,
   () => new ProgramInteractionUnsupportedSliceOperatorError()
 )
 createErrorFromNameLookup.set(
@@ -1598,7 +1575,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionDataParsingErrorError extends Error {
-  readonly code: number = 0x17b3
+  readonly code: number = 0x17b2
   readonly name: string = 'ProgramInteractionDataParsingError'
   constructor() {
     super(
@@ -1611,7 +1588,7 @@ export class ProgramInteractionDataParsingErrorError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b3,
+  0x17b2,
   () => new ProgramInteractionDataParsingErrorError()
 )
 createErrorFromNameLookup.set(
@@ -1626,7 +1603,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionProgramIdMismatchError extends Error {
-  readonly code: number = 0x17b4
+  readonly code: number = 0x17b3
   readonly name: string = 'ProgramInteractionProgramIdMismatch'
   constructor() {
     super('Program interaction constraint failed: program ID mismatch')
@@ -1637,7 +1614,7 @@ export class ProgramInteractionProgramIdMismatchError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b4,
+  0x17b3,
   () => new ProgramInteractionProgramIdMismatchError()
 )
 createErrorFromNameLookup.set(
@@ -1652,7 +1629,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionAccountConstraintViolatedError extends Error {
-  readonly code: number = 0x17b5
+  readonly code: number = 0x17b4
   readonly name: string = 'ProgramInteractionAccountConstraintViolated'
   constructor() {
     super('Program interaction constraint violation: account constraint')
@@ -1666,7 +1643,7 @@ export class ProgramInteractionAccountConstraintViolatedError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b5,
+  0x17b4,
   () => new ProgramInteractionAccountConstraintViolatedError()
 )
 createErrorFromNameLookup.set(
@@ -1681,7 +1658,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionConstraintIndexOutOfBoundsError extends Error {
-  readonly code: number = 0x17b6
+  readonly code: number = 0x17b5
   readonly name: string = 'ProgramInteractionConstraintIndexOutOfBounds'
   constructor() {
     super(
@@ -1697,7 +1674,7 @@ export class ProgramInteractionConstraintIndexOutOfBoundsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b6,
+  0x17b5,
   () => new ProgramInteractionConstraintIndexOutOfBoundsError()
 )
 createErrorFromNameLookup.set(
@@ -1712,7 +1689,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInstructionCountMismatchError extends Error {
-  readonly code: number = 0x17b7
+  readonly code: number = 0x17b6
   readonly name: string = 'ProgramInteractionInstructionCountMismatch'
   constructor() {
     super(
@@ -1728,7 +1705,7 @@ export class ProgramInteractionInstructionCountMismatchError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b7,
+  0x17b6,
   () => new ProgramInteractionInstructionCountMismatchError()
 )
 createErrorFromNameLookup.set(
@@ -1743,7 +1720,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInsufficientLamportAllowanceError extends Error {
-  readonly code: number = 0x17b8
+  readonly code: number = 0x17b7
   readonly name: string = 'ProgramInteractionInsufficientLamportAllowance'
   constructor() {
     super(
@@ -1759,7 +1736,7 @@ export class ProgramInteractionInsufficientLamportAllowanceError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b8,
+  0x17b7,
   () => new ProgramInteractionInsufficientLamportAllowanceError()
 )
 createErrorFromNameLookup.set(
@@ -1774,7 +1751,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInsufficientTokenAllowanceError extends Error {
-  readonly code: number = 0x17b9
+  readonly code: number = 0x17b8
   readonly name: string = 'ProgramInteractionInsufficientTokenAllowance'
   constructor() {
     super(
@@ -1790,7 +1767,7 @@ export class ProgramInteractionInsufficientTokenAllowanceError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17b9,
+  0x17b8,
   () => new ProgramInteractionInsufficientTokenAllowanceError()
 )
 createErrorFromNameLookup.set(
@@ -1805,7 +1782,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionModifiedIllegalBalanceError extends Error {
-  readonly code: number = 0x17ba
+  readonly code: number = 0x17b9
   readonly name: string = 'ProgramInteractionModifiedIllegalBalance'
   constructor() {
     super('Program interaction constraint violation: modified illegal balance')
@@ -1819,7 +1796,7 @@ export class ProgramInteractionModifiedIllegalBalanceError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17ba,
+  0x17b9,
   () => new ProgramInteractionModifiedIllegalBalanceError()
 )
 createErrorFromNameLookup.set(
@@ -1834,7 +1811,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionIllegalTokenAccountModificationError extends Error {
-  readonly code: number = 0x17bb
+  readonly code: number = 0x17ba
   readonly name: string = 'ProgramInteractionIllegalTokenAccountModification'
   constructor() {
     super(
@@ -1850,7 +1827,7 @@ export class ProgramInteractionIllegalTokenAccountModificationError extends Erro
 }
 
 createErrorFromCodeLookup.set(
-  0x17bb,
+  0x17ba,
   () => new ProgramInteractionIllegalTokenAccountModificationError()
 )
 createErrorFromNameLookup.set(
@@ -1865,7 +1842,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionDuplicateSpendingLimitError extends Error {
-  readonly code: number = 0x17bc
+  readonly code: number = 0x17bb
   readonly name: string = 'ProgramInteractionDuplicateSpendingLimit'
   constructor() {
     super(
@@ -1881,7 +1858,7 @@ export class ProgramInteractionDuplicateSpendingLimitError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17bc,
+  0x17bb,
   () => new ProgramInteractionDuplicateSpendingLimitError()
 )
 createErrorFromNameLookup.set(
@@ -1896,7 +1873,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionTooManyInstructionConstraintsError extends Error {
-  readonly code: number = 0x17bd
+  readonly code: number = 0x17bc
   readonly name: string = 'ProgramInteractionTooManyInstructionConstraints'
   constructor() {
     super(
@@ -1912,7 +1889,7 @@ export class ProgramInteractionTooManyInstructionConstraintsError extends Error 
 }
 
 createErrorFromCodeLookup.set(
-  0x17bd,
+  0x17bc,
   () => new ProgramInteractionTooManyInstructionConstraintsError()
 )
 createErrorFromNameLookup.set(
@@ -1927,7 +1904,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionTooManySpendingLimitsError extends Error {
-  readonly code: number = 0x17be
+  readonly code: number = 0x17bd
   readonly name: string = 'ProgramInteractionTooManySpendingLimits'
   constructor() {
     super(
@@ -1943,7 +1920,7 @@ export class ProgramInteractionTooManySpendingLimitsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17be,
+  0x17bd,
   () => new ProgramInteractionTooManySpendingLimitsError()
 )
 createErrorFromNameLookup.set(
@@ -1958,7 +1935,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionInvalidPubkeyTableIndexError extends Error {
-  readonly code: number = 0x17bf
+  readonly code: number = 0x17be
   readonly name: string = 'ProgramInteractionInvalidPubkeyTableIndex'
   constructor() {
     super(
@@ -1974,7 +1951,7 @@ export class ProgramInteractionInvalidPubkeyTableIndexError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17bf,
+  0x17be,
   () => new ProgramInteractionInvalidPubkeyTableIndexError()
 )
 createErrorFromNameLookup.set(
@@ -1989,7 +1966,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionTooManyUniquePubkeysError extends Error {
-  readonly code: number = 0x17c0
+  readonly code: number = 0x17bf
   readonly name: string = 'ProgramInteractionTooManyUniquePubkeys'
   constructor() {
     super(
@@ -2002,7 +1979,7 @@ export class ProgramInteractionTooManyUniquePubkeysError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c0,
+  0x17bf,
   () => new ProgramInteractionTooManyUniquePubkeysError()
 )
 createErrorFromNameLookup.set(
@@ -2017,7 +1994,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionTemplateHookErrorError extends Error {
-  readonly code: number = 0x17c1
+  readonly code: number = 0x17c0
   readonly name: string = 'ProgramInteractionTemplateHookError'
   constructor() {
     super('Program interaction hook violation: template hook error')
@@ -2028,7 +2005,7 @@ export class ProgramInteractionTemplateHookErrorError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c1,
+  0x17c0,
   () => new ProgramInteractionTemplateHookErrorError()
 )
 createErrorFromNameLookup.set(
@@ -2043,7 +2020,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ProgramInteractionHookAuthorityCannotBePartOfHookAccountsError extends Error {
-  readonly code: number = 0x17c2
+  readonly code: number = 0x17c1
   readonly name: string =
     'ProgramInteractionHookAuthorityCannotBePartOfHookAccounts'
   constructor() {
@@ -2060,7 +2037,7 @@ export class ProgramInteractionHookAuthorityCannotBePartOfHookAccountsError exte
 }
 
 createErrorFromCodeLookup.set(
-  0x17c2,
+  0x17c1,
   () => new ProgramInteractionHookAuthorityCannotBePartOfHookAccountsError()
 )
 createErrorFromNameLookup.set(
@@ -2075,7 +2052,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitNotActiveError extends Error {
-  readonly code: number = 0x17c3
+  readonly code: number = 0x17c2
   readonly name: string = 'SpendingLimitNotActive'
   constructor() {
     super('Spending limit is not active')
@@ -2085,7 +2062,7 @@ export class SpendingLimitNotActiveError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17c3, () => new SpendingLimitNotActiveError())
+createErrorFromCodeLookup.set(0x17c2, () => new SpendingLimitNotActiveError())
 createErrorFromNameLookup.set(
   'SpendingLimitNotActive',
   () => new SpendingLimitNotActiveError()
@@ -2098,7 +2075,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitExpiredError extends Error {
-  readonly code: number = 0x17c4
+  readonly code: number = 0x17c3
   readonly name: string = 'SpendingLimitExpired'
   constructor() {
     super('Spending limit is expired')
@@ -2108,7 +2085,7 @@ export class SpendingLimitExpiredError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17c4, () => new SpendingLimitExpiredError())
+createErrorFromCodeLookup.set(0x17c3, () => new SpendingLimitExpiredError())
 createErrorFromNameLookup.set(
   'SpendingLimitExpired',
   () => new SpendingLimitExpiredError()
@@ -2121,7 +2098,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitPolicyInvariantAccumulateUnusedError extends Error {
-  readonly code: number = 0x17c5
+  readonly code: number = 0x17c4
   readonly name: string = 'SpendingLimitPolicyInvariantAccumulateUnused'
   constructor() {
     super(
@@ -2137,7 +2114,7 @@ export class SpendingLimitPolicyInvariantAccumulateUnusedError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c5,
+  0x17c4,
   () => new SpendingLimitPolicyInvariantAccumulateUnusedError()
 )
 createErrorFromNameLookup.set(
@@ -2152,7 +2129,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitViolatesExactQuantityConstraintError extends Error {
-  readonly code: number = 0x17c6
+  readonly code: number = 0x17c5
   readonly name: string = 'SpendingLimitViolatesExactQuantityConstraint'
   constructor() {
     super('Amount violates exact quantity constraint')
@@ -2166,7 +2143,7 @@ export class SpendingLimitViolatesExactQuantityConstraintError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c6,
+  0x17c5,
   () => new SpendingLimitViolatesExactQuantityConstraintError()
 )
 createErrorFromNameLookup.set(
@@ -2181,7 +2158,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitViolatesMaxPerUseConstraintError extends Error {
-  readonly code: number = 0x17c7
+  readonly code: number = 0x17c6
   readonly name: string = 'SpendingLimitViolatesMaxPerUseConstraint'
   constructor() {
     super('Amount violates max per use constraint')
@@ -2195,7 +2172,7 @@ export class SpendingLimitViolatesMaxPerUseConstraintError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c7,
+  0x17c6,
   () => new SpendingLimitViolatesMaxPerUseConstraintError()
 )
 createErrorFromNameLookup.set(
@@ -2210,7 +2187,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInsufficientRemainingAmountError extends Error {
-  readonly code: number = 0x17c8
+  readonly code: number = 0x17c7
   readonly name: string = 'SpendingLimitInsufficientRemainingAmount'
   constructor() {
     super('Spending limit is insufficient')
@@ -2224,7 +2201,7 @@ export class SpendingLimitInsufficientRemainingAmountError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c8,
+  0x17c7,
   () => new SpendingLimitInsufficientRemainingAmountError()
 )
 createErrorFromNameLookup.set(
@@ -2239,7 +2216,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantMaxPerPeriodZeroError extends Error {
-  readonly code: number = 0x17c9
+  readonly code: number = 0x17c8
   readonly name: string = 'SpendingLimitInvariantMaxPerPeriodZero'
   constructor() {
     super('Spending limit invariant violation: max per period must be non-zero')
@@ -2250,7 +2227,7 @@ export class SpendingLimitInvariantMaxPerPeriodZeroError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17c9,
+  0x17c8,
   () => new SpendingLimitInvariantMaxPerPeriodZeroError()
 )
 createErrorFromNameLookup.set(
@@ -2265,7 +2242,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantStartTimePositiveError extends Error {
-  readonly code: number = 0x17ca
+  readonly code: number = 0x17c9
   readonly name: string = 'SpendingLimitInvariantStartTimePositive'
   constructor() {
     super('Spending limit invariant violation: start time must be positive')
@@ -2279,7 +2256,7 @@ export class SpendingLimitInvariantStartTimePositiveError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17ca,
+  0x17c9,
   () => new SpendingLimitInvariantStartTimePositiveError()
 )
 createErrorFromNameLookup.set(
@@ -2294,7 +2271,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantExpirationSmallerThanStartError extends Error {
-  readonly code: number = 0x17cb
+  readonly code: number = 0x17ca
   readonly name: string = 'SpendingLimitInvariantExpirationSmallerThanStart'
   constructor() {
     super(
@@ -2310,7 +2287,7 @@ export class SpendingLimitInvariantExpirationSmallerThanStartError extends Error
 }
 
 createErrorFromCodeLookup.set(
-  0x17cb,
+  0x17ca,
   () => new SpendingLimitInvariantExpirationSmallerThanStartError()
 )
 createErrorFromNameLookup.set(
@@ -2325,7 +2302,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantOverflowEnabledMustHaveExpirationError extends Error {
-  readonly code: number = 0x17cc
+  readonly code: number = 0x17cb
   readonly name: string =
     'SpendingLimitInvariantOverflowEnabledMustHaveExpiration'
   constructor() {
@@ -2342,7 +2319,7 @@ export class SpendingLimitInvariantOverflowEnabledMustHaveExpirationError extend
 }
 
 createErrorFromCodeLookup.set(
-  0x17cc,
+  0x17cb,
   () => new SpendingLimitInvariantOverflowEnabledMustHaveExpirationError()
 )
 createErrorFromNameLookup.set(
@@ -2357,7 +2334,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabledError extends Error {
-  readonly code: number = 0x17cd
+  readonly code: number = 0x17cc
   readonly name: string =
     'SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled'
   constructor() {
@@ -2374,7 +2351,7 @@ export class SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabledError e
 }
 
 createErrorFromCodeLookup.set(
-  0x17cd,
+  0x17cc,
   () => new SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabledError()
 )
 createErrorFromNameLookup.set(
@@ -2389,7 +2366,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmountError extends Error {
-  readonly code: number = 0x17ce
+  readonly code: number = 0x17cd
   readonly name: string =
     'SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount'
   constructor() {
@@ -2406,7 +2383,7 @@ export class SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmountEr
 }
 
 createErrorFromCodeLookup.set(
-  0x17ce,
+  0x17cd,
   () =>
     new SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmountError()
 )
@@ -2423,7 +2400,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriodError extends Error {
-  readonly code: number = 0x17cf
+  readonly code: number = 0x17ce
   readonly name: string =
     'SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod'
   constructor() {
@@ -2440,7 +2417,7 @@ export class SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriodError e
 }
 
 createErrorFromCodeLookup.set(
-  0x17cf,
+  0x17ce,
   () => new SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriodError()
 )
 createErrorFromNameLookup.set(
@@ -2455,7 +2432,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantExactQuantityMaxPerUseZeroError extends Error {
-  readonly code: number = 0x17d0
+  readonly code: number = 0x17cf
   readonly name: string = 'SpendingLimitInvariantExactQuantityMaxPerUseZero'
   constructor() {
     super(
@@ -2471,7 +2448,7 @@ export class SpendingLimitInvariantExactQuantityMaxPerUseZeroError extends Error
 }
 
 createErrorFromCodeLookup.set(
-  0x17d0,
+  0x17cf,
   () => new SpendingLimitInvariantExactQuantityMaxPerUseZeroError()
 )
 createErrorFromNameLookup.set(
@@ -2486,7 +2463,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriodError extends Error {
-  readonly code: number = 0x17d1
+  readonly code: number = 0x17d0
   readonly name: string =
     'SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod'
   constructor() {
@@ -2503,7 +2480,7 @@ export class SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriodError extends
 }
 
 createErrorFromCodeLookup.set(
-  0x17d1,
+  0x17d0,
   () => new SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriodError()
 )
 createErrorFromNameLookup.set(
@@ -2518,7 +2495,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantCustomPeriodNegativeError extends Error {
-  readonly code: number = 0x17d2
+  readonly code: number = 0x17d1
   readonly name: string = 'SpendingLimitInvariantCustomPeriodNegative'
   constructor() {
     super('Spending limit invariant violation: custom period must be positive')
@@ -2532,7 +2509,7 @@ export class SpendingLimitInvariantCustomPeriodNegativeError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17d2,
+  0x17d1,
   () => new SpendingLimitInvariantCustomPeriodNegativeError()
 )
 createErrorFromNameLookup.set(
@@ -2547,7 +2524,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitPolicyInvariantDuplicateDestinationsError extends Error {
-  readonly code: number = 0x17d3
+  readonly code: number = 0x17d2
   readonly name: string = 'SpendingLimitPolicyInvariantDuplicateDestinations'
   constructor() {
     super(
@@ -2563,7 +2540,7 @@ export class SpendingLimitPolicyInvariantDuplicateDestinationsError extends Erro
 }
 
 createErrorFromCodeLookup.set(
-  0x17d3,
+  0x17d2,
   () => new SpendingLimitPolicyInvariantDuplicateDestinationsError()
 )
 createErrorFromNameLookup.set(
@@ -2578,7 +2555,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantLastResetOutOfBoundsError extends Error {
-  readonly code: number = 0x17d4
+  readonly code: number = 0x17d3
   readonly name: string = 'SpendingLimitInvariantLastResetOutOfBounds'
   constructor() {
     super(
@@ -2594,7 +2571,7 @@ export class SpendingLimitInvariantLastResetOutOfBoundsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17d4,
+  0x17d3,
   () => new SpendingLimitInvariantLastResetOutOfBoundsError()
 )
 createErrorFromNameLookup.set(
@@ -2609,7 +2586,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SpendingLimitInvariantLastResetSmallerThanStartError extends Error {
-  readonly code: number = 0x17d5
+  readonly code: number = 0x17d4
   readonly name: string = 'SpendingLimitInvariantLastResetSmallerThanStart'
   constructor() {
     super(
@@ -2625,7 +2602,7 @@ export class SpendingLimitInvariantLastResetSmallerThanStartError extends Error 
 }
 
 createErrorFromCodeLookup.set(
-  0x17d5,
+  0x17d4,
   () => new SpendingLimitInvariantLastResetSmallerThanStartError()
 )
 createErrorFromNameLookup.set(
@@ -2640,7 +2617,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowedError extends Error {
-  readonly code: number = 0x17d6
+  readonly code: number = 0x17d5
   readonly name: string =
     'InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed'
   constructor() {
@@ -2657,7 +2634,7 @@ export class InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowedErro
 }
 
 createErrorFromCodeLookup.set(
-  0x17d6,
+  0x17d5,
   () =>
     new InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowedError()
 )
@@ -2674,7 +2651,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowedError extends Error {
-  readonly code: number = 0x17d7
+  readonly code: number = 0x17d6
   readonly name: string =
     'InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed'
   constructor() {
@@ -2691,7 +2668,7 @@ export class InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowe
 }
 
 createErrorFromCodeLookup.set(
-  0x17d7,
+  0x17d6,
   () =>
     new InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowedError()
 )
@@ -2708,7 +2685,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSameError extends Error {
-  readonly code: number = 0x17d8
+  readonly code: number = 0x17d7
   readonly name: string =
     'InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame'
   constructor() {
@@ -2725,7 +2702,7 @@ export class InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheS
 }
 
 createErrorFromCodeLookup.set(
-  0x17d8,
+  0x17d7,
   () =>
     new InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSameError()
 )
@@ -2742,7 +2719,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantMintNotAllowedError extends Error {
-  readonly code: number = 0x17d9
+  readonly code: number = 0x17d8
   readonly name: string = 'InternalFundTransferPolicyInvariantMintNotAllowed'
   constructor() {
     super(
@@ -2758,7 +2735,7 @@ export class InternalFundTransferPolicyInvariantMintNotAllowedError extends Erro
 }
 
 createErrorFromCodeLookup.set(
-  0x17d9,
+  0x17d8,
   () => new InternalFundTransferPolicyInvariantMintNotAllowedError()
 )
 createErrorFromNameLookup.set(
@@ -2773,7 +2750,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantAmountZeroError extends Error {
-  readonly code: number = 0x17da
+  readonly code: number = 0x17d9
   readonly name: string = 'InternalFundTransferPolicyInvariantAmountZero'
   constructor() {
     super(
@@ -2789,7 +2766,7 @@ export class InternalFundTransferPolicyInvariantAmountZeroError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17da,
+  0x17d9,
   () => new InternalFundTransferPolicyInvariantAmountZeroError()
 )
 createErrorFromNameLookup.set(
@@ -2804,7 +2781,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class InternalFundTransferPolicyInvariantDuplicateMintsError extends Error {
-  readonly code: number = 0x17db
+  readonly code: number = 0x17da
   readonly name: string = 'InternalFundTransferPolicyInvariantDuplicateMints'
   constructor() {
     super(
@@ -2820,7 +2797,7 @@ export class InternalFundTransferPolicyInvariantDuplicateMintsError extends Erro
 }
 
 createErrorFromCodeLookup.set(
-  0x17db,
+  0x17da,
   () => new InternalFundTransferPolicyInvariantDuplicateMintsError()
 )
 createErrorFromNameLookup.set(
@@ -2835,7 +2812,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ConsensusAccountNotSettingsError extends Error {
-  readonly code: number = 0x17dc
+  readonly code: number = 0x17db
   readonly name: string = 'ConsensusAccountNotSettings'
   constructor() {
     super('Consensus account is not a settings')
@@ -2846,7 +2823,7 @@ export class ConsensusAccountNotSettingsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17dc,
+  0x17db,
   () => new ConsensusAccountNotSettingsError()
 )
 createErrorFromNameLookup.set(
@@ -2861,7 +2838,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class ConsensusAccountNotPolicyError extends Error {
-  readonly code: number = 0x17dd
+  readonly code: number = 0x17dc
   readonly name: string = 'ConsensusAccountNotPolicy'
   constructor() {
     super('Consensus account is not a policy')
@@ -2872,7 +2849,7 @@ export class ConsensusAccountNotPolicyError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17dd,
+  0x17dc,
   () => new ConsensusAccountNotPolicyError()
 )
 createErrorFromNameLookup.set(
@@ -2887,7 +2864,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangePolicyActionsMustBeNonZeroError extends Error {
-  readonly code: number = 0x17de
+  readonly code: number = 0x17dd
   readonly name: string = 'SettingsChangePolicyActionsMustBeNonZero'
   constructor() {
     super(
@@ -2903,7 +2880,7 @@ export class SettingsChangePolicyActionsMustBeNonZeroError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17de,
+  0x17dd,
   () => new SettingsChangePolicyActionsMustBeNonZeroError()
 )
 createErrorFromNameLookup.set(
@@ -2918,7 +2895,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeInvalidSettingsKeyError extends Error {
-  readonly code: number = 0x17df
+  readonly code: number = 0x17de
   readonly name: string = 'SettingsChangeInvalidSettingsKey'
   constructor() {
     super(
@@ -2931,7 +2908,7 @@ export class SettingsChangeInvalidSettingsKeyError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17df,
+  0x17de,
   () => new SettingsChangeInvalidSettingsKeyError()
 )
 createErrorFromNameLookup.set(
@@ -2946,7 +2923,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeInvalidSettingsAccountError extends Error {
-  readonly code: number = 0x17e0
+  readonly code: number = 0x17df
   readonly name: string = 'SettingsChangeInvalidSettingsAccount'
   constructor() {
     super(
@@ -2959,7 +2936,7 @@ export class SettingsChangeInvalidSettingsAccountError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e0,
+  0x17df,
   () => new SettingsChangeInvalidSettingsAccountError()
 )
 createErrorFromNameLookup.set(
@@ -2974,7 +2951,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeInvalidRentPayerError extends Error {
-  readonly code: number = 0x17e1
+  readonly code: number = 0x17e0
   readonly name: string = 'SettingsChangeInvalidRentPayer'
   constructor() {
     super(
@@ -2987,7 +2964,7 @@ export class SettingsChangeInvalidRentPayerError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e1,
+  0x17e0,
   () => new SettingsChangeInvalidRentPayerError()
 )
 createErrorFromNameLookup.set(
@@ -3002,7 +2979,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeInvalidSystemProgramError extends Error {
-  readonly code: number = 0x17e2
+  readonly code: number = 0x17e1
   readonly name: string = 'SettingsChangeInvalidSystemProgram'
   constructor() {
     super(
@@ -3015,7 +2992,7 @@ export class SettingsChangeInvalidSystemProgramError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e2,
+  0x17e1,
   () => new SettingsChangeInvalidSystemProgramError()
 )
 createErrorFromNameLookup.set(
@@ -3030,7 +3007,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeAddSignerViolationError extends Error {
-  readonly code: number = 0x17e3
+  readonly code: number = 0x17e2
   readonly name: string = 'SettingsChangeAddSignerViolation'
   constructor() {
     super(
@@ -3043,7 +3020,7 @@ export class SettingsChangeAddSignerViolationError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e3,
+  0x17e2,
   () => new SettingsChangeAddSignerViolationError()
 )
 createErrorFromNameLookup.set(
@@ -3058,7 +3035,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeAddSignerPermissionsViolationError extends Error {
-  readonly code: number = 0x17e4
+  readonly code: number = 0x17e3
   readonly name: string = 'SettingsChangeAddSignerPermissionsViolation'
   constructor() {
     super(
@@ -3074,7 +3051,7 @@ export class SettingsChangeAddSignerPermissionsViolationError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e4,
+  0x17e3,
   () => new SettingsChangeAddSignerPermissionsViolationError()
 )
 createErrorFromNameLookup.set(
@@ -3089,7 +3066,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeRemoveSignerViolationError extends Error {
-  readonly code: number = 0x17e5
+  readonly code: number = 0x17e4
   readonly name: string = 'SettingsChangeRemoveSignerViolation'
   constructor() {
     super(
@@ -3102,7 +3079,7 @@ export class SettingsChangeRemoveSignerViolationError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e5,
+  0x17e4,
   () => new SettingsChangeRemoveSignerViolationError()
 )
 createErrorFromNameLookup.set(
@@ -3117,7 +3094,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeChangeTimelockViolationError extends Error {
-  readonly code: number = 0x17e6
+  readonly code: number = 0x17e5
   readonly name: string = 'SettingsChangeChangeTimelockViolation'
   constructor() {
     super(
@@ -3130,7 +3107,7 @@ export class SettingsChangeChangeTimelockViolationError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e6,
+  0x17e5,
   () => new SettingsChangeChangeTimelockViolationError()
 )
 createErrorFromNameLookup.set(
@@ -3145,7 +3122,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangeActionMismatchError extends Error {
-  readonly code: number = 0x17e7
+  readonly code: number = 0x17e6
   readonly name: string = 'SettingsChangeActionMismatch'
   constructor() {
     super(
@@ -3158,7 +3135,7 @@ export class SettingsChangeActionMismatchError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e7,
+  0x17e6,
   () => new SettingsChangeActionMismatchError()
 )
 createErrorFromNameLookup.set(
@@ -3173,7 +3150,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangePolicyInvariantDuplicateActionsError extends Error {
-  readonly code: number = 0x17e8
+  readonly code: number = 0x17e7
   readonly name: string = 'SettingsChangePolicyInvariantDuplicateActions'
   constructor() {
     super(
@@ -3189,7 +3166,7 @@ export class SettingsChangePolicyInvariantDuplicateActionsError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17e8,
+  0x17e7,
   () => new SettingsChangePolicyInvariantDuplicateActionsError()
 )
 createErrorFromNameLookup.set(
@@ -3204,7 +3181,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangePolicyInvariantActionIndicesActionsLengthMismatchError extends Error {
-  readonly code: number = 0x17e9
+  readonly code: number = 0x17e8
   readonly name: string =
     'SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch'
   constructor() {
@@ -3221,7 +3198,7 @@ export class SettingsChangePolicyInvariantActionIndicesActionsLengthMismatchErro
 }
 
 createErrorFromCodeLookup.set(
-  0x17e9,
+  0x17e8,
   () =>
     new SettingsChangePolicyInvariantActionIndicesActionsLengthMismatchError()
 )
@@ -3238,7 +3215,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class SettingsChangePolicyInvariantActionIndexOutOfBoundsError extends Error {
-  readonly code: number = 0x17ea
+  readonly code: number = 0x17e9
   readonly name: string = 'SettingsChangePolicyInvariantActionIndexOutOfBounds'
   constructor() {
     super(
@@ -3254,7 +3231,7 @@ export class SettingsChangePolicyInvariantActionIndexOutOfBoundsError extends Er
 }
 
 createErrorFromCodeLookup.set(
-  0x17ea,
+  0x17e9,
   () => new SettingsChangePolicyInvariantActionIndexOutOfBoundsError()
 )
 createErrorFromNameLookup.set(
@@ -3269,7 +3246,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyNotActiveYetError extends Error {
-  readonly code: number = 0x17eb
+  readonly code: number = 0x17ea
   readonly name: string = 'PolicyNotActiveYet'
   constructor() {
     super('Policy is not active yet')
@@ -3279,7 +3256,7 @@ export class PolicyNotActiveYetError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17eb, () => new PolicyNotActiveYetError())
+createErrorFromCodeLookup.set(0x17ea, () => new PolicyNotActiveYetError())
 createErrorFromNameLookup.set(
   'PolicyNotActiveYet',
   () => new PolicyNotActiveYetError()
@@ -3292,7 +3269,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyInvariantInvalidExpirationError extends Error {
-  readonly code: number = 0x17ec
+  readonly code: number = 0x17eb
   readonly name: string = 'PolicyInvariantInvalidExpiration'
   constructor() {
     super('Policy invariant violation: invalid policy expiration')
@@ -3303,7 +3280,7 @@ export class PolicyInvariantInvalidExpirationError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17ec,
+  0x17eb,
   () => new PolicyInvariantInvalidExpirationError()
 )
 createErrorFromNameLookup.set(
@@ -3318,7 +3295,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationPolicySettingsKeyMismatchError extends Error {
-  readonly code: number = 0x17ed
+  readonly code: number = 0x17ec
   readonly name: string = 'PolicyExpirationViolationPolicySettingsKeyMismatch'
   constructor() {
     super(
@@ -3334,7 +3311,7 @@ export class PolicyExpirationViolationPolicySettingsKeyMismatchError extends Err
 }
 
 createErrorFromCodeLookup.set(
-  0x17ed,
+  0x17ec,
   () => new PolicyExpirationViolationPolicySettingsKeyMismatchError()
 )
 createErrorFromNameLookup.set(
@@ -3349,7 +3326,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationSettingsAccountNotPresentError extends Error {
-  readonly code: number = 0x17ee
+  readonly code: number = 0x17ed
   readonly name: string = 'PolicyExpirationViolationSettingsAccountNotPresent'
   constructor() {
     super(
@@ -3365,7 +3342,7 @@ export class PolicyExpirationViolationSettingsAccountNotPresentError extends Err
 }
 
 createErrorFromCodeLookup.set(
-  0x17ee,
+  0x17ed,
   () => new PolicyExpirationViolationSettingsAccountNotPresentError()
 )
 createErrorFromNameLookup.set(
@@ -3380,7 +3357,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationHashExpiredError extends Error {
-  readonly code: number = 0x17ef
+  readonly code: number = 0x17ee
   readonly name: string = 'PolicyExpirationViolationHashExpired'
   constructor() {
     super('Policy expiration violation: state hash has expired')
@@ -3391,7 +3368,7 @@ export class PolicyExpirationViolationHashExpiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17ef,
+  0x17ee,
   () => new PolicyExpirationViolationHashExpiredError()
 )
 createErrorFromNameLookup.set(
@@ -3406,7 +3383,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class PolicyExpirationViolationTimestampExpiredError extends Error {
-  readonly code: number = 0x17f0
+  readonly code: number = 0x17ef
   readonly name: string = 'PolicyExpirationViolationTimestampExpired'
   constructor() {
     super('Policy expiration violation: timestamp has expired')
@@ -3420,7 +3397,7 @@ export class PolicyExpirationViolationTimestampExpiredError extends Error {
 }
 
 createErrorFromCodeLookup.set(
-  0x17f0,
+  0x17ef,
   () => new PolicyExpirationViolationTimestampExpiredError()
 )
 createErrorFromNameLookup.set(
@@ -3435,7 +3412,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class AccountIndexLockedError extends Error {
-  readonly code: number = 0x17f1
+  readonly code: number = 0x17f0
   readonly name: string = 'AccountIndexLocked'
   constructor() {
     super('Account index is locked, must increment_account_index first')
@@ -3445,7 +3422,7 @@ export class AccountIndexLockedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17f1, () => new AccountIndexLockedError())
+createErrorFromCodeLookup.set(0x17f0, () => new AccountIndexLockedError())
 createErrorFromNameLookup.set(
   'AccountIndexLocked',
   () => new AccountIndexLockedError()
@@ -3458,7 +3435,7 @@ createErrorFromNameLookup.set(
  * @category generated
  */
 export class MaxAccountIndexReachedError extends Error {
-  readonly code: number = 0x17f2
+  readonly code: number = 0x17f1
   readonly name: string = 'MaxAccountIndexReached'
   constructor() {
     super('Cannot exceed maximum free account index (250)')
@@ -3468,11 +3445,509 @@ export class MaxAccountIndexReachedError extends Error {
   }
 }
 
-createErrorFromCodeLookup.set(0x17f2, () => new MaxAccountIndexReachedError())
+createErrorFromCodeLookup.set(0x17f1, () => new MaxAccountIndexReachedError())
 createErrorFromNameLookup.set(
   'MaxAccountIndexReached',
   () => new MaxAccountIndexReachedError()
 )
+
+/**
+ * SerializationFailed: 'Serialization failed'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SerializationFailedError extends Error {
+  readonly code: number = 0x17f2
+  readonly name: string = 'SerializationFailed'
+  constructor() {
+    super('Serialization failed')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SerializationFailedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f2, () => new SerializationFailedError())
+createErrorFromNameLookup.set(
+  'SerializationFailed',
+  () => new SerializationFailedError()
+)
+
+/**
+ * MissingPrecompileInstruction: 'Missing precompile instruction'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingPrecompileInstructionError extends Error {
+  readonly code: number = 0x17f3
+  readonly name: string = 'MissingPrecompileInstruction'
+  constructor() {
+    super('Missing precompile instruction')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingPrecompileInstructionError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17f3,
+  () => new MissingPrecompileInstructionError()
+)
+createErrorFromNameLookup.set(
+  'MissingPrecompileInstruction',
+  () => new MissingPrecompileInstructionError()
+)
+
+/**
+ * InvalidSessionKey: 'Invalid session key'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSessionKeyError extends Error {
+  readonly code: number = 0x17f4
+  readonly name: string = 'InvalidSessionKey'
+  constructor() {
+    super('Invalid session key')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSessionKeyError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f4, () => new InvalidSessionKeyError())
+createErrorFromNameLookup.set(
+  'InvalidSessionKey',
+  () => new InvalidSessionKeyError()
+)
+
+/**
+ * InvalidSessionKeyExpiration: 'Invalid session key expiration'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSessionKeyExpirationError extends Error {
+  readonly code: number = 0x17f5
+  readonly name: string = 'InvalidSessionKeyExpiration'
+  constructor() {
+    super('Invalid session key expiration')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSessionKeyExpirationError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17f5,
+  () => new InvalidSessionKeyExpirationError()
+)
+createErrorFromNameLookup.set(
+  'InvalidSessionKeyExpiration',
+  () => new InvalidSessionKeyExpirationError()
+)
+
+/**
+ * SessionKeyExpirationTooLong: 'Session key expiration too long'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SessionKeyExpirationTooLongError extends Error {
+  readonly code: number = 0x17f6
+  readonly name: string = 'SessionKeyExpirationTooLong'
+  constructor() {
+    super('Session key expiration too long')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SessionKeyExpirationTooLongError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17f6,
+  () => new SessionKeyExpirationTooLongError()
+)
+createErrorFromNameLookup.set(
+  'SessionKeyExpirationTooLong',
+  () => new SessionKeyExpirationTooLongError()
+)
+
+/**
+ * InvalidPermissions: 'Invalid permissions'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPermissionsError extends Error {
+  readonly code: number = 0x17f7
+  readonly name: string = 'InvalidPermissions'
+  constructor() {
+    super('Invalid permissions')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPermissionsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f7, () => new InvalidPermissionsError())
+createErrorFromNameLookup.set(
+  'InvalidPermissions',
+  () => new InvalidPermissionsError()
+)
+
+/**
+ * InvalidSignerType: 'Invalid signer type'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSignerTypeError extends Error {
+  readonly code: number = 0x17f8
+  readonly name: string = 'InvalidSignerType'
+  constructor() {
+    super('Invalid signer type')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSignerTypeError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f8, () => new InvalidSignerTypeError())
+createErrorFromNameLookup.set(
+  'InvalidSignerType',
+  () => new InvalidSignerTypeError()
+)
+
+/**
+ * InvalidPrecompileData: 'Invalid precompile data'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPrecompileDataError extends Error {
+  readonly code: number = 0x17f9
+  readonly name: string = 'InvalidPrecompileData'
+  constructor() {
+    super('Invalid precompile data')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPrecompileDataError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17f9, () => new InvalidPrecompileDataError())
+createErrorFromNameLookup.set(
+  'InvalidPrecompileData',
+  () => new InvalidPrecompileDataError()
+)
+
+/**
+ * InvalidPrecompileProgram: 'Invalid precompile program'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidPrecompileProgramError extends Error {
+  readonly code: number = 0x17fa
+  readonly name: string = 'InvalidPrecompileProgram'
+  constructor() {
+    super('Invalid precompile program')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidPrecompileProgramError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fa, () => new InvalidPrecompileProgramError())
+createErrorFromNameLookup.set(
+  'InvalidPrecompileProgram',
+  () => new InvalidPrecompileProgramError()
+)
+
+/**
+ * DuplicateExternalSignature: 'Duplicate external signature'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class DuplicateExternalSignatureError extends Error {
+  readonly code: number = 0x17fb
+  readonly name: string = 'DuplicateExternalSignature'
+  constructor() {
+    super('Duplicate external signature')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, DuplicateExternalSignatureError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17fb,
+  () => new DuplicateExternalSignatureError()
+)
+createErrorFromNameLookup.set(
+  'DuplicateExternalSignature',
+  () => new DuplicateExternalSignatureError()
+)
+
+/**
+ * WebauthnRpIdMismatch: 'Webauthn RP ID mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnRpIdMismatchError extends Error {
+  readonly code: number = 0x17fc
+  readonly name: string = 'WebauthnRpIdMismatch'
+  constructor() {
+    super('Webauthn RP ID mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnRpIdMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fc, () => new WebauthnRpIdMismatchError())
+createErrorFromNameLookup.set(
+  'WebauthnRpIdMismatch',
+  () => new WebauthnRpIdMismatchError()
+)
+
+/**
+ * WebauthnUserNotPresent: 'Webauthn user not present'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnUserNotPresentError extends Error {
+  readonly code: number = 0x17fd
+  readonly name: string = 'WebauthnUserNotPresent'
+  constructor() {
+    super('Webauthn user not present')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnUserNotPresentError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17fd, () => new WebauthnUserNotPresentError())
+createErrorFromNameLookup.set(
+  'WebauthnUserNotPresent',
+  () => new WebauthnUserNotPresentError()
+)
+
+/**
+ * WebauthnCounterNotIncremented: 'Webauthn counter not incremented'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class WebauthnCounterNotIncrementedError extends Error {
+  readonly code: number = 0x17fe
+  readonly name: string = 'WebauthnCounterNotIncremented'
+  constructor() {
+    super('Webauthn counter not incremented')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, WebauthnCounterNotIncrementedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x17fe,
+  () => new WebauthnCounterNotIncrementedError()
+)
+createErrorFromNameLookup.set(
+  'WebauthnCounterNotIncremented',
+  () => new WebauthnCounterNotIncrementedError()
+)
+
+/**
+ * MissingClientDataParams: 'Missing client data params'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingClientDataParamsError extends Error {
+  readonly code: number = 0x17ff
+  readonly name: string = 'MissingClientDataParams'
+  constructor() {
+    super('Missing client data params')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingClientDataParamsError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x17ff, () => new MissingClientDataParamsError())
+createErrorFromNameLookup.set(
+  'MissingClientDataParams',
+  () => new MissingClientDataParamsError()
+)
+
+/**
+ * PrecompileMessageMismatch: 'Precompile message mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PrecompileMessageMismatchError extends Error {
+  readonly code: number = 0x1800
+  readonly name: string = 'PrecompileMessageMismatch'
+  constructor() {
+    super('Precompile message mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PrecompileMessageMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1800,
+  () => new PrecompileMessageMismatchError()
+)
+createErrorFromNameLookup.set(
+  'PrecompileMessageMismatch',
+  () => new PrecompileMessageMismatchError()
+)
+
+/**
+ * MissingExtraVerificationData: 'Missing extra verification data for external signer'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class MissingExtraVerificationDataError extends Error {
+  readonly code: number = 0x1801
+  readonly name: string = 'MissingExtraVerificationData'
+  constructor() {
+    super('Missing extra verification data for external signer')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, MissingExtraVerificationDataError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(
+  0x1801,
+  () => new MissingExtraVerificationDataError()
+)
+createErrorFromNameLookup.set(
+  'MissingExtraVerificationData',
+  () => new MissingExtraVerificationDataError()
+)
+
+/**
+ * InvalidSignature: 'Invalid signature'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class InvalidSignatureError extends Error {
+  readonly code: number = 0x1802
+  readonly name: string = 'InvalidSignature'
+  constructor() {
+    super('Invalid signature')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, InvalidSignatureError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1802, () => new InvalidSignatureError())
+createErrorFromNameLookup.set(
+  'InvalidSignature',
+  () => new InvalidSignatureError()
+)
+
+/**
+ * PrecompileRequired: 'Precompile verification required for this signer type'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class PrecompileRequiredError extends Error {
+  readonly code: number = 0x1803
+  readonly name: string = 'PrecompileRequired'
+  constructor() {
+    super('Precompile verification required for this signer type')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, PrecompileRequiredError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1803, () => new PrecompileRequiredError())
+createErrorFromNameLookup.set(
+  'PrecompileRequired',
+  () => new PrecompileRequiredError()
+)
+
+/**
+ * SignerTypeMismatch: 'SmartAccountSigner type mismatch'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class SignerTypeMismatchError extends Error {
+  readonly code: number = 0x1804
+  readonly name: string = 'SignerTypeMismatch'
+  constructor() {
+    super('SmartAccountSigner type mismatch')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, SignerTypeMismatchError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1804, () => new SignerTypeMismatchError())
+createErrorFromNameLookup.set(
+  'SignerTypeMismatch',
+  () => new SignerTypeMismatchError()
+)
+
+/**
+ * NonceExhausted: 'Nonce exhausted (u64 overflow)'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class NonceExhaustedError extends Error {
+  readonly code: number = 0x1805
+  readonly name: string = 'NonceExhausted'
+  constructor() {
+    super('Nonce exhausted (u64 overflow)')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, NonceExhaustedError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1805, () => new NonceExhaustedError())
+createErrorFromNameLookup.set('NonceExhausted', () => new NonceExhaustedError())
+
+/**
+ * Overflow: 'Arithmetic overflow'
+ *
+ * @category Errors
+ * @category generated
+ */
+export class OverflowError extends Error {
+  readonly code: number = 0x1806
+  readonly name: string = 'Overflow'
+  constructor() {
+    super('Arithmetic overflow')
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, OverflowError)
+    }
+  }
+}
+
+createErrorFromCodeLookup.set(0x1806, () => new OverflowError())
+createErrorFromNameLookup.set('Overflow', () => new OverflowError())
 
 /**
  * Attempts to resolve a custom program error from the provided error code.

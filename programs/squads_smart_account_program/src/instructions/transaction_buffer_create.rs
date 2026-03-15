@@ -5,6 +5,8 @@ use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::state::MAX_BUFFER_SIZE;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_transaction_buffer_create_message;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateTransactionBufferArgs {
@@ -24,6 +26,7 @@ pub struct CreateTransactionBufferArgs {
 #[instruction(args: CreateTransactionBufferArgs)]
 pub struct CreateTransactionBuffer<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
@@ -43,8 +46,8 @@ pub struct CreateTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The signer on the smart account that is creating the transaction.
-    pub creator: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub creator: AccountInfo<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -54,33 +57,64 @@ pub struct CreateTransactionBuffer<'info> {
 }
 
 impl CreateTransactionBuffer<'_> {
-    fn validate(&self, args: &CreateTransactionBufferArgs) -> Result<()> {
+    fn validate(
+        &mut self,
+        args: &CreateTransactionBufferArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account, creator, ..
         } = self;
 
-        // creator is a signer on the smart account
-        require!(
-            consensus_account.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_transaction_buffer_create_message(
+            &consensus_account.key(),
+            creator.key(),
+            args.buffer_index,
+            args.account_index,
+            &args.final_buffer_hash,
+            args.final_buffer_size,
         );
-        // creator has initiate permissions
-        require!(
-            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
+
+        // Verify signer (native, session key, or external) and check Initiate permission
+        consensus_account.verify_signer(
+            creator,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Final Buffer Size must not exceed 4000 bytes
         require!(
             args.final_buffer_size as usize <= MAX_BUFFER_SIZE,
             SmartAccountError::FinalBufferSizeExceeded
         );
+
         Ok(())
     }
 
     /// Create a new transaction buffer.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_transaction_buffer(
+        ctx: Context<Self>,
+        args: CreateTransactionBufferArgs,
+    ) -> Result<()> {
+        Self::create_transaction_buffer_inner(ctx, args)
+    }
+
+    /// Create a new transaction buffer with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_transaction_buffer_v2(
+        ctx: Context<Self>,
+        args: CreateTransactionBufferArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        Self::create_transaction_buffer_inner(ctx, args)
+    }
+
+    fn create_transaction_buffer_inner(
         ctx: Context<Self>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {

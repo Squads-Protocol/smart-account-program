@@ -72,18 +72,20 @@ export async function executeBatchTransaction({
       transactionPda: batchPda,
     });
 
-  return {
-    instruction: createExecuteBatchTransactionInstruction(
-      {
-        settings: settingsPda,
-        signer,
-        proposal: proposalPda,
-        batch: batchPda,
-        transaction: batchTransactionPda,
-        anchorRemainingAccounts: accountMetas,
-      },
-      programId
-    ),
-    lookupTableAccounts,
-  };
+  const instruction = createExecuteBatchTransactionInstruction(
+    {
+      settings: settingsPda,
+      signer,
+      proposal: proposalPda,
+      batch: batchPda,
+      transaction: batchTransactionPda,
+      anchorRemainingAccounts: accountMetas,
+    },
+    programId
+  );
+  const settingsMeta = instruction.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (settingsMeta) settingsMeta.isWritable = true;
+  const signerMeta = instruction.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return { instruction, lookupTableAccounts };
 }

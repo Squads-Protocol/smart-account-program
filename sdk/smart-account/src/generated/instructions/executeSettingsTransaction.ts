@@ -23,7 +23,7 @@ export const executeSettingsTransactionStruct = new beet.BeetArgsStruct<{
  * Accounts required by the _executeSettingsTransaction_ instruction
  *
  * @property [_writable_] settings
- * @property [**signer**] signer
+ * @property [] signer
  * @property [_writable_] proposal
  * @property [] transaction
  * @property [_writable_, **signer**] rentPayer (optional)
@@ -75,7 +75,7 @@ export function createExecuteSettingsTransactionInstruction(
     {
       pubkey: accounts.signer,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.proposal,

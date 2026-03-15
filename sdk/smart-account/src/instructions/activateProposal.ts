@@ -19,7 +19,7 @@ export function activateProposal({
     programId,
   });
 
-  return createActivateProposalInstruction(
+  const ix = createActivateProposalInstruction(
     {
       settings: settingsPda,
       proposal: proposalPda,
@@ -27,4 +27,7 @@ export function activateProposal({
     },
     programId
   );
+  const signerMeta = ix.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return ix;
 }

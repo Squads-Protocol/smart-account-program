@@ -14,3 +14,11 @@ test-ledger
 
 lib
 .crates
+
+# AI
+.apex
+.claude
+.codex
+.factory
+CLAUDE.md
+AGENTS.md

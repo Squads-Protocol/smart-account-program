@@ -41,7 +41,7 @@ export const createTransactionBufferStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [] consensusAccount
  * @property [_writable_] transactionBuffer
- * @property [**signer**] creator
+ * @property [] creator
  * @property [_writable_, **signer**] rentPayer
  * @category Instructions
  * @category CreateTransactionBuffer
@@ -82,7 +82,7 @@ export function createCreateTransactionBufferInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.consensusAccount,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -93,7 +93,7 @@ export function createCreateTransactionBufferInstruction(
     {
       pubkey: accounts.creator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,

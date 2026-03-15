@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddSignerArgs {
-    pub new_signer: SmartAccountSigner,
+    pub new_signer: SmartAccountSignerWrapper,
     /// Memo is used for indexing only.
     pub memo: Option<String>,
 }
@@ -91,17 +91,18 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
         let settings = &mut ctx.accounts.settings;
 
         // Make sure that the new signer is not already in the settings.
+        let signer_key = new_signer.single_key()?;
         require!(
-            settings.is_signer(new_signer.key).is_none(),
+            settings.is_signer(signer_key).is_none(),
             SmartAccountError::DuplicateSigner
         );
 
-        settings.add_signer(new_signer.clone());
+        settings.add_signer(new_signer.clone())?;
 
         // Make sure the settings account can fit the newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
-            settings.signers.len(),
+            &settings.signers,
             ctx.accounts
                 .rent_payer
                 .as_ref()
@@ -122,7 +123,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
             settings_pubkey: settings.key(),
             authority: ctx.accounts.settings_authority.key(),
             change: SettingsAction::AddSigner {
-                new_signer: new_signer,
+                new_signer,
             },
         };
         let log_authority_info = LogAuthorityInfo {

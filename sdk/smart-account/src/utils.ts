@@ -21,6 +21,33 @@ import {
   compileToSynchronousMessageAndAccountsV2WithHooks,
 } from "./utils/compileToSynchronousMessageV2";
 
+/**
+ * Patches a TransactionInstruction's data to replace beet's null
+ * Option<Vec<u8>> serialization with correctly serialized Option<T> bytes.
+ *
+ * Generated SDK instructions use beet.coption(beet.bytes) for extraVerificationData,
+ * which adds an unwanted 4-byte Vec<u8> length prefix. This bypasses beet by:
+ * 1. Having the caller pass null for EVD (beet writes trailing [0x00])
+ * 2. Replacing that [0x00] with [0x01][correctly serialized bytes]
+ */
+export function patchInstructionEvd(
+  ix: TransactionInstruction,
+  evdBytes: Uint8Array
+): void {
+  if (evdBytes.length === 0) {
+    throw new Error("patchInstructionEvd: evdBytes must not be empty");
+  }
+  // Guard: verify the trailing byte is the null Option marker (0x00)
+  if (ix.data[ix.data.length - 1] !== 0x00) {
+    throw new Error(
+      "patchInstructionEvd: expected trailing 0x00 (null Option), got 0x" +
+        ix.data[ix.data.length - 1].toString(16)
+    );
+  }
+  const withoutNull = ix.data.subarray(0, ix.data.length - 1);
+  ix.data = Buffer.concat([withoutNull, Buffer.from([0x01]), Buffer.from(evdBytes)]);
+}
+
 export function toUtfBytes(str: string): Uint8Array {
   return new TextEncoder().encode(str);
 }

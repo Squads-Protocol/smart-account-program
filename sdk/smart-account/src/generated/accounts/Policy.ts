@@ -8,10 +8,13 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { LegacySmartAccountSigner } from '../types/LegacySmartAccountSigner'
+import { SmartAccountSigner } from '../types/SmartAccountSigner'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from '../types/SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from '../types/SmartAccountSignerWrapper'
+import { customSmartAccountSignerWrapperBeet } from '../../types'
 import { PolicyState, policyStateBeet } from '../types/PolicyState'
 import {
   PolicyExpiration,
@@ -29,7 +32,7 @@ export type PolicyArgs = {
   bump: number
   transactionIndex: beet.bignum
   staleTransactionIndex: beet.bignum
-  signers: SmartAccountSigner[]
+  signers: LegacySmartAccountSigner[] | SmartAccountSigner[]
   threshold: number
   timeLock: number
   policyState: PolicyState
@@ -53,7 +56,7 @@ export class Policy implements PolicyArgs {
     readonly bump: number,
     readonly transactionIndex: beet.bignum,
     readonly staleTransactionIndex: beet.bignum,
-    readonly signers: SmartAccountSigner[],
+    readonly signers: LegacySmartAccountSigner[] | SmartAccountSigner[],
     readonly threshold: number,
     readonly timeLock: number,
     readonly policyState: PolicyState,
@@ -222,7 +225,7 @@ export class Policy implements PolicyArgs {
         }
         return x
       })(),
-      signers: this.signers,
+      signers: this.signers.map(s => ('__kind' in s ? s.__kind : 'V1')),
       threshold: this.threshold,
       timeLock: this.timeLock,
       policyState: this.policyState.__kind,
@@ -260,7 +263,7 @@ export const policyBeet = new beet.FixableBeetStruct<
     ['bump', beet.u8],
     ['transactionIndex', beet.u64],
     ['staleTransactionIndex', beet.u64],
-    ['signers', beet.array(smartAccountSignerBeet)],
+    ['signers', customSmartAccountSignerWrapperBeet],
     ['threshold', beet.u16],
     ['timeLock', beet.u32],
     ['policyState', policyStateBeet],

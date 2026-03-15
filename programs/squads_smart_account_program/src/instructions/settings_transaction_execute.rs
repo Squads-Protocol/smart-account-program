@@ -5,6 +5,8 @@ use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_execute_settings_transaction_message;
 use crate::LogAuthorityInfo;
 use crate::ProposalEvent;
 use crate::ProposalEventType;
@@ -23,8 +25,8 @@ pub struct ExecuteSettingsTransaction<'info> {
     )]
     pub settings: Box<Account<'info, Settings>>,
 
-    /// The signer on the smart account that is executing the transaction.
-    pub signer: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub signer: AccountInfo<'info>,
 
     /// The proposal account associated with the transaction.
     #[account(
@@ -69,23 +71,33 @@ pub struct ExecuteSettingsTransaction<'info> {
 }
 
 impl<'info> ExecuteSettingsTransaction<'info> {
-    fn validate(&self) -> Result<()> {
+    fn validate(
+        &mut self,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             settings,
             proposal,
+            transaction,
             signer,
             ..
         } = self;
 
-        // signer
-        require!(
-            settings.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_execute_settings_transaction_message(
+            &transaction.key(),
+            transaction.index,
         );
-        require!(
-            settings.signer_has_permission(signer.key(), Permission::Execute),
-            SmartAccountError::Unauthorized
-        );
+
+        // Verify signer (native, session key, or external) and check Execute permission
+        settings.verify_signer(
+            signer,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Execute),
+        )?;
 
         // proposal
         match proposal.status {
@@ -108,7 +120,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
         // Spending limit expiration must be greater than the current timestamp.
         let current_timestamp = Clock::get()?.unix_timestamp;
 
-        for action in self.transaction.actions.iter() {
+        for action in transaction.actions.iter() {
             if let SettingsAction::AddSpendingLimit { expiration, .. } = action {
                 require!(
                     *expiration > current_timestamp,
@@ -121,8 +133,18 @@ impl<'info> ExecuteSettingsTransaction<'info> {
 
     /// Execute the settings transaction.
     /// The transaction must be `Approved`.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn execute_settings_transaction(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
+        Self::execute_settings_transaction_inner(ctx)
+    }
+
+    /// Execute the settings transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn execute_settings_transaction_v2(ctx: Context<'_, '_, 'info, 'info, Self>, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::execute_settings_transaction_inner(ctx)
+    }
+
+    fn execute_settings_transaction_inner(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let settings_key = settings.key();
         let transaction = &ctx.accounts.transaction;
@@ -155,7 +177,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
         // Make sure the smart account can fit the updated state: added signers or newly set rent_collector.
         Settings::realloc_if_needed(
             settings.to_account_info(),
-            settings.signers.len(),
+            &settings.signers,
             ctx.accounts
                 .rent_payer
                 .as_ref()

@@ -25,7 +25,7 @@ export const executeTransactionStruct = new beet.BeetArgsStruct<{
  * @property [_writable_] consensusAccount
  * @property [_writable_] proposal
  * @property [] transaction
- * @property [**signer**] signer
+ * @property [] signer
  * @property [] program
  * @category Instructions
  * @category ExecuteTransaction
@@ -78,7 +78,7 @@ export function createExecuteTransactionInstruction(
     {
       pubkey: accounts.signer,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.program,

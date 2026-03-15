@@ -7,12 +7,19 @@ import {
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  createSignerObject,
+  createSignerArray,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flow / SettingsChangePolicy", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flow / SettingsChangePolicy [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -61,7 +68,7 @@ describe("Flow / SettingsChangePolicy", () => {
       programId,
     });
 
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -89,7 +96,7 @@ describe("Flow / SettingsChangePolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Create and approve proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -99,7 +106,7 @@ describe("Flow / SettingsChangePolicy", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -110,7 +117,7 @@ describe("Flow / SettingsChangePolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Execute settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -172,7 +179,7 @@ describe("Flow / SettingsChangePolicy", () => {
       },
     ];
     // Try to add the new signer to the policy
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
+    signature = await rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.almighty,
       policy: policyPda,
@@ -188,10 +195,7 @@ describe("Flow / SettingsChangePolicy", () => {
             actions: [
               {
                 __kind: "AddSigner",
-                newSigner: {
-                  key: allowedKeypair.publicKey,
-                  permissions: { mask: 1 },
-                },
+                newSigner: createSignerArray(allowedKeypair.publicKey, { mask: 1 }),
               },
             ],
           },
@@ -202,7 +206,7 @@ describe("Flow / SettingsChangePolicy", () => {
 
     // Wrong action index
     await assert.rejects(
-      smartAccount.rpc.executePolicyPayloadSync({
+      rpc.executePolicyPayloadSync({
         connection,
         feePayer: members.almighty,
         policy: policyPda,
@@ -219,10 +223,7 @@ describe("Flow / SettingsChangePolicy", () => {
               actions: [
                 {
                   __kind: "AddSigner",
-                  newSigner: {
-                    key: allowedKeypair.publicKey,
-                    permissions: { mask: 1 },
-                  },
+                  newSigner: createSignerArray(allowedKeypair.publicKey, { mask: 1 }),
                 },
               ],
             },
@@ -238,7 +239,7 @@ describe("Flow / SettingsChangePolicy", () => {
 
     // Wrong action index
     await assert.rejects(
-      smartAccount.rpc.executePolicyPayloadSync({
+      rpc.executePolicyPayloadSync({
         connection,
         feePayer: members.almighty,
         policy: policyPda,
@@ -255,10 +256,7 @@ describe("Flow / SettingsChangePolicy", () => {
               actions: [
                 {
                   __kind: "AddSigner",
-                  newSigner: {
-                    key: allowedKeypair.publicKey,
-                    permissions: { mask: 7 },
-                  },
+                  newSigner: createSignerArray(allowedKeypair.publicKey, { mask: 7 }),
                 },
               ],
             },
@@ -275,3 +273,4 @@ describe("Flow / SettingsChangePolicy", () => {
     );
   });
 });
+}

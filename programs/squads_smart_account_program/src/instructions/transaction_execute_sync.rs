@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use anchor_lang::solana_program::hash::hash;
+
 use crate::{
     consensus::ConsensusAccount,
     consensus_trait::{Consensus, ConsensusAccountType},
@@ -7,6 +9,8 @@ use crate::{
     events::*,
     program::SquadsSmartAccountProgram,
     state::*,
+    state::signer_v2::ExtraVerificationData,
+    state::signer_v2::precompile::create_sync_consensus_message,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
 };
@@ -34,13 +38,42 @@ impl SyncPayload {
         }
     }
 }
+/// Arguments for synchronous transaction execution
+///
+/// # BREAKING CHANGE (v2)
+/// `num_signers` now represents the TOTAL count of ALL signers (native + external),
+/// not just native signers. The instructions sysvar (if external signers are present)
+/// must be placed at position `num_signers` in remaining_accounts.
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncTransactionArgs {
     pub account_index: u8,
+    /// Total count of ALL signers (native + external) in remaining_accounts.
+    /// - Native signers have AccountInfo.is_signer = true
+    /// - External signers have AccountInfo.is_signer = false
+    /// - Instructions sysvar must be at position num_signers
     pub num_signers: u8,
     pub payload: SyncPayload,
 }
 
+/// Account structure for synchronous transaction execution
+///
+/// # Remaining Accounts (BREAKING CHANGE v2)
+/// The order has changed to support unified signer validation:
+///
+/// ```
+/// [0..num_signers]           All signers (native + external mixed)
+///                            - Native: AccountInfo.is_signer = true
+///                            - External: AccountInfo.is_signer = false
+/// [num_signers]              Instructions sysvar (if external signers present)
+/// [num_signers+1..]          Transaction or policy-specific accounts
+/// ```
+///
+/// For transaction execution:
+/// - Transaction account addresses
+///
+/// For policy execution:
+/// - Settings account (if policy has SettingsState expiration)
+/// - Policy-specific accounts
 #[derive(Accounts)]
 pub struct SyncTransaction<'info> {
     #[account(
@@ -49,27 +82,31 @@ pub struct SyncTransaction<'info> {
     )]
     pub consensus_account: Box<InterfaceAccount<'info, ConsensusAccount>>,
     pub program: Program<'info, SquadsSmartAccountProgram>,
-    // `remaining_accounts` must include the following accounts in the exact order:
-    // 1. The exact amount of signers required to reach the threshold
-    // 2. For transaction execution:
-    //   2.1. Any remaining accounts associated with the instructions
-    // 3. For policy execution:
-    //   3.1 Settings account if the policy has a settings state expiration
-    //   3.2 Any remaining accounts associated with the policy
 }
 
 impl<'info> SyncTransaction<'info> {
     fn validate(
-        &self,
+        &mut self,
         args: &SyncTransactionArgs,
         remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
     ) -> Result<()> {
         let Self {
             consensus_account, ..
         } = self;
 
+        // Compute the offset past signers + optional instructions sysvar.
+        // When external signers are present, the instructions sysvar sits at
+        // remaining_accounts[num_signers]. We must skip it before passing
+        // accounts to is_active() and downstream execution.
+        let sysvar_offset = if remaining_accounts
+            .get(args.num_signers as usize)
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { 1usize } else { 0usize };
+        let accounts_start = args.num_signers as usize + sysvar_offset;
+
         // Check that the consensus account is active (policy)
-        consensus_account.is_active(&remaining_accounts[args.num_signers as usize..])?;
+        consensus_account.is_active(&remaining_accounts[accounts_start..])?;
 
         // Validate account index is unlocked for Settings-based transactions
         if consensus_account.account_type() == ConsensusAccountType::Settings {
@@ -91,21 +128,58 @@ impl<'info> SyncTransaction<'info> {
             }
         }
 
+        // Build message for external signer verification.
+        // Hash the payload so external signers commit to the exact instructions being executed.
+        let payload_bytes = args.payload.try_to_vec()
+            .map_err(|_| SmartAccountError::InvalidPayload)?;
+        let payload_hash = hash(&payload_bytes);
+        let message = create_sync_consensus_message(
+            &consensus_account.key(),
+            consensus_account.transaction_index(),
+            &payload_hash.to_bytes(),
+        );
+
         // Synchronous consensus validation
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+        let evd: &[ExtraVerificationData] = match &extra_verification_data {
+            Some(v) => v,
+            None => &[],
+        };
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts, message, evd)
     }
 }
 
 impl<'info> SyncTransaction<'info> {
-    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn sync_transaction(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncTransactionArgs,
+    ) -> Result<()> {
+        Self::sync_transaction_inner(ctx, args)
+    }
+
+    /// Sync transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn sync_transaction_v2(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: SyncTransactionArgs,
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
+    ) -> Result<()> {
+        Self::sync_transaction_inner(ctx, args)
+    }
+
+    fn sync_transaction_inner(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: SyncTransactionArgs,
     ) -> Result<()> {
         // Readonly Accounts
         let consensus_account = &mut ctx.accounts.consensus_account;
-        // Remove the signers from the remaining accounts
-        let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize..];
+        // Remove the signers (and optional instructions sysvar) from the remaining accounts.
+        // When external signers are present, the sysvar sits at remaining_accounts[num_signers].
+        let sysvar_offset = if ctx.remaining_accounts
+            .get(args.num_signers as usize)
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { 1usize } else { 0usize };
+        let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize + sysvar_offset..];
 
         let consensus_account_key = consensus_account.key();
 
@@ -156,7 +230,7 @@ impl<'info> SyncTransaction<'info> {
                 let executable_message = SynchronousTransactionMessage::new_validated(
                     &settings_key,
                     &smart_account_pubkey,
-                    &settings.signers,
+                    &settings.signers.as_v2(),
                     &settings_compiled_instructions,
                     &remaining_accounts,
                 )?;

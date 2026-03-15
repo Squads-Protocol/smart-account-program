@@ -4,16 +4,22 @@ import assert from "assert";
 import {
   createAutonomousMultisig,
   createLocalhostConnection,
+  createSignerObject,
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 import { AccountMeta } from "@solana/web3.js";
 const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flows / Remove Policy", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flows / Remove Policy [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -31,6 +37,24 @@ describe("Flows / Remove Policy", () => {
         programId,
       })
     )[0];
+
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    for (let i = 0; i < 3; i++) {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+        programId
+      );
+      const msg = new web3.TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new web3.VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+    }
 
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
@@ -56,7 +80,7 @@ describe("Flows / Remove Policy", () => {
       programId,
     });
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -68,10 +92,7 @@ describe("Flows / Remove Policy", () => {
           seed: policySeed,
           policyCreationPayload,
           signers: [
-            {
-              key: members.voter.publicKey,
-              permissions: { mask: 7 },
-            },
+            createSignerObject(members.voter.publicKey, { mask: 7 }),
           ],
           threshold: 1,
           timeLock: 0,
@@ -84,7 +105,7 @@ describe("Flows / Remove Policy", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -95,7 +116,7 @@ describe("Flows / Remove Policy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -106,7 +127,7 @@ describe("Flows / Remove Policy", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -139,7 +160,7 @@ describe("Flows / Remove Policy", () => {
       ],
     };
     // Create a transaction
-    signature = await smartAccount.rpc.createPolicyTransaction({
+    signature = await rpc.createPolicyTransaction({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -166,7 +187,7 @@ describe("Flows / Remove Policy", () => {
       isSigner: false,
     });
 
-    let removeSignature = await smartAccount.rpc.executeSettingsTransactionSync(
+    let removeSignature = await rpc.executeSettingsTransactionSync(
       {
         connection,
         feePayer: members.almighty,
@@ -195,7 +216,7 @@ describe("Flows / Remove Policy", () => {
       programId.toString()
     );
 
-    let closeSignature = await smartAccount.rpc.closeEmptyPolicyTransaction({
+    let closeSignature = await rpc.closeEmptyPolicyTransaction({
       connection,
       feePayer: members.almighty,
       emptyPolicy: policyPda,
@@ -213,3 +234,4 @@ describe("Flows / Remove Policy", () => {
     );
   });
 });
+}

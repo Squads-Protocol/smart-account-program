@@ -9,6 +9,8 @@ import {
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings } = smartAccount.accounts;
@@ -16,7 +18,10 @@ const { Settings } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / smart_account_set_archival_authority", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / smart_account_set_archival_authority [${format}]`, () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let configAuthority: Keypair;
@@ -51,9 +56,9 @@ describe("Instructions / smart_account_set_archival_authority", () => {
       programId,
     })[0];
 
-    assert.rejects(
+    await assert.rejects(
       async () =>
-        await smartAccount.rpc.setArchivalAuthorityAsAuthority({
+        await rpc.setArchivalAuthorityAsAuthority({
           connection,
           settingsPda,
           feePayer: configAuthority,
@@ -85,9 +90,9 @@ describe("Instructions / smart_account_set_archival_authority", () => {
   });
 
   it("unset `archival_authority` for the controlled smart account", async () => {
-    assert.rejects(
+    await assert.rejects(
       async () =>
-        await smartAccount.rpc.setArchivalAuthorityAsAuthority({
+        await rpc.setArchivalAuthorityAsAuthority({
           connection,
           settingsPda,
           feePayer: configAuthority,
@@ -107,3 +112,4 @@ describe("Instructions / smart_account_set_archival_authority", () => {
     // assert.strictEqual(multisigAccount.rentCollector, null);
   });
 });
+}

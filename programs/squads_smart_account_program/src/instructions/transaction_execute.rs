@@ -7,6 +7,8 @@ use crate::events::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_execute_transaction_message;
 use crate::utils::*;
 
 #[derive(Accounts)]
@@ -43,7 +45,8 @@ pub struct ExecuteTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    pub signer: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub signer: AccountInfo<'info>,
     pub program: Program<'info, SquadsSmartAccountProgram>,
     // `remaining_accounts` must include the following accounts in the exact
     // order:
@@ -58,26 +61,36 @@ pub struct ExecuteTransaction<'info> {
 }
 
 impl<'info> ExecuteTransaction<'info> {
-    fn validate(&self, ctx: &Context<ExecuteTransaction<'info>>) -> Result<()> {
+    fn validate(
+        &mut self,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             proposal,
+            transaction,
             signer,
             ..
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(remaining_accounts)?;
 
-        // signer
-        require!(
-            consensus_account.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_execute_transaction_message(
+            &transaction.key(),
+            transaction.index,
         );
-        require!(
-            consensus_account.signer_has_permission(signer.key(), Permission::Execute),
-            SmartAccountError::Unauthorized
-        );
+
+        // Verify signer (native, session key, or external) and check Execute permission
+        consensus_account.verify_signer(
+            signer,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Execute),
+        )?;
 
         // proposal
         match proposal.status {
@@ -100,8 +113,18 @@ impl<'info> ExecuteTransaction<'info> {
 
     /// Execute the smart account transaction.
     /// The transaction must be `Approved`.
-    #[access_control(ctx.accounts.validate(&ctx))]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn execute_transaction(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
+        Self::execute_transaction_inner(ctx)
+    }
+
+    /// Execute the smart account transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn execute_transaction_v2(ctx: Context<'_, '_, 'info, 'info, Self>, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::execute_transaction_inner(ctx)
+    }
+
+    fn execute_transaction_inner(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
 

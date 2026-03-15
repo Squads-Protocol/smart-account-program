@@ -38,5 +38,7 @@ export function executeTransactionSync({
     },
     programId
   );
+  const consensusMeta = ix.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (consensusMeta) consensusMeta.isWritable = true;
   return ix;
 }

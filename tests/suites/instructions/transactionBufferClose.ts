@@ -21,12 +21,17 @@ import {
   generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_buffer_close", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_buffer_close [${format}]`, () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let vaultPda: PublicKey;
@@ -194,3 +199,4 @@ describe("Instructions / transaction_buffer_close", () => {
     );
   });
 });
+}

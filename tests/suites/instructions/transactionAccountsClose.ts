@@ -17,6 +17,8 @@ import {
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings, Proposal } = smartAccount.accounts;
@@ -24,7 +26,10 @@ const { Settings, Proposal } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_accounts_close", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_accounts_close [${format}]`, () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   const staleNonApprovedTransactionIndex = 1n;
@@ -84,7 +89,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Stale and Non-Approved
     // Create a transaction (Stale and Non-Approved).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -98,7 +103,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Stale and Non-Approved).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -112,7 +117,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Stale and No Proposal
     // Create a transaction (Stale and Non-Approved).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -132,7 +137,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Stale and Approved
     // Create a transaction (Stale and Approved).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -146,7 +151,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Stale and Approved).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -157,7 +162,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the first member.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -168,7 +173,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the second member.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -196,7 +201,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Executed Config Transaction
     // Create a transaction (Executed).
-    signature = await smartAccount.rpc.createSettingsTransaction({
+    signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -208,7 +213,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Executed).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -219,7 +224,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the first member.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -230,7 +235,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by the second member.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -241,7 +246,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the transaction.
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -256,7 +261,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Executed Vault transaction
     // Create a transaction (Executed).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -271,7 +276,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Approved).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -282,7 +287,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -293,7 +298,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the transaction.
-    signature = await smartAccount.rpc.executeTransaction({
+    signature = await rpc.executeTransaction({
       connection,
       feePayer: members.executor,
       settingsPda,
@@ -320,7 +325,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Active
     // Create a transaction (Active).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -335,7 +340,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Active).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -361,7 +366,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Approved
     // Create a transaction (Approved).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -376,7 +381,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Approved).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -387,7 +392,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -413,7 +418,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Rejected
     // Create a transaction (Rejected).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -428,7 +433,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Rejected).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -441,7 +446,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Our threshold is 1, and 2 voters, so the cutoff is 2...
 
     // Reject the proposal by the first member.
-    signature = await smartAccount.rpc.rejectProposal({
+    signature = await rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -452,7 +457,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Reject the proposal by the second member.
-    signature = await smartAccount.rpc.rejectProposal({
+    signature = await rpc.rejectProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -478,7 +483,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     //region Cancelled
     // Create a transaction (Cancelled).
-    signature = await smartAccount.rpc.createTransaction({
+    signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -493,7 +498,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Cancelled).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.voter,
       rentPayer: members.voter,
@@ -505,7 +510,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -516,7 +521,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Cancel the proposal (The proposal should be approved at this point).
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -576,7 +581,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     // Create a transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createTransaction({
+    let signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -591,7 +596,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -602,7 +607,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal by a member.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -613,7 +618,7 @@ describe("Instructions / transaction_accounts_close", () => {
     await connection.confirmTransaction(signature);
 
     // Cancel the proposal.
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -626,7 +631,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Attempt to close the accounts with the wrong transaction rent collector.
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeTransaction({
+        rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -641,7 +646,7 @@ describe("Instructions / transaction_accounts_close", () => {
     // Attempt to close the accounts with the wrong proposal rent collector.
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeTransaction({
+        rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -684,7 +689,7 @@ describe("Instructions / transaction_accounts_close", () => {
       })
     )[0];
     // Create a transaction for it.
-    let signature = await smartAccount.rpc.createTransaction({
+    let signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -698,7 +703,7 @@ describe("Instructions / transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
     // Create a proposal for it.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -758,7 +763,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeTransaction({
+        rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -781,7 +786,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeTransaction({
+        rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -810,7 +815,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeTransaction({
+        rpc.closeTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -852,7 +857,7 @@ describe("Instructions / transaction_accounts_close", () => {
       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
       instructions: [testIx],
     });
-    let signature = await smartAccount.rpc.createTransaction({
+    let signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -866,7 +871,7 @@ describe("Instructions / transaction_accounts_close", () => {
     });
     await connection.confirmTransaction(signature);
     // Create a proposal for it.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -999,7 +1004,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await smartAccount.rpc.closeTransaction({
+    const sig = await rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -1047,7 +1052,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await smartAccount.rpc.closeTransaction({
+    const sig = await rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -1086,7 +1091,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await smartAccount.rpc.closeTransaction({
+    const sig = await rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -1125,7 +1130,7 @@ describe("Instructions / transaction_accounts_close", () => {
 
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await smartAccount.rpc.closeTransaction({
+    const sig = await rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -1166,7 +1171,7 @@ describe("Instructions / transaction_accounts_close", () => {
     );
     const preBalance = await connection.getBalance(members.proposer.publicKey);
 
-    const sig = await smartAccount.rpc.closeTransaction({
+    const sig = await rpc.closeTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -1185,3 +1190,4 @@ describe("Instructions / transaction_accounts_close", () => {
     assert.equal(postBalanceVoter > preBalanceVoter, true);
   });
 });
+}

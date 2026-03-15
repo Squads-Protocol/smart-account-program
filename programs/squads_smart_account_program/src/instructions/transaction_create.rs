@@ -7,6 +7,8 @@ use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_transaction_message;
 use crate::utils::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -56,8 +58,8 @@ pub struct CreateTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    /// The member of the multisig that is creating the transaction.
-    pub creator: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub creator: AccountInfo<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -68,7 +70,12 @@ pub struct CreateTransaction<'info> {
 }
 
 impl<'info> CreateTransaction<'info> {
-    pub fn validate(&self, ctx: &Context<Self>, args: &CreateTransactionArgs) -> Result<()> {
+    pub fn validate(
+        &mut self,
+        args: &CreateTransactionArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             creator,
@@ -76,7 +83,23 @@ impl<'info> CreateTransaction<'info> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(remaining_accounts)?;
+
+        // Build message for external signer verification
+        let next_transaction_index = consensus_account.transaction_index().checked_add(1).unwrap();
+        let message = create_transaction_message(
+            &consensus_account.key(),
+            next_transaction_index,
+        );
+
+        // Verify signer (native, session key, or external) and check Initiate permission
+        consensus_account.verify_signer(
+            creator,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Validate the transaction payload
         match consensus_account.account_type() {
@@ -109,22 +132,23 @@ impl<'info> CreateTransaction<'info> {
                 }
             }
         }
-        // creator
-        require!(
-            consensus_account.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
 
         Ok(())
     }
 
     /// Create a new vault transaction.
-    #[access_control(ctx.accounts.validate(&ctx, &args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_transaction(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
+        Self::create_transaction_inner(ctx, args)
+    }
+
+    /// Create a new vault transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_transaction_v2(ctx: Context<Self>, args: CreateTransactionArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::create_transaction_inner(ctx, args)
+    }
+
+    fn create_transaction_inner(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;

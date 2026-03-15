@@ -8,14 +8,17 @@
 import * as web3 from '@solana/web3.js'
 import * as beet from '@metaplex-foundation/beet'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
+import { LegacySmartAccountSigner } from './LegacySmartAccountSigner'
+import { SmartAccountSigner } from './SmartAccountSigner'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from './SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from './SmartAccountSignerWrapper'
+import { customSmartAccountSignerWrapperBeet } from '../../types'
 export type CreateSmartAccountArgs = {
   settingsAuthority: beet.COption<web3.PublicKey>
   threshold: number
-  signers: SmartAccountSigner[]
+  signers: LegacySmartAccountSigner[] | SmartAccountSigner[]
   timeLock: number
   rentCollector: beet.COption<web3.PublicKey>
   memo: beet.COption<string>
@@ -30,7 +33,7 @@ export const createSmartAccountArgsBeet =
     [
       ['settingsAuthority', beet.coption(beetSolana.publicKey)],
       ['threshold', beet.u16],
-      ['signers', beet.array(smartAccountSignerBeet)],
+      ['signers', customSmartAccountSignerWrapperBeet],
       ['timeLock', beet.u32],
       ['rentCollector', beet.coption(beetSolana.publicKey)],
       ['memo', beet.coption(beet.utf8String)],

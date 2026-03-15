@@ -1,4 +1,5 @@
 pub use activate_proposal::*;
+pub use create_session_key::*;
 pub use increment_account_index::*;
 pub use authority_settings_transaction_execute::*;
 pub use authority_spending_limit_add::*;
@@ -25,9 +26,12 @@ pub use transaction_execute::*;
 pub use transaction_execute_sync::*;
 pub use transaction_execute_sync_legacy::*;
 pub use use_spending_limit::*;
+pub use revoke_session_key::*;
 
 mod activate_proposal;
+mod create_session_key;
 mod increment_account_index;
+mod revoke_session_key;
 mod authority_settings_transaction_execute;
 mod authority_spending_limit_add;
 mod authority_spending_limit_remove;

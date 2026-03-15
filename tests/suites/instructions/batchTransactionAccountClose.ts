@@ -18,6 +18,8 @@ import {
   getTestProgramId,
   MultisigWithRentReclamationAndVariousBatches,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings, Batch } = smartAccount.accounts;
@@ -25,7 +27,10 @@ const { Settings, Batch } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / batch_transaction_account_close", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / batch_transaction_account_close [${format}]`, () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let testMultisig: MultisigWithRentReclamationAndVariousBatches;
@@ -87,7 +92,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     // Create a batch.
     const batchIndex = 1n;
-    let signature = await smartAccount.rpc.createBatch({
+    let signature = await rpc.createBatch({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -99,7 +104,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a draft proposal for the batch.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -111,7 +116,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Add a transaction to the batch.
-    signature = await smartAccount.rpc.addTransactionToBatch({
+    signature = await rpc.addTransactionToBatch({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -126,7 +131,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Activate the proposal.
-    signature = await smartAccount.rpc.activateProposal({
+    signature = await rpc.activateProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -137,7 +142,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Reject the proposal.
-    signature = await smartAccount.rpc.rejectProposal({
+    signature = await rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -146,7 +151,7 @@ describe("Instructions / batch_transaction_account_close", () => {
       programId,
     });
     await connection.confirmTransaction(signature);
-    signature = await smartAccount.rpc.rejectProposal({
+    signature = await rpc.rejectProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -159,7 +164,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     // Attempt to close the accounts.
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeBatchTransaction({
+        rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -200,7 +205,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     // Create a batch.
     const batchIndex = 1n;
-    let signature = await smartAccount.rpc.createBatch({
+    let signature = await rpc.createBatch({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -212,7 +217,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Create a draft proposal for it.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -224,7 +229,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Add a transaction to the batch.
-    signature = await smartAccount.rpc.addTransactionToBatch({
+    signature = await rpc.addTransactionToBatch({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -239,7 +244,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
 
     // Activate the proposal.
-    signature = await smartAccount.rpc.activateProposal({
+    signature = await rpc.activateProposal({
       connection,
       feePayer: members.proposer,
       settingsPda: otherMultisig,
@@ -303,7 +308,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeBatchTransaction({
+        rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -327,7 +332,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeBatchTransaction({
+        rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -350,7 +355,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeBatchTransaction({
+        rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -374,7 +379,7 @@ describe("Instructions / batch_transaction_account_close", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.closeBatchTransaction({
+        rpc.closeBatchTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -396,7 +401,7 @@ describe("Instructions / batch_transaction_account_close", () => {
       settingsPda
     );
 
-    const signature = await smartAccount.rpc.closeBatchTransaction({
+    const signature = await rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -449,7 +454,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     let batchAccount = await Batch.fromAccountAddress(connection, batchPda);
     assert.strictEqual(batchAccount.size, 2);
 
-    let signature = await smartAccount.rpc.closeBatchTransaction({
+    let signature = await rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -463,7 +468,7 @@ describe("Instructions / batch_transaction_account_close", () => {
     batchAccount = await Batch.fromAccountAddress(connection, batchPda);
     assert.strictEqual(batchAccount.size, 1);
 
-    signature = await smartAccount.rpc.closeBatchTransaction({
+    signature = await rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -486,7 +491,7 @@ describe("Instructions / batch_transaction_account_close", () => {
       settingsPda
     );
 
-    let signature = await smartAccount.rpc.closeBatchTransaction({
+    let signature = await rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -506,7 +511,7 @@ describe("Instructions / batch_transaction_account_close", () => {
       settingsPda
     );
 
-    let signature = await smartAccount.rpc.closeBatchTransaction({
+    let signature = await rpc.closeBatchTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -518,3 +523,4 @@ describe("Instructions / batch_transaction_account_close", () => {
     await connection.confirmTransaction(signature);
   });
 });
+}

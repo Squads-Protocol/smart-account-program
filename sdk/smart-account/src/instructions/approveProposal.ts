@@ -21,9 +21,14 @@ export function approveProposal({
     programId,
   });
 
-  return createApproveProposalInstruction(
+  const ix = createApproveProposalInstruction(
     { consensusAccount: settingsPda, proposal: proposalPda, signer, program: programId },
     { args: { memo: memo ?? null } },
     programId
   );
+  const consensusMeta = ix.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (consensusMeta) consensusMeta.isWritable = true;
+  const signerMeta = ix.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return ix;
 }

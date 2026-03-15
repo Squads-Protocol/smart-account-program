@@ -3,6 +3,8 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::{Consensus, ConsensusAccountType};
 use crate::program::SquadsSmartAccountProgram;
 use crate::{state::*, SmartAccountEvent};
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_settings_transaction_create_message;
 use crate::utils::validate_settings_actions;
 use crate::LogAuthorityInfo;
 use crate::{errors::*, TransactionContent, TransactionEvent, TransactionEventType};
@@ -37,8 +39,8 @@ pub struct CreateSettingsTransaction<'info> {
     )]
     pub transaction: Account<'info, SettingsTransaction>,
 
-    /// The signer on the smart account that is creating the transaction.
-    pub creator: Signer<'info>,
+    /// CHECK: Verified via verify_signer (native, session key, or external)
+    pub creator: AccountInfo<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -50,24 +52,40 @@ pub struct CreateSettingsTransaction<'info> {
 }
 
 impl CreateSettingsTransaction<'_> {
-    fn validate(&self, args: &CreateSettingsTransactionArgs) -> Result<()> {
+    fn validate(
+        &mut self,
+        args: &CreateSettingsTransactionArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        let Self {
+            settings,
+            creator,
+            ..
+        } = self;
+
         // settings
         require_keys_eq!(
-            self.settings.settings_authority,
+            settings.settings_authority,
             Pubkey::default(),
             SmartAccountError::NotSupportedForControlled
         );
 
-        // creator
-        require!(
-            self.settings.is_signer(self.creator.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let next_transaction_index = settings.transaction_index.checked_add(1).unwrap();
+        let message = create_settings_transaction_create_message(
+            &settings.key(),
+            next_transaction_index,
         );
-        require!(
-            self.settings
-                .signer_has_permission(self.creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
+
+        // Verify signer (native, session key, or external) and check Initiate permission
+        settings.verify_signer(
+            creator,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // args
         validate_settings_actions(&args.actions)?;
@@ -76,8 +94,25 @@ impl CreateSettingsTransaction<'_> {
     }
 
     /// Create a new settings transaction.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_settings_transaction(
+        ctx: Context<Self>,
+        args: CreateSettingsTransactionArgs,
+    ) -> Result<()> {
+        Self::create_settings_transaction_inner(ctx, args)
+    }
+
+    /// Create a new settings transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_settings_transaction_v2(
+        ctx: Context<Self>,
+        args: CreateSettingsTransactionArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        Self::create_settings_transaction_inner(ctx, args)
+    }
+
+    fn create_settings_transaction_inner(
         ctx: Context<Self>,
         args: CreateSettingsTransactionArgs,
     ) -> Result<()> {

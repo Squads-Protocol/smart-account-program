@@ -2,6 +2,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   createAddSignerAsAuthorityInstruction,
   SmartAccountSigner,
+  LegacySmartAccountSigner,
   PROGRAM_ID,
 } from "../generated";
 
@@ -28,7 +29,7 @@ export function addSignerAsAuthority({
       systemProgram: SystemProgram.programId,
       program: programId,
     },
-    { args: { newSigner, memo: memo ?? null } },
+    { args: { newSigner: [newSigner], memo: memo ?? null } },
     programId
   );
 }

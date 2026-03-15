@@ -17,7 +17,7 @@
     "build:js": "tsup src/index.ts --format esm,cjs --outDir lib",
     "build:types": "tsc --emitDeclarationOnly",
     "build": "yarn build:js && yarn build:types",
-    "generate": "yarn solita && node scripts/fix-smallvec.js",
+    "generate": "yarn solita && node scripts/fix-smallvec.js && node scripts/fix-signer-wrapper.js",
     "ts": "tsc --noEmit",
     "prepare:canary": "yarn build && npm version --prerelease --preid=canary"
   },

@@ -8,7 +8,8 @@ use crate::{
     interface::consensus_trait::{Consensus, ConsensusAccountType},
     InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
     ProgramInteractionPolicy, Proposal, Settings, SettingsChangeExecutionArgs,
-    SettingsChangePolicy, SmartAccountSigner, SpendingLimitExecutionArgs, SpendingLimitPolicy,
+    SettingsChangePolicy, SmartAccountSignerWrapper,
+    SpendingLimitExecutionArgs, SpendingLimitPolicy,
     Transaction, SEED_POLICY, SEED_PREFIX,
 };
 
@@ -45,8 +46,8 @@ pub struct Policy {
     /// Stale transaction index boundary.
     pub stale_transaction_index: u64,
 
-    /// Signers attached to the policy with their permissions.
-    pub signers: Vec<SmartAccountSigner>,
+    /// Signers attached to the policy with their permissions (V1 or V2 format).
+    pub signers: SmartAccountSignerWrapper,
 
     /// Threshold for approvals.
     pub threshold: u16,
@@ -68,33 +69,36 @@ pub struct Policy {
 }
 
 impl Policy {
-    pub fn size(signers_length: usize, policy_data_length: usize) -> usize {
+    /// Check if the policy account space needs to be reallocated.
+    pub fn size_for_wrapper(
+        wrapper: &SmartAccountSignerWrapper,
+        policy_data_length: usize,
+    ) -> usize {
+        let signers_size = wrapper.serialized_size();
         8  + // anchor discriminator
         32 + // settings
         8  + // seed
         1 + // bump
         8  + // transaction_index
         8  + // stale_transaction_index
-        4  + // signers vector length
-        signers_length * SmartAccountSigner::INIT_SPACE + // signers
+        signers_size + // signers
         2  + // threshold
         4  + // time_lock
         1  + policy_data_length + // discriminator + policy_data_length
         8  + // start_timestamp
-        1  + PolicyExpiration::INIT_SPACE + // expiration (discriminator + max data size)
+        1  + PolicyExpiration::INIT_SPACE + // expiration
         32  // rent_collector
     }
 
-    /// Check if the policy account space needs to be reallocated.
     pub fn realloc_if_needed<'a>(
         policy: AccountInfo<'a>,
-        signers_length: usize,
+        signers: &SmartAccountSignerWrapper,
         policy_data_length: usize,
         rent_payer: Option<AccountInfo<'a>>,
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
         let current_account_size = policy.data.borrow().len();
-        let required_size = Policy::size(signers_length, policy_data_length);
+        let required_size = Policy::size_for_wrapper(signers, policy_data_length);
 
         if current_account_size >= required_size {
             return Ok(false);
@@ -112,12 +116,12 @@ impl Policy {
         );
 
         // There must be no duplicate signers.
-        let has_duplicates = self.signers.windows(2).any(|win| win[0].key == win[1].key);
+        let has_duplicates = self.signers.has_duplicates();
         require!(!has_duplicates, SmartAccountError::DuplicateSigner);
 
         // Signers must not have unknown permissions.
         require!(
-            self.signers.iter().all(|s| s.permissions.mask < 8),
+            self.signers.all_permissions_valid(),
             SmartAccountError::UnknownPermission
         );
 
@@ -174,7 +178,7 @@ impl Policy {
         settings: Pubkey,
         seed: u64,
         bump: u8,
-        signers: &Vec<SmartAccountSigner>,
+        signers: &SmartAccountSignerWrapper,
         threshold: u16,
         time_lock: u32,
         policy_state: PolicyState,
@@ -182,8 +186,8 @@ impl Policy {
         expiration: Option<PolicyExpiration>,
         rent_collector: Pubkey,
     ) -> Result<Policy> {
-        let mut sorted_signers = signers.clone();
-        sorted_signers.sort_by_key(|s| s.key);
+        let mut signers = signers.clone();
+        signers.sort_by_signer_key();
 
         Ok(Policy {
             settings,
@@ -191,7 +195,7 @@ impl Policy {
             bump,
             transaction_index: 0,
             stale_transaction_index: 0,
-            signers: sorted_signers,
+            signers,
             threshold,
             time_lock,
             policy_state,
@@ -204,15 +208,14 @@ impl Policy {
     /// Update policy state safely. Disallows
     pub fn update_state(
         &mut self,
-        signers: &Vec<SmartAccountSigner>,
+        signers: &SmartAccountSignerWrapper,
         threshold: u16,
         time_lock: u32,
         policy_state: PolicyState,
         expiration: Option<PolicyExpiration>,
     ) -> Result<()> {
         let mut sorted_signers = signers.clone();
-        sorted_signers.sort_by_key(|s| s.key);
-
+        sorted_signers.sort_by_signer_key();
         self.signers = sorted_signers;
         self.threshold = threshold;
         self.time_lock = time_lock;
@@ -313,7 +316,7 @@ impl Policy {
                     proposal_key: proposal_account
                         .map(|p| p.key())
                         .unwrap_or(Pubkey::default()),
-                    policy_signers: self.signers.clone(),
+                    policy_signers: self.signers.as_v2(),
                 };
                 policy_state.execute_payload(args, payload, accounts)
             }
@@ -396,7 +399,7 @@ impl Consensus for Policy {
         require_keys_eq!(address, key, SmartAccountError::InvalidAccount);
         Ok(())
     }
-    fn signers(&self) -> &[SmartAccountSigner] {
+    fn signers(&self) -> &SmartAccountSignerWrapper {
         &self.signers
     }
 
@@ -419,6 +422,14 @@ impl Consensus for Policy {
 
     fn stale_transaction_index(&self) -> u64 {
         self.stale_transaction_index
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.signers.apply_counter_updates(updates)
+    }
+
+    fn apply_nonce_update(&mut self, key_id: &Pubkey, nonce: u64) -> Result<()> {
+        self.signers.update_signer_nonce(key_id, nonce)
     }
 
     fn invalidate_prior_transactions(&mut self) {

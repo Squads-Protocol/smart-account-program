@@ -14,6 +14,8 @@ import {
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings } = smartAccount.accounts;
@@ -31,7 +33,10 @@ function createIncrementAccountIndexInstruction(
   );
 }
 
-describe("Instructions / increment_account_index", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / increment_account_index [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -351,3 +356,4 @@ describe("Instructions / increment_account_index", () => {
     );
   });
 });
+}

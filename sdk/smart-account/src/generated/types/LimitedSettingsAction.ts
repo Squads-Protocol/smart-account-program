@@ -8,10 +8,13 @@
 import * as web3 from '@solana/web3.js'
 import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
+import { LegacySmartAccountSigner } from './LegacySmartAccountSigner'
+import { SmartAccountSigner } from './SmartAccountSigner'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from './SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from './SmartAccountSignerWrapper'
+import { customSmartAccountSignerWrapperBeet } from '../../types'
 /**
  * This type is used to derive the {@link LimitedSettingsAction} type as well as the de/serializer.
  * However don't refer to it in your code but use the {@link LimitedSettingsAction} type instead.
@@ -22,7 +25,7 @@ import {
  * @private
  */
 export type LimitedSettingsActionRecord = {
-  AddSigner: { newSigner: SmartAccountSigner }
+  AddSigner: { newSigner: LegacySmartAccountSigner[] | SmartAccountSigner[] }
   RemoveSigner: { oldSigner: web3.PublicKey }
   ChangeThreshold: { newThreshold: number }
   SetTimeLock: { newTimeLock: number }
@@ -67,8 +70,8 @@ export const limitedSettingsActionBeet =
   beet.dataEnum<LimitedSettingsActionRecord>([
     [
       'AddSigner',
-      new beet.BeetArgsStruct<LimitedSettingsActionRecord['AddSigner']>(
-        [['newSigner', smartAccountSignerBeet]],
+      new beet.FixableBeetArgsStruct<LimitedSettingsActionRecord['AddSigner']>(
+        [['newSigner', customSmartAccountSignerWrapperBeet]],
         'LimitedSettingsActionRecord["AddSigner"]'
       ),
     ],

@@ -41,12 +41,12 @@ export const createTransactionFromBufferStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] transactionCreateItemConsensusAccount
  * @property [_writable_] transactionCreateItemTransaction
- * @property [**signer**] transactionCreateItemCreator
+ * @property [] transactionCreateItemCreator
  * @property [_writable_, **signer**] transactionCreateItemRentPayer
  * @property [] transactionCreateItemSystemProgram
  * @property [] transactionCreateItemProgram
  * @property [_writable_] transactionBuffer
- * @property [_writable_, **signer**] creator
+ * @property [_writable_] creator
  * @category Instructions
  * @category CreateTransactionFromBuffer
  * @category generated
@@ -101,7 +101,7 @@ export function createCreateTransactionFromBufferInstruction(
     {
       pubkey: accounts.transactionCreateItemCreator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.transactionCreateItemRentPayer,
@@ -126,7 +126,7 @@ export function createCreateTransactionFromBufferInstruction(
     {
       pubkey: accounts.creator,
       isWritable: true,
-      isSigner: true,
+      isSigner: false,
     },
   ]
 
