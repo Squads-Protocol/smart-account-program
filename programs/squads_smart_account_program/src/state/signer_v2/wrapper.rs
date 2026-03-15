@@ -354,6 +354,16 @@ impl SmartAccountSignerWrapper {
             .find(|s| s.is_valid_session_key(pubkey, current_timestamp))
     }
 
+    /// Check if any signer already has this pubkey registered as a session key.
+    /// Unlike `find_by_session_key`, this does NOT check expiration — it catches
+    /// any existing session key assignment regardless of whether it's active.
+    pub fn has_session_key_assigned(&self, pubkey: &Pubkey) -> bool {
+        if *pubkey == Pubkey::default() {
+            return false;
+        }
+        self.iter_v2().any(|s| s.get_session_key() == Some(*pubkey))
+    }
+
     /// Check if all signers have valid permissions (mask < 8)
     pub fn all_permissions_valid(&self) -> bool {
         match self {

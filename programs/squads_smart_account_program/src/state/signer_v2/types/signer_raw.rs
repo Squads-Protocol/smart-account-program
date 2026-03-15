@@ -58,6 +58,11 @@ impl SmartAccountSigner {
                 let mut compressed_pubkey = [0u8; 33];
                 compressed_pubkey.copy_from_slice(&signer_data[0..33]);
 
+                // Compressed P256 pubkey must have prefix 0x02 or 0x03
+                if compressed_pubkey[0] != 0x02 && compressed_pubkey[0] != 0x03 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+
                 let rp_id_len = signer_data[33];
                 if rp_id_len > 32 {
                     return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
@@ -100,6 +105,11 @@ impl SmartAccountSigner {
                 let mut uncompressed_pubkey = [0u8; 64];
                 uncompressed_pubkey.copy_from_slice(&signer_data[0..64]);
 
+                // Reject identity point (all zeros)
+                if uncompressed_pubkey == [0u8; 64] {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+
                 // Derive eth_address on-chain: keccak256(pubkey)[12..32]
                 let eth_address = crate::state::signer_v2::secp256k1_syscall::compute_eth_address(&uncompressed_pubkey);
 
@@ -122,6 +132,11 @@ impl SmartAccountSigner {
                 let mut external_pubkey = [0u8; 32];
                 external_pubkey.copy_from_slice(&signer_data[0..32]);
 
+                // Reject zero pubkey
+                if external_pubkey == [0u8; 32] {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
+
                 Ok(Self::Ed25519External {
                     permissions,
                     data: Ed25519ExternalData {
@@ -138,6 +153,11 @@ impl SmartAccountSigner {
                 }
                 let mut compressed_pubkey = [0u8; 33];
                 compressed_pubkey.copy_from_slice(&signer_data[0..33]);
+
+                // Compressed P256 pubkey must have prefix 0x02 or 0x03
+                if compressed_pubkey[0] != 0x02 && compressed_pubkey[0] != 0x03 {
+                    return Err(error!(crate::errors::SmartAccountError::InvalidPayload));
+                }
 
                 Ok(Self::P256Native {
                     permissions,

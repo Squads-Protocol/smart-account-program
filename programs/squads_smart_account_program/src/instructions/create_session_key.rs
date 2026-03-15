@@ -116,6 +116,14 @@ impl CreateSessionKey<'_> {
             SmartAccountError::InvalidSessionKey
         );
 
+        // Prevent session key from colliding with another signer's session key.
+        // Without this, find_signer_by_session_key returns the first match,
+        // silently shadowing the second signer's session key.
+        require!(
+            !settings.signers.has_session_key_assigned(&args.session_key),
+            SmartAccountError::InvalidSessionKey
+        );
+
         // Get mutable reference to the signer and set session key
         let signer = settings
             .signers
