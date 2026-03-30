@@ -245,6 +245,8 @@ impl<'info> ExecuteTransaction<'info> {
         consensus_account.invariant()?;
 
 
+        let canonical_signer = consensus_account.resolve_canonical_key(ctx.accounts.signer.key(), ctx.accounts.signer.is_signer)?;
+
         // Log the execution event
         let execute_event = TransactionEvent {
             consensus_account: consensus_account.key(),
@@ -252,7 +254,7 @@ impl<'info> ExecuteTransaction<'info> {
             event_type: TransactionEventType::Execute,
             transaction_pubkey: ctx.accounts.transaction.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(canonical_signer),
             memo: None,
             transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
         };
@@ -264,7 +266,7 @@ impl<'info> ExecuteTransaction<'info> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(canonical_signer),
             memo: None,
             proposal: Some(proposal.clone().into_inner()),
         };

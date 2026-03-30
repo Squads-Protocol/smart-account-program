@@ -10,8 +10,7 @@ use crate::{
         SEED_SETTINGS,
     },
     state::signer_v2::ExtraVerificationData,
-    state::signer_v2::precompile::{split_instructions_sysvar, verify_precompile_signers},
-    utils::context_validation::verify_external_signer_via_syscall,
+    state::signer_v2::precompile::create_increment_account_index_message,
 };
 
 #[derive(Accounts)]
@@ -110,15 +109,24 @@ impl IncrementAccountIndexV2<'_> {
         remaining_accounts: &[AccountInfo],
         extra_verification_data: &Option<ExtraVerificationData>,
     ) -> Result<()> {
-        let settings = &self.settings;
-        let signer_key = *self.signer.key;
+        let message = create_increment_account_index_message(
+            &self.settings.key(),
+            self.signer.key(),
+        );
 
-        // Signer must be a member of the smart account
-        let signer = settings
-            .is_signer_v2(signer_key)
+        // verify_signer handles native, session key, and external signers uniformly
+        let canonical_key = self.settings.verify_signer(
+            &self.signer,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            None, // Check permission manually (OR logic)
+        )?;
+
+        // Permission: Initiate OR Vote OR Execute
+        let signer = self.settings
+            .is_signer_v2(canonical_key)
             .ok_or(SmartAccountError::NotASigner)?;
-
-        // Permission: Initiate OR Vote OR Execute (mask & 7 != 0)
         let permissions = signer.permissions();
         require!(
             permissions.has(Permission::Initiate)
@@ -129,56 +137,9 @@ impl IncrementAccountIndexV2<'_> {
 
         // Cannot exceed free account range
         require!(
-            settings.account_utilization < FREE_ACCOUNT_MAX_INDEX,
+            self.settings.account_utilization < FREE_ACCOUNT_MAX_INDEX,
             SmartAccountError::MaxAccountIndexReached
         );
-
-        // Verify signer: native or external
-        if signer.is_external() {
-            let evd = extra_verification_data
-                .as_ref()
-                .ok_or(SmartAccountError::MissingExtraVerificationData)?;
-
-            // Build a domain-specific message for this operation
-            let mut message = anchor_lang::solana_program::hash::Hasher::default();
-            message.hash(b"increment_account_index_v2");
-            message.hash(settings.key().as_ref());
-            message.hash(signer_key.as_ref());
-
-            let (sysvar_opt, _) = split_instructions_sysvar(remaining_accounts);
-
-            let (counter_update, next_nonce) = if evd.is_precompile() {
-                let sysvar = sysvar_opt
-                    .ok_or(SmartAccountError::MissingPrecompileInstruction)?;
-                let results = verify_precompile_signers(
-                    sysvar,
-                    &[signer.clone()],
-                    &[evd.clone()],
-                    &message,
-                )?;
-                results
-                    .into_iter()
-                    .next()
-                    .ok_or_else(|| error!(SmartAccountError::MissingPrecompileInstruction))?
-            } else {
-                verify_external_signer_via_syscall(&signer, &message, evd)?
-            };
-
-            // Apply counter update if needed (WebAuthn)
-            if let Some(new_counter) = counter_update {
-                self.settings
-                    .signers
-                    .update_signer_counter(&signer_key, new_counter)?;
-            }
-
-            // Apply nonce update
-            self.settings
-                .signers
-                .update_signer_nonce(&signer_key, next_nonce)?;
-        } else {
-            // Native signer must be a native tx signer
-            require!(self.signer.is_signer, SmartAccountError::MissingSignature);
-        }
 
         Ok(())
     }

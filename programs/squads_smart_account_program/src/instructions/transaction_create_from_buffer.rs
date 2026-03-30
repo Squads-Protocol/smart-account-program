@@ -1,4 +1,4 @@
-use crate::consensus_trait::Consensus;
+use crate::consensus_trait::{Consensus, ConsensusAccountType};
 use crate::errors::*;
 use crate::instructions::*;
 use crate::state::*;
@@ -14,14 +14,12 @@ pub struct CreateTransactionFromBuffer<'info> {
     #[account(
         mut,
         close = creator,
-        // Only the creator can turn the buffer into a transaction and reclaim
-        // the rent
-        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
+        // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
             transaction_create.consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
-            creator.key().as_ref(),
+            transaction_buffer.creator.as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes(),
         ],
         bump
@@ -54,6 +52,20 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             &transaction_buffer_account.key(),
             consensus_account.transaction_index().checked_add(1).unwrap(),
         );
+
+        // Check if the consensus account is active
+        consensus_account.is_active(&remaining_accounts)?;
+
+        // Validate account index is unlocked for Settings-based transactions
+        if consensus_account.account_type() == ConsensusAccountType::Settings {
+            match args {
+                CreateTransactionArgs::TransactionPayload(TransactionPayload { account_index, .. }) => {
+                    let settings = consensus_account.read_only_settings()?;
+                    settings.validate_account_index_unlocked(*account_index)?;
+                }
+                _ => {}
+            }
+        }
 
         // Verify signer (native, session key, or external) and check Initiate permission
         consensus_account.verify_signer(
@@ -94,6 +106,11 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: CreateTransactionArgs,
     ) -> Result<()> {
+        // V1: raw key must match stored creator
+        require!(
+            ctx.accounts.transaction_buffer.creator == ctx.accounts.creator.key(),
+            SmartAccountError::Unauthorized
+        );
         Self::create_transaction_from_buffer_inner(ctx, args)
     }
 
@@ -104,6 +121,12 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         args: CreateTransactionArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
+        // V2: canonical key must match stored creator (session keys resolve to parent)
+        let canonical_key = ctx.accounts.transaction_create.consensus_account.resolve_canonical_key(ctx.accounts.creator.key(), ctx.accounts.creator.is_signer)?;
+        require!(
+            ctx.accounts.transaction_buffer.creator == canonical_key,
+            SmartAccountError::Unauthorized
+        );
         Self::create_transaction_from_buffer_inner(ctx, args)
     }
 
@@ -188,8 +211,9 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             ctx.bumps.transaction_create,
         );
 
-        // Call the `create_transaction` instruction
-        CreateTransaction::create_transaction(context, create_args)?;
+        // Call create_transaction_inner directly — bypasses double verify_signer.
+        // Validation (is_active, account_index_unlocked, verify_signer) already ran above.
+        CreateTransaction::create_transaction_inner(context, create_args)?;
 
         Ok(())
     }

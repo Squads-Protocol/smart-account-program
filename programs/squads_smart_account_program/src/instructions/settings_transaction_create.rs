@@ -125,9 +125,12 @@ impl CreateSettingsTransaction<'_> {
         // Increment the transaction index.
         let transaction_index = settings.transaction_index.checked_add(1).unwrap();
 
+        // Resolve canonical key for storage and events
+        let canonical_key = settings.resolve_canonical_key(creator.key(), creator.is_signer)?;
+
         // Initialize the transaction fields.
         transaction.settings = settings_key;
-        transaction.creator = creator.key();
+        transaction.creator = canonical_key;
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         transaction.bump = ctx.bumps.transaction;
@@ -153,7 +156,7 @@ impl CreateSettingsTransaction<'_> {
             consensus_account_type: ConsensusAccountType::Settings,
             transaction_pubkey: transaction.key(),
             transaction_index,
-            signer: Some(creator.key()),
+            signer: Some(canonical_key),
             transaction_content: Some(TransactionContent::SettingsTransaction {
                 settings: settings.clone().into_inner(),
                 transaction: transaction.clone().into_inner(),

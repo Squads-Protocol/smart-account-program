@@ -292,3 +292,18 @@ pub fn create_revoke_session_key_message(
 
     hasher
 }
+
+/// Create message for transaction buffer close signing
+///
+/// Format: hash("tx_buffer_close_v2" || buffer_key || consensus_account_key)
+pub fn create_transaction_buffer_close_message(
+    buffer_key: &Pubkey,
+    consensus_account_key: &Pubkey,
+) -> Hasher {
+    let mut hasher = Hasher::default();
+    hasher.hash(b"tx_buffer_close_v2");
+    hasher.hash(buffer_key.as_ref());
+    hasher.hash(consensus_account_key.as_ref());
+
+    hasher
+}

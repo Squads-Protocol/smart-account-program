@@ -98,7 +98,7 @@ impl AddTransactionToBatch<'_> {
         );
 
         // Verify signer (native, session key, or external) and check Initiate permission
-        settings.verify_signer(
+        let canonical_key = settings.verify_signer(
             signer,
             remaining_accounts,
             message,
@@ -106,9 +106,9 @@ impl AddTransactionToBatch<'_> {
             Some(Permission::Initiate),
         )?;
 
-        // Only batch creator can add transactions to it.
+        // Only batch creator can add transactions to it (using canonical key).
         require!(
-            signer.key() == batch.creator,
+            canonical_key == batch.creator,
             SmartAccountError::Unauthorized
         );
 

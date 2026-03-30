@@ -24,20 +24,19 @@ pub struct ExtendTransactionBuffer<'info> {
 
     #[account(
         mut,
-        // Only the creator can extend the buffer
-        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
+        // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
             consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
-            creator.key().as_ref(),
+            transaction_buffer.creator.as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()
         ],
         bump
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
+    /// CHECK: Verified via verify_signer. Authorization checked in handler body.
     pub creator: AccountInfo<'info>,
 }
 
@@ -94,6 +93,11 @@ impl ExtendTransactionBuffer<'_> {
         ctx: Context<Self>,
         args: ExtendTransactionBufferArgs,
     ) -> Result<()> {
+        // V1: raw key must match stored creator
+        require!(
+            ctx.accounts.transaction_buffer.creator == ctx.accounts.creator.key(),
+            SmartAccountError::Unauthorized
+        );
         Self::extend_transaction_buffer_inner(ctx, args)
     }
 
@@ -104,6 +108,12 @@ impl ExtendTransactionBuffer<'_> {
         args: ExtendTransactionBufferArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
+        // V2: canonical key must match stored creator (session keys resolve to parent)
+        let canonical_key = ctx.accounts.consensus_account.resolve_canonical_key(ctx.accounts.creator.key(), ctx.accounts.creator.is_signer)?;
+        require!(
+            ctx.accounts.transaction_buffer.creator == canonical_key,
+            SmartAccountError::Unauthorized
+        );
         Self::extend_transaction_buffer_inner(ctx, args)
     }
 

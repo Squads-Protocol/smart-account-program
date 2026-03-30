@@ -114,8 +114,10 @@ impl CreateBatch<'_> {
         let (_, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
+        let canonical_key = settings.resolve_canonical_key(creator.key(), creator.is_signer)?;
+
         batch.settings = settings_key;
-        batch.creator = creator.key();
+        batch.creator = canonical_key;
         batch.rent_collector = rent_payer.key();
         batch.index = index;
         batch.bump = ctx.bumps.batch;

@@ -196,6 +196,8 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
+        let canonical_signer = settings.resolve_canonical_key(ctx.accounts.signer.key(), ctx.accounts.signer.is_signer)?;
+
         // Transaction event
         let event = TransactionEvent {
             event_type: TransactionEventType::Execute,
@@ -203,7 +205,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             consensus_account_type: ConsensusAccountType::Settings,
             transaction_pubkey: transaction.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(canonical_signer),
             transaction_content: Some(TransactionContent::SettingsTransaction {
                 settings: settings.clone().into_inner(),
                 transaction: transaction.clone().into_inner(),
@@ -219,7 +221,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             consensus_account_type: ConsensusAccountType::Settings,
             proposal_pubkey: proposal.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(canonical_signer),
             memo: None,
             proposal: Some(proposal.clone().into_inner()),
         };

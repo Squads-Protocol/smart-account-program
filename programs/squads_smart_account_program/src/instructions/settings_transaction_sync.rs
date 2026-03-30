@@ -157,8 +157,8 @@ impl<'info> SyncSettingsTransaction<'info> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| acc.key.clone())
-                .collect::<Vec<_>>(),
+                .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+                .collect::<Result<Vec<_>>>()?,
             settings: settings.clone(),
             changes: args.actions.clone(),
         };

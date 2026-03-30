@@ -175,8 +175,8 @@ pub mod squads_smart_account_program {
     }
 
     /// Create a transaction buffer account.
-    pub fn create_transaction_buffer(
-        ctx: Context<CreateTransactionBuffer>,
+    pub fn create_transaction_buffer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionBuffer<'info>>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {
         CreateTransactionBuffer::create_transaction_buffer(ctx, args)
@@ -387,8 +387,8 @@ pub mod squads_smart_account_program {
     }
 
     /// Create a transaction buffer with external signer support.
-    pub fn create_transaction_buffer_v2(
-        ctx: Context<CreateTransactionBuffer>,
+    pub fn create_transaction_buffer_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionBuffer<'info>>,
         args: CreateTransactionBufferArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
@@ -402,6 +402,14 @@ pub mod squads_smart_account_program {
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
         ExtendTransactionBuffer::extend_transaction_buffer_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Close a transaction buffer with external signer support.
+    pub fn close_transaction_buffer_v2(
+        ctx: Context<CloseTransactionBuffer>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CloseTransactionBuffer::close_transaction_buffer_v2(ctx, extra_verification_data)
     }
 
     /// Create a new vault transaction from buffer with external signer support.
