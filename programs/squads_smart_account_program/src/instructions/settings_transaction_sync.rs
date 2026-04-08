@@ -113,6 +113,13 @@ impl<'info> SyncSettingsTransaction<'info> {
 
         let rent = Rent::get()?;
 
+        // Resolve signer keys BEFORE executing actions — a RemoveSigner action
+        // would make the removed signer unresolvable after execution.
+        let resolved_signers: Vec<Pubkey> = ctx.remaining_accounts[..args.num_signers as usize]
+            .iter()
+            .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+            .collect::<Result<Vec<_>>>()?;
+
         // Build the log authority info
         let log_authority_info = LogAuthorityInfo {
             authority: settings_account_info.clone(),
@@ -152,13 +159,10 @@ impl<'info> SyncSettingsTransaction<'info> {
         // Make sure the settings state is valid after applying the actions
         settings.invariant()?;
 
-        // Log the event
+        // Log the event (using pre-resolved signer keys)
         let event = SynchronousSettingsTransactionEvent {
             settings_pubkey: settings_key,
-            signers: ctx.remaining_accounts[..args.num_signers as usize]
-                .iter()
-                .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
-                .collect::<Result<Vec<_>>>()?,
+            signers: resolved_signers,
             settings: settings.clone(),
             changes: args.actions.clone(),
         };

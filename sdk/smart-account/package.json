@@ -10,6 +10,10 @@
       "require": "./lib/index.js",
       "import": "./lib/index.mjs"
     },
+    "./lib/generated": {
+      "require": "./lib/generated/index.js",
+      "import": "./lib/generated/index.js"
+    },
     "./package.json": "./package.json"
   },
   "license": "MIT",

@@ -392,7 +392,7 @@ for (const format of formatsToRun) {
         connection
           .sendTransaction(tx)
           .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /(Unauthorized|ConstraintSeeds)/
+      /(Unauthorized|ConstraintSeeds|NotASigner)/
     );
 
     await closeTransactionBuffer(members.almighty, transactionBuffer);

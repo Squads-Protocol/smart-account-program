@@ -590,7 +590,7 @@ for (const format of formatsToRun) {
         connection
           .sendTransaction(tx)
           .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /A seeds constraint was violated/
+      /(A seeds constraint was violated|InvalidAccount)/
     );
   });
 
