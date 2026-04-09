@@ -225,18 +225,28 @@ describe("Instructions / mixed_signer_sync", () => {
       Buffer.concat([Buffer.from([0x00]), payloadLenBytes, compiledIxBytes])
     );
 
-    // Build sync consensus message:
-    // sha256("squads-sync" || settings_key || transaction_index_le || payload_hash || next_nonce_le)
+    // Build sync transaction message:
+    // sha256("sync_transaction_v2" || consensus_key || tx_index || account_index || num_accounts || for each: (key || is_writable) || payload_hash || nonce)
     const transactionIndex = BigInt(settings.transactionIndex.toString());
     const transactionIndexBytes = Buffer.alloc(8);
     transactionIndexBytes.writeBigUInt64LE(transactionIndex);
     const nonceBytes = Buffer.alloc(8);
     nonceBytes.writeBigUInt64LE(BigInt(1)); // next_nonce = current(0) + 1
+
+    const accountBuffers: Buffer[] = [];
+    for (const acc of txAccounts) {
+      accountBuffers.push(acc.pubkey.toBuffer());
+      accountBuffers.push(Buffer.from([acc.isWritable ? 1 : 0]));
+    }
+
     const hashedMessage = sha256(
       Buffer.concat([
-        Buffer.from("squads-sync", "utf-8"),
+        Buffer.from("sync_transaction_v2", "utf-8"),
         settingsPda.toBuffer(),
         transactionIndexBytes,
+        Buffer.from([0]), // account_index
+        Buffer.from([txAccounts.length]),
+        ...accountBuffers,
         Buffer.from(payloadHash),
         nonceBytes,
       ])
