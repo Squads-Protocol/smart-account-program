@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::Consensus;
+
 use crate::errors::*;
 use crate::state::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_proposal_activate_message;
+use crate::instructions::*;
 
 #[derive(Accounts)]
 pub struct ActivateProposal<'info> {
@@ -15,9 +16,7 @@ pub struct ActivateProposal<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    // #[account(mut)]: @orion: does this need to be mutable?
-    /// CHECK: This account will be checked in settings.verify_signer
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     #[account(
         mut,
@@ -44,9 +43,9 @@ impl ActivateProposal<'_> {
 
         let message = create_proposal_activate_message(&proposal.key(), proposal.transaction_index);
 
-        // Verify both the legitimacy of the signer and that it has the right permissions
-        settings.verify_signer(
-            signer,
+        // Resolve and verify both the legitimacy of the signer and that it has the right permissions
+        signer.verify(
+            &mut **settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),

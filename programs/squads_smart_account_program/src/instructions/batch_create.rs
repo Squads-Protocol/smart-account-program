@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_batch_create_message;
 
@@ -36,8 +37,7 @@ pub struct CreateBatch<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub creator: AccountInfo<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the batch account rent.
     #[account(mut)]
@@ -66,9 +66,9 @@ impl CreateBatch<'_> {
             args.account_index,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        settings.verify_signer(
-            creator,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -114,10 +114,10 @@ impl CreateBatch<'_> {
         let (_, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
-        let canonical_key = settings.resolve_canonical_key(creator.key(), creator.is_signer)?;
+        let resolved_key = creator.resolved_key()?;
 
         batch.settings = settings_key;
-        batch.creator = canonical_key;
+        batch.creator = resolved_key;
         batch.rent_collector = rent_payer.key();
         batch.index = index;
         batch.bump = ctx.bumps.batch;

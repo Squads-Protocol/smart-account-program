@@ -4,6 +4,7 @@ use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_transaction_buffer_extend_message;
 
@@ -36,8 +37,7 @@ pub struct ExtendTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// CHECK: Verified via verify_signer. Authorization checked in handler body.
-    pub creator: AccountInfo<'info>,
+    pub creator: ResolvedSigner<'info>,
 }
 
 impl ExtendTransactionBuffer<'_> {
@@ -60,9 +60,9 @@ impl ExtendTransactionBuffer<'_> {
             &args.buffer,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        consensus_account.verify_signer(
-            creator,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -108,10 +108,10 @@ impl ExtendTransactionBuffer<'_> {
         args: ExtendTransactionBufferArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
-        // V2: canonical key must match stored creator (session keys resolve to parent)
-        let canonical_key = ctx.accounts.consensus_account.resolve_canonical_key(ctx.accounts.creator.key(), ctx.accounts.creator.is_signer)?;
+        // V2: resolved key must match stored creator (session keys resolve to parent)
+        let resolved_key = ctx.accounts.creator.resolved_key()?;
         require!(
-            ctx.accounts.transaction_buffer.creator == canonical_key,
+            ctx.accounts.transaction_buffer.creator == resolved_key,
             SmartAccountError::Unauthorized
         );
         Self::extend_transaction_buffer_inner(ctx, args)

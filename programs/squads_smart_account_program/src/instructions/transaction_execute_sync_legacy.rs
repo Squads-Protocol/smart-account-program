@@ -149,7 +149,7 @@ impl LegacySyncTransaction<'_> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+                .map(|acc| settings.resolve_signer_key(*acc.key, acc.is_signer))
                 .collect::<Result<Vec<_>>>()?,
             account_index: args.account_index,
             instructions: executable_message.instructions.to_vec(),

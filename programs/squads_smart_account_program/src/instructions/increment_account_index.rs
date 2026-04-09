@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::instructions::*;
 
 use crate::{
     errors::SmartAccountError,
@@ -6,7 +7,7 @@ use crate::{
     interface::consensus_trait::Consensus,
     program::SquadsSmartAccountProgram,
     state::{
-        get_settings_signer_seeds, Permission, Settings, FREE_ACCOUNT_MAX_INDEX, SEED_PREFIX,
+        get_settings_signer_seeds, Permission, ResolvedSigner, ResolvedSignerBumps, Settings, FREE_ACCOUNT_MAX_INDEX, SEED_PREFIX,
         SEED_SETTINGS,
     },
     state::signer_v2::ExtraVerificationData,
@@ -96,9 +97,7 @@ pub struct IncrementAccountIndexV2<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    /// The signer (native or external).
-    /// CHECK: Validated as a signer of the settings account.
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     pub program: Program<'info, SquadsSmartAccountProgram>,
 }
@@ -114,9 +113,9 @@ impl IncrementAccountIndexV2<'_> {
             self.signer.key(),
         );
 
-        // verify_signer handles native, session key, and external signers uniformly
-        let canonical_key = self.settings.verify_signer(
-            &self.signer,
+        // Resolve and verify signer (native, session key, or external)
+        self.signer.verify(
+            &mut *self.settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -124,8 +123,9 @@ impl IncrementAccountIndexV2<'_> {
         )?;
 
         // Permission: Initiate OR Vote OR Execute
+        let resolved_key = self.signer.resolved_key()?;
         let signer = self.settings
-            .is_signer_v2(canonical_key)
+            .is_signer_v2(resolved_key)
             .ok_or(SmartAccountError::NotASigner)?;
         let permissions = signer.permissions();
         require!(

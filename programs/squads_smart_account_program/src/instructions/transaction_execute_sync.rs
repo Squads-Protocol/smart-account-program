@@ -253,7 +253,7 @@ impl<'info> SyncTransaction<'info> {
                     },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()
-                        .map(|acc| consensus_account.resolve_canonical_key(*acc.key, acc.is_signer))
+                        .map(|acc| consensus_account.resolve_signer_key(*acc.key, acc.is_signer))
                         .collect::<Result<Vec<_>>>()?,
                     instruction_accounts: executable_message
                         .accounts
@@ -304,7 +304,7 @@ impl<'info> SyncTransaction<'info> {
                     },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()
-                        .map(|acc| consensus_account.resolve_canonical_key(*acc.key, acc.is_signer))
+                        .map(|acc| consensus_account.resolve_signer_key(*acc.key, acc.is_signer))
                         .collect::<Result<Vec<_>>>()?,
                     instruction_accounts: remaining_accounts
                         .iter()

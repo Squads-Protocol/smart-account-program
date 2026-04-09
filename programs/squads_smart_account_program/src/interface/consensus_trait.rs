@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 
-use crate::{errors::SmartAccountError, Permission, SmartAccountSigner, SmartAccountSignerWrapper, SessionKeyData};
+use crate::{errors::SmartAccountError, Permission, SmartAccountSigner, SmartAccountSignerWrapper};
 use crate::state::SignerType;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::{
@@ -11,34 +11,6 @@ use crate::state::signer_v2::precompile::{
 use crate::utils::context_validation::verify_external_signer_via_syscall;
 
 use anchor_lang::solana_program::hash::Hasher;
-
-/// Result of signer classification
-pub enum ClassifiedSigner {
-    /// Native Solana signer (verified via AccountInfo.is_signer)
-    Native {
-        signer: SmartAccountSigner,
-    },
-    /// Session key signer (native tx signer using a session key of an external signer)
-    SessionKey {
-        parent_signer: SmartAccountSigner,  // The external signer
-        session_key_data: SessionKeyData,   // Full session key data (pubkey + expiration)
-    },
-    /// External signer (requires precompile verification)
-    External {
-        signer: SmartAccountSigner,
-    },
-}
-
-impl ClassifiedSigner {
-    /// Get the signer that holds the permissions
-    pub fn signer(&self) -> &SmartAccountSigner {
-        match self {
-            Self::Native { signer } => signer,
-            Self::SessionKey { parent_signer, .. } => parent_signer,
-            Self::External { signer } => signer,
-        }
-    }
-}
 
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub enum ConsensusAccountType {
@@ -71,17 +43,40 @@ pub trait Consensus {
         self.signers().find_by_session_key(&pubkey, current_timestamp)
     }
 
-    /// Resolve the canonical signer key for a given account key.
+    /// Resolve the signer key for a given account key.
     ///
     /// For native signers: returns their key directly.
     /// For session keys: returns the parent external signer's key.
     /// For external signers: returns their key_id.
-    ///
-    /// This is a lightweight operation (no cryptographic verification) used by
-    /// handlers that need the canonical key after verify_signer has already run.
-    fn resolve_canonical_key(&self, signer_key: Pubkey, is_native_tx_signer: bool) -> Result<Pubkey> {
-        let classified = self.classify_signer(signer_key, is_native_tx_signer)?;
-        Ok(classified.signer().key())
+    fn resolve_signer_key(&self, signer_key: Pubkey, is_native_tx_signer: bool) -> Result<Pubkey> {
+        // Fast path: if not a native tx signer, must be external
+        if !is_native_tx_signer {
+            for signer in self.signers_v2().into_iter() {
+                if signer.is_external() && signer.key() == signer_key {
+                    return Ok(signer.key());
+                }
+            }
+            return Err(SmartAccountError::NotASigner.into());
+        }
+
+        // Slow path: native tx signer - check native match and session key match
+        for signer in self.signers_v2().into_iter() {
+            match signer.signer_type() {
+                SignerType::Native => {
+                    if signer.key() == signer_key {
+                        return Ok(signer.key());
+                    }
+                }
+                _ => {
+                    // Check for session key match — return parent signer's key
+                    if signer.get_session_key_data_if_matches(&signer_key).is_some() {
+                        return Ok(signer.key());
+                    }
+                }
+            }
+        }
+
+        Err(SmartAccountError::NotASigner.into())
     }
 
     // Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
@@ -97,60 +92,11 @@ pub trait Consensus {
         }
     }
 
-    /// Classify a signer and return all necessary data for verification
-    fn classify_signer(
-        &self,
-        signer_key: Pubkey,
-        is_native_tx_signer: bool,
-    ) -> Result<ClassifiedSigner> {
-        // Fast path: if not a native tx signer, must be external
-        if !is_native_tx_signer {
-            for signer in self.signers_v2().into_iter() {
-                if signer.is_external() && signer.key() == signer_key {
-                    return Ok(ClassifiedSigner::External { signer });
-                }
-            }
-            return Err(SmartAccountError::NotASigner.into());
-        }
-
-        // Slow path: native tx signer - check all three types
-        for signer in self.signers_v2().into_iter() {
-            match signer.signer_type() {
-                SignerType::Native => {
-                    if signer.key() == signer_key {
-                        return Ok(ClassifiedSigner::Native { signer });
-                    }
-                }
-                _ => {
-                    // Check for session key match (just match key, expiration checked in verify_signer)
-                    if let Some(session_key_data) = signer.get_session_key_data_if_matches(&signer_key) {
-                        return Ok(ClassifiedSigner::SessionKey {
-                            parent_signer: signer,
-                            session_key_data,
-                        });
-                    }
-                    // If not a session key, continue searching (don't match as External in slow path)
-                }
-            }
-        }
-
-        Err(SmartAccountError::NotASigner.into())
-    }
-
-    /// Verify a signer's authenticity (handles native, session key, and external signers).
+    /// Verify a signer's authenticity and return the resolved key.
     ///
-    /// # Arguments
-    /// * `signer_info` - The account info for the signer
-    /// * `remaining_accounts` - Additional accounts (may include instructions sysvar for external signers)
-    /// * `non_hashed_message` - The message hasher (nonce will be appended for external signers)
-    /// * `extra_verification_data` - Optional extra data for verification, interpreted based on signer type:
-    ///   - P256Webauthn: Parsed as `ClientDataJsonReconstructionParams`
-    ///   - Secp256k1/Ed25519External: Currently unused, reserved for future use
-    /// * `required_permission` - Optional permission to check
-    /// Verify a signer and return the **canonical key** (parent signer key for session keys).
-    ///
-    /// Callers must use the returned key for permission checks, vote recording, and
-    /// creator tracking instead of `signer_info.key()`, which may be a session key pubkey.
+    /// Determines signer type by scanning the signers list (native/session key/external),
+    /// performs all necessary checks (permissions, session key expiration, external signature
+    /// verification), and returns the canonical key (parent key for session keys).
     fn verify_signer(
         &mut self,
         signer_info: &AccountInfo,
@@ -162,103 +108,94 @@ pub trait Consensus {
     where
         Self: Sized,
     {
-        let now = Clock::get()?.unix_timestamp as u64;
         let signer_key = *signer_info.key;
+        let is_native_tx_signer = signer_info.is_signer;
+        let now = Clock::get()?.unix_timestamp as u64;
 
-        // STEP 1: Classify signer
-        let classified = self.classify_signer(signer_key, signer_info.is_signer)?;
+        // Fast path: if not a native tx signer, must be external
+        if !is_native_tx_signer {
+            for signer in self.signers_v2().into_iter() {
+                if signer.is_external() && signer.key() == signer_key {
+                    // External signer found — check permissions
+                    if let Some(permission) = required_permission {
+                        require!(
+                            signer.permissions().has(permission),
+                            SmartAccountError::Unauthorized
+                        );
+                    }
 
-        // STEP 2: Match and verify
-        match classified {
-            ClassifiedSigner::Native { signer } => {
-                // Verify native signer
-                require!(signer_info.is_signer, SmartAccountError::MissingSignature);
+                    let evd = extra_verification_data
+                        .ok_or(SmartAccountError::MissingExtraVerificationData)?;
 
-                let canonical_key = signer.key();
+                    let (sysvar_opt, _) = split_instructions_sysvar(remaining_accounts);
+                    let (counter_update, next_nonce) = if evd.is_precompile() {
+                        let sysvar = sysvar_opt
+                            .ok_or(SmartAccountError::MissingPrecompileInstruction)?;
+                        let results = verify_precompile_signers(
+                            sysvar,
+                            &[signer.clone()],
+                            &[evd.clone()],
+                            &non_hashed_message,
+                        )?;
+                        results.into_iter().next()
+                            .ok_or_else(|| error!(SmartAccountError::MissingPrecompileInstruction))?
+                    } else {
+                        verify_external_signer_via_syscall(
+                            &signer,
+                            &non_hashed_message,
+                            evd,
+                        )?
+                    };
 
-                // Check permission if required
-                if let Some(permission) = required_permission {
-                    require!(
-                        signer.permissions().has(permission),
-                        SmartAccountError::Unauthorized
-                    );
+                    let signer_key = signer.key();
+                    if let Some(new_counter) = counter_update {
+                        let updates = [(signer_key, new_counter)];
+                        self.apply_counter_updates(&updates)?;
+                    }
+                    self.apply_nonce_update(&signer_key, next_nonce)?;
+
+                    return Ok(signer_key);
                 }
-
-                Ok(canonical_key)
             }
+            return Err(SmartAccountError::NotASigner.into());
+        }
 
-            ClassifiedSigner::SessionKey { parent_signer, session_key_data } => {
-                // Verify session key is a native tx signer
-                require!(signer_info.is_signer, SmartAccountError::MissingSignature);
-
-                // Check session key hasn't expired
-                require!(
-                    session_key_data.expiration > now,
-                    SmartAccountError::InvalidSessionKeyExpiration
-                );
-
-                // Return parent signer's canonical key (not session key pubkey)
-                let canonical_key = parent_signer.key();
-
-                // Check permission on parent signer
-                if let Some(permission) = required_permission {
-                    require!(
-                        parent_signer.permissions().has(permission),
-                        SmartAccountError::Unauthorized
-                    );
+        // Slow path: native tx signer — check native match and session key match
+        for signer in self.signers_v2().into_iter() {
+            match signer.signer_type() {
+                SignerType::Native => {
+                    if signer.key() == signer_key {
+                        // Native signer — check permissions and return
+                        if let Some(permission) = required_permission {
+                            require!(
+                                signer.permissions().has(permission),
+                                SmartAccountError::Unauthorized
+                            );
+                        }
+                        return Ok(signer.key());
+                    }
                 }
-
-                Ok(canonical_key)
-            }
-
-            ClassifiedSigner::External { signer } => {
-                let canonical_key = signer.key();
-
-                // Check permission first
-                if let Some(permission) = required_permission {
-                    require!(
-                        signer.permissions().has(permission),
-                        SmartAccountError::Unauthorized
-                    );
+                _ => {
+                    // Check for session key match
+                    if let Some(session_key_data) = signer.get_session_key_data_if_matches(&signer_key) {
+                        // Session key — check expiration, then parent permissions
+                        require!(
+                            session_key_data.expiration > now,
+                            SmartAccountError::InvalidSessionKeyExpiration
+                        );
+                        if let Some(permission) = required_permission {
+                            require!(
+                                signer.permissions().has(permission),
+                                SmartAccountError::Unauthorized
+                            );
+                        }
+                        return Ok(signer.key());
+                    }
                 }
-
-                let evd = extra_verification_data
-                    .ok_or(SmartAccountError::MissingExtraVerificationData)?;
-
-                let (sysvar_opt, _) = split_instructions_sysvar(remaining_accounts);
-                let (counter_update, next_nonce) = if evd.is_precompile() {
-                    // Precompile: batch function with 1-element slice
-                    let sysvar = sysvar_opt
-                        .ok_or(SmartAccountError::MissingPrecompileInstruction)?;
-                    let results = verify_precompile_signers(
-                        sysvar,
-                        &[signer.clone()],
-                        &[evd.clone()],
-                        &non_hashed_message,
-                    )?;
-                    results.into_iter().next()
-                        .ok_or_else(|| error!(SmartAccountError::MissingPrecompileInstruction))?
-                } else {
-                    // Syscall: direct per-signer verification
-                    verify_external_signer_via_syscall(
-                        &signer,
-                        &non_hashed_message,
-                        evd,
-                    )?
-                };
-
-                // Apply counter update if needed
-                if let Some(new_counter) = counter_update {
-                    let updates = [(signer_key, new_counter)];
-                    self.apply_counter_updates(&updates)?;
-                }
-
-                // Apply nonce update
-                self.apply_nonce_update(&signer_key, next_nonce)?;
-
-                Ok(canonical_key)
             }
         }
+
+        Err(SmartAccountError::NotASigner.into())
     }
 
     // Permission counting methods

@@ -6,6 +6,7 @@ use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::state::MAX_BUFFER_SIZE;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_transaction_buffer_create_message;
 
@@ -36,8 +37,7 @@ pub struct CreateTransactionBuffer<'info> {
     #[account(mut)]
     pub transaction_buffer: AccountInfo<'info>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub creator: AccountInfo<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -67,9 +67,9 @@ impl<'info> CreateTransactionBuffer<'info> {
             args.final_buffer_size,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        consensus_account.verify_signer(
-            creator,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -101,12 +101,9 @@ impl<'info> CreateTransactionBuffer<'info> {
         args: CreateTransactionBufferArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
-        // V2: resolve canonical key for PDA derivation
-        let canonical_key = ctx.accounts.consensus_account.resolve_canonical_key(
-            ctx.accounts.creator.key(),
-            ctx.accounts.creator.is_signer,
-        )?;
-        Self::create_transaction_buffer_inner(ctx, args, Some(canonical_key))
+        // V2: use resolved key for PDA derivation
+        let resolved_key = ctx.accounts.creator.resolved_key()?;
+        Self::create_transaction_buffer_inner(ctx, args, Some(resolved_key))
     }
 
     /// Shared inner: creates the buffer account at the correct PDA and populates it.

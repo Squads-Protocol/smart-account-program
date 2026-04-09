@@ -117,7 +117,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         // would make the removed signer unresolvable after execution.
         let resolved_signers: Vec<Pubkey> = ctx.remaining_accounts[..args.num_signers as usize]
             .iter()
-            .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+            .map(|acc| settings.resolve_signer_key(*acc.key, acc.is_signer))
             .collect::<Result<Vec<_>>>()?;
 
         // Build the log authority info
