@@ -10,7 +10,7 @@ use crate::{
     program::SquadsSmartAccountProgram,
     state::*,
     state::signer_v2::ExtraVerificationData,
-    state::signer_v2::precompile::create_sync_consensus_message,
+    state::signer_v2::precompile::create_sync_transaction_message,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
 };
@@ -133,9 +133,11 @@ impl<'info> SyncTransaction<'info> {
         let payload_bytes = args.payload.try_to_vec()
             .map_err(|_| SmartAccountError::InvalidPayload)?;
         let payload_hash = hash(&payload_bytes);
-        let message = create_sync_consensus_message(
+        let message = create_sync_transaction_message(
             &consensus_account.key(),
             consensus_account.transaction_index(),
+            args.account_index,
+            &remaining_accounts[accounts_start..],
             &payload_hash.to_bytes(),
         );
 

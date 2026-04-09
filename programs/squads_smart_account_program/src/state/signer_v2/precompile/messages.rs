@@ -1,23 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::{hash, Hasher};
 
-/// Create the expected message to sign for a given operation
-///
-/// Format: hash("squads-v2" || smart_account_key || operation_type || operation_data)
-pub fn create_signature_message(
-    smart_account: &Pubkey,
-    operation_type: &[u8],
-    operation_data: &[u8],
-) -> Hasher {
-    let mut hasher = Hasher::default();
-    hasher.hash(b"squads-v2");
-    hasher.hash(smart_account.as_ref());
-    hasher.hash(operation_type);
-    hasher.hash(operation_data);
-
-    hasher
-}
-
 /// Create message for vote signing
 pub fn create_vote_message(proposal_key: &Pubkey, vote: u8, transaction_index: u64) -> Hasher {
     let mut hasher = Hasher::default();
@@ -208,20 +191,78 @@ pub fn create_transaction_from_buffer_message(
     hasher
 }
 
-/// Create message for synchronous consensus verification
+/// Create message for synchronous transaction execution (v2 layout).
 ///
-/// This is used by external signers to prove they're authorizing a sync transaction.
-/// The payload_hash binds the signature to the specific instructions being executed,
-/// preventing a malicious transaction assembler from substituting a different payload.
+/// External signers commit to the exact execution context: which vault signs,
+/// which accounts are passed, and what instructions run. This prevents a relayer
+/// from swapping remaining_accounts or account_index after collecting signatures.
 ///
-/// Format: hash("squads-sync" || consensus_account_key || transaction_index || payload_hash)
-pub fn create_sync_consensus_message(
+/// Format: hash("sync_transaction_v2" || consensus_key || tx_index || account_index
+///              || num_accounts || for each: (key || is_writable) || payload_hash)
+pub fn create_sync_transaction_message(
+    consensus_account_key: &Pubkey,
+    transaction_index: u64,
+    account_index: u8,
+    remaining_accounts: &[AccountInfo],
+    payload_hash: &[u8; 32],
+) -> Hasher {
+    let mut hasher = Hasher::default();
+    hasher.hash(b"sync_transaction_v2");
+    hasher.hash(consensus_account_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(&[account_index]);
+    hasher.hash(&[remaining_accounts.len() as u8]);
+    for acc in remaining_accounts {
+        hasher.hash(acc.key.as_ref());
+        hasher.hash(&[acc.is_writable as u8]);
+    }
+    hasher.hash(payload_hash);
+
+    hasher
+}
+
+/// Create message for synchronous transaction execution (legacy layout).
+///
+/// Same security properties as the v2 variant but uses the legacy discriminator.
+///
+/// Format: hash("sync_transaction_legacy" || consensus_key || tx_index || account_index
+///              || num_accounts || for each: (key || is_writable) || payload_hash)
+pub fn create_sync_transaction_legacy_message(
+    consensus_account_key: &Pubkey,
+    transaction_index: u64,
+    account_index: u8,
+    remaining_accounts: &[AccountInfo],
+    payload_hash: &[u8; 32],
+) -> Hasher {
+    let mut hasher = Hasher::default();
+    hasher.hash(b"sync_transaction_legacy");
+    hasher.hash(consensus_account_key.as_ref());
+    hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(&[account_index]);
+    hasher.hash(&[remaining_accounts.len() as u8]);
+    for acc in remaining_accounts {
+        hasher.hash(acc.key.as_ref());
+        hasher.hash(&[acc.is_writable as u8]);
+    }
+    hasher.hash(payload_hash);
+
+    hasher
+}
+
+/// Create message for synchronous settings transaction.
+///
+/// Settings sync doesn't execute CPI instructions against a vault, so there's
+/// no account_index or remaining_accounts to commit to. The payload_hash covers
+/// the exact settings actions being applied.
+///
+/// Format: hash("sync_settings_tx_v2" || consensus_key || tx_index || payload_hash)
+pub fn create_sync_settings_message(
     consensus_account_key: &Pubkey,
     transaction_index: u64,
     payload_hash: &[u8; 32],
 ) -> Hasher {
     let mut hasher = Hasher::default();
-    hasher.hash(b"squads-sync");
+    hasher.hash(b"sync_settings_tx_v2");
     hasher.hash(consensus_account_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
     hasher.hash(payload_hash);
