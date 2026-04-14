@@ -177,7 +177,7 @@ impl<'info> Balances<'info> {
             match (post_delegate, tracked_token_account.delegate) {
                 (Some(post_delegate), Some(tracked_delegate)) => {
                     require_eq!(post_delegate.0, tracked_delegate.0);
-                    require_gte!(post_delegate.1, tracked_delegate.1);
+                    require_gte!(tracked_delegate.1, post_delegate.1);
                 }
                 (None, None) => {}
                 _ => {
