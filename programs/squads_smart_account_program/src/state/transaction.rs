@@ -81,8 +81,6 @@ impl Transaction {
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
-            1 +  // account_index
-            1 +  // account_bump
             payload_size, // payload
         )
     }
@@ -100,8 +98,6 @@ impl Transaction {
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
-            1 +  // account_index
-            1 +  // account_bump
             payload_size, // payload
         )
     }

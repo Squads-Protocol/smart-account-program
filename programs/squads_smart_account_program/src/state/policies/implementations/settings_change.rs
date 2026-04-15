@@ -328,6 +328,9 @@ impl PolicyTrait for SettingsChangePolicy {
                 .system_program
                 .map(|system_program| system_program.to_account_info()),
         )?;
+
+        // Persist the modified settings account data back to storage
+        validated_accounts.settings.exit(&crate::ID)?;
         Ok(())
     }
 }

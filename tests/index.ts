@@ -25,11 +25,11 @@ import "./suites/instructions/policyCreation";
 import "./suites/instructions/policyUpdate";
 // import "./suites/instructions/removePolicy";
 // import "./suites/instructions/policyExpiration";
-// import "./suites/instructions/settingsChangePolicy";
+import "./suites/instructions/settingsChangePolicy";
 import "./suites/instructions/programInteractionPolicy";
-// import "./suites/instructions/spendingLimitPolicy";
-// import "./suites/instructions/internalFundTransferPolicy";
-// import "./suites/smart-account-sdk";
-// // // Uncomment to enable the heapTest instruction testing
-// // //import "./suites/instructions/heapTest";
-// // import "./suites/examples/custom-heap";
+import "./suites/instructions/spendingLimitPolicy";
+import "./suites/instructions/internalFundTransferPolicy";
+import "./suites/smart-account-sdk";
+// // Uncomment to enable the heapTest instruction testing
+// //import "./suites/instructions/heapTest";
+// import "./suites/examples/custom-heap";
