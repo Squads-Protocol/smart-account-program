@@ -33,10 +33,14 @@ const { Permissions, Permission } = smartAccount.types;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-/** Build the sync consensus message matching on-chain create_sync_consensus_message */
-function buildSyncConsensusMessage(
-  settingsPda: PublicKey,
+/** Build the sync transaction message matching on-chain create_sync_transaction_message + nonce.
+ *  Binds signature to: discriminator, consensus key, tx index, account_index,
+ *  remaining accounts (key + is_writable), payload hash, and nonce. */
+function buildSyncTransactionMessage(
+  consensusKey: PublicKey,
   transactionIndex: bigint,
+  accountIndex: number,
+  executionAccounts: { pubkey: PublicKey; isWritable: boolean }[],
   nextNonce: bigint,
   payloadHash: Uint8Array
 ): Uint8Array {
@@ -45,11 +49,20 @@ function buildSyncConsensusMessage(
   const nonceBytes = Buffer.alloc(8);
   nonceBytes.writeBigUInt64LE(nextNonce);
 
+  const accountBuffers: Buffer[] = [];
+  for (const acc of executionAccounts) {
+    accountBuffers.push(acc.pubkey.toBuffer());
+    accountBuffers.push(Buffer.from([acc.isWritable ? 1 : 0]));
+  }
+
   return sha256(
     Buffer.concat([
-      Buffer.from("squads-sync", "utf-8"),
-      settingsPda.toBuffer(),
+      Buffer.from("sync_transaction_v2", "utf-8"),
+      consensusKey.toBuffer(),
       txIndexBytes,
+      Buffer.from([accountIndex]),
+      Buffer.from([executionAccounts.length]),
+      ...accountBuffers,
       Buffer.from(payloadHash),
       nonceBytes,
     ])
@@ -258,9 +271,11 @@ async function buildSyncTransferTx(opts: {
     Buffer.concat([Buffer.from([0x00]), payloadLenBytes, compiledIxBytes])
   );
 
-  const hashedMessage = buildSyncConsensusMessage(
+  const hashedMessage = buildSyncTransactionMessage(
     opts.settingsPda,
     transactionIndex,
+    0,
+    txAccounts,
     opts.nextNonce,
     payloadHash
   );
@@ -643,9 +658,11 @@ describe("Instructions / external_signer_nonce_persistence", () => {
     );
 
     // Build message with STALE nonce=1 (on-chain nonce is now 1, expected next=2)
-    const hashedMessage = buildSyncConsensusMessage(
+    const hashedMessage = buildSyncTransactionMessage(
       settingsPda,
       transactionIndex,
+      0,
+      txAccounts,
       1n, // STALE
       payloadHash
     );
@@ -908,9 +925,11 @@ describe("Instructions / external_signer_nonce_persistence", () => {
     // Build a WRONG payload hash — external signer signed a different payload
     const wrongPayloadHash = sha256(Buffer.from("wrong payload data"));
 
-    const hashedMessage = buildSyncConsensusMessage(
+    const hashedMessage = buildSyncTransactionMessage(
       settingsPda,
       transactionIndex,
+      0,
+      txAccounts,
       1n,
       wrongPayloadHash // Does not match actual instructions
     );

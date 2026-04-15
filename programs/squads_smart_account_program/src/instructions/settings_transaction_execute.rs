@@ -1,10 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::Consensus;
 use crate::consensus_trait::ConsensusAccountType;
 use crate::errors::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_execute_settings_transaction_message;
 use crate::LogAuthorityInfo;
@@ -25,8 +25,7 @@ pub struct ExecuteSettingsTransaction<'info> {
     )]
     pub settings: Box<Account<'info, Settings>>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     /// The proposal account associated with the transaction.
     #[account(
@@ -90,9 +89,9 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             transaction.index,
         );
 
-        // Verify signer (native, session key, or external) and check Execute permission
-        settings.verify_signer(
-            signer,
+        // Resolve and verify signer (native, session key, or external) and check Execute permission
+        signer.verify(
+            &mut ***settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -196,7 +195,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             timestamp: Clock::get()?.unix_timestamp,
         };
 
-        let canonical_signer = settings.resolve_canonical_key(ctx.accounts.signer.key(), ctx.accounts.signer.is_signer)?;
+        let resolved_signer = ctx.accounts.signer.resolved_key()?;
 
         // Transaction event
         let event = TransactionEvent {
@@ -205,7 +204,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             consensus_account_type: ConsensusAccountType::Settings,
             transaction_pubkey: transaction.key(),
             transaction_index: transaction.index,
-            signer: Some(canonical_signer),
+            signer: Some(resolved_signer),
             transaction_content: Some(TransactionContent::SettingsTransaction {
                 settings: settings.clone().into_inner(),
                 transaction: transaction.clone().into_inner(),
@@ -221,7 +220,7 @@ impl<'info> ExecuteSettingsTransaction<'info> {
             consensus_account_type: ConsensusAccountType::Settings,
             proposal_pubkey: proposal.key(),
             transaction_index: transaction.index,
-            signer: Some(canonical_signer),
+            signer: Some(resolved_signer),
             memo: None,
             proposal: Some(proposal.clone().into_inner()),
         };

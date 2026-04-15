@@ -33,11 +33,14 @@ const { Permissions, Permission } = smartAccount.types;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-/** Build the sync consensus message matching on-chain create_sync_consensus_message + nonce.
- *  payloadHash binds the signature to the specific instructions being executed. */
-function buildSyncConsensusMessage(
-  settingsPda: PublicKey,
+/** Build the sync transaction message matching on-chain create_sync_transaction_message + nonce.
+ *  Binds signature to: discriminator, consensus key, tx index, account_index,
+ *  remaining accounts (key + is_writable), payload hash, and nonce. */
+function buildSyncTransactionMessage(
+  consensusKey: PublicKey,
   transactionIndex: bigint,
+  accountIndex: number,
+  executionAccounts: { pubkey: PublicKey; isWritable: boolean }[],
   nextNonce: bigint,
   payloadHash: Uint8Array
 ): Uint8Array {
@@ -46,11 +49,20 @@ function buildSyncConsensusMessage(
   const nonceBytes = Buffer.alloc(8);
   nonceBytes.writeBigUInt64LE(nextNonce);
 
+  const accountBuffers: Buffer[] = [];
+  for (const acc of executionAccounts) {
+    accountBuffers.push(acc.pubkey.toBuffer());
+    accountBuffers.push(Buffer.from([acc.isWritable ? 1 : 0]));
+  }
+
   return sha256(
     Buffer.concat([
-      Buffer.from("squads-sync", "utf-8"),
-      settingsPda.toBuffer(),
+      Buffer.from("sync_transaction_v2", "utf-8"),
+      consensusKey.toBuffer(),
       txIndexBytes,
+      Buffer.from([accountIndex]),
+      Buffer.from([executionAccounts.length]),
+      ...accountBuffers,
       Buffer.from(payloadHash),
       nonceBytes,
     ])
@@ -681,9 +693,11 @@ describe("Instructions / external_signer_security", () => {
     const transactionIndex = BigInt(settings.transactionIndex.toString());
 
     // Each signer has nonce 0, so next_nonce = 1
-    const hashedMessage = buildSyncConsensusMessage(
+    const hashedMessage = buildSyncTransactionMessage(
       settingsPda,
       transactionIndex,
+      0,
+      txAccounts,
       1n,
       payloadHash
     );
@@ -811,9 +825,11 @@ describe("Instructions / external_signer_security", () => {
     const transactionIndex = BigInt(settings.transactionIndex.toString());
 
     // Both signers have nonce 0, next_nonce = 1
-    const hashedMessage = buildSyncConsensusMessage(
+    const hashedMessage = buildSyncTransactionMessage(
       settingsPda,
       transactionIndex,
+      0,
+      txAccounts,
       1n,
       payloadHash
     );

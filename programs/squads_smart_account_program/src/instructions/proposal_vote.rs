@@ -9,6 +9,7 @@ use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_vote_message;
 
 use crate::state::*;
+use crate::instructions::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct VoteOnProposalArgs {
@@ -23,9 +24,7 @@ pub struct VoteOnProposal<'info> {
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    #[account(mut)]
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     #[account(
         mut,
@@ -91,9 +90,9 @@ impl VoteOnProposal<'_> {
             proposal.transaction_index,
         );
 
-        // Verify signer (native, session key, or external) and check Vote permission
-        consensus_account.verify_signer(
-            signer,
+        // Resolve and verify signer (native, session key, or external) and check Vote permission
+        signer.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -120,11 +119,11 @@ impl VoteOnProposal<'_> {
         let consensus_account = &mut ctx.accounts.consensus_account;
 
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
 
-        // Use canonical key (parent signer key for session keys) to prevent double-voting
-        let canonical_key = consensus_account.resolve_canonical_key(signer.key(), signer.is_signer)?;
-        proposal.approve(canonical_key, usize::from(consensus_account.threshold()))?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.approve(resolved_key, usize::from(consensus_account.threshold()))?;
 
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
@@ -133,7 +132,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(canonical_key),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
         };
@@ -164,13 +163,13 @@ impl VoteOnProposal<'_> {
     fn reject_proposal_inner(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
 
         let cutoff = consensus_account.cutoff();
 
-        // Use canonical key (parent signer key for session keys) to prevent double-voting
-        let canonical_key = consensus_account.resolve_canonical_key(signer.key(), signer.is_signer)?;
-        proposal.reject(canonical_key, cutoff)?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.reject(resolved_key, cutoff)?;
 
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
@@ -179,7 +178,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(canonical_key),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(proposal.clone().into_inner()),
         };
@@ -210,7 +209,7 @@ impl VoteOnProposal<'_> {
     fn cancel_proposal_inner(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
         let system_program = &ctx
             .accounts
             .system_program
@@ -221,9 +220,9 @@ impl VoteOnProposal<'_> {
             .cancelled
             .retain(|k| consensus_account.is_signer(*k).is_some());
 
-        // Use canonical key (parent signer key for session keys) to prevent double-voting
-        let canonical_key = consensus_account.resolve_canonical_key(signer.key(), signer.is_signer)?;
-        proposal.cancel(canonical_key, usize::from(consensus_account.threshold()))?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.cancel(resolved_key, usize::from(consensus_account.threshold()))?;
 
         Proposal::realloc_if_needed(
             proposal.to_account_info().clone(),
@@ -239,7 +238,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(canonical_key),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(proposal.clone().into_inner()),
         };

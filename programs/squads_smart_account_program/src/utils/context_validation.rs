@@ -87,12 +87,12 @@ pub fn validate_synchronous_consensus(
         // Use canonical signer key (parent key for session keys)
         // This prevents double-counting when someone signs with both
         // a session key and the parent external signer
-        let canonical_key = member.key();
+        let resolved_key = member.key();
         require!(
-            !verified_keys.contains(&canonical_key),
+            !verified_keys.contains(&resolved_key),
             SmartAccountError::DuplicateSigner
         );
-        verified_keys.push(canonical_key);
+        verified_keys.push(resolved_key);
 
         // Aggregate permissions
         let permissions = member.permissions();
@@ -157,17 +157,17 @@ pub fn validate_synchronous_consensus(
             for (member, (counter_opt, next_nonce)) in
                 members[..num_precompile].iter().zip(precompile_results)
             {
-                let canonical_key = member.key();
+                let resolved_key = member.key();
                 if let Some(counter) = counter_opt {
-                    counter_updates.push((canonical_key, counter));
+                    counter_updates.push((resolved_key, counter));
                 }
-                nonce_updates.push((canonical_key, next_nonce));
+                nonce_updates.push((resolved_key, next_nonce));
 
                 require!(
-                    !verified_keys.contains(&canonical_key),
+                    !verified_keys.contains(&resolved_key),
                     SmartAccountError::DuplicateSigner
                 );
-                verified_keys.push(canonical_key);
+                verified_keys.push(resolved_key);
 
                 let permissions = member.permissions();
                 aggregated_permissions.mask |= permissions.mask;
@@ -191,17 +191,17 @@ pub fn validate_synchronous_consensus(
                 member, &message, evd,
             )?;
 
-            let canonical_key = member.key();
+            let resolved_key = member.key();
             if let Some(counter) = counter_opt {
-                counter_updates.push((canonical_key, counter));
+                counter_updates.push((resolved_key, counter));
             }
-            nonce_updates.push((canonical_key, next_nonce));
+            nonce_updates.push((resolved_key, next_nonce));
 
             require!(
-                !verified_keys.contains(&canonical_key),
+                !verified_keys.contains(&resolved_key),
                 SmartAccountError::DuplicateSigner
             );
-            verified_keys.push(canonical_key);
+            verified_keys.push(resolved_key);
 
             let permissions = member.permissions();
             aggregated_permissions.mask |= permissions.mask;

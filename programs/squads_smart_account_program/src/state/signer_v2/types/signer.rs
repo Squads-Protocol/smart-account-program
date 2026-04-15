@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use super::{Ed25519ExternalData, ExternalSignerData, P256NativeData, P256WebauthnData, Secp256k1Data, SessionKeyData, SignerType};
+use super::{Ed25519ExternalData, ExternalSignerData, P256NativeData, P256WebauthnData, Secp256k1Data, SignerType};
 use crate::state::signer_v2::{LegacySmartAccountSigner, Permissions};
 
 // ============================================================================

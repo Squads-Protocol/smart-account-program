@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::Consensus;
+
 use crate::errors::*;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_batch_execute_transaction_message;
 use crate::utils::*;
@@ -17,8 +18,7 @@ pub struct ExecuteBatchTransaction<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     /// The proposal account associated with the batch.
     /// If `transaction` is the last in the batch, the `proposal` status will be set to `Executed`.
@@ -88,9 +88,9 @@ impl ExecuteBatchTransaction<'_> {
             batch.index,
         );
 
-        // Verify signer (native, session key, or external) and check Execute permission
-        settings.verify_signer(
-            signer,
+        // Resolve and verify signer (native, session key, or external) and check Execute permission
+        signer.verify(
+            &mut **settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),

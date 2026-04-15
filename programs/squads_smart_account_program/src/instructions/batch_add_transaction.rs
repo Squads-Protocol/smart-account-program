@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
-use crate::consensus_trait::Consensus;
+
 use crate::errors::*;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_batch_add_transaction_message;
 use crate::TransactionMessage;
@@ -66,8 +67,7 @@ pub struct AddTransactionToBatch<'info> {
     )]
     pub transaction: Account<'info, BatchTransaction>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     /// The payer for the batch transaction account rent.
     #[account(mut)]
@@ -97,18 +97,19 @@ impl AddTransactionToBatch<'_> {
             batch.index,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        let canonical_key = settings.verify_signer(
-            signer,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        signer.verify(
+            &mut **settings,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
             Some(Permission::Initiate),
         )?;
 
-        // Only batch creator can add transactions to it (using canonical key).
+        // Only batch creator can add transactions to it (using resolved key).
+        let resolved_key = signer.resolved_key()?;
         require!(
-            canonical_key == batch.creator,
+            resolved_key == batch.creator,
             SmartAccountError::Unauthorized
         );
 

@@ -585,7 +585,7 @@ describe("Instructions / transaction_buffer_create", () => {
         connection
           .sendTransaction(tx)
           .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /A seeds constraint was violated/
+      /(InvalidAccount|A seeds constraint was violated)/
     );
   });
 

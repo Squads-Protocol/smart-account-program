@@ -67,9 +67,9 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             }
         }
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        consensus_account.verify_signer(
-            creator,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        self.transaction_create.creator.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -121,10 +121,10 @@ impl<'info> CreateTransactionFromBuffer<'info> {
         args: CreateTransactionArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
-        // V2: canonical key must match stored creator (session keys resolve to parent)
-        let canonical_key = ctx.accounts.transaction_create.consensus_account.resolve_canonical_key(ctx.accounts.creator.key(), ctx.accounts.creator.is_signer)?;
+        // V2: resolved key must match stored creator (session keys resolve to parent)
+        let resolved_key = ctx.accounts.transaction_create.creator.resolved_key()?;
         require!(
-            ctx.accounts.transaction_buffer.creator == canonical_key,
+            ctx.accounts.transaction_buffer.creator == resolved_key,
             SmartAccountError::Unauthorized
         );
         Self::create_transaction_from_buffer_inner(ctx, args)

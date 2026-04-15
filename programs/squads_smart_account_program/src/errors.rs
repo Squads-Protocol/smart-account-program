@@ -341,4 +341,6 @@ pub enum SmartAccountError {
     NonceExhausted,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("Signer has already been verified")]
+    SignerAlreadyVerified,
 }

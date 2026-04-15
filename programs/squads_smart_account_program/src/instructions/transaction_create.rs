@@ -7,6 +7,7 @@ use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_transaction_message;
 use crate::utils::*;
@@ -58,8 +59,7 @@ pub struct CreateTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub creator: AccountInfo<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -92,9 +92,9 @@ impl<'info> CreateTransaction<'info> {
             next_transaction_index,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate permission
-        consensus_account.verify_signer(
-            creator,
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -162,12 +162,12 @@ impl<'info> CreateTransaction<'info> {
             .checked_add(1)
             .unwrap();
 
-        // Resolve canonical key for storage and events
-        let canonical_key = consensus_account.resolve_canonical_key(creator.key(), creator.is_signer)?;
+        // Use resolved key for storage and events
+        let resolved_key = creator.resolved_key()?;
 
         // Initialize the transaction fields.
         transaction.consensus_account = consensus_account.key();
-        transaction.creator = canonical_key;
+        transaction.creator = resolved_key;
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         match (args, consensus_account.account_type()) {
@@ -225,7 +225,7 @@ impl<'info> CreateTransaction<'info> {
             consensus_account_type: consensus_account.account_type(),
             transaction_pubkey: transaction.key(),
             transaction_index,
-            signer: Some(canonical_key),
+            signer: Some(resolved_key),
             transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
             memo: None,
         };

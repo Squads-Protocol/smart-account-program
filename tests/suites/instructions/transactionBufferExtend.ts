@@ -75,7 +75,8 @@ for (const format of formatsToRun) {
   // Helper function to create a transaction buffer
   async function createTransactionBuffer(
     creator: Keypair,
-    transactionIndex: bigint
+    transactionIndex: bigint,
+    finalBufferSizeOverride?: number
   ) {
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
@@ -126,7 +127,7 @@ for (const format of formatsToRun) {
             bufferIndex: Number(transactionIndex),
             accountIndex: 0,
             finalBufferHash: Array.from(messageHash),
-            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            finalBufferSize: finalBufferSizeOverride ?? messageBuffer.transactionMessageBytes.byteLength,
             buffer: messageBuffer.transactionMessageBytes.slice(0, 750),
           } as CreateTransactionBufferArgs,
         } as CreateTransactionBufferInstructionArgs,
@@ -448,7 +449,8 @@ for (const format of formatsToRun) {
 
     const transactionBuffer = await createTransactionBuffer(
       members.proposer,
-      transactionIndex
+      transactionIndex,
+      2000
     );
 
     const dummyData = Buffer.alloc(100, 1);

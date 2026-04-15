@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
-use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, state::signer_v2::ExtraVerificationData, state::signer_v2::precompile::create_sync_consensus_message, utils::*, SmallVec};
+use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, state::signer_v2::ExtraVerificationData, state::signer_v2::precompile::create_sync_settings_message, utils::*, SmallVec};
 
 /// Arguments for synchronous settings transaction
 ///
@@ -66,7 +66,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         let actions_bytes = args.actions.try_to_vec()
             .map_err(|_| SmartAccountError::InvalidPayload)?;
         let payload_hash = hash(&actions_bytes);
-        let message = create_sync_consensus_message(
+        let message = create_sync_settings_message(
             &consensus_account.key(),
             consensus_account.transaction_index(),
             &payload_hash.to_bytes(),
@@ -117,7 +117,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         // would make the removed signer unresolvable after execution.
         let resolved_signers: Vec<Pubkey> = ctx.remaining_accounts[..args.num_signers as usize]
             .iter()
-            .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+            .map(|acc| settings.resolve_signer_key(*acc.key, acc.is_signer))
             .collect::<Result<Vec<_>>>()?;
 
         // Build the log authority info

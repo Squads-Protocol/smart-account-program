@@ -6,6 +6,7 @@ use crate::interface::consensus::ConsensusAccount;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::create_proposal_create_message;
 
@@ -41,8 +42,7 @@ pub struct CreateProposal<'info> {
     )]
     pub proposal: Account<'info, Proposal>,
 
-    /// CHECK: Verified via verify_signer (native, session key, or external)
-    pub creator: AccountInfo<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the proposal account rent.
     #[account(mut)]
@@ -86,10 +86,10 @@ impl CreateProposal<'_> {
             args.draft,
         );
 
-        // Verify signer (native, session key, or external) and check Initiate OR Vote permission
+        // Resolve and verify signer (native, session key, or external) and check Initiate OR Vote permission
         // We pass None for permission and check separately since we need OR logic
-        let canonical_key = consensus_account.verify_signer(
-            creator,
+        creator.verify(
+            &mut **consensus_account,
             remaining_accounts,
             message,
             extra_verification_data.as_ref(),
@@ -97,10 +97,11 @@ impl CreateProposal<'_> {
         )?;
 
         // Must have at least one of the following permissions: Initiate or Vote.
-        // Use canonical_key (parent signer key for session keys) for permission check.
+        // Use resolved key (parent signer key for session keys) for permission check.
+        let resolved_key = creator.resolved_key()?;
         require!(
-            consensus_account.signer_has_permission(canonical_key, Permission::Initiate)
-                || consensus_account.signer_has_permission(canonical_key, Permission::Vote),
+            consensus_account.signer_has_permission(resolved_key, Permission::Initiate)
+                || consensus_account.signer_has_permission(resolved_key, Permission::Vote),
             SmartAccountError::Unauthorized
         );
 
@@ -125,8 +126,8 @@ impl CreateProposal<'_> {
         let rent_payer = &mut ctx.accounts.rent_payer;
         let creator = &ctx.accounts.creator;
 
-        // Use canonical key (parent signer key for session keys) for event logging
-        let canonical_key = consensus_account.resolve_canonical_key(creator.key(), creator.is_signer)?;
+        // Use resolved key (parent signer key for session keys) for event logging
+        let resolved_key = creator.resolved_key()?;
 
         proposal.settings = consensus_account.key();
         proposal.transaction_index = args.transaction_index;
@@ -152,7 +153,7 @@ impl CreateProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: args.transaction_index,
-            signer: Some(canonical_key),
+            signer: Some(resolved_key),
             proposal: Some(proposal.clone().into_inner()),
             memo: None,
         };

@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{errors::*, program::SquadsSmartAccountProgram, state::*};
+use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::{
     create_session_key_message, split_instructions_sysvar, verify_precompile_signers,
@@ -20,10 +21,7 @@ pub struct CreateSessionKey<'info> {
     #[account(mut)]
     pub settings: Account<'info, Settings>,
 
-    /// The external signer authorizing session key creation.
-    /// This is the signer's key_id (truncated pubkey).
-    /// CHECK: Validated as an external signer of the settings account.
-    pub signer: AccountInfo<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     pub program: Program<'info, SquadsSmartAccountProgram>,
 }
@@ -39,7 +37,7 @@ impl CreateSessionKey<'_> {
             .as_ref()
             .ok_or(SmartAccountError::MissingExtraVerificationData)?;
         let settings = &self.settings;
-        let signer_key = *self.signer.key;
+        let signer_key = self.signer.key();
 
         // Look up the signer in settings — must exist and be an external signer
         let signer = settings
@@ -106,7 +104,7 @@ impl CreateSessionKey<'_> {
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
-        let signer_key = *ctx.accounts.signer.key;
+        let signer_key = ctx.accounts.signer.key();
         let now = Clock::get()?.unix_timestamp as u64;
 
         // Prevent session key from colliding with an existing signer key.

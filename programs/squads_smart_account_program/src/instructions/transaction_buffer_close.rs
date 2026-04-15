@@ -30,7 +30,8 @@ pub struct CloseTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// CHECK: Verified via verify_signer. Authorization checked in handler body.
+    /// CHECK: Verified in validate. Uses AccountInfo (not ResolvedSigner) because
+    /// Anchor's `close = creator` requires the target to support mut constraints.
     pub creator: AccountInfo<'info>,
 }
 
@@ -83,13 +84,10 @@ impl CloseTransactionBuffer<'_> {
         if ctx.accounts.creator.key() == ctx.accounts.transaction_buffer.creator {
             return Ok(());
         }
-        // Session key or external signer — resolve canonical key
-        let canonical_key = ctx.accounts.consensus_account.resolve_canonical_key(
-            ctx.accounts.creator.key(),
-            ctx.accounts.creator.is_signer,
-        )?;
+        // Session key or external signer — use resolved key
+        let resolved_key = ctx.accounts.consensus_account.resolve_signer_key(ctx.accounts.creator.key(), ctx.accounts.creator.is_signer)?;
         require!(
-            ctx.accounts.transaction_buffer.creator == canonical_key,
+            ctx.accounts.transaction_buffer.creator == resolved_key,
             SmartAccountError::Unauthorized
         );
         Ok(())

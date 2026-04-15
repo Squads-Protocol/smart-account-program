@@ -10,7 +10,7 @@ use crate::{
     program::SquadsSmartAccountProgram,
     state::*,
     state::signer_v2::ExtraVerificationData,
-    state::signer_v2::precompile::create_sync_consensus_message,
+    state::signer_v2::precompile::create_sync_transaction_legacy_message,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
 };
@@ -65,12 +65,21 @@ impl LegacySyncTransaction<'_> {
         let settings = consensus_account.read_only_settings()?;
         settings.validate_account_index_unlocked(args.account_index)?;
 
+        // Compute the offset past signers + optional instructions sysvar.
+        let sysvar_offset = if remaining_accounts
+            .get(args.num_signers as usize)
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { 1usize } else { 0usize };
+        let accounts_start = args.num_signers as usize + sysvar_offset;
+
         // Build message for external signer verification.
         // Hash the instructions payload so external signers commit to the exact instructions.
         let payload_hash = hash(&args.instructions);
-        let message = create_sync_consensus_message(
+        let message = create_sync_transaction_legacy_message(
             &consensus_account.key(),
             consensus_account.transaction_index(),
+            args.account_index,
+            &remaining_accounts[accounts_start..],
             &payload_hash.to_bytes(),
         );
 
@@ -149,7 +158,7 @@ impl LegacySyncTransaction<'_> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| settings.resolve_canonical_key(*acc.key, acc.is_signer))
+                .map(|acc| settings.resolve_signer_key(*acc.key, acc.is_signer))
                 .collect::<Result<Vec<_>>>()?,
             account_index: args.account_index,
             instructions: executable_message.instructions.to_vec(),

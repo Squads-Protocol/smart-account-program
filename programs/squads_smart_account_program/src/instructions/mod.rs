@@ -1,3 +1,48 @@
+// Anchor boilerplate for ResolvedSigner composite field.
+// Must be `mod` declarations here (not re-exports) so the derive macro
+// finds them via `use super::*` inside generated client modules.
+pub(crate) mod __client_accounts_resolved_signer {
+    use anchor_lang::solana_program::{instruction::AccountMeta, pubkey::Pubkey};
+    use anchor_lang::prelude::borsh;
+
+    #[derive(borsh::BorshSerialize)]
+    pub struct ResolvedSigner {
+        pub info: Pubkey,
+    }
+
+    impl anchor_lang::ToAccountMetas for ResolvedSigner {
+        fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+            let is_signer = is_signer.unwrap_or_default();
+            vec![AccountMeta::new_readonly(self.info, is_signer)]
+        }
+    }
+}
+
+pub(crate) mod __cpi_client_accounts_resolved_signer {
+    use anchor_lang::solana_program::{account_info::AccountInfo, instruction::AccountMeta};
+
+    pub struct ResolvedSigner<'info> {
+        pub info: AccountInfo<'info>,
+    }
+
+    impl<'info> anchor_lang::ToAccountMetas for ResolvedSigner<'info> {
+        fn to_account_metas(&self, is_signer: Option<bool>) -> Vec<AccountMeta> {
+            let is_signer = is_signer.unwrap_or(self.info.is_signer);
+            let meta = match self.info.is_writable {
+                false => AccountMeta::new_readonly(*self.info.key, is_signer),
+                true => AccountMeta::new(*self.info.key, is_signer),
+            };
+            vec![meta]
+        }
+    }
+
+    impl<'info> anchor_lang::ToAccountInfos<'info> for ResolvedSigner<'info> {
+        fn to_account_infos(&self) -> Vec<AccountInfo<'info>> {
+            vec![self.info.clone()]
+        }
+    }
+}
+
 pub use activate_proposal::*;
 pub use create_session_key::*;
 pub use increment_account_index::*;

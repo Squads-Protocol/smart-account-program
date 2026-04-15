@@ -605,8 +605,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -653,8 +658,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -718,8 +728,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -757,7 +772,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -767,8 +782,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -801,7 +821,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -812,9 +832,9 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": true,
+          "isSigner": false,
           "docs": [
-            "The signer on the smart account that created the TransactionBuffer."
+            "Anchor's `close = creator` requires the target to support mut constraints."
           ]
         }
       ],
@@ -828,7 +848,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -838,8 +858,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         }
       ],
       "args": [
@@ -873,8 +898,13 @@
             },
             {
               "name": "creator",
-              "isMut": false,
-              "isSigner": false
+              "accounts": [
+                {
+                  "name": "info",
+                  "isMut": false,
+                  "isSigner": false
+                }
+              ]
             },
             {
               "name": "rentPayer",
@@ -946,8 +976,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "program",
@@ -975,8 +1010,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -1009,7 +1049,7 @@
       "accounts": [
         {
           "name": "settings",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "Settings account this batch belongs to."
@@ -1038,8 +1078,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -1072,7 +1117,7 @@
       "accounts": [
         {
           "name": "settings",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "Settings account this batch belongs to."
@@ -1080,8 +1125,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -1116,7 +1166,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1126,8 +1176,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -1170,8 +1225,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -1190,13 +1250,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -1233,13 +1298,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -1276,13 +1346,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -1718,7 +1793,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -1872,8 +1947,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -1927,8 +2007,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2001,8 +2086,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -2069,8 +2159,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "program",
@@ -2097,7 +2192,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2107,8 +2202,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -2149,7 +2249,51 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "ExtendTransactionBufferArgs"
+          }
+        },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "closeTransactionBufferV2",
+      "docs": [
+        "Close a transaction buffer with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "consensusAccount",
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2160,16 +2304,13 @@
         {
           "name": "creator",
           "isMut": false,
-          "isSigner": false
+          "isSigner": false,
+          "docs": [
+            "Anchor's `close = creator` requires the target to support mut constraints."
+          ]
         }
       ],
       "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": "ExtendTransactionBufferArgs"
-          }
-        },
         {
           "name": "extraVerificationData",
           "type": {
@@ -2201,8 +2342,13 @@
             },
             {
               "name": "creator",
-              "isMut": false,
-              "isSigner": false
+              "accounts": [
+                {
+                  "name": "info",
+                  "isMut": false,
+                  "isSigner": false
+                }
+              ]
             },
             {
               "name": "rentPayer",
@@ -2270,8 +2416,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -2312,7 +2463,7 @@
       "accounts": [
         {
           "name": "settings",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "Settings account this batch belongs to."
@@ -2341,8 +2492,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -2383,7 +2539,7 @@
       "accounts": [
         {
           "name": "settings",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false,
           "docs": [
             "Settings account this batch belongs to."
@@ -2391,8 +2547,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2436,7 +2597,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2446,8 +2607,13 @@
         },
         {
           "name": "creator",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "rentPayer",
@@ -2498,8 +2664,13 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2526,13 +2697,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2576,13 +2752,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2626,13 +2807,18 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
           "name": "signer",
-          "isMut": true,
-          "isSigner": false
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
         },
         {
           "name": "proposal",
@@ -2696,9 +2882,7 @@
           "name": "extraVerificationData",
           "type": {
             "option": {
-              "vec": {
-                "defined": "ExtraVerificationData"
-              }
+              "defined": "SmallVec<u8,ExtraVerificationData>"
             }
           }
         }
@@ -2752,9 +2936,7 @@
           "name": "extraVerificationData",
           "type": {
             "option": {
-              "vec": {
-                "defined": "ExtraVerificationData"
-              }
+              "defined": "SmallVec<u8,ExtraVerificationData>"
             }
           }
         }
@@ -2768,7 +2950,7 @@
       "accounts": [
         {
           "name": "consensusAccount",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -2788,9 +2970,7 @@
           "name": "extraVerificationData",
           "type": {
             "option": {
-              "vec": {
-                "defined": "ExtraVerificationData"
-              }
+              "defined": "SmallVec<u8,ExtraVerificationData>"
             }
           }
         }
@@ -2810,11 +2990,12 @@
         },
         {
           "name": "signer",
-          "isMut": false,
-          "isSigner": false,
-          "docs": [
-            "The external signer authorizing session key creation.",
-            "This is the signer's key_id (truncated pubkey)."
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
           ]
         },
         {
@@ -2830,6 +3011,44 @@
             "defined": "CreateSessionKeyArgs"
           }
         },
+        {
+          "name": "extraVerificationData",
+          "type": {
+            "option": {
+              "defined": "ExtraVerificationData"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "incrementAccountIndexV2",
+      "docs": [
+        "Increment the account utilization index with external signer support."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "accounts": [
+            {
+              "name": "info",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
         {
           "name": "extraVerificationData",
           "type": {
@@ -4416,7 +4635,7 @@
               "The list of unique account public keys (including program IDs) that will be used in the provided instructions."
             ],
             "type": {
-              "vec": "publicKey"
+              "defined": "SmallVec<u8,Pubkey>"
             }
           },
           {
@@ -4425,9 +4644,7 @@
               "The list of instructions to execute."
             ],
             "type": {
-              "vec": {
-                "defined": "CompiledInstruction"
-              }
+              "defined": "SmallVec<u8,CompiledInstruction>"
             }
           },
           {
@@ -4437,9 +4654,7 @@
               "for this transaction."
             ],
             "type": {
-              "vec": {
-                "defined": "MessageAddressTableLookup"
-              }
+              "defined": "SmallVec<u8,MessageAddressTableLookup>"
             }
           }
         ]
@@ -4459,14 +4674,18 @@
             "docs": [
               "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
             ],
-            "type": "bytes"
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
           },
           {
             "name": "data",
             "docs": [
               "Instruction data."
             ],
-            "type": "bytes"
+            "type": {
+              "defined": "SmallVec<u16,u8>"
+            }
           }
         ]
       }
@@ -4492,14 +4711,18 @@
             "docs": [
               "List of indexes used to load writable account addresses"
             ],
-            "type": "bytes"
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
           },
           {
             "name": "readonlyIndexes",
             "docs": [
               "List of indexes used to load readonly account addresses"
             ],
-            "type": "bytes"
+            "type": {
+              "defined": "SmallVec<u8,u8>"
+            }
           }
         ]
       }
@@ -4949,9 +5172,7 @@
               "Account constraints (evaluated as logical AND)"
             ],
             "type": {
-              "vec": {
-                "defined": "CompiledAccountConstraint"
-              }
+              "defined": "SmallVec<u8,CompiledAccountConstraint>"
             }
           },
           {
@@ -4960,9 +5181,7 @@
               "Data constraints (evaluated as logical AND)"
             ],
             "type": {
-              "vec": {
-                "defined": "DataConstraint"
-              }
+              "defined": "SmallVec<u8,DataConstraint>"
             }
           }
         ]
@@ -5015,14 +5234,14 @@
           {
             "name": "accountConstraints",
             "type": {
-              "vec": {
-                "defined": "CompiledAccountConstraint"
-              }
+              "defined": "SmallVec<u8,CompiledAccountConstraint>"
             }
           },
           {
             "name": "instructionData",
-            "type": "bytes"
+            "type": {
+              "defined": "SmallVec<u16,u8>"
+            }
           },
           {
             "name": "programIdIndex",
@@ -5268,15 +5487,13 @@
           {
             "name": "pubkeyTable",
             "type": {
-              "vec": "publicKey"
+              "defined": "SmallVec<u8,Pubkey>"
             }
           },
           {
             "name": "instructionsConstraints",
             "type": {
-              "vec": {
-                "defined": "CompiledInstructionConstraint"
-              }
+              "defined": "SmallVec<u8,CompiledInstructionConstraint>"
             }
           },
           {
@@ -5298,9 +5515,7 @@
           {
             "name": "spendingLimits",
             "type": {
-              "vec": {
-                "defined": "CompiledLimitedSpendingLimit"
-              }
+              "defined": "SmallVec<u8,CompiledLimitedSpendingLimit>"
             }
           }
         ]
@@ -5761,6 +5976,41 @@
       }
     },
     {
+      "name": "P256NativeData",
+      "docs": [
+        "P256 native signer data for raw secp256r1 signatures (non-WebAuthn).",
+        "",
+        "Unlike P256Webauthn, this signer signs raw message hashes directly",
+        "without WebAuthn authenticatorData/clientDataJSON wrapping.",
+        "Useful for Apple Secure Enclave (CryptoKit), non-browser P256 signers,",
+        "and any context where WebAuthn ceremony is unnecessary.",
+        "",
+        "## Fields",
+        "- `compressed_pubkey`: 33 bytes - Compressed P256 public key for signature verification",
+        "- `session_key_data`: Session key data for temporary native key delegation"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "compressedPubkey",
+            "type": {
+              "array": [
+                "u8",
+                33
+              ]
+            }
+          },
+          {
+            "name": "sessionKeyData",
+            "type": {
+              "defined": "SessionKeyData"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "Secp256k1Data",
       "docs": [
         "Secp256k1 signer data for Ethereum-style authentication.",
@@ -5996,6 +6246,47 @@
       }
     },
     {
+      "name": "TransactionContent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Transaction",
+            "fields": [
+              {
+                "defined": "Transaction"
+              }
+            ]
+          },
+          {
+            "name": "SettingsTransaction",
+            "fields": [
+              {
+                "name": "settings",
+                "type": {
+                  "defined": "Settings"
+                }
+              },
+              {
+                "name": "transaction",
+                "type": {
+                  "defined": "SettingsTransaction"
+                }
+              },
+              {
+                "name": "changes",
+                "type": {
+                  "vec": {
+                    "defined": "SettingsAction"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "TransactionEventType",
       "type": {
         "kind": "enum",
@@ -6034,6 +6325,126 @@
           },
           {
             "name": "Close"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SmartAccountEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "CreateSmartAccountEvent",
+            "fields": [
+              {
+                "defined": "CreateSmartAccountEvent"
+              }
+            ]
+          },
+          {
+            "name": "IncrementAccountIndexEvent",
+            "fields": [
+              {
+                "defined": "IncrementAccountIndexEvent"
+              }
+            ]
+          },
+          {
+            "name": "SynchronousTransactionEvent",
+            "fields": [
+              {
+                "defined": "SynchronousTransactionEvent"
+              }
+            ]
+          },
+          {
+            "name": "SynchronousSettingsTransactionEvent",
+            "fields": [
+              {
+                "defined": "SynchronousSettingsTransactionEvent"
+              }
+            ]
+          },
+          {
+            "name": "AddSpendingLimitEvent",
+            "fields": [
+              {
+                "defined": "AddSpendingLimitEvent"
+              }
+            ]
+          },
+          {
+            "name": "RemoveSpendingLimitEvent",
+            "fields": [
+              {
+                "defined": "RemoveSpendingLimitEvent"
+              }
+            ]
+          },
+          {
+            "name": "UseSpendingLimitEvent",
+            "fields": [
+              {
+                "defined": "UseSpendingLimitEvent"
+              }
+            ]
+          },
+          {
+            "name": "AuthoritySettingsEvent",
+            "fields": [
+              {
+                "defined": "AuthoritySettingsEvent"
+              }
+            ]
+          },
+          {
+            "name": "AuthorityChangeEvent",
+            "fields": [
+              {
+                "defined": "AuthorityChangeEvent"
+              }
+            ]
+          },
+          {
+            "name": "TransactionEvent",
+            "fields": [
+              {
+                "defined": "TransactionEvent"
+              }
+            ]
+          },
+          {
+            "name": "ProposalEvent",
+            "fields": [
+              {
+                "defined": "ProposalEvent"
+              }
+            ]
+          },
+          {
+            "name": "SynchronousTransactionEventV2",
+            "fields": [
+              {
+                "defined": "SynchronousTransactionEventV2"
+              }
+            ]
+          },
+          {
+            "name": "SettingsChangePolicyEvent",
+            "fields": [
+              {
+                "defined": "SettingsChangePolicyEvent"
+              }
+            ]
+          },
+          {
+            "name": "PolicyEvent",
+            "fields": [
+              {
+                "defined": "PolicyEvent"
+              }
+            ]
           }
         ]
       }
@@ -6108,56 +6519,6 @@
       }
     },
     {
-      "name": "ClassifiedSigner",
-      "docs": [
-        "Result of signer classification"
-      ],
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Native",
-            "fields": [
-              {
-                "name": "signer",
-                "type": {
-                  "defined": "SmartAccountSigner"
-                }
-              }
-            ]
-          },
-          {
-            "name": "SessionKey",
-            "fields": [
-              {
-                "name": "parentSigner",
-                "type": {
-                  "defined": "SmartAccountSigner"
-                }
-              },
-              {
-                "name": "sessionKeyData",
-                "type": {
-                  "defined": "SessionKeyData"
-                }
-              }
-            ]
-          },
-          {
-            "name": "External",
-            "fields": [
-              {
-                "name": "signer",
-                "type": {
-                  "defined": "SmartAccountSigner"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
       "name": "ConsensusAccountType",
       "type": {
         "kind": "enum",
@@ -6167,6 +6528,30 @@
           },
           {
             "name": "Policy"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConsensusAccount",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Settings",
+            "fields": [
+              {
+                "defined": "Settings"
+              }
+            ]
+          },
+          {
+            "name": "Policy",
+            "fields": [
+              {
+                "defined": "Policy"
+              }
+            ]
           }
         ]
       }
@@ -6278,16 +6663,16 @@
           {
             "name": "Pubkey",
             "fields": [
-              "bytes"
+              {
+                "defined": "SmallVec<u8,u8>"
+              }
             ]
           },
           {
             "name": "AccountData",
             "fields": [
               {
-                "vec": {
-                  "defined": "DataConstraint"
-                }
+                "defined": "SmallVec<u8,DataConstraint>"
               }
             ]
           }
@@ -6998,6 +7383,23 @@
       }
     },
     {
+      "name": "Permission",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Initiate"
+          },
+          {
+            "name": "Vote"
+          },
+          {
+            "name": "Execute"
+          }
+        ]
+      }
+    },
+    {
       "name": "Ed25519SyscallError",
       "type": {
         "kind": "enum",
@@ -7035,6 +7437,9 @@
           },
           {
             "name": "Secp256k1Precompile"
+          },
+          {
+            "name": "P256NativePrecompile"
           },
           {
             "name": "Ed25519Syscall",
@@ -7220,6 +7625,27 @@
                 "type": "u64"
               }
             ]
+          },
+          {
+            "name": "P256Native",
+            "fields": [
+              {
+                "name": "permissions",
+                "type": {
+                  "defined": "Permissions"
+                }
+              },
+              {
+                "name": "data",
+                "type": {
+                  "defined": "P256NativeData"
+                }
+              },
+              {
+                "name": "nonce",
+                "type": "u64"
+              }
+            ]
           }
         ]
       }
@@ -7243,6 +7669,9 @@
           },
           {
             "name": "Ed25519External"
+          },
+          {
+            "name": "P256Native"
           }
         ]
       }
@@ -8077,12 +8506,11 @@
       "code": 6149,
       "name": "NonceExhausted",
       "msg": "Nonce exhausted (u64 overflow)"
+    },
+    {
+      "code": 6150,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
     }
-  ],
-  "metadata": {
-    "address": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
-    "origin": "anchor",
-    "binaryVersion": "0.29.0",
-    "libVersion": "=0.29.0"
-  }
+  ]
 }
