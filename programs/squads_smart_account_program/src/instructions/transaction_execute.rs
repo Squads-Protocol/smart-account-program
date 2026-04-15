@@ -7,6 +7,9 @@ use crate::events::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::instructions::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_execute_transaction_message;
 use crate::utils::*;
 
 #[derive(Accounts)]
@@ -43,7 +46,7 @@ pub struct ExecuteTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    pub signer: Signer<'info>,
+    pub signer: ResolvedSigner<'info>,
     pub program: Program<'info, SquadsSmartAccountProgram>,
     // `remaining_accounts` must include the following accounts in the exact
     // order:
@@ -58,26 +61,36 @@ pub struct ExecuteTransaction<'info> {
 }
 
 impl<'info> ExecuteTransaction<'info> {
-    fn validate(&self, ctx: &Context<ExecuteTransaction<'info>>) -> Result<()> {
+    fn validate(
+        &mut self,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             proposal,
+            transaction,
             signer,
             ..
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(remaining_accounts)?;
 
-        // signer
-        require!(
-            consensus_account.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_execute_transaction_message(
+            &transaction.key(),
+            transaction.index,
         );
-        require!(
-            consensus_account.signer_has_permission(signer.key(), Permission::Execute),
-            SmartAccountError::Unauthorized
-        );
+
+        // Resolve and verify signer (native, session key, or external) and check Execute permission
+        signer.verify(
+            &mut **consensus_account,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Execute),
+        )?;
 
         // proposal
         match proposal.status {
@@ -100,8 +113,18 @@ impl<'info> ExecuteTransaction<'info> {
 
     /// Execute the smart account transaction.
     /// The transaction must be `Approved`.
-    #[access_control(ctx.accounts.validate(&ctx))]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn execute_transaction(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
+        Self::execute_transaction_inner(ctx)
+    }
+
+    /// Execute the smart account transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn execute_transaction_v2(ctx: Context<'_, '_, 'info, 'info, Self>, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::execute_transaction_inner(ctx)
+    }
+
+    fn execute_transaction_inner(ctx: Context<'_, '_, 'info, 'info, Self>) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
 
@@ -222,6 +245,8 @@ impl<'info> ExecuteTransaction<'info> {
         consensus_account.invariant()?;
 
 
+        let resolved_signer = ctx.accounts.signer.resolved_key()?;
+
         // Log the execution event
         let execute_event = TransactionEvent {
             consensus_account: consensus_account.key(),
@@ -229,7 +254,7 @@ impl<'info> ExecuteTransaction<'info> {
             event_type: TransactionEventType::Execute,
             transaction_pubkey: ctx.accounts.transaction.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(resolved_signer),
             memo: None,
             transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
         };
@@ -241,7 +266,7 @@ impl<'info> ExecuteTransaction<'info> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: transaction.index,
-            signer: Some(ctx.accounts.signer.key()),
+            signer: Some(resolved_signer),
             memo: None,
             proposal: Some(proposal.clone().into_inner()),
         };

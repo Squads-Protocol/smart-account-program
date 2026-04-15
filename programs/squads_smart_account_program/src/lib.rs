@@ -175,8 +175,8 @@ pub mod squads_smart_account_program {
     }
 
     /// Create a transaction buffer account.
-    pub fn create_transaction_buffer(
-        ctx: Context<CreateTransactionBuffer>,
+    pub fn create_transaction_buffer<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionBuffer<'info>>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {
         CreateTransactionBuffer::create_transaction_buffer(ctx, args)
@@ -347,5 +347,205 @@ pub mod squads_smart_account_program {
     // no existing vaults, spending limits, or pending transactions reference the index being decremented.
     pub fn increment_account_index(ctx: Context<IncrementAccountIndex>) -> Result<()> {
         IncrementAccountIndex::increment_account_index(ctx)
+    }
+
+    // =========================================================================
+    // V2 instructions with external signer support (extra_verification_data)
+    // =========================================================================
+
+    /// Create a new settings transaction with external signer support.
+    pub fn create_settings_transaction_v2(
+        ctx: Context<CreateSettingsTransaction>,
+        args: CreateSettingsTransactionArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateSettingsTransaction::create_settings_transaction_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Execute a settings transaction with external signer support.
+    pub fn execute_settings_transaction_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteSettingsTransaction<'info>>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        ExecuteSettingsTransaction::execute_settings_transaction_v2(ctx, extra_verification_data)
+    }
+
+    /// Create a new vault transaction with external signer support.
+    pub fn create_transaction_v2(
+        ctx: Context<CreateTransaction>,
+        args: CreateTransactionArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateTransaction::create_transaction_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Execute a smart account transaction with external signer support.
+    pub fn execute_transaction_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, ExecuteTransaction<'info>>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        ExecuteTransaction::execute_transaction_v2(ctx, extra_verification_data)
+    }
+
+    /// Create a transaction buffer with external signer support.
+    pub fn create_transaction_buffer_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionBuffer<'info>>,
+        args: CreateTransactionBufferArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateTransactionBuffer::create_transaction_buffer_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Extend a transaction buffer with external signer support.
+    pub fn extend_transaction_buffer_v2(
+        ctx: Context<ExtendTransactionBuffer>,
+        args: ExtendTransactionBufferArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        ExtendTransactionBuffer::extend_transaction_buffer_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Close a transaction buffer with external signer support.
+    pub fn close_transaction_buffer_v2(
+        ctx: Context<CloseTransactionBuffer>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CloseTransactionBuffer::close_transaction_buffer_v2(ctx, extra_verification_data)
+    }
+
+    /// Create a new vault transaction from buffer with external signer support.
+    pub fn create_transaction_from_buffer_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateTransactionFromBuffer<'info>>,
+        args: CreateTransactionArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateTransactionFromBuffer::create_transaction_from_buffer_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Create a new batch with external signer support.
+    pub fn create_batch_v2(
+        ctx: Context<CreateBatch>,
+        args: CreateBatchArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateBatch::create_batch_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Add a transaction to a batch with external signer support.
+    pub fn add_transaction_to_batch_v2(
+        ctx: Context<AddTransactionToBatch>,
+        args: AddTransactionToBatchArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        AddTransactionToBatch::add_transaction_to_batch_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Execute a transaction from a batch with external signer support.
+    pub fn execute_batch_transaction_v2(
+        ctx: Context<ExecuteBatchTransaction>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        ExecuteBatchTransaction::execute_batch_transaction_v2(ctx, extra_verification_data)
+    }
+
+    /// Create a new proposal with external signer support.
+    pub fn create_proposal_v2(
+        ctx: Context<CreateProposal>,
+        args: CreateProposalArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateProposal::create_proposal_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Activate a proposal with external signer support.
+    pub fn activate_proposal_v2(
+        ctx: Context<ActivateProposal>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        ActivateProposal::activate_proposal_v2(ctx, extra_verification_data)
+    }
+
+    /// Approve a proposal with external signer support.
+    pub fn approve_proposal_v2(
+        ctx: Context<VoteOnProposal>,
+        args: VoteOnProposalArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        VoteOnProposal::approve_proposal_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Reject a proposal with external signer support.
+    pub fn reject_proposal_v2(
+        ctx: Context<VoteOnProposal>,
+        args: VoteOnProposalArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        VoteOnProposal::reject_proposal_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Cancel a proposal with external signer support.
+    pub fn cancel_proposal_v2(
+        ctx: Context<VoteOnProposal>,
+        args: VoteOnProposalArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        VoteOnProposal::cancel_proposal_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Synchronously execute a transaction with external signer support.
+    pub fn execute_transaction_sync_v2_external<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncTransaction<'info>>,
+        args: SyncTransactionArgs,
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
+    ) -> Result<()> {
+        SyncTransaction::sync_transaction_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Synchronously execute a settings transaction with external signer support.
+    pub fn execute_settings_transaction_sync_v2<'info>(
+        ctx: Context<'_, '_, 'info, 'info, SyncSettingsTransaction<'info>>,
+        args: SyncSettingsTransactionArgs,
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
+    ) -> Result<()> {
+        SyncSettingsTransaction::sync_settings_transaction_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Legacy synchronous transaction with external signer support.
+    #[deprecated(note = "Use `execute_transaction_sync_v2_external` instead")]
+    pub fn execute_transaction_sync_legacy_v2(
+        ctx: Context<LegacySyncTransaction>,
+        args: LegacySyncTransactionArgs,
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
+    ) -> Result<()> {
+        LegacySyncTransaction::sync_transaction_v2(ctx, args, extra_verification_data)
+    }
+
+    /// Create a session key for an external signer.
+    /// The external signer must prove ownership via precompile or syscall verification.
+    pub fn create_session_key(
+        ctx: Context<CreateSessionKey>,
+        args: CreateSessionKeyArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        CreateSessionKey::create_session_key(ctx, args, extra_verification_data)
+    }
+
+    /// Increment the account utilization index with external signer support.
+    pub fn increment_account_index_v2(
+        ctx: Context<IncrementAccountIndexV2>,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        IncrementAccountIndexV2::increment_account_index_v2(ctx, extra_verification_data)
+    }
+
+    /// Revoke a session key from an external signer.
+    /// Can be authorized by the external signer (via precompile/syscall) or
+    /// the current session key holder (via native signature).
+    pub fn revoke_session_key(
+        ctx: Context<RevokeSessionKey>,
+        args: RevokeSessionKeyArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        RevokeSessionKey::revoke_session_key(ctx, args, extra_verification_data)
     }
 }

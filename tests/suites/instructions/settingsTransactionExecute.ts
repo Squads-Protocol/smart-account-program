@@ -6,6 +6,9 @@ import {
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  getSignerKey,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings, Proposal } = smartAccount.accounts;
@@ -13,7 +16,10 @@ const { Settings, Proposal } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / settings_transaction_execute", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / settings_transaction_execute [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -34,7 +40,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -46,7 +52,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -58,7 +64,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Reject the proposal by a member.
     // Our threshold is 2 out of 2 voting members, so the cutoff is 1.
-    signature = await smartAccount.rpc.rejectProposal({
+    signature = await rpc.rejectProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -71,7 +77,7 @@ describe("Instructions / settings_transaction_execute", () => {
     // Attempt to execute a transaction with a rejected proposal.
     await assert.rejects(
       () =>
-        smartAccount.rpc.executeSettingsTransaction({
+        rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -99,7 +105,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -112,7 +118,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -123,7 +129,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -134,7 +140,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -146,7 +152,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     await assert.rejects(
       () =>
-        smartAccount.rpc.executeSettingsTransaction({
+        rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -174,7 +180,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -191,7 +197,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -202,7 +208,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -213,7 +219,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -223,7 +229,7 @@ describe("Instructions / settings_transaction_execute", () => {
     });
     await connection.confirmTransaction(signature);
 
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -244,7 +250,7 @@ describe("Instructions / settings_transaction_execute", () => {
     // Voter should have been removed.
     assert(
       !multisigAccount.signers.some((m) =>
-        m.key.equals(members.voter.publicKey)
+        getSignerKey(m).equals(members.voter.publicKey)
       )
     );
     // The stale transaction index should be updated and set to 1.
@@ -265,7 +271,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -277,7 +283,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -288,7 +294,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -299,7 +305,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the approved settings transaction.
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -359,7 +365,7 @@ describe("Instructions / settings_transaction_execute", () => {
 
     // Create a settings transaction.
     const transactionIndex = 1n;
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -373,7 +379,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction (Approved).
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -384,7 +390,7 @@ describe("Instructions / settings_transaction_execute", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -397,7 +403,7 @@ describe("Instructions / settings_transaction_execute", () => {
     // Execute the approved settings transaction.
     await assert.rejects(
       () =>
-        smartAccount.rpc.executeSettingsTransaction({
+        rpc.executeSettingsTransaction({
           connection,
           feePayer: members.almighty,
           settingsPda,
@@ -410,7 +416,7 @@ describe("Instructions / settings_transaction_execute", () => {
     );
     await connection.confirmTransaction(signature);
     // Reject the proposal.
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -435,3 +441,4 @@ describe("Instructions / settings_transaction_execute", () => {
     );
   });
 });
+}

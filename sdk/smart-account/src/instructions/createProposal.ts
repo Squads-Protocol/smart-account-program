@@ -29,7 +29,7 @@ export function createProposal({
     throw new Error("transactionIndex is too large");
   }
 
-  return createCreateProposalInstruction(
+  const ix = createCreateProposalInstruction(
     {
       creator,
       rentPayer: rentPayer ?? creator,
@@ -40,4 +40,9 @@ export function createProposal({
     { args: { transactionIndex: Number(transactionIndex), draft: isDraft } },
     programId
   );
+  const consensusMeta = ix.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (consensusMeta) consensusMeta.isWritable = true;
+  const creatorMeta = ix.keys.find((k) => k.pubkey.equals(creator));
+  if (creatorMeta) creatorMeta.isSigner = true;
+  return ix;
 }

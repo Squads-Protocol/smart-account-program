@@ -113,13 +113,10 @@ pub enum SmartAccountError {
     #[msg("Invalid data constraint")]
     InvalidDataConstraint,
 
-
     #[msg("Invalid payload")]
     InvalidPayload,
     #[msg("Protected instruction")]
     ProtectedInstruction,
-    #[msg("Placeholder error")]
-    PlaceholderError,
 
     // ===============================================
     // Overall Policy Errors
@@ -300,4 +297,52 @@ pub enum SmartAccountError {
     AccountIndexLocked,
     #[msg("Cannot exceed maximum free account index (250)")]
     MaxAccountIndexReached,
+
+    // ===============================================
+    // External Signer Errors (Added at end to preserve error codes)
+    // ===============================================
+    #[msg("Serialization failed")]
+    SerializationFailed,
+    #[msg("Missing precompile instruction")]
+    MissingPrecompileInstruction,
+    #[msg("Invalid session key")]
+    InvalidSessionKey,
+    #[msg("Invalid session key expiration")]
+    InvalidSessionKeyExpiration,
+    #[msg("Session key expiration too long")]
+    SessionKeyExpirationTooLong,
+    #[msg("Invalid permissions")]
+    InvalidPermissions,
+    #[msg("Invalid signer type")]
+    InvalidSignerType,
+    #[msg("Invalid precompile data")]
+    InvalidPrecompileData,
+    #[msg("Invalid precompile program")]
+    InvalidPrecompileProgram,
+    #[msg("Duplicate external signature")]
+    DuplicateExternalSignature,
+    #[msg("Webauthn RP ID mismatch")]
+    WebauthnRpIdMismatch,
+    #[msg("Webauthn user not present")]
+    WebauthnUserNotPresent,
+    #[msg("Webauthn counter not incremented")]
+    WebauthnCounterNotIncremented,
+    #[msg("Missing client data params")]
+    MissingClientDataParams,
+    #[msg("Precompile message mismatch")]
+    PrecompileMessageMismatch,
+    #[msg("Missing extra verification data for external signer")]
+    MissingExtraVerificationData,
+    #[msg("Invalid signature")]
+    InvalidSignature,
+    #[msg("Precompile verification required for this signer type")]
+    PrecompileRequired,
+    #[msg("SmartAccountSigner type mismatch")]
+    SignerTypeMismatch,
+    #[msg("Nonce exhausted (u64 overflow)")]
+    NonceExhausted,
+    #[msg("Arithmetic overflow")]
+    Overflow,
+    #[msg("Signer has already been verified")]
+    SignerAlreadyVerified,
 }

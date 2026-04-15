@@ -1,7 +1,10 @@
 use anchor_lang::prelude::*;
-use crate::consensus_trait::Consensus;
+
 use crate::errors::*;
 use crate::state::*;
+use crate::instructions::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_batch_add_transaction_message;
 use crate::TransactionMessage;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -16,6 +19,7 @@ pub struct AddTransactionToBatchArgs {
 pub struct AddTransactionToBatch<'info> {
     /// Settings account this batch belongs to.
     #[account(
+        mut,
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump
     )]
@@ -63,8 +67,7 @@ pub struct AddTransactionToBatch<'info> {
     )]
     pub transaction: Account<'info, BatchTransaction>,
 
-    /// Signer of the smart account.
-    pub signer: Signer<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     /// The payer for the batch transaction account rent.
     #[account(mut)]
@@ -74,7 +77,11 @@ pub struct AddTransactionToBatch<'info> {
 }
 
 impl AddTransactionToBatch<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(
+        &mut self,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             settings,
             signer,
@@ -83,18 +90,26 @@ impl AddTransactionToBatch<'_> {
             ..
         } = self;
 
-        // `signer`
-        require!(
-            settings.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_batch_add_transaction_message(
+            &batch.key(),
+            signer.key(),
+            batch.index,
         );
+
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        signer.verify(
+            &mut **settings,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
+
+        // Only batch creator can add transactions to it (using resolved key).
+        let resolved_key = signer.resolved_key()?;
         require!(
-            settings.signer_has_permission(signer.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
-        // Only batch creator can add transactions to it.
-        require!(
-            signer.key() == batch.creator,
+            resolved_key == batch.creator,
             SmartAccountError::Unauthorized
         );
 
@@ -110,8 +125,18 @@ impl AddTransactionToBatch<'_> {
     }
 
     /// Add a transaction to the batch.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
+        Self::add_transaction_to_batch_inner(ctx, args)
+    }
+
+    /// Add a transaction to the batch with V2 signer support.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn add_transaction_to_batch_v2(ctx: Context<Self>, args: AddTransactionToBatchArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::add_transaction_to_batch_inner(ctx, args)
+    }
+
+    fn add_transaction_to_batch_inner(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
         let transaction = &mut ctx.accounts.transaction;
         let rent_payer = &mut ctx.accounts.rent_payer;

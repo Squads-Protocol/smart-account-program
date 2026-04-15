@@ -14,6 +14,10 @@ import {
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
+  createSignerObject,
+  createSignerArray,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings, Proposal } = smartAccount.accounts;
@@ -21,7 +25,10 @@ const { Settings, Proposal } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / proposal_cancel_v2", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / proposal_cancel_v2 [${format}]`, () => {
   let members: TestMembers;
   let settingsPda: PublicKey;
   let newVotingMember = new Keypair();
@@ -29,22 +36,10 @@ describe("Instructions / proposal_cancel_v2", () => {
   let newVotingMember3 = new Keypair();
   let newVotingMember4 = new Keypair();
   let addMemberCollection = [
-    {
-      key: newVotingMember.publicKey,
-      permissions: smartAccount.types.Permissions.all(),
-    },
-    {
-      key: newVotingMember2.publicKey,
-      permissions: smartAccount.types.Permissions.all(),
-    },
-    {
-      key: newVotingMember3.publicKey,
-      permissions: smartAccount.types.Permissions.all(),
-    },
-    {
-      key: newVotingMember4.publicKey,
-      permissions: smartAccount.types.Permissions.all(),
-    },
+    createSignerObject(newVotingMember.publicKey, smartAccount.types.Permissions.all()),
+    createSignerObject(newVotingMember2.publicKey, smartAccount.types.Permissions.all()),
+    createSignerObject(newVotingMember3.publicKey, smartAccount.types.Permissions.all()),
+    createSignerObject(newVotingMember4.publicKey, smartAccount.types.Permissions.all()),
   ];
   let cancelVotesCollection = [
     newVotingMember,
@@ -82,7 +77,7 @@ describe("Instructions / proposal_cancel_v2", () => {
       programId,
     });
 
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -91,10 +86,10 @@ describe("Instructions / proposal_cancel_v2", () => {
       actions: [
         {
           __kind: "AddSigner",
-          newSigner: {
-            key: newVotingMember.publicKey,
-            permissions: smartAccount.types.Permissions.all(),
-          },
+          newSigner: createSignerArray(
+            newVotingMember.publicKey,
+            smartAccount.types.Permissions.all()
+          ),
         },
       ],
       programId,
@@ -102,7 +97,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -119,7 +114,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     );
 
     // Approve the proposal 1.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -130,7 +125,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -141,7 +136,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       signer: members.voter,
@@ -152,7 +147,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Proposal is now ready to execute, cast the 2 cancels using the new functionality.
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.almighty,
       signer: members.almighty,
@@ -206,7 +201,7 @@ describe("Instructions / proposal_cancel_v2", () => {
       instructions: [testIx1],
     });
 
-    let signature = await smartAccount.rpc.createTransaction({
+    let signature = await rpc.createTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -221,7 +216,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Create a proposal for the transaction.
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -232,7 +227,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 1.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -243,7 +238,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal 2.
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -267,7 +262,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     // Now cancel vec has enough room for 4 votes.
 
     // Cast the 1 cancel using the new functionality and the 'voter' member.
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.voter,
       signer: members.voter,
@@ -286,19 +281,24 @@ describe("Instructions / proposal_cancel_v2", () => {
     for (let i = 0; i < addMemberCollection.length; i++) {
       const newMember = addMemberCollection[i];
       transactionIndex++;
-      signature = await smartAccount.rpc.createSettingsTransaction({
+      signature = await rpc.createSettingsTransaction({
         connection,
         feePayer: members.proposer,
         settingsPda,
         transactionIndex,
         creator: members.proposer.publicKey,
-        actions: [{ __kind: "AddSigner", newSigner: newMember }],
+        actions: [
+          {
+            __kind: "AddSigner",
+            newSigner: createSignerArray(newMember.key, newMember.permissions),
+          },
+        ],
         programId,
       });
       await connection.confirmTransaction(signature);
 
       // Create a proposal for the transaction.
-      signature = await smartAccount.rpc.createProposal({
+      signature = await rpc.createProposal({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -315,7 +315,7 @@ describe("Instructions / proposal_cancel_v2", () => {
       );
 
       // Approve the proposal 1.
-      signature = await smartAccount.rpc.approveProposal({
+      signature = await rpc.approveProposal({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -326,7 +326,7 @@ describe("Instructions / proposal_cancel_v2", () => {
       await connection.confirmTransaction(signature);
 
       // Approve the proposal 2.
-      signature = await smartAccount.rpc.approveProposal({
+      signature = await rpc.approveProposal({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -337,7 +337,7 @@ describe("Instructions / proposal_cancel_v2", () => {
       await connection.confirmTransaction(signature);
 
       // use the execute onlysignerto execute
-      signature = await smartAccount.rpc.executeSettingsTransaction({
+      signature = await rpc.executeSettingsTransaction({
         connection,
         feePayer: members.executor,
         settingsPda,
@@ -358,7 +358,7 @@ describe("Instructions / proposal_cancel_v2", () => {
 
     transactionIndex++;
     // now remove the original cancel voter
-    signature = await smartAccount.rpc.createSettingsTransaction({
+    signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -372,7 +372,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     });
     await connection.confirmTransaction(signature);
     // create the remove proposal
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -382,7 +382,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     });
     await connection.confirmTransaction(signature);
     // approve the proposal 1
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -392,7 +392,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     });
     await connection.confirmTransaction(signature);
     // approve the proposal 2
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -402,7 +402,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     });
     await connection.confirmTransaction(signature);
     // execute the proposal
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.executor,
       settingsPda,
@@ -435,7 +435,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     const rawProposalData = rawProposal?.data.length;
 
     // now cast a cancel against it with the first all perm key
-    signature = await smartAccount.rpc.cancelProposal({
+    signature = await rpc.cancelProposal({
       connection,
       feePayer: members.almighty,
       signer: members.almighty,
@@ -458,7 +458,7 @@ describe("Instructions / proposal_cancel_v2", () => {
     assert.ok(newCancelVote.equals(members.almighty.publicKey));
     // now cast 4 more cancels with the new key
     for (let i = 0; i < cancelVotesCollection.length; i++) {
-      signature = await smartAccount.rpc.cancelProposal({
+      signature = await rpc.cancelProposal({
         connection,
         feePayer: members.executor,
         signer: cancelVotesCollection[i],
@@ -481,3 +481,4 @@ describe("Instructions / proposal_cancel_v2", () => {
     assert.strictEqual(proposalAccount.cancelled.length, 5);
   });
 });
+}

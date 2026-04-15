@@ -22,8 +22,8 @@ export const activateProposalStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _activateProposal_ instruction
  *
- * @property [] settings
- * @property [**signer**] signer
+ * @property [_writable_] settings
+ * @property [] signer
  * @property [_writable_] proposal
  * @category Instructions
  * @category ActivateProposal
@@ -58,13 +58,13 @@ export function createActivateProposalInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.settings,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.signer,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.proposal,

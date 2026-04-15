@@ -27,7 +27,7 @@ export function createBatch({
     programId,
   });
 
-  return createCreateBatchInstruction(
+  const ix = createCreateBatchInstruction(
     {
       settings: settingsPda,
       creator,
@@ -37,4 +37,7 @@ export function createBatch({
     { args: { accountIndex, memo: memo ?? null } },
     programId
   );
+  const creatorMeta = ix.keys.find((k) => k.pubkey.equals(creator));
+  if (creatorMeta) creatorMeta.isSigner = true;
+  return ix;
 }

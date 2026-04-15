@@ -7,6 +7,9 @@ use crate::interface::consensus_trait::ConsensusAccountType;
 use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
+use crate::instructions::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_transaction_message;
 use crate::utils::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -56,8 +59,7 @@ pub struct CreateTransaction<'info> {
     )]
     pub transaction: Account<'info, Transaction>,
 
-    /// The member of the multisig that is creating the transaction.
-    pub creator: Signer<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the transaction account rent.
     #[account(mut)]
@@ -68,7 +70,12 @@ pub struct CreateTransaction<'info> {
 }
 
 impl<'info> CreateTransaction<'info> {
-    pub fn validate(&self, ctx: &Context<Self>, args: &CreateTransactionArgs) -> Result<()> {
+    pub fn validate(
+        &mut self,
+        args: &CreateTransactionArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             creator,
@@ -76,7 +83,23 @@ impl<'info> CreateTransaction<'info> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(remaining_accounts)?;
+
+        // Build message for external signer verification
+        let next_transaction_index = consensus_account.transaction_index().checked_add(1).unwrap();
+        let message = create_transaction_message(
+            &consensus_account.key(),
+            next_transaction_index,
+        );
+
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **consensus_account,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Validate the transaction payload
         match consensus_account.account_type() {
@@ -109,22 +132,23 @@ impl<'info> CreateTransaction<'info> {
                 }
             }
         }
-        // creator
-        require!(
-            consensus_account.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
 
         Ok(())
     }
 
     /// Create a new vault transaction.
-    #[access_control(ctx.accounts.validate(&ctx, &args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_transaction(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
+        Self::create_transaction_inner(ctx, args)
+    }
+
+    /// Create a new vault transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_transaction_v2(ctx: Context<Self>, args: CreateTransactionArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::create_transaction_inner(ctx, args)
+    }
+
+    pub(crate) fn create_transaction_inner(ctx: Context<Self>, args: CreateTransactionArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let transaction = &mut ctx.accounts.transaction;
         let creator = &mut ctx.accounts.creator;
@@ -138,9 +162,12 @@ impl<'info> CreateTransaction<'info> {
             .checked_add(1)
             .unwrap();
 
+        // Use resolved key for storage and events
+        let resolved_key = creator.resolved_key()?;
+
         // Initialize the transaction fields.
         transaction.consensus_account = consensus_account.key();
-        transaction.creator = creator.key();
+        transaction.creator = resolved_key;
         transaction.rent_collector = rent_payer.key();
         transaction.index = transaction_index;
         match (args, consensus_account.account_type()) {
@@ -198,7 +225,7 @@ impl<'info> CreateTransaction<'info> {
             consensus_account_type: consensus_account.account_type(),
             transaction_pubkey: transaction.key(),
             transaction_index,
-            signer: Some(creator.key()),
+            signer: Some(resolved_key),
             transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
             memo: None,
         };

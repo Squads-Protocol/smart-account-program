@@ -3,11 +3,12 @@ import * as smartAccount from "@sqds/smart-account";
 import { Keypair } from "@solana/web3.js";
 
 export default function Home() {
-  const createKey = Keypair.generate().publicKey;
-  const multisigPda = smartAccount.getMultisigPda({ createKey })[0].toBase58();
+  const accountIndex = 0n;
+  const [settingsPda] = smartAccount.getSettingsPda({ accountIndex });
+  const [smartAccountPda] = smartAccount.getSmartAccountPda({ settingsPda, accountIndex: 0 });
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      Hello world, {multisigPda}
+      Hello world, {smartAccountPda.toBase58()}
     </main>
   );
 }

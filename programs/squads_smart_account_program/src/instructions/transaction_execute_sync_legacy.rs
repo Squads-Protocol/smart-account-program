@@ -1,5 +1,6 @@
 use account_events::SynchronousTransactionEvent;
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 use crate::{
     consensus::ConsensusAccount,
@@ -8,41 +9,55 @@ use crate::{
     events::*,
     program::SquadsSmartAccountProgram,
     state::*,
+    state::signer_v2::ExtraVerificationData,
+    state::signer_v2::precompile::create_sync_transaction_legacy_message,
     utils::{validate_synchronous_consensus, SynchronousTransactionMessage},
     SmallVec,
 };
 
 use super::CompiledInstruction;
 
+/// Arguments for synchronous transaction execution (legacy)
+///
+/// # BREAKING CHANGE (v2)
+/// `num_signers` now represents the TOTAL count of ALL signers (native + external).
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct LegacySyncTransactionArgs {
     /// The index of the smart account this transaction is for
     pub account_index: u8,
-    /// The number of signers to reach threshold and adequate permissions
+    /// Total count of ALL signers (native + external) in remaining_accounts.
+    /// Instructions sysvar must be at position num_signers if external signers present.
     pub num_signers: u8,
     /// Expected to be serialized as a SmallVec<u8, CompiledInstruction>
     pub instructions: Vec<u8>,
 }
 
+/// Account structure for legacy synchronous transaction execution
+///
+/// # Remaining Accounts (BREAKING CHANGE v2)
+/// ```
+/// [0..num_signers]      All signers (native + external)
+/// [num_signers]         Instructions sysvar (if external signers present)
+/// [num_signers+1..]     Transaction account addresses
+/// ```
 #[derive(Accounts)]
 pub struct LegacySyncTransaction<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok(),
         // Legacy sync transactions only support settings
         constraint = consensus_account.account_type() == ConsensusAccountType::Settings
     )]
     pub consensus_account: Box<InterfaceAccount<'info, ConsensusAccount>>,
     pub program: Program<'info, SquadsSmartAccountProgram>,
-    // `remaining_accounts` must include the following accounts in the exact order:
-    // 1. The exact amount of signers required to reach the threshold
-    // 2. Any remaining accounts associated with the instructions
 }
 
 impl LegacySyncTransaction<'_> {
     fn validate(
-        &self,
+        &mut self,
         args: &LegacySyncTransactionArgs,
         remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>,
     ) -> Result<()> {
         let Self { consensus_account, .. } = self;
 
@@ -50,10 +65,42 @@ impl LegacySyncTransaction<'_> {
         let settings = consensus_account.read_only_settings()?;
         settings.validate_account_index_unlocked(args.account_index)?;
 
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+        // Compute the offset past signers + optional instructions sysvar.
+        let sysvar_offset = if remaining_accounts
+            .get(args.num_signers as usize)
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { 1usize } else { 0usize };
+        let accounts_start = args.num_signers as usize + sysvar_offset;
+
+        // Build message for external signer verification.
+        // Hash the instructions payload so external signers commit to the exact instructions.
+        let payload_hash = hash(&args.instructions);
+        let message = create_sync_transaction_legacy_message(
+            &consensus_account.key(),
+            consensus_account.transaction_index(),
+            args.account_index,
+            &remaining_accounts[accounts_start..],
+            &payload_hash.to_bytes(),
+        );
+
+        let evd: &[ExtraVerificationData] = match &extra_verification_data {
+            Some(v) => v,
+            None => &[],
+        };
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts, message, evd)
     }
-    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn sync_transaction(ctx: Context<Self>, args: LegacySyncTransactionArgs) -> Result<()> {
+        Self::sync_transaction_inner(ctx, args)
+    }
+
+    /// Legacy sync transaction with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn sync_transaction_v2(ctx: Context<Self>, args: LegacySyncTransactionArgs, extra_verification_data: Option<SmallVec<u8, ExtraVerificationData>>) -> Result<()> {
+        Self::sync_transaction_inner(ctx, args)
+    }
+
+    fn sync_transaction_inner(ctx: Context<Self>, args: LegacySyncTransactionArgs) -> Result<()> {
         // Wrapper consensus account
         let consensus_account = &ctx.accounts.consensus_account;
         let settings = consensus_account.read_only_settings()?;
@@ -93,7 +140,7 @@ impl LegacySyncTransaction<'_> {
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
-            &settings.signers,
+            &settings.signers.as_v2(),
             &settings_compiled_instructions,
             &ctx.remaining_accounts,
         )?;
@@ -111,8 +158,8 @@ impl LegacySyncTransaction<'_> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| acc.key.clone())
-                .collect(),
+                .map(|acc| settings.resolve_signer_key(*acc.key, acc.is_signer))
+                .collect::<Result<Vec<_>>>()?,
             account_index: args.account_index,
             instructions: executable_message.instructions.to_vec(),
             instruction_accounts: executable_message

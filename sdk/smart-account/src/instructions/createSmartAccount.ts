@@ -7,6 +7,7 @@ import {
   createCreateSmartAccountInstruction,
   PROGRAM_ID,
   SmartAccountSigner,
+  LegacySmartAccountSigner,
 } from "../generated";
 import { getProgramConfigPda } from "../pda";
 
@@ -28,7 +29,7 @@ export function createSmartAccount({
   settings?: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
-  signers: SmartAccountSigner[];
+  signers: SmartAccountSigner[] | LegacySmartAccountSigner[];
   timeLock: number;
   rentCollector: PublicKey | null;
   memo?: string;
@@ -41,6 +42,9 @@ export function createSmartAccount({
     isSigner: false,
     isWritable: true,
   };
+
+  // Pass signers directly - customSmartAccountSignerWrapperBeet handles both V1 and V2 formats
+
   return createCreateSmartAccountInstruction(
     {
       programConfig: programConfigPda,

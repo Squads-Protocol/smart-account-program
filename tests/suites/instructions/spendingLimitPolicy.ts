@@ -8,6 +8,9 @@ import {
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  createSignerObject,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 import { AccountMeta } from "@solana/web3.js";
 import { getSmartAccountPda, generated, utils } from "@sqds/smart-account";
@@ -24,7 +27,10 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flow / SpendingLimitPolicy", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flow / SpendingLimitPolicy [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -117,7 +123,7 @@ describe("Flow / SpendingLimitPolicy", () => {
       programId,
     });
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -145,7 +151,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -156,7 +162,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -167,7 +173,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -208,7 +214,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     };
 
     // Create a transaction
-    signature = await smartAccount.rpc.createPolicyTransaction({
+    signature = await rpc.createPolicyTransaction({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -224,7 +230,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.voter,
       settingsPda: policyPda,
@@ -235,7 +241,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda: policyPda,
@@ -274,7 +280,7 @@ describe("Flow / SpendingLimitPolicy", () => {
     });
 
     // Execute the transaction
-    signature = await smartAccount.rpc.executePolicyTransaction({
+    signature = await rpc.executePolicyTransaction({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -314,7 +320,7 @@ describe("Flow / SpendingLimitPolicy", () => {
       isWritable: false,
       isSigner: true,
     });
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
+    signature = await rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -346,8 +352,8 @@ describe("Flow / SpendingLimitPolicy", () => {
       ],
     };
     // Attempt to use non-exact amount
-    assert.rejects(
-      smartAccount.rpc.executePolicyPayloadSync({
+    await assert.rejects(
+      rpc.executePolicyPayloadSync({
         connection,
         feePayer: members.voter,
         policy: policyPda,
@@ -359,8 +365,9 @@ describe("Flow / SpendingLimitPolicy", () => {
         programId,
       }),
       (error: any) => {
-        error.toString().includes("SpendingLimitViolatesMaxPerUseConstraint");
+        return error.toString().includes("SpendingLimitViolatesMaxPerUseConstraint");
       }
     );
   });
 });
+}

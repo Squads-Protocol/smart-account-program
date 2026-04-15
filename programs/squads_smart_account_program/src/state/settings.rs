@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::borsh0_10::get_instance_packed_len;
 use anchor_lang::system_program;
+use borsh::BorshSerialize;
 use solana_program::hash::hash;
 
 use crate::AddSpendingLimitEvent;
@@ -62,8 +64,8 @@ pub struct Settings {
     pub archivable_after: u64,
     /// Bump for the smart account PDA seed.
     pub bump: u8,
-    /// Signers attached to the smart account
-    pub signers: Vec<SmartAccountSigner>,
+    /// Signers attached to the smart account (V1 or V2 format)
+    pub signers: SmartAccountSignerWrapper,
     /// Counter for how many sub accounts are in use (improves off-chain indexing)
     pub account_utilization: u8,
     /// Seed used for deterministic policy creation.
@@ -77,21 +79,13 @@ impl Settings {
     pub fn generate_core_state_hash(&self) -> Result<[u8; 32]> {
         let mut data_to_hash = Vec::new();
 
-        // Signers
-        for signer in &self.signers {
-            data_to_hash.extend_from_slice(signer.key.as_ref());
-            // Add signer permissions (1 byte)
-            data_to_hash.push(signer.permissions.mask);
-        }
-        // Threshold
+        self.signers
+            .serialize(&mut data_to_hash)
+            .map_err(|_| SmartAccountError::SerializationFailed)?;
         data_to_hash.extend_from_slice(&self.threshold.to_le_bytes());
-
-        // Timelock
         data_to_hash.extend_from_slice(&self.time_lock.to_le_bytes());
 
-        let hash_result = hash(&data_to_hash);
-
-        Ok(hash_result.to_bytes())
+        Ok(hash(&data_to_hash).to_bytes())
     }
     pub fn find_and_initialize_settings_account<'info>(
         &self,
@@ -127,7 +121,7 @@ impl Settings {
             system_program,
             &crate::ID,
             &rent,
-            Settings::size(self.signers.len()),
+            Settings::size_for_wrapper(&self.signers),
             vec![
                 SEED_PREFIX.to_vec(),
                 SEED_SETTINGS.to_vec(),
@@ -139,7 +133,7 @@ impl Settings {
         Ok(settings_account_info)
     }
 
-    pub fn size(signers_length: usize) -> usize {
+    fn base_size() -> usize {
         8  + // anchor account discriminator
         16 + // seed
         32 + // settings_authority
@@ -148,21 +142,24 @@ impl Settings {
         8  + // transaction_index
         8  + // stale_transaction_index
         1  + // archival_authority Option discriminator
-        32 + // archival_authority (always 32 bytes, even if None, just to keep the realloc logic simpler)
+        32 + // archival_authority (always 32 bytes, even if None)
         8  + // archivable_after
         1  + // bump
-        4  + // signers vector length
-        signers_length * SmartAccountSigner::INIT_SPACE + // signers
         1  + // sub_account_utilization
         1  + 8 + // policy_seed
         1 // _reserved_2
+    }
+
+    pub fn size_for_wrapper(signers: &SmartAccountSignerWrapper) -> usize {
+        let signers_size = get_instance_packed_len(signers).unwrap_or(0);
+        Self::base_size() + signers_size
     }
 
     /// Check if the settings account space needs to be reallocated to accommodate `signers_length`.
     /// Returns `true` if the account was reallocated.
     pub fn realloc_if_needed<'a>(
         settings: AccountInfo<'a>,
-        signers_length: usize,
+        signers: &SmartAccountSignerWrapper,
         rent_payer: Option<AccountInfo<'a>>,
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool> {
@@ -174,17 +171,15 @@ impl Settings {
         );
 
         let current_account_size = settings.data.borrow().len();
-        let account_size_to_fit_signers = Settings::size(signers_length);
+        let account_size_to_fit_signers = Settings::size_for_wrapper(signers);
 
         // Check if we need to reallocate space.
         if current_account_size >= account_size_to_fit_signers {
             return Ok(false);
         }
 
-        let new_size = account_size_to_fit_signers;
-
         // Reallocate more space.
-        realloc(&settings, new_size, rent_payer, system_program)?;
+        realloc(&settings, account_size_to_fit_signers, rent_payer, system_program)?;
 
         Ok(true)
     }
@@ -206,12 +201,11 @@ impl Settings {
         );
 
         // There must be no duplicate signers.
-        let has_duplicates = signers.windows(2).any(|win| win[0].key == win[1].key);
-        require!(!has_duplicates, SmartAccountError::DuplicateSigner);
+        require!(!signers.has_duplicates(), SmartAccountError::DuplicateSigner);
 
         // signers must not have unknown permissions.
         require!(
-            signers.iter().all(|m| m.permissions.mask < 8), // 8 = Initiate | Vote | Execute
+            signers.all_permissions_valid(),
             SmartAccountError::UnknownPermission
         );
 
@@ -251,10 +245,21 @@ impl Settings {
         Ok(())
     }
 
-    /// Add `new_signer` to the settings `signers` vec and sort the vec.
-    pub fn add_signer(&mut self, new_signer: SmartAccountSigner) {
-        self.signers.push(new_signer);
-        self.signers.sort_by_key(|m| m.key);
+    /// Add a signer to the settings, strictly preserving V1/V2 format.
+    /// - If Settings is V1 and new signer is Native: stays V1
+    /// - If Settings is V1 and new signer is external: ERROR - must migrate with MigrateToV2 first
+    /// - If Settings is already V2: stays V2
+    pub fn add_signer(&mut self, new_signer: SmartAccountSignerWrapper) -> Result<()> {
+        // Validate wrapper contains exactly one signer
+        require_eq!(new_signer.len(), 1, SmartAccountError::InvalidInstructionArgs);
+
+        // Validate type compatibility: prevent adding V2 external signers to V1 Settings
+        if matches!(self.signers, SmartAccountSignerWrapper::V1(_)) && new_signer.has_external_signers() {
+            return err!(SmartAccountError::SignerTypeMismatch);
+        }
+
+        // Extract signer and add (fails if type mismatch)
+        self.signers.add_signer(new_signer.single()?)
     }
 
     /// Remove `signer_pubkey` from the settings `signers` vec.
@@ -262,12 +267,10 @@ impl Settings {
     /// # Errors
     /// - `SmartAccountError::NotASigner` if `signer_pubkey` is not a signer.
     pub fn remove_signer(&mut self, signer_pubkey: Pubkey) -> Result<()> {
-        let old_signer_index = match self.is_signer(signer_pubkey) {
-            Some(old_signer_index) => old_signer_index,
-            None => return err!(SmartAccountError::NotASigner),
-        };
-
-        self.signers.remove(old_signer_index);
+        let removed = self.signers.remove_signer(&signer_pubkey);
+        if removed.is_none() {
+            return err!(SmartAccountError::NotASigner);
+        }
 
         Ok(())
     }
@@ -285,7 +288,7 @@ impl Settings {
     ) -> Result<()> {
         match action {
             SettingsAction::AddSigner { new_signer } => {
-                self.add_signer(new_signer.to_owned());
+                self.add_signer(new_signer.to_owned())?;
                 self.invalidate_prior_transactions();
             }
 
@@ -314,8 +317,6 @@ impl Settings {
                 destinations,
                 expiration,
             } => {
-                self.validate_account_index_unlocked(*account_index)?;
-
                 let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                     &[
                         SEED_PREFIX,
@@ -441,7 +442,9 @@ impl Settings {
                 // Increment the policy seed if it exists, otherwise set it to
                 // 1 (First policy is being created)
                 let next_policy_seed = if let Some(policy_seed) = self.policy_seed {
-                    let next_policy_seed = policy_seed.checked_add(1).unwrap();
+                    let next_policy_seed = policy_seed
+                        .checked_add(1)
+                        .ok_or(SmartAccountError::Overflow)?;
 
                     // Increment the policy seed
                     self.policy_seed = Some(next_policy_seed);
@@ -470,7 +473,7 @@ impl Settings {
                 // Calculate policy data size based on the creation payload
                 let policy_specific_data_size = policy_creation_payload.policy_state_size();
 
-                let policy_size = Policy::size(signers.len(), policy_specific_data_size);
+                let policy_size = Policy::size_for_wrapper(signers, policy_specific_data_size);
 
                 let rent_payer = rent_payer
                     .as_ref()
@@ -546,7 +549,7 @@ impl Settings {
                     *self_key,
                     next_policy_seed,
                     policy_bump,
-                    &signers,
+                    signers,
                     *threshold,
                     *time_lock,
                     policy_state,
@@ -604,6 +607,7 @@ impl Settings {
 
                 // Calculate policy data size based on the creation payload
                 let policy_specific_data_size = policy_update_payload.policy_state_size();
+                let policy_size = Policy::size_for_wrapper(signers, policy_specific_data_size);
 
                 // Get the rent payer and system program
                 let rent_payer = rent_payer
@@ -625,19 +629,8 @@ impl Settings {
                     ) => PolicyState::ProgramInteraction(creation_payload.to_policy_state()?),
                     (
                         PolicyState::SpendingLimit(_),
-                        PolicyCreationPayload::SpendingLimit(mut creation_payload),
-                    ) => {
-                        // If accumulate unused is true, and the policy has a
-                        // start date in the past, set it to the current
-                        // timestamp to avoid unintended accumulated usage
-                        let current_timestamp = Clock::get()?.unix_timestamp;
-                        if creation_payload.time_constraints.accumulate_unused
-                            && creation_payload.time_constraints.start < current_timestamp
-                        {
-                            creation_payload.time_constraints.start = current_timestamp;
-                        }
-                        PolicyState::SpendingLimit(creation_payload.to_policy_state()?)
-                    }
+                        PolicyCreationPayload::SpendingLimit(creation_payload),
+                    ) => PolicyState::SpendingLimit(creation_payload.to_policy_state()?),
                     (
                         PolicyState::SettingsChange(_),
                         PolicyCreationPayload::SettingsChange(creation_payload),
@@ -682,7 +675,7 @@ impl Settings {
                 // Realloc the policy account if needed
                 Policy::realloc_if_needed(
                     policy_info.clone(),
-                    signers.len(),
+                    signers,
                     policy_specific_data_size,
                     Some(rent_payer.to_account_info()),
                     Some(system_program.to_account_info()),
@@ -741,13 +734,21 @@ impl Settings {
                     SmartAccountEvent::PolicyEvent(event).log(&log_authority_info)?;
                 }
             }
+
+            SettingsAction::MigrateToV2 => {
+                self.signers.force_v2();
+                self.invalidate_prior_transactions();
+            }
         }
 
         Ok(())
     }
 
-    pub fn increment_account_utilization_index(&mut self) {
-        self.account_utilization = self.account_utilization.checked_add(1).unwrap();
+    pub fn increment_account_utilization_index(&mut self) -> Result<()> {
+        self.account_utilization = self.account_utilization
+            .checked_add(1)
+            .ok_or(SmartAccountError::MaxAccountIndexReached)?;
+        Ok(())
     }
 
     /// Validates that the given account index is unlocked.
@@ -773,8 +774,8 @@ impl Settings {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone)]
-pub struct SmartAccountSigner {
+#[derive(AnchorDeserialize, AnchorSerialize, InitSpace, Eq, PartialEq, Clone, Debug)]
+pub struct LegacySmartAccountSigner {
     pub key: Pubkey,
     pub permissions: Permissions,
 }
@@ -833,7 +834,7 @@ impl Consensus for Settings {
         Ok(())
     }
 
-    fn signers(&self) -> &[SmartAccountSigner] {
+    fn signers(&self) -> &SmartAccountSignerWrapper {
         &self.signers
     }
 
@@ -856,6 +857,14 @@ impl Consensus for Settings {
 
     fn stale_transaction_index(&self) -> u64 {
         self.stale_transaction_index
+    }
+
+    fn apply_counter_updates(&mut self, updates: &[(Pubkey, u64)]) -> Result<()> {
+        self.signers.apply_counter_updates(updates)
+    }
+
+    fn apply_nonce_update(&mut self, key_id: &Pubkey, nonce: u64) -> Result<()> {
+        self.signers.update_signer_nonce(key_id, nonce)
     }
 
     fn invalidate_prior_transactions(&mut self) {

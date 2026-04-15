@@ -45,7 +45,7 @@ impl SettingsTransaction {
 #[non_exhaustive]
 pub enum SettingsAction {
     /// Add a new member to the settings.
-    AddSigner { new_signer: SmartAccountSigner },
+    AddSigner { new_signer: SmartAccountSignerWrapper },
     /// Remove a member from the settings.
     RemoveSigner { old_signer: Pubkey },
     /// Change the `threshold` of the settings.
@@ -89,7 +89,7 @@ pub enum SettingsAction {
         /// The policy creation payload containing policy-specific configuration.
         policy_creation_payload: PolicyCreationPayload,
         /// Signers attached to the policy with their permissions.
-        signers: Vec<SmartAccountSigner>,
+        signers: SmartAccountSignerWrapper,
         /// Threshold for approvals on the policy.
         threshold: u16,
         /// How many seconds must pass between approval and execution.
@@ -104,7 +104,7 @@ pub enum SettingsAction {
         /// The policy account to update.
         policy: Pubkey,
         /// Signers attached to the policy with their permissions.
-        signers: Vec<SmartAccountSigner>,
+        signers: SmartAccountSignerWrapper,
         /// Threshold for approvals on the policy.
         threshold: u16,
         /// How many seconds must pass between approval and execution.
@@ -119,4 +119,6 @@ pub enum SettingsAction {
         /// The policy account to remove.
         policy: Pubkey
     },
+    /// Migrate Settings signers from V1 to V2 format.
+    MigrateToV2,
 }

@@ -7,7 +7,10 @@ import {
   createMintAndTransferTo,
   generateSmartAccountSigners,
   getTestProgramId,
-  TestMembers,
+  TestMembers, 
+  createSignerObject,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 import { AccountMeta } from "@solana/web3.js";
 import { getSmartAccountPda } from "@sqds/smart-account";
@@ -21,7 +24,10 @@ const { Settings, Proposal, Policy } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Flow / InternalFundTransferPolicy", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Flow / InternalFundTransferPolicy [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -40,7 +46,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
       })
     )[0];
 
-    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0, 1, 3)
     for (let i = 0; i < 3; i++) {
       const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
         { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
@@ -82,7 +88,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
       programId,
     });
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -110,7 +116,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -121,7 +127,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -132,7 +138,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -172,7 +178,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
       ],
     };
     // Create a transaction
-    signature = await smartAccount.rpc.createPolicyTransaction({
+    signature = await rpc.createPolicyTransaction({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -187,7 +193,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     });
     await connection.confirmTransaction(signature);
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.voter,
       settingsPda: policyPda,
@@ -198,7 +204,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda: policyPda,
@@ -242,7 +248,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(airdropSignature);
 
     // Execute the transaction
-    signature = await smartAccount.rpc.executePolicyTransaction({
+    signature = await rpc.executePolicyTransaction({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -272,7 +278,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
       isSigner: true,
     });
     // Attempt to do the same with a synchronous instruction
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
+    signature = await rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -306,8 +312,8 @@ describe("Flow / InternalFundTransferPolicy", () => {
         },
       ],
     };
-    assert.rejects(
-      smartAccount.rpc.executePolicyPayloadSync({
+    await assert.rejects(
+      rpc.executePolicyPayloadSync({
         connection,
         feePayer: members.voter,
         policy: policyPda,
@@ -333,7 +339,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
       })
     )[0];
 
-    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0, 1, 3)
     for (let i = 0; i < 3; i++) {
       const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
         { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
@@ -394,7 +400,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     });
 
     // Create settings transaction with PolicyCreate action
-    let signature = await smartAccount.rpc.createSettingsTransaction({
+    let signature = await rpc.createSettingsTransaction({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -422,7 +428,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Create proposal for the transaction
-    signature = await smartAccount.rpc.createProposal({
+    signature = await rpc.createProposal({
       connection,
       feePayer: members.proposer,
       settingsPda,
@@ -433,7 +439,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Approve the proposal (1/1 threshold)
-    signature = await smartAccount.rpc.approveProposal({
+    signature = await rpc.approveProposal({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -444,7 +450,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     await connection.confirmTransaction(signature);
 
     // Execute the settings transaction
-    signature = await smartAccount.rpc.executeSettingsTransaction({
+    signature = await rpc.executeSettingsTransaction({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -531,7 +537,7 @@ describe("Flow / InternalFundTransferPolicy", () => {
     });
 
     // Attempt to do the same with a synchronous instruction
-    signature = await smartAccount.rpc.executePolicyPayloadSync({
+    signature = await rpc.executePolicyPayloadSync({
       connection,
       feePayer: members.voter,
       policy: policyPda,
@@ -558,3 +564,4 @@ describe("Flow / InternalFundTransferPolicy", () => {
     assert.strictEqual(destinationBalance.value.amount, "500000000");
   });
 });
+}

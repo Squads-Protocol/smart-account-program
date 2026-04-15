@@ -33,7 +33,7 @@ export function createSettingsTransaction({
     programId,
   });
 
-  return createCreateSettingsTransactionInstruction(
+  const ix = createCreateSettingsTransactionInstruction(
     {
       settings: settingsPda,
       transaction: transactionPda,
@@ -45,4 +45,7 @@ export function createSettingsTransaction({
     { args: { actions, memo: memo ?? null } },
     programId
   );
+  const creatorMeta = ix.keys.find((k) => k.pubkey.equals(creator));
+  if (creatorMeta) creatorMeta.isSigner = true;
+  return ix;
 }

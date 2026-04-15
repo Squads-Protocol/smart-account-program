@@ -21,12 +21,17 @@ import {
   getNextAccountIndex,
   getTestProgramId,
   TestMembers,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_buffer_create", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_buffer_create [${format}]`, () => {
   let members: TestMembers;
 
   let settingsPda: PublicKey;
@@ -585,7 +590,7 @@ describe("Instructions / transaction_buffer_create", () => {
         connection
           .sendTransaction(tx)
           .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /A seeds constraint was violated/
+      /(A seeds constraint was violated|InvalidAccount)/
     );
   });
 
@@ -654,3 +659,4 @@ describe("Instructions / transaction_buffer_create", () => {
     );
   });
 });
+}

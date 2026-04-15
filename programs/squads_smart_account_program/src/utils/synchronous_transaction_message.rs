@@ -51,7 +51,7 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
             } else if account.key == settings_key {
                 // This prevents dangerous re-entrancy
                 account_info.is_writable = false;
-            } else if consensus_account_signers.iter().any(|signer| &signer.key == account.key) && account.is_signer {
+            } else if consensus_account_signers.iter().any(|signer| &signer.key() == account.key) && account.is_signer {
                 // We may want to remove this so that a signer can be a rent
                 // or feepayer on any of the CPI instructions
                 account_info.is_signer = false;

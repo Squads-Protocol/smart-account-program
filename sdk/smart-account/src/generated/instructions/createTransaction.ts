@@ -41,7 +41,7 @@ export const createTransactionStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] consensusAccount
  * @property [_writable_] transaction
- * @property [**signer**] creator
+ * @property [] creator
  * @property [_writable_, **signer**] rentPayer
  * @property [] program
  * @category Instructions
@@ -95,7 +95,7 @@ export function createCreateTransactionInstruction(
     {
       pubkey: accounts.creator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,

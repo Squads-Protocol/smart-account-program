@@ -40,7 +40,7 @@ export const cancelProposalStruct = new beet.FixableBeetArgsStruct<
  * Accounts required by the _cancelProposal_ instruction
  *
  * @property [] consensusAccount
- * @property [_writable_, **signer**] signer
+ * @property [_writable_] signer
  * @property [_writable_] proposal
  * @property [] program
  * @category Instructions
@@ -85,13 +85,13 @@ export function createCancelProposalInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.consensusAccount,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
       pubkey: accounts.signer,
       isWritable: true,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.proposal,

@@ -29,12 +29,17 @@ import {
   getLogs,
   getNextAccountIndex,
   getTestProgramId,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_create_from_buffer", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_create_from_buffer [${format}]`, () => {
   let members: TestMembers;
 
   let settingsPda: PublicKey;
@@ -478,7 +483,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     );
     assert.equal(transactionPayloadDetails.message.instructions.length, 43);
 
-    const fourthSignature = await smartAccount.rpc.createProposal({
+    const fourthSignature = await rpc.createProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -489,7 +494,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
     });
     await connection.confirmTransaction(fourthSignature);
 
-    const fifthSignature = await smartAccount.rpc.approveProposal({
+    const fifthSignature = await rpc.approveProposal({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -663,3 +668,4 @@ describe("Instructions / transaction_create_from_buffer", () => {
     );
   });
 });
+}

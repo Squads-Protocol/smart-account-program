@@ -4,6 +4,9 @@ use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::state::*;
+use crate::instructions::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_transaction_buffer_extend_message;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct ExtendTransactionBufferArgs {
@@ -15,31 +18,35 @@ pub struct ExtendTransactionBufferArgs {
 #[instruction(args: ExtendTransactionBufferArgs)]
 pub struct ExtendTransactionBuffer<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     #[account(
         mut,
-        // Only the creator can extend the buffer
-        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
+        // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
             consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
-            creator.key().as_ref(),
+            transaction_buffer.creator.as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes()
         ],
         bump
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// The signer on the smart account that created the TransactionBuffer.
-    pub creator: Signer<'info>,
+    pub creator: ResolvedSigner<'info>,
 }
 
 impl ExtendTransactionBuffer<'_> {
-    fn validate(&self, args: &ExtendTransactionBufferArgs) -> Result<()> {
+    fn validate(
+        &mut self,
+        args: &ExtendTransactionBufferArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             creator,
@@ -47,17 +54,20 @@ impl ExtendTransactionBuffer<'_> {
             ..
         } = self;
 
-        // creator is still a signer on the smart account
-        require!(
-            consensus_account.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
+        // Build message for external signer verification
+        let message = create_transaction_buffer_extend_message(
+            &transaction_buffer.key(),
+            &args.buffer,
         );
 
-        // creator still has initiate permissions
-        require!(
-            consensus_account.signer_has_permission(creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **consensus_account,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Extended Buffer size must not exceed final buffer size
         // Calculate remaining space in the buffer
@@ -78,8 +88,36 @@ impl ExtendTransactionBuffer<'_> {
     }
 
     /// Extend the transaction buffer with the provided buffer.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn extend_transaction_buffer(
+        ctx: Context<Self>,
+        args: ExtendTransactionBufferArgs,
+    ) -> Result<()> {
+        // V1: raw key must match stored creator
+        require!(
+            ctx.accounts.transaction_buffer.creator == ctx.accounts.creator.key(),
+            SmartAccountError::Unauthorized
+        );
+        Self::extend_transaction_buffer_inner(ctx, args)
+    }
+
+    /// Extend the transaction buffer with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn extend_transaction_buffer_v2(
+        ctx: Context<Self>,
+        args: ExtendTransactionBufferArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        // V2: resolved key must match stored creator (session keys resolve to parent)
+        let resolved_key = ctx.accounts.creator.resolved_key()?;
+        require!(
+            ctx.accounts.transaction_buffer.creator == resolved_key,
+            SmartAccountError::Unauthorized
+        );
+        Self::extend_transaction_buffer_inner(ctx, args)
+    }
+
+    fn extend_transaction_buffer_inner(
         ctx: Context<Self>,
         args: ExtendTransactionBufferArgs,
     ) -> Result<()> {

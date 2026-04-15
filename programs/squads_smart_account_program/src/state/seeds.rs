@@ -68,11 +68,9 @@ pub fn get_smart_account_seeds<'a>(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
-    use anchor_lang::AnchorSerialize;
-
     use super::*;
+    use std::str::FromStr;
+    use crate::borsh::BorshSerialize;
 
     #[test]
     fn test_hook_authority_pubkey() {
@@ -80,6 +78,7 @@ mod tests {
         assert_eq!(address, HOOK_AUTHORITY_PUBKEY);
     }
 
+    #[cfg(feature = "testing")]
     #[test]
     fn test_testing_hook_authority_pubkey() {
         let test_program_id =

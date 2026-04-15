@@ -58,7 +58,7 @@ export function createCloseTransactionBufferInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.consensusAccount,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -68,7 +68,7 @@ export function createCloseTransactionBufferInstruction(
     },
     {
       pubkey: accounts.creator,
-      isWritable: false,
+      isWritable: true,
       isSigner: true,
     },
   ]

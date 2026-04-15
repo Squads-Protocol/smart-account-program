@@ -52,7 +52,7 @@ export function createTransaction({
       smartAccountPda,
     });
 
-  return createCreateTransactionInstruction(
+  const ix = createCreateTransactionInstruction(
     {
       consensusAccount: settingsPda,
       transaction: transactionPda,
@@ -75,4 +75,9 @@ export function createTransaction({
     },
     programId
   );
+  const consensusMeta = ix.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (consensusMeta) consensusMeta.isWritable = true;
+  const creatorMeta = ix.keys.find((k) => k.pubkey.equals(creator));
+  if (creatorMeta) creatorMeta.isSigner = true;
+  return ix;
 }

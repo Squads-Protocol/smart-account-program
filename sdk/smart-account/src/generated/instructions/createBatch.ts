@@ -38,7 +38,7 @@ export const createBatchStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] settings
  * @property [_writable_] batch
- * @property [**signer**] creator
+ * @property [] creator
  * @property [_writable_, **signer**] rentPayer
  * @category Instructions
  * @category CreateBatch
@@ -90,7 +90,7 @@ export function createCreateBatchInstruction(
     {
       pubkey: accounts.creator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,

@@ -3,6 +3,9 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
+use crate::instructions::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_batch_create_message;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateBatchArgs {
@@ -34,8 +37,7 @@ pub struct CreateBatch<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// The signer of the settings that is creating the batch.
-    pub creator: Signer<'info>,
+    pub creator: ResolvedSigner<'info>,
 
     /// The payer for the batch account rent.
     #[account(mut)]
@@ -45,31 +47,52 @@ pub struct CreateBatch<'info> {
 }
 
 impl CreateBatch<'_> {
-    fn validate(&self, args: &CreateBatchArgs) -> Result<()> {
+    fn validate(
+        &mut self,
+        args: &CreateBatchArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             settings,
             creator,
             ..
         } = self;
 
-        settings.validate_account_index_unlocked(args.account_index)?;
+        // Build message for external signer verification
+        let message = create_batch_create_message(
+            &settings.key(),
+            creator.key(),
+            args.account_index,
+        );
 
-        // creator
-        require!(
-            settings.is_signer(creator.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            settings.signer_has_permission(creator.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        creator.verify(
+            &mut **settings,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
+
+        settings.validate_account_index_unlocked(args.account_index)?;
 
         Ok(())
     }
 
     /// Create a new batch.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_batch(ctx: Context<Self>, args: CreateBatchArgs) -> Result<()> {
+        Self::create_batch_inner(ctx, args)
+    }
+
+    /// Create a new batch with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_batch_v2(ctx: Context<Self>, args: CreateBatchArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::create_batch_inner(ctx, args)
+    }
+
+    fn create_batch_inner(ctx: Context<Self>, args: CreateBatchArgs) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let creator = &mut ctx.accounts.creator;
         let batch = &mut ctx.accounts.batch;
@@ -91,8 +114,10 @@ impl CreateBatch<'_> {
         let (_, smart_account_bump) =
             Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
+        let resolved_key = creator.resolved_key()?;
+
         batch.settings = settings_key;
-        batch.creator = creator.key();
+        batch.creator = resolved_key;
         batch.rent_collector = rent_payer.key();
         batch.index = index;
         batch.bump = ctx.bumps.batch;

@@ -6,6 +6,9 @@ import {
   generateSmartAccountSigners,
   getTestProgramId,
   TestMembers,
+  getSignerKey,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const { Settings, Proposal } = smartAccount.accounts;
@@ -13,7 +16,10 @@ const { Settings, Proposal } = smartAccount.accounts;
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / settings_transaction_execute_sync", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / settings_transaction_execute_sync [${format}]`, () => {
   let members: TestMembers;
 
   before(async () => {
@@ -34,7 +40,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
 
     // Create a settings transaction.
     await assert.rejects(async () => {
-      let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+      let signature = await rpc.executeSettingsTransactionSync({
         connection,
         feePayer: members.proposer,
         settingsPda,
@@ -59,7 +65,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
 
     // Create a settings transaction.
     await assert.rejects(async () => {
-      let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+      let signature = await rpc.executeSettingsTransactionSync({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -84,7 +90,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     )[0];
 
     await assert.rejects(async () => {
-      let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+      let signature = await rpc.executeSettingsTransactionSync({
         connection,
         feePayer: members.voter,
         settingsPda,
@@ -113,7 +119,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     // Create random settings transaction
     // This is so we can check that the stale transaction index is updated
     // after the synchronous change
-    let _signature = await smartAccount.rpc.createSettingsTransaction({
+    let _signature = await rpc.createSettingsTransaction({
       connection,
       creator: members.proposer.publicKey,
       transactionIndex: 1n,
@@ -128,7 +134,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     await connection.confirmTransaction(_signature);
 
     // Create a settings transaction.
-    let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+    let signature = await rpc.executeSettingsTransactionSync({
       connection,
       feePayer: members.voter,
       settingsPda,
@@ -153,7 +159,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     // Voter should have been removed.
     assert(
       !multisigAccount.signers.some((m) =>
-        m.key.equals(members.voter.publicKey)
+        getSignerKey(m).equals(members.voter.publicKey)
       )
     );
     // The stale transaction index should be updated and set to 1.
@@ -174,7 +180,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     // Create random settings transaction
     // This is so we can check that the stale transaction index is updated
     // after the synchronous change
-    let _signature = await smartAccount.rpc.createSettingsTransaction({
+    let _signature = await rpc.createSettingsTransaction({
       connection,
       creator: members.proposer.publicKey,
       transactionIndex: 1n,
@@ -189,7 +195,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     await connection.confirmTransaction(_signature);
 
     // Execute a synchronous settings transaction.
-    let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+    let signature = await rpc.executeSettingsTransactionSync({
       connection,
       feePayer: members.almighty,
       settingsPda,
@@ -235,7 +241,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     // Create random settings transaction
     // This is so we can check that the stale transaction index is not
     // after the synchronous change
-    let _signature = await smartAccount.rpc.createSettingsTransaction({
+    let _signature = await rpc.createSettingsTransaction({
       connection,
       creator: members.proposer.publicKey,
       transactionIndex: 1n,
@@ -251,7 +257,7 @@ describe("Instructions / settings_transaction_execute_sync", () => {
 
     // Create a settings transaction.
     await assert.rejects(async () => {
-      let signature = await smartAccount.rpc.executeSettingsTransactionSync({
+      let signature = await rpc.executeSettingsTransactionSync({
         connection,
         feePayer: members.almighty,
         settingsPda,
@@ -264,3 +270,4 @@ describe("Instructions / settings_transaction_execute_sync", () => {
     }, /NotImplemented/);
   });
 });
+}

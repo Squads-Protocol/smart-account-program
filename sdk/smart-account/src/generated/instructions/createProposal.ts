@@ -41,7 +41,7 @@ export const createProposalStruct = new beet.BeetArgsStruct<
  *
  * @property [] consensusAccount
  * @property [_writable_] proposal
- * @property [**signer**] creator
+ * @property [] creator
  * @property [_writable_, **signer**] rentPayer
  * @property [] program
  * @category Instructions
@@ -84,7 +84,7 @@ export function createCreateProposalInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.consensusAccount,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -95,7 +95,7 @@ export function createCreateProposalInstruction(
     {
       pubkey: accounts.creator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,

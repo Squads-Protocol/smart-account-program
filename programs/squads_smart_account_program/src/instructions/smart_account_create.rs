@@ -2,7 +2,6 @@
 use account_events::CreateSmartAccountEvent;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
-use solana_program::native_token::LAMPORTS_PER_SOL;
 
 use crate::errors::SmartAccountError;
 use crate::events::*;
@@ -17,7 +16,7 @@ pub struct CreateSmartAccountArgs {
     /// The number of signatures required to execute a transaction.
     pub threshold: u16,
     /// The signers on the smart account.
-    pub signers: Vec<SmartAccountSigner>,
+    pub signers: SmartAccountSignerWrapper,
     /// How many seconds must pass between transaction voting, settlement, and execution.
     pub time_lock: u32,
     /// The address where the rent for the accounts related to executed, rejected, or cancelled
@@ -69,7 +68,7 @@ impl<'info> CreateSmartAccount<'info> {
         let program_config = &mut ctx.accounts.program_config;
         // Sort the members by pubkey.
         let mut signers = args.signers;
-        signers.sort_by_key(|m| m.key);
+        signers.sort_by_key(|s| s.key());
 
         let settings_seed = program_config.smart_account_index.checked_add(1).unwrap();
         let (settings_pubkey, settings_bump) = Pubkey::find_program_address(

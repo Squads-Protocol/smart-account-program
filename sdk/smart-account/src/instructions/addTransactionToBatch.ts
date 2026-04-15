@@ -69,7 +69,7 @@ export function addTransactionToBatch({
       smartAccountPda,
     });
 
-  return createAddTransactionToBatchInstruction(
+  const ix = createAddTransactionToBatchInstruction(
     {
       settings: settingsPda,
       signer,
@@ -86,4 +86,9 @@ export function addTransactionToBatch({
     },
     programId
   );
+  const settingsMeta = ix.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (settingsMeta) settingsMeta.isWritable = true;
+  const signerMeta = ix.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return ix;
 }

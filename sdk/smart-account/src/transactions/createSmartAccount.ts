@@ -4,7 +4,7 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { SmartAccountSigner } from "../generated";
+import { SmartAccountSigner, LegacySmartAccountSigner } from "../generated";
 import * as instructions from "../instructions";
 
 /**
@@ -30,7 +30,7 @@ export function createSmartAccount({
   settings?: PublicKey;
   settingsAuthority: PublicKey | null;
   threshold: number;
-  signers: SmartAccountSigner[];
+  signers: SmartAccountSigner[] | LegacySmartAccountSigner[];
   timeLock: number;
   rentCollector: PublicKey | null;
   memo?: string;

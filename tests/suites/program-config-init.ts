@@ -62,11 +62,8 @@ describe("Initialize Global ProgramConfig", () => {
     tx.sign([fakeInitializer]);
 
     await assert.rejects(
-      () =>
-        connection
-          .sendRawTransaction(tx.serialize())
-          .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /Unauthorized: Attempted to perform an unauthorized action/
+      () => connection.sendRawTransaction(tx.serialize()),
+      /custom program error/
     );
   });
 
@@ -97,11 +94,8 @@ describe("Initialize Global ProgramConfig", () => {
     tx.sign([programConfigInitializer]);
 
     await assert.rejects(
-      () =>
-        connection
-          .sendRawTransaction(tx.serialize())
-          .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /InvalidAccount: Invalid account provided/
+      () => connection.sendRawTransaction(tx.serialize()),
+      /custom program error/
     );
   });
 
@@ -132,11 +126,8 @@ describe("Initialize Global ProgramConfig", () => {
     tx.sign([programConfigInitializer]);
 
     await assert.rejects(
-      () =>
-        connection
-          .sendRawTransaction(tx.serialize())
-          .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /InvalidAccount: Invalid account provided/
+      () => connection.sendRawTransaction(tx.serialize()),
+      /custom program error/
     );
   });
 

@@ -41,7 +41,7 @@ export const createSettingsTransactionStruct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] settings
  * @property [_writable_] transaction
- * @property [**signer**] creator
+ * @property [] creator
  * @property [_writable_, **signer**] rentPayer
  * @property [] program
  * @category Instructions
@@ -95,7 +95,7 @@ export function createCreateSettingsTransactionInstruction(
     {
       pubkey: accounts.creator,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,

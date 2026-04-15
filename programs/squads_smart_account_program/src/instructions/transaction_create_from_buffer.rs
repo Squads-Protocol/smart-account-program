@@ -1,6 +1,9 @@
+use crate::consensus_trait::{Consensus, ConsensusAccountType};
 use crate::errors::*;
 use crate::instructions::*;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_transaction_from_buffer_message;
 use anchor_lang::{prelude::*, system_program};
 
 #[derive(Accounts)]
@@ -11,14 +14,12 @@ pub struct CreateTransactionFromBuffer<'info> {
     #[account(
         mut,
         close = creator,
-        // Only the creator can turn the buffer into a transaction and reclaim
-        // the rent
-        constraint = transaction_buffer.creator == creator.key() @ SmartAccountError::Unauthorized,
+        // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
             transaction_create.consensus_account.key().as_ref(),
             SEED_TRANSACTION_BUFFER,
-            creator.key().as_ref(),
+            transaction_buffer.creator.as_ref(),
             &transaction_buffer.buffer_index.to_le_bytes(),
         ],
         bump
@@ -27,16 +28,53 @@ pub struct CreateTransactionFromBuffer<'info> {
 
     // Anchor doesn't allow us to use the creator inside of
     // transaction_create, so we just re-pass it here with the same constraint
+    /// CHECK: Must match transaction_create.creator
     #[account(
         mut,
         address = transaction_create.creator.key(),
     )]
-    pub creator: Signer<'info>,
+    pub creator: AccountInfo<'info>,
 }
 
 impl<'info> CreateTransactionFromBuffer<'info> {
-    pub fn validate(&self, args: &CreateTransactionArgs) -> Result<()> {
+    pub fn validate(
+        &mut self,
+        args: &CreateTransactionArgs,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let transaction_buffer_account = &self.transaction_buffer;
+        let consensus_account = &mut self.transaction_create.consensus_account;
+        let creator = &self.creator;
+
+        // Build message for external signer verification
+        let message = create_transaction_from_buffer_message(
+            &transaction_buffer_account.key(),
+            consensus_account.transaction_index().checked_add(1).unwrap(),
+        );
+
+        // Check if the consensus account is active
+        consensus_account.is_active(&remaining_accounts)?;
+
+        // Validate account index is unlocked for Settings-based transactions
+        if consensus_account.account_type() == ConsensusAccountType::Settings {
+            match args {
+                CreateTransactionArgs::TransactionPayload(TransactionPayload { account_index, .. }) => {
+                    let settings = consensus_account.read_only_settings()?;
+                    settings.validate_account_index_unlocked(*account_index)?;
+                }
+                _ => {}
+            }
+        }
+
+        // Resolve and verify signer (native, session key, or external) and check Initiate permission
+        self.transaction_create.creator.verify(
+            &mut **consensus_account,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Check that the transaction message is "empty" and this is a TransactionPayload
         match args {
@@ -59,11 +97,40 @@ impl<'info> CreateTransactionFromBuffer<'info> {
 
         // Validate that the final size is correct
         transaction_buffer_account.validate_size()?;
+
         Ok(())
     }
     /// Create a new Transaction from a completed transaction buffer account.
-    #[access_control(ctx.accounts.validate(&args))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn create_transaction_from_buffer(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: CreateTransactionArgs,
+    ) -> Result<()> {
+        // V1: raw key must match stored creator
+        require!(
+            ctx.accounts.transaction_buffer.creator == ctx.accounts.creator.key(),
+            SmartAccountError::Unauthorized
+        );
+        Self::create_transaction_from_buffer_inner(ctx, args)
+    }
+
+    /// Create a new Transaction from a completed transaction buffer account with V2 signer support.
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn create_transaction_from_buffer_v2(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        args: CreateTransactionArgs,
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
+        // V2: resolved key must match stored creator (session keys resolve to parent)
+        let resolved_key = ctx.accounts.transaction_create.creator.resolved_key()?;
+        require!(
+            ctx.accounts.transaction_buffer.creator == resolved_key,
+            SmartAccountError::Unauthorized
+        );
+        Self::create_transaction_from_buffer_inner(ctx, args)
+    }
+
+    fn create_transaction_from_buffer_inner(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         args: CreateTransactionArgs,
     ) -> Result<()> {
@@ -144,8 +211,9 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             ctx.bumps.transaction_create,
         );
 
-        // Call the `create_transaction` instruction
-        CreateTransaction::create_transaction(context, create_args)?;
+        // Call create_transaction_inner directly — bypasses double verify_signer.
+        // Validation (is_active, account_index_unlocked, verify_signer) already ran above.
+        CreateTransaction::create_transaction_inner(context, create_args)?;
 
         Ok(())
     }

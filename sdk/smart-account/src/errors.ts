@@ -14,7 +14,16 @@ export function translateAndThrowAnchorError(err: unknown): never {
     Error.captureStackTrace(translatedError, translateAndThrowAnchorError);
   }
 
-  (translatedError as unknown as ErrorWithLogs).logs = err.logs;
+  try {
+    (translatedError as unknown as ErrorWithLogs).logs = err.logs;
+  } catch {
+    Object.defineProperty(translatedError, 'logs', {
+      value: err.logs,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
+  }
 
   throw translatedError;
 }

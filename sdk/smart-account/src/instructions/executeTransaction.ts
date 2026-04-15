@@ -67,18 +67,20 @@ export async function executeTransaction({
       programId,
     });
 
-  return {
-    instruction: createExecuteTransactionInstruction(
-      {
-        consensusAccount: settingsPda,
-        signer,
-        proposal: proposalPda,
-        transaction: transactionPda,
-        program: programId,
-        anchorRemainingAccounts: accountMetas,
-      },
-      programId
-    ),
-    lookupTableAccounts,
-  };
+  const instruction = createExecuteTransactionInstruction(
+    {
+      consensusAccount: settingsPda,
+      signer,
+      proposal: proposalPda,
+      transaction: transactionPda,
+      program: programId,
+      anchorRemainingAccounts: accountMetas,
+    },
+    programId
+  );
+  const consensusMeta = instruction.keys.find((k) => k.pubkey.equals(settingsPda));
+  if (consensusMeta) consensusMeta.isWritable = true;
+  const signerMeta = instruction.keys.find((k) => k.pubkey.equals(signer));
+  if (signerMeta) signerMeta.isSigner = true;
+  return { instruction, lookupTableAccounts };
 }

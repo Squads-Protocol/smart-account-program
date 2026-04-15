@@ -1,18 +1,22 @@
 use anchor_lang::prelude::*;
 
-use crate::consensus_trait::Consensus;
+
 use crate::errors::*;
 use crate::state::*;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_proposal_activate_message;
+use crate::instructions::*;
 
 #[derive(Accounts)]
 pub struct ActivateProposal<'info> {
     #[account(
+        mut,
         seeds = [SEED_PREFIX, SEED_SETTINGS, settings.seed.to_le_bytes().as_ref()],
         bump = settings.bump,
     )]
     pub settings: Account<'info, Settings>,
 
-    pub signer: Signer<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     #[account(
         mut,
@@ -29,7 +33,7 @@ pub struct ActivateProposal<'info> {
 }
 
 impl ActivateProposal<'_> {
-    fn validate(&self) -> Result<()> {
+    fn validate(&mut self, remaining_accounts: &[AccountInfo], extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
         let Self {
             settings,
             proposal,
@@ -37,16 +41,16 @@ impl ActivateProposal<'_> {
             ..
         } = self;
 
-        // Signer is part of the settings
-        require!(
-            settings.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            // We consider this action a part of the proposal initiation.
-            settings.signer_has_permission(signer.key(), Permission::Initiate),
-            SmartAccountError::Unauthorized
-        );
+        let message = create_proposal_activate_message(&proposal.key(), proposal.transaction_index);
+
+        // Resolve and verify both the legitimacy of the signer and that it has the right permissions
+        signer.verify(
+            &mut **settings,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Initiate),
+        )?;
 
         // Proposal must be in draft status and not stale
         require!(
@@ -62,8 +66,18 @@ impl ActivateProposal<'_> {
     }
 
     /// Update status of a multisig proposal from `Draft` to `Active`.
-    #[access_control(ctx.accounts.validate())]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
     pub fn activate_proposal(ctx: Context<Self>) -> Result<()> {
+        ctx.accounts.proposal.status = ProposalStatus::Active {
+            timestamp: Clock::get()?.unix_timestamp,
+        };
+
+        Ok(())
+    }
+
+    /// Update status of a multisig proposal from `Draft` to `Active` with V2 signers.
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    pub fn activate_proposal_v2(ctx: Context<Self>, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
         ctx.accounts.proposal.status = ProposalStatus::Active {
             timestamp: Clock::get()?.unix_timestamp,
         };

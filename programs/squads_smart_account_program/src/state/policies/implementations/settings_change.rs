@@ -4,7 +4,7 @@ use crate::{
     errors::SmartAccountError, get_settings_signer_seeds, program::SquadsSmartAccountProgram,
     state::Settings, LogAuthorityInfo, Permissions, PolicyExecutionContext,
     PolicyPayloadConversionTrait, PolicySizeTrait, PolicyTrait, SettingsAction,
-    SettingsChangePolicyEvent, SmartAccountEvent, SmartAccountSigner,
+    SettingsChangePolicyEvent, SmartAccountEvent, SmartAccountSigner, SmartAccountSignerWrapper,
 };
 
 /// == SettingsChangePolicy ==
@@ -56,7 +56,7 @@ pub struct SettingsChangePolicyCreationPayload {
 /// Limited subset of settings change actions for execution
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
 pub enum LimitedSettingsAction {
-    AddSigner { new_signer: SmartAccountSigner },
+    AddSigner { new_signer: SmartAccountSignerWrapper },
     RemoveSigner { old_signer: Pubkey },
     ChangeThreshold { new_threshold: u16 },
     SetTimeLock { new_time_lock: u32 },
@@ -86,23 +86,36 @@ pub struct ValidatedAccounts<'info> {
 // CONVERSION IMPLEMENTATIONS
 // =============================================================================
 
-impl From<LimitedSettingsAction> for SettingsAction {
-    fn from(action: LimitedSettingsAction) -> Self {
+impl TryFrom<LimitedSettingsAction> for SettingsAction {
+    type Error = anchor_lang::error::Error;
+
+    fn try_from(action: LimitedSettingsAction) -> Result<Self> {
         match action {
             LimitedSettingsAction::AddSigner { new_signer } => {
-                SettingsAction::AddSigner { new_signer }
+                Ok(SettingsAction::AddSigner { new_signer })
             }
             LimitedSettingsAction::RemoveSigner { old_signer } => {
-                SettingsAction::RemoveSigner { old_signer }
+                Ok(SettingsAction::RemoveSigner { old_signer })
             }
             LimitedSettingsAction::ChangeThreshold { new_threshold } => {
-                SettingsAction::ChangeThreshold { new_threshold }
+                Ok(SettingsAction::ChangeThreshold { new_threshold })
             }
             LimitedSettingsAction::SetTimeLock { new_time_lock } => {
-                SettingsAction::SetTimeLock { new_time_lock }
+                Ok(SettingsAction::SetTimeLock { new_time_lock })
             }
         }
     }
+}
+
+fn single_signer(wrapper: &SmartAccountSignerWrapper) -> Result<SmartAccountSigner> {
+    let mut iter = wrapper.iter_v2();
+    let signer = iter
+        .next()
+        .ok_or(SmartAccountError::InvalidInstructionArgs)?;
+    if iter.next().is_some() {
+        return Err(SmartAccountError::InvalidInstructionArgs.into());
+    }
+    Ok(signer)
 }
 
 impl PolicyPayloadConversionTrait for SettingsChangePolicyCreationPayload {
@@ -220,17 +233,18 @@ impl PolicyTrait for SettingsChangePolicy {
                     },
                     LimitedSettingsAction::AddSigner { new_signer },
                 ) => {
+                    let new_signer = single_signer(new_signer)?;
                     if let Some(allowed_signer) = allowed_signer {
                         // If None, any signer can be added
                         require!(
-                            &new_signer.key == allowed_signer,
+                            &new_signer.key() == allowed_signer,
                             SmartAccountError::SettingsChangeAddSignerViolation
                         );
                     }
                     // If None, any permissions can be used
                     if let Some(allowed_permissions) = allowed_permissions {
                         require!(
-                            &new_signer.permissions == allowed_permissions,
+                            &new_signer.permissions() == allowed_permissions,
                             SmartAccountError::SettingsChangeAddSignerPermissionsViolation
                         );
                     }
@@ -285,7 +299,7 @@ impl PolicyTrait for SettingsChangePolicy {
         // Validate and grab the settings account
         let mut validated_accounts = self.validate_accounts(args.settings_key, accounts)?;
         for action in payload.actions.iter() {
-            let settings_action = SettingsAction::from(action.clone());
+            let settings_action = SettingsAction::try_from(action.clone())?;
             validated_accounts.settings.modify_with_action(
                 &args.settings_key,
                 &settings_action,
@@ -320,7 +334,7 @@ impl PolicyTrait for SettingsChangePolicy {
         // Reallocate the settings account if needed
         Settings::realloc_if_needed(
             validated_accounts.settings.to_account_info(),
-            validated_accounts.settings.signers.len(),
+            &validated_accounts.settings.signers,
             validated_accounts
                 .rent_payer
                 .map(|rent_payer| rent_payer.to_account_info()),

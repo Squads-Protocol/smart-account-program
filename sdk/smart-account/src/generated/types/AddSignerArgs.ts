@@ -6,12 +6,15 @@
  */
 
 import * as beet from '@metaplex-foundation/beet'
+import { LegacySmartAccountSigner } from './LegacySmartAccountSigner'
+import { SmartAccountSigner } from './SmartAccountSigner'
 import {
-  SmartAccountSigner,
-  smartAccountSignerBeet,
-} from './SmartAccountSigner'
+  SmartAccountSignerWrapper,
+  smartAccountSignerWrapperBeet,
+} from './SmartAccountSignerWrapper'
+import { customSmartAccountSignerWrapperBeet } from '../../types'
 export type AddSignerArgs = {
-  newSigner: SmartAccountSigner
+  newSigner: LegacySmartAccountSigner[] | SmartAccountSigner[]
   memo: beet.COption<string>
 }
 
@@ -21,7 +24,7 @@ export type AddSignerArgs = {
  */
 export const addSignerArgsBeet = new beet.FixableBeetArgsStruct<AddSignerArgs>(
   [
-    ['newSigner', smartAccountSignerBeet],
+    ['newSigner', customSmartAccountSignerWrapperBeet],
     ['memo', beet.coption(beet.utf8String)],
   ],
   'AddSignerArgs'

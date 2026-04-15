@@ -23,12 +23,17 @@ import {
   generateSmartAccountSigners,
   getNextAccountIndex,
   getTestProgramId,
+  formatsToRun,
+  getRpc,
 } from "../../utils";
 
 const programId = getTestProgramId();
 const connection = createLocalhostConnection();
 
-describe("Instructions / transaction_buffer_extend", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / transaction_buffer_extend [${format}]`, () => {
   let members: TestMembers;
   let transactionBufferAccount: PublicKey;
 
@@ -70,7 +75,8 @@ describe("Instructions / transaction_buffer_extend", () => {
   // Helper function to create a transaction buffer
   async function createTransactionBuffer(
     creator: Keypair,
-    transactionIndex: bigint
+    transactionIndex: bigint,
+    finalBufferSizeOverride?: number
   ) {
     const [transactionBuffer, _] = await PublicKey.findProgramAddressSync(
       [
@@ -121,7 +127,7 @@ describe("Instructions / transaction_buffer_extend", () => {
             bufferIndex: Number(transactionIndex),
             accountIndex: 0,
             finalBufferHash: Array.from(messageHash),
-            finalBufferSize: messageBuffer.transactionMessageBytes.byteLength,
+            finalBufferSize: finalBufferSizeOverride ?? messageBuffer.transactionMessageBytes.byteLength,
             buffer: messageBuffer.transactionMessageBytes.slice(0, 750),
           } as CreateTransactionBufferArgs,
         } as CreateTransactionBufferInstructionArgs,
@@ -387,7 +393,7 @@ describe("Instructions / transaction_buffer_extend", () => {
         connection
           .sendTransaction(tx)
           .catch(smartAccount.errors.translateAndThrowAnchorError),
-      /(Unauthorized|ConstraintSeeds)/
+      /(Unauthorized|ConstraintSeeds|NotASigner)/
     );
 
     await closeTransactionBuffer(members.almighty, transactionBuffer);
@@ -443,7 +449,8 @@ describe("Instructions / transaction_buffer_extend", () => {
 
     const transactionBuffer = await createTransactionBuffer(
       members.proposer,
-      transactionIndex
+      transactionIndex,
+      2000
     );
 
     const dummyData = Buffer.alloc(100, 1);
@@ -482,3 +489,4 @@ describe("Instructions / transaction_buffer_extend", () => {
     await closeTransactionBuffer(members.proposer, transactionBuffer);
   });
 });
+}

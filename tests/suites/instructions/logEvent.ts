@@ -1,11 +1,14 @@
 import * as web3 from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
-import { createLocalhostConnection, getTestProgramId } from "../../utils";
+import { createLocalhostConnection, getTestProgramId, formatsToRun, getRpc } from "../../utils";
 import assert from "assert";
 
 const programId = getTestProgramId();
 
-describe("Instructions / Log Event", () => {
+for (const format of formatsToRun) {
+  const rpc = getRpc(format);
+
+  describe(`Instructions / Log Event [${format}]`, () => {
   it("Calling log event after using assign", async () => {
     const connection = createLocalhostConnection();
     const feePayer = web3.Keypair.generate();
@@ -65,11 +68,18 @@ describe("Instructions / Log Event", () => {
     logEventTx.partialSign(feePayer);
     logEventTx.partialSign(keyPair);
 
-    assert.rejects(
+    await assert.rejects(
       connection.sendRawTransaction(logEventTx.serialize()),
       (error: any) => {
+        // The log event should fail because the log authority account
+        // was assigned to the program but doesn't have valid Settings data.
+        assert.ok(
+          error.message.includes("failed") || error.message.includes("error"),
+          `Expected program error, got: ${error.message}`
+        );
         return true;
       }
     );
   });
 });
+}

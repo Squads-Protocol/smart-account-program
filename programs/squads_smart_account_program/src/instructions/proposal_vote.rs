@@ -5,8 +5,11 @@ use crate::errors::*;
 use crate::events::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
+use crate::state::signer_v2::ExtraVerificationData;
+use crate::state::signer_v2::precompile::create_vote_message;
 
 use crate::state::*;
+use crate::instructions::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct VoteOnProposalArgs {
@@ -16,12 +19,12 @@ pub struct VoteOnProposalArgs {
 #[derive(Accounts)]
 pub struct VoteOnProposal<'info> {
     #[account(
+        mut,
         constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
     )]
     pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
-    #[account(mut)]
-    pub signer: Signer<'info>,
+    pub signer: ResolvedSigner<'info>,
 
     #[account(
         mut,
@@ -42,7 +45,12 @@ pub struct VoteOnProposal<'info> {
 }
 
 impl VoteOnProposal<'_> {
-    fn validate(&self, ctx: &Context<Self>, vote: Vote) -> Result<()> {
+    fn validate(
+        &mut self,
+        vote: Vote,
+        remaining_accounts: &[AccountInfo],
+        extra_verification_data: Option<ExtraVerificationData>,
+    ) -> Result<()> {
         let Self {
             consensus_account,
             proposal,
@@ -51,17 +59,7 @@ impl VoteOnProposal<'_> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
-
-        // signer
-        require!(
-            consensus_account.is_signer(signer.key()).is_some(),
-            SmartAccountError::NotASigner
-        );
-        require!(
-            consensus_account.signer_has_permission(signer.key(), Permission::Vote),
-            SmartAccountError::Unauthorized
-        );
+        consensus_account.is_active(&remaining_accounts)?;
 
         // proposal
         match vote {
@@ -85,19 +83,47 @@ impl VoteOnProposal<'_> {
             }
         }
 
+        // Build the message for this vote operation
+        let message = create_vote_message(
+            &proposal.key(),
+            vote.to_u8(),
+            proposal.transaction_index,
+        );
+
+        // Resolve and verify signer (native, session key, or external) and check Vote permission
+        signer.verify(
+            &mut **consensus_account,
+            remaining_accounts,
+            message,
+            extra_verification_data.as_ref(),
+            Some(Permission::Vote),
+        )?;
+
         Ok(())
     }
 
     /// Approve a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
-    #[access_control(ctx.accounts.validate(&ctx, Vote::Approve))]
+    #[access_control(ctx.accounts.validate(Vote::Approve, &ctx.remaining_accounts, None))]
     pub fn approve_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
+        Self::approve_proposal_inner(ctx, args)
+    }
+
+    /// Approve a smart account proposal with V2 signer support.
+    #[access_control(ctx.accounts.validate(Vote::Approve, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn approve_proposal_v2(ctx: Context<Self>, args: VoteOnProposalArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::approve_proposal_inner(ctx, args)
+    }
+
+    fn approve_proposal_inner(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
 
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
 
-        proposal.approve(signer.key(), usize::from(consensus_account.threshold()))?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.approve(resolved_key, usize::from(consensus_account.threshold()))?;
 
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
@@ -106,7 +132,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(signer.key()),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(Proposal::try_from_slice(&proposal.try_to_vec()?)?),
         };
@@ -123,15 +149,27 @@ impl VoteOnProposal<'_> {
 
     /// Reject a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Active`.
-    #[access_control(ctx.accounts.validate(&ctx, Vote::Reject))]
+    #[access_control(ctx.accounts.validate(Vote::Reject, &ctx.remaining_accounts, None))]
     pub fn reject_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
+        Self::reject_proposal_inner(ctx, args)
+    }
+
+    /// Reject a smart account proposal with V2 signer support.
+    #[access_control(ctx.accounts.validate(Vote::Reject, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn reject_proposal_v2(ctx: Context<Self>, args: VoteOnProposalArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::reject_proposal_inner(ctx, args)
+    }
+
+    fn reject_proposal_inner(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
 
         let cutoff = consensus_account.cutoff();
 
-        proposal.reject(signer.key(), cutoff)?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.reject(resolved_key, cutoff)?;
 
         // Log the vote event with proposal state
         let vote_event = ProposalEvent {
@@ -140,7 +178,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(signer.key()),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(proposal.clone().into_inner()),
         };
@@ -157,11 +195,21 @@ impl VoteOnProposal<'_> {
 
     /// Cancel a smart account proposal on behalf of the `signer`.
     /// The proposal must be `Approved`.
-    #[access_control(ctx.accounts.validate(&ctx, Vote::Cancel))]
+    #[access_control(ctx.accounts.validate(Vote::Cancel, &ctx.remaining_accounts, None))]
     pub fn cancel_proposal(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
+        Self::cancel_proposal_inner(ctx, args)
+    }
+
+    /// Cancel a smart account proposal with V2 signer support.
+    #[access_control(ctx.accounts.validate(Vote::Cancel, &ctx.remaining_accounts, extra_verification_data))]
+    pub fn cancel_proposal_v2(ctx: Context<Self>, args: VoteOnProposalArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
+        Self::cancel_proposal_inner(ctx, args)
+    }
+
+    fn cancel_proposal_inner(ctx: Context<Self>, args: VoteOnProposalArgs) -> Result<()> {
         let consensus_account = &mut ctx.accounts.consensus_account;
         let proposal = &mut ctx.accounts.proposal;
-        let signer = &mut ctx.accounts.signer;
+        let signer = &ctx.accounts.signer;
         let system_program = &ctx
             .accounts
             .system_program
@@ -172,7 +220,9 @@ impl VoteOnProposal<'_> {
             .cancelled
             .retain(|k| consensus_account.is_signer(*k).is_some());
 
-        proposal.cancel(signer.key(), usize::from(consensus_account.threshold()))?;
+        // Use resolved key (parent signer key for session keys) to prevent double-voting
+        let resolved_key = signer.resolved_key()?;
+        proposal.cancel(resolved_key, usize::from(consensus_account.threshold()))?;
 
         Proposal::realloc_if_needed(
             proposal.to_account_info().clone(),
@@ -188,7 +238,7 @@ impl VoteOnProposal<'_> {
             consensus_account_type: consensus_account.account_type(),
             proposal_pubkey: proposal.key(),
             transaction_index: proposal.transaction_index,
-            signer: Some(signer.key()),
+            signer: Some(resolved_key),
             memo: args.memo,
             proposal: Some(proposal.clone().into_inner()),
         };
@@ -204,8 +254,19 @@ impl VoteOnProposal<'_> {
     }
 }
 
+
 pub enum Vote {
     Approve,
     Reject,
     Cancel,
+}
+
+impl Vote {
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            Vote::Approve => 0,
+            Vote::Reject => 1,
+            Vote::Cancel => 2,
+        }
+    }
 }

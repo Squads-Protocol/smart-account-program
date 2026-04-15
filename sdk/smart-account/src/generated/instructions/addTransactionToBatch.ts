@@ -43,7 +43,7 @@ export const addTransactionToBatchStruct = new beet.FixableBeetArgsStruct<
  * @property [] proposal
  * @property [_writable_] batch
  * @property [_writable_] transaction
- * @property [**signer**] signer
+ * @property [] signer
  * @property [_writable_, **signer**] rentPayer
  * @category Instructions
  * @category AddTransactionToBatch
@@ -86,7 +86,7 @@ export function createAddTransactionToBatchInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.settings,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -107,7 +107,7 @@ export function createAddTransactionToBatchInstruction(
     {
       pubkey: accounts.signer,
       isWritable: false,
-      isSigner: true,
+      isSigner: false,
     },
     {
       pubkey: accounts.rentPayer,
