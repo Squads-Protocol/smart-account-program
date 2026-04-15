@@ -12,7 +12,6 @@ pub struct ActivateProposal<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(

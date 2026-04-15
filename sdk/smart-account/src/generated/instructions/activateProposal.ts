@@ -23,7 +23,7 @@ export const activateProposalStruct = new beet.BeetArgsStruct<{
  * Accounts required by the _activateProposal_ instruction
  *
  * @property [] settings
- * @property [_writable_, **signer**] signer
+ * @property [**signer**] signer
  * @property [_writable_] proposal
  * @category Instructions
  * @category ActivateProposal
@@ -63,7 +63,7 @@ export function createActivateProposalInstruction(
     },
     {
       pubkey: accounts.signer,
-      isWritable: true,
+      isWritable: false,
       isSigner: true,
     },
     {

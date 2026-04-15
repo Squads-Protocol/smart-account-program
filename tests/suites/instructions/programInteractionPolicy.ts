@@ -1179,6 +1179,22 @@ describe("Flow / ProgramInteractionPolicy", () => {
       })
     )[0];
 
+    // Increment account_utilization to unlock index 1 (test uses 0-1)
+    const incrementIx = smartAccount.generated.createIncrementAccountIndexInstruction(
+      { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+      programId
+    );
+    const incrementMsg = new web3.TransactionMessage({
+      payerKey: members.almighty.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [incrementIx],
+    }).compileToV0Message();
+    const incrementTx = new web3.VersionedTransaction(incrementMsg);
+    incrementTx.sign([members.almighty]);
+    await connection.confirmTransaction(
+      await connection.sendRawTransaction(incrementTx.serialize())
+    );
+
     let [sourceSmartAccountPda] = await getSmartAccountPda({
       settingsPda,
       accountIndex: 0,
