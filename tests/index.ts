@@ -26,6 +26,9 @@ import "./suites/instructions/settingsChangePolicy";
 import "./suites/instructions/programInteractionPolicy";
 import "./suites/instructions/spendingLimitPolicy";
 import "./suites/instructions/internalFundTransferPolicy";
+import "./suites/instructions/accountIndexSpendingLimit";
+import "./suites/instructions/internalFundTransferDelegate";
+import "./suites/instructions/programInteractionExtensions";
 
 // Split from smart-account-sdk.ts — per-instruction tests
 import "./suites/instructions/proposalCreate";

@@ -6,7 +6,6 @@
   "scripts": {
     "build": "turbo run build",
     "test:detached": "turbo run build && anchor test --detach -- --features=testing && echo \"\n⚠️ Don't forget to recompile the .so file before deployment\n\"",
-    "test:detached:nb": "anchor test --detach -- --features=testing && echo \"\n⚠️ Don't forget to recompile the .so file before deployment\n\"",
     "test": "turbo run build && anchor test -- --features=testing && echo \"\n⚠️ Don't forget to recompile the .so file before deployment\n\"",
     "test:v1": "turbo run build && SIGNER_FORMAT=v1 anchor test -- --features=testing && echo \"\n⚠️ Don't forget to recompile the .so file before deployment\n\"",
     "test:v2": "turbo run build && SIGNER_FORMAT=v2 anchor test -- --features=testing && echo \"\n⚠️ Don't forget to recompile the .so file before deployment\n\"",
@@ -34,8 +33,9 @@
     "@solana/spl-token": "0.3.6",
     "typescript": "4.9.4"
   },
+  "packageManager": "yarn@3.5.0",
   "dependencies": {
-    "@solana/web3.js": "^1.95.5"
-  },
-  "packageManager": "yarn@1.22.22"
+    "@solana/web3.js": "^1.95.5",
+    "@sqds/smart-account": "workspace:^"
+  }
 }
