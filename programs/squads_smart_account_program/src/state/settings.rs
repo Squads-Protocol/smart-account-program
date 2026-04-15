@@ -18,6 +18,11 @@ use crate::{
 };
 pub const MAX_TIME_LOCK: u32 = 3 * 30 * 24 * 60 * 60; // 3 months
 
+// Account index constants
+// Free accounts: 0-249 (250 accounts)
+// Reserved accounts: 250-255 (6 accounts) - bypass index validation
+pub const FREE_ACCOUNT_MAX_INDEX: u8 = 249;
+
 #[account]
 pub struct Settings {
     /// An integer that is used seed the settings PDA. Its incremented by 1
@@ -309,6 +314,8 @@ impl Settings {
                 destinations,
                 expiration,
             } => {
+                self.validate_account_index_unlocked(*account_index)?;
+
                 let (spending_limit_key, spending_limit_bump) = Pubkey::find_program_address(
                     &[
                         SEED_PREFIX,
@@ -428,6 +435,9 @@ impl Settings {
                 start_timestamp,
                 expiration_args,
             } => {
+                // Validate that all account indices used by the policy are unlocked
+                policy_creation_payload.validate_account_indices(self)?;
+
                 // Increment the policy seed if it exists, otherwise set it to
                 // 1 (First policy is being created)
                 let next_policy_seed = if let Some(policy_seed) = self.policy_seed {
@@ -570,6 +580,9 @@ impl Settings {
                 policy_update_payload,
                 expiration_args,
             } => {
+                // Validate that all account indices used by the policy are unlocked
+                policy_update_payload.validate_account_indices(self)?;
+
                 // Find the policy account
                 let policy_info = remaining_accounts
                     .iter()
@@ -733,8 +746,30 @@ impl Settings {
         Ok(())
     }
 
-    pub fn increment_account_utilization(&mut self) {
+    pub fn increment_account_utilization_index(&mut self) {
         self.account_utilization = self.account_utilization.checked_add(1).unwrap();
+    }
+
+    /// Validates that the given account index is unlocked.
+    /// Reserved accounts (250-255) bypass this check.
+    pub fn validate_account_index_unlocked(&self, index: u8) -> Result<()> {
+        // Reserved accounts (250-255) bypass the check
+        if index > FREE_ACCOUNT_MAX_INDEX {
+            return Ok(());
+        }
+        require!(
+            index <= self.account_utilization,
+            SmartAccountError::AccountIndexLocked
+        );
+        Ok(())
+    }
+
+    /// Validates that all given account indices are unlocked.
+    pub fn validate_account_indices_unlocked(&self, indices: &[u8]) -> Result<()> {
+        for index in indices {
+            self.validate_account_index_unlocked(*index)?;
+        }
+        Ok(())
     }
 }
 

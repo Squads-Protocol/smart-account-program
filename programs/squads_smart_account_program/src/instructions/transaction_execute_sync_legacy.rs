@@ -45,6 +45,11 @@ impl LegacySyncTransaction<'_> {
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
         let Self { consensus_account, .. } = self;
+
+        // Validate account index is unlocked
+        let settings = consensus_account.read_only_settings()?;
+        settings.validate_account_index_unlocked(args.account_index)?;
+
         validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
     }
     #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]

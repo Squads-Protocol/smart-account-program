@@ -31,6 +31,24 @@ describe("Flows / Policy Expiration", () => {
       })
     )[0];
 
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    for (let i = 0; i < 3; i++) {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+        programId
+      );
+      const msg = new web3.TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new web3.VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+    }
+
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
 

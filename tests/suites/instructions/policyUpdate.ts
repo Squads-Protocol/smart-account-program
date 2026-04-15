@@ -32,6 +32,24 @@ describe("Flows / Policy Update", () => {
       })
     )[0];
 
+    // Increment account_utilization to unlock indices 1, 2, 3 (test uses 0-3)
+    for (let i = 0; i < 3; i++) {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: settingsPda, signer: members.almighty.publicKey, program: programId },
+        programId
+      );
+      const msg = new web3.TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new web3.VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      await connection.confirmTransaction(
+        await connection.sendRawTransaction(tx.serialize())
+      );
+    }
+
     // Use seed 1 for the first policy on this smart account
     const policySeed = 1;
 
@@ -216,6 +234,171 @@ describe("Flows / Policy Update", () => {
     assert.equal(
       allowedMints[0].toString(),
       members.voter.publicKey.toString()
+    );
+  });
+
+  it("error: update policy with locked account index", async () => {
+    // Create new autonomous smart account - account_utilization starts at 0
+    const settingsPda = (
+      await createAutonomousMultisig({
+        connection,
+        members,
+        threshold: 1,
+        timeLock: 0,
+        programId,
+      })
+    )[0];
+
+    const policySeed = 1;
+
+    // First create a valid policy with account index 0 (which is unlocked)
+    const policyCreationPayload: smartAccount.generated.PolicyCreationPayload =
+      {
+        __kind: "InternalFundTransfer",
+        fields: [
+          {
+            sourceAccountIndices: new Uint8Array([0]),
+            destinationAccountIndices: new Uint8Array([0]),
+            allowedMints: [web3.PublicKey.default],
+          },
+        ],
+      };
+
+    let transactionIndex = BigInt(1);
+
+    const [policyPda] = smartAccount.getPolicyPda({
+      settingsPda,
+      policySeed,
+      programId,
+    });
+
+    // Create, propose, approve, and execute the policy creation
+    let signature = await smartAccount.rpc.createSettingsTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer.publicKey,
+      actions: [
+        {
+          __kind: "PolicyCreate",
+          seed: policySeed,
+          policyCreationPayload,
+          signers: [{ key: members.voter.publicKey, permissions: { mask: 7 } }],
+          threshold: 1,
+          timeLock: 0,
+          startTimestamp: null,
+          expirationArgs: null,
+        },
+      ],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.executeSettingsTransaction({
+      connection,
+      feePayer: members.almighty,
+      settingsPda,
+      transactionIndex,
+      signer: members.almighty,
+      rentPayer: members.almighty,
+      policies: [policyPda],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Now try to update the policy to use locked account indices
+    transactionIndex = BigInt(2);
+
+    const policyUpdatePayload: smartAccount.generated.PolicyCreationPayload = {
+      __kind: "InternalFundTransfer",
+      fields: [
+        {
+          sourceAccountIndices: new Uint8Array([0, 5]), // Index 5 is locked
+          destinationAccountIndices: new Uint8Array([0]),
+          allowedMints: [web3.PublicKey.default],
+        },
+      ],
+    };
+
+    signature = await smartAccount.rpc.createSettingsTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer.publicKey,
+      actions: [
+        {
+          __kind: "PolicyUpdate",
+          policy: policyPda,
+          policyUpdatePayload,
+          signers: [{ key: members.voter.publicKey, permissions: { mask: 7 } }],
+          threshold: 1,
+          timeLock: 0,
+          expirationArgs: null,
+        },
+      ],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    // Execute should fail with AccountIndexLocked
+    await assert.rejects(
+      async () => {
+        await smartAccount.rpc
+          .executeSettingsTransaction({
+            connection,
+            feePayer: members.almighty,
+            settingsPda,
+            transactionIndex,
+            signer: members.almighty,
+            rentPayer: members.almighty,
+            policies: [policyPda],
+            programId,
+          })
+          .catch(smartAccount.errors.translateAndThrowAnchorError);
+      },
+      /AccountIndexLocked/
     );
   });
 });

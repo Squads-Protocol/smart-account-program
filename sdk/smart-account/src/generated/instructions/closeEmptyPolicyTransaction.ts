@@ -22,7 +22,7 @@ export const closeEmptyPolicyTransactionStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _closeEmptyPolicyTransaction_ instruction
  *
- * @property [_writable_] programConfig
+ * @property [] programConfig
  * @property [] emptyPolicy
  * @property [_writable_] proposal
  * @property [_writable_] transaction
@@ -68,7 +68,7 @@ export function createCloseEmptyPolicyTransactionInstruction(
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.programConfig,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
     {

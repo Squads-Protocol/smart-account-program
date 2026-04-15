@@ -520,7 +520,7 @@ impl CloseBatch<'_> {
 pub struct CloseEmptyPolicyTransaction<'info> {
     /// Global program config account. (Just using this for logging purposes,
     /// since we no longer have the consensus account)
-    #[account(mut, seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
+    #[account(seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
     pub program_config: Account<'info, ProgramConfig>,
 
 

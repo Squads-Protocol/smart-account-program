@@ -1200,7 +1200,7 @@
         },
         {
           "name": "signer",
-          "isMut": true,
+          "isMut": false,
           "isSigner": true
         },
         {
@@ -1570,7 +1570,7 @@
       "accounts": [
         {
           "name": "programConfig",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false,
           "docs": [
             "Global program config account. (Just using this for logging purposes,",
@@ -1858,6 +1858,31 @@
           }
         }
       ]
+    },
+    {
+      "name": "incrementAccountIndex",
+      "docs": [
+        "Increment the account utilization index, unlocking the next vault index.",
+        "Callable by any signer with Initiate, Vote, or Execute permissions."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -3239,13 +3264,6 @@
             "name": "bufferIndex",
             "docs": [
               "Index of the buffer account to seed the account derivation"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "accountIndex",
-            "docs": [
-              "Index of the smart account this transaction belongs to."
             ],
             "type": "u8"
           },
@@ -6257,114 +6275,129 @@
     },
     {
       "code": 6108,
+      "name": "InternalFundTransferPolicyDestinationHasDelegate",
+      "msg": "Internal fund transfer policy: destination token account has a delegate"
+    },
+    {
+      "code": 6109,
       "name": "ConsensusAccountNotSettings",
       "msg": "Consensus account is not a settings"
     },
     {
-      "code": 6109,
+      "code": 6110,
       "name": "ConsensusAccountNotPolicy",
       "msg": "Consensus account is not a policy"
     },
     {
-      "code": 6110,
+      "code": 6111,
       "name": "SettingsChangePolicyActionsMustBeNonZero",
       "msg": "Settings change policy invariant violation: actions must be non-zero"
     },
     {
-      "code": 6111,
+      "code": 6112,
       "name": "SettingsChangeInvalidSettingsKey",
       "msg": "Settings change policy violation: submitted settings account must match policy settings key"
     },
     {
-      "code": 6112,
+      "code": 6113,
       "name": "SettingsChangeInvalidSettingsAccount",
       "msg": "Settings change policy violation: submitted settings account must be writable"
     },
     {
-      "code": 6113,
+      "code": 6114,
       "name": "SettingsChangeInvalidRentPayer",
       "msg": "Settings change policy violation: rent payer must be writable and signer"
     },
     {
-      "code": 6114,
+      "code": 6115,
       "name": "SettingsChangeInvalidSystemProgram",
       "msg": "Settings change policy violation: system program must be the system program"
     },
     {
-      "code": 6115,
+      "code": 6116,
       "name": "SettingsChangeAddSignerViolation",
       "msg": "Settings change policy violation: signer does not match allowed signer"
     },
     {
-      "code": 6116,
+      "code": 6117,
       "name": "SettingsChangeAddSignerPermissionsViolation",
       "msg": "Settings change policy violation: signer permissions does not match allowed signer permissions"
     },
     {
-      "code": 6117,
+      "code": 6118,
       "name": "SettingsChangeRemoveSignerViolation",
       "msg": "Settings change policy violation: signer removal does not mach allowed signer removal"
     },
     {
-      "code": 6118,
+      "code": 6119,
       "name": "SettingsChangeChangeTimelockViolation",
       "msg": "Settings change policy violation: time lock does not match allowed time lock"
     },
     {
-      "code": 6119,
+      "code": 6120,
       "name": "SettingsChangeActionMismatch",
       "msg": "Settings change policy violation: action does not match allowed action"
     },
     {
-      "code": 6120,
+      "code": 6121,
       "name": "SettingsChangePolicyInvariantDuplicateActions",
       "msg": "Settings change policy invariant violation: cannot have duplicate actions"
     },
     {
-      "code": 6121,
+      "code": 6122,
       "name": "SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch",
       "msg": "Settings change policy invariant violation: action indices must match actions length"
     },
     {
-      "code": 6122,
+      "code": 6123,
       "name": "SettingsChangePolicyInvariantActionIndexOutOfBounds",
       "msg": "Settings change policy invariant violation: action index out of bounds"
     },
     {
-      "code": 6123,
+      "code": 6124,
       "name": "PolicyNotActiveYet",
       "msg": "Policy is not active yet"
     },
     {
-      "code": 6124,
+      "code": 6125,
       "name": "PolicyInvariantInvalidExpiration",
       "msg": "Policy invariant violation: invalid policy expiration"
     },
     {
-      "code": 6125,
+      "code": 6126,
       "name": "PolicyExpirationViolationPolicySettingsKeyMismatch",
       "msg": "Policy expiration violation: submitted settings key does not match policy settings key"
     },
     {
-      "code": 6126,
+      "code": 6127,
       "name": "PolicyExpirationViolationSettingsAccountNotPresent",
       "msg": "Policy expiration violation: state expiration requires the settings to be submitted"
     },
     {
-      "code": 6127,
+      "code": 6128,
       "name": "PolicyExpirationViolationHashExpired",
       "msg": "Policy expiration violation: state hash has expired"
     },
     {
-      "code": 6128,
+      "code": 6129,
       "name": "PolicyExpirationViolationTimestampExpired",
       "msg": "Policy expiration violation: timestamp has expired"
+    },
+    {
+      "code": 6130,
+      "name": "AccountIndexLocked",
+      "msg": "Account index is locked, must increment_account_index first"
+    },
+    {
+      "code": 6131,
+      "name": "MaxAccountIndexReached",
+      "msg": "Cannot exceed maximum free account index (250)"
     }
   ],
   "metadata": {
     "address": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
     "origin": "anchor",
-    "binaryVersion": "0.32.1",
+    "binaryVersion": "0.29.0",
     "libVersion": "=0.29.0"
   }
 }

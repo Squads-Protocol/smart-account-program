@@ -10,55 +10,55 @@ import * as web3 from '@solana/web3.js'
 
 /**
  * @category Instructions
- * @category ActivateProposal
+ * @category IncrementAccountIndex
  * @category generated
  */
-export const activateProposalStruct = new beet.BeetArgsStruct<{
+export const incrementAccountIndexStruct = new beet.BeetArgsStruct<{
   instructionDiscriminator: number[] /* size: 8 */
 }>(
   [['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)]],
-  'ActivateProposalInstructionArgs'
+  'IncrementAccountIndexInstructionArgs'
 )
 /**
- * Accounts required by the _activateProposal_ instruction
+ * Accounts required by the _incrementAccountIndex_ instruction
  *
- * @property [] settings
+ * @property [_writable_] settings
  * @property [**signer**] signer
- * @property [_writable_] proposal
+ * @property [] program
  * @category Instructions
- * @category ActivateProposal
+ * @category IncrementAccountIndex
  * @category generated
  */
-export type ActivateProposalInstructionAccounts = {
+export type IncrementAccountIndexInstructionAccounts = {
   settings: web3.PublicKey
   signer: web3.PublicKey
-  proposal: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const activateProposalInstructionDiscriminator = [
-  90, 186, 203, 234, 70, 185, 191, 21,
+export const incrementAccountIndexInstructionDiscriminator = [
+  212, 170, 222, 71, 21, 131, 117, 220,
 ]
 
 /**
- * Creates a _ActivateProposal_ instruction.
+ * Creates a _IncrementAccountIndex_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @category Instructions
- * @category ActivateProposal
+ * @category IncrementAccountIndex
  * @category generated
  */
-export function createActivateProposalInstruction(
-  accounts: ActivateProposalInstructionAccounts,
+export function createIncrementAccountIndexInstruction(
+  accounts: IncrementAccountIndexInstructionAccounts,
   programId = new web3.PublicKey('SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG')
 ) {
-  const [data] = activateProposalStruct.serialize({
-    instructionDiscriminator: activateProposalInstructionDiscriminator,
+  const [data] = incrementAccountIndexStruct.serialize({
+    instructionDiscriminator: incrementAccountIndexInstructionDiscriminator,
   })
   const keys: web3.AccountMeta[] = [
     {
       pubkey: accounts.settings,
-      isWritable: false,
+      isWritable: true,
       isSigner: false,
     },
     {
@@ -67,8 +67,8 @@ export function createActivateProposalInstruction(
       isSigner: true,
     },
     {
-      pubkey: accounts.proposal,
-      isWritable: true,
+      pubkey: accounts.program,
+      isWritable: false,
       isSigner: false,
     },
   ]

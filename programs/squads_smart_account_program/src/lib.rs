@@ -340,4 +340,12 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }
+
+    /// Increment the account utilization index, unlocking the next vault index.
+    /// Callable by any signer with Initiate, Vote, or Execute permissions.
+    // Decrement is intentionally not supported. If ever implemented, it MUST ensure
+    // no existing vaults, spending limits, or pending transactions reference the index being decremented.
+    pub fn increment_account_index(ctx: Context<IncrementAccountIndex>) -> Result<()> {
+        IncrementAccountIndex::increment_account_index(ctx)
+    }
 }

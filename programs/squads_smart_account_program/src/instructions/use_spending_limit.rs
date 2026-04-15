@@ -105,7 +105,8 @@ impl UseSpendingLimit<'_> {
             SmartAccountError::Unauthorized
         );
 
-        // spending_limit - needs no checking.
+        // spending_limit - validate the account index is unlocked.
+        self.settings.validate_account_index_unlocked(spending_limit.account_index)?;
 
         // mint
         if spending_limit.mint == Pubkey::default() {

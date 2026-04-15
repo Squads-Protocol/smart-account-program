@@ -236,6 +236,8 @@ pub enum SmartAccountError {
     InternalFundTransferPolicyInvariantAmountZero,
     #[msg("Internal fund transfer policy invariant violation: cannot have duplicate mints")]
     InternalFundTransferPolicyInvariantDuplicateMints,
+    #[msg("Internal fund transfer policy: destination token account has a delegate")]
+    InternalFundTransferPolicyDestinationHasDelegate,
 
     // ===============================================
     // Consensus Account Errors
@@ -290,4 +292,12 @@ pub enum SmartAccountError {
     PolicyExpirationViolationHashExpired,
     #[msg("Policy expiration violation: timestamp has expired")]
     PolicyExpirationViolationTimestampExpired,
+
+    // ===============================================
+    // Account Index Errors
+    // ===============================================
+    #[msg("Account index is locked, must increment_account_index first")]
+    AccountIndexLocked,
+    #[msg("Cannot exceed maximum free account index (250)")]
+    MaxAccountIndexReached,
 }

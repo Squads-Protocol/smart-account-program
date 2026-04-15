@@ -81,10 +81,19 @@ impl<'info> CreateTransaction<'info> {
         // Validate the transaction payload
         match consensus_account.account_type() {
             ConsensusAccountType::Settings => {
-                assert!(matches!(
-                    args,
-                    CreateTransactionArgs::TransactionPayload { .. }
-                ));
+                match args {
+                    CreateTransactionArgs::TransactionPayload(TransactionPayload {
+                        account_index,
+                        ..
+                    }) => {
+                        // Validate the account index is unlocked
+                        let settings = consensus_account.read_only_settings()?;
+                        settings.validate_account_index_unlocked(*account_index)?;
+                    }
+                    _ => {
+                        return Err(SmartAccountError::InvalidTransactionMessage.into());
+                    }
+                }
             }
             ConsensusAccountType::Policy => {
                 let policy = consensus_account.read_only_policy()?;
