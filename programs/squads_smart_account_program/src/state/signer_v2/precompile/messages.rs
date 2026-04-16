@@ -103,19 +103,24 @@ pub fn create_batch_create_message(
     hasher
 }
 
-/// Create message for adding a transaction to a batch
+/// Create message for adding a transaction to a batch.
 ///
-/// Format: hash("batch_add_tx_v2" || batch_key || signer_key || transaction_index)
+/// The payload_hash binds the external signer to the exact transaction content
+/// being added to the batch.
+///
+/// Format: hash("batch_add_tx_v2" || batch_key || signer_key || transaction_index || payload_hash)
 pub fn create_batch_add_transaction_message(
     batch_key: &Pubkey,
     signer_key: Pubkey,
     transaction_index: u64,
+    payload_hash: &[u8; 32],
 ) -> Hasher {
     let mut hasher = Hasher::default();
     hasher.hash(b"batch_add_tx_v2");
     hasher.hash(batch_key.as_ref());
     hasher.hash(signer_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(payload_hash);
 
     hasher
 }
@@ -270,32 +275,42 @@ pub fn create_sync_settings_message(
     hasher
 }
 
-/// Create message for async transaction creation signing
+/// Create message for async transaction creation signing.
 ///
-/// Format: hash("transaction_create_v2" || consensus_account_key || transaction_index)
+/// The payload_hash binds the external signer to the exact transaction content,
+/// preventing a relayer from swapping the payload after collecting the signature.
+///
+/// Format: hash("transaction_create_v2" || consensus_account_key || transaction_index || payload_hash)
 pub fn create_transaction_message(
     consensus_account_key: &Pubkey,
     transaction_index: u64,
+    payload_hash: &[u8; 32],
 ) -> Hasher {
     let mut hasher = Hasher::default();
     hasher.hash(b"transaction_create_v2");
     hasher.hash(consensus_account_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(payload_hash);
 
     hasher
 }
 
-/// Create message for settings transaction creation signing
+/// Create message for settings transaction creation signing.
 ///
-/// Format: hash("settings_tx_create_v2" || settings_key || transaction_index)
+/// The payload_hash binds the external signer to the exact settings actions,
+/// preventing a relayer from swapping the actions after collecting the signature.
+///
+/// Format: hash("settings_tx_create_v2" || settings_key || transaction_index || payload_hash)
 pub fn create_settings_transaction_create_message(
     settings_key: &Pubkey,
     transaction_index: u64,
+    payload_hash: &[u8; 32],
 ) -> Hasher {
     let mut hasher = Hasher::default();
     hasher.hash(b"settings_tx_create_v2");
     hasher.hash(settings_key.as_ref());
     hasher.hash(&transaction_index.to_le_bytes());
+    hasher.hash(payload_hash);
 
     hasher
 }

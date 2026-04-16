@@ -58,8 +58,15 @@ impl VoteOnProposal<'_> {
             ..
         } = self;
 
+        // Strip instructions sysvar (if at [0]) before is_active so
+        // SettingsState expiration sees the Settings account at [0].
+        let accounts_for_active = if remaining_accounts
+            .first()
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { &remaining_accounts[1..] } else { remaining_accounts };
+
         // Check if the consensus account is active
-        consensus_account.is_active(&remaining_accounts)?;
+        consensus_account.is_active(accounts_for_active)?;
 
         // proposal
         match vote {

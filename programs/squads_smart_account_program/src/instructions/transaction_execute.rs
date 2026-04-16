@@ -74,8 +74,16 @@ impl<'info> ExecuteTransaction<'info> {
             ..
         } = self;
 
+        // Strip the instructions sysvar (if present at [0]) before passing to
+        // is_active, so SettingsState expiration sees the Settings account at [0].
+        // verify_signer handles the sysvar internally via split_instructions_sysvar.
+        let accounts_for_active = if remaining_accounts
+            .first()
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { &remaining_accounts[1..] } else { remaining_accounts };
+
         // Check if the consensus account is active
-        consensus_account.is_active(remaining_accounts)?;
+        consensus_account.is_active(accounts_for_active)?;
 
         // Build message for external signer verification
         let message = create_execute_transaction_message(

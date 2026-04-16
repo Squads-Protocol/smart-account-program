@@ -1311,21 +1311,23 @@ impl ProgramInteractionPolicy {
             .get(..num_lookups)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &transaction_payload.message.instructions,
-                message_account_infos,
-            )?;
-        }
-
-        // Execute the pre hook
+        // Execute the pre hook first — constraints should validate the post-hook
+        // state that inner instructions will actually execute against.
         if let Some(pre_hook) = &self.pre_hook {
             pre_hook.execute(
                 pre_hook_accounts,
                 &transaction_payload.message.instructions,
                 &accounts[num_lookups..],
+            )?;
+        }
+
+        // Evaluate the instruction constraints after pre-hook so they validate
+        // the actual state the inner instructions will see.
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &transaction_payload.message.instructions,
+                message_account_infos,
             )?;
         }
         let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
@@ -1439,21 +1441,23 @@ impl ProgramInteractionPolicy {
         // Parse out the hook accounts from the accounts slice
         let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
 
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &settings_compiled_instructions,
-                accounts,
-            )?;
-        }
-
-        // Execute the pre hook
+        // Execute the pre hook first — constraints should validate the post-hook
+        // state that inner instructions will actually execute against.
         if let Some(pre_hook) = &self.pre_hook {
             pre_hook.execute(
                 pre_hook_accounts,
                 &settings_compiled_instructions,
                 &accounts,
+            )?;
+        }
+
+        // Evaluate the instruction constraints after pre-hook so they validate
+        // the actual state the inner instructions will see.
+        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+            self.evaluate_instruction_constraints(
+                instruction_constraint_indices,
+                &settings_compiled_instructions,
+                accounts,
             )?;
         }
 

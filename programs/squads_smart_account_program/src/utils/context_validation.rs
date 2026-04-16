@@ -57,6 +57,12 @@ pub fn validate_synchronous_consensus(
         SmartAccountError::TimeLockNotZero
     );
 
+    // Validate num_signer doesn't exceed remaining_accounts length
+    require!(
+        (num_signer as usize) <= remaining_accounts.len(),
+        SmartAccountError::InvalidSignerCount
+    );
+
     // Initialize state
     let mut verified_keys = Vec::with_capacity(num_signer as usize);
     let mut aggregated_permissions = Permissions { mask: 0 };

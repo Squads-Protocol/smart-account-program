@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 use crate::consensus_trait::ConsensusAccountType;
 use crate::program::SquadsSmartAccountProgram;
@@ -71,11 +72,16 @@ impl CreateSettingsTransaction<'_> {
             SmartAccountError::NotSupportedForControlled
         );
 
-        // Build message for external signer verification
+        // Build message for external signer verification.
+        // Hash the actions so external signers commit to the exact settings changes.
+        let actions_bytes = args.actions.try_to_vec()
+            .map_err(|_| SmartAccountError::InvalidPayload)?;
+        let payload_hash = hash(&actions_bytes);
         let next_transaction_index = settings.transaction_index.checked_add(1).unwrap();
         let message = create_settings_transaction_create_message(
             &settings.key(),
             next_transaction_index,
+            &payload_hash.to_bytes(),
         );
 
         // Resolve and verify signer (native, session key, or external) and check Initiate permission

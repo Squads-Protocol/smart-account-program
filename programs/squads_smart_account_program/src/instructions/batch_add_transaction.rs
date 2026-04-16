@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 use crate::errors::*;
 use crate::state::*;
@@ -79,6 +80,7 @@ pub struct AddTransactionToBatch<'info> {
 impl AddTransactionToBatch<'_> {
     fn validate(
         &mut self,
+        args: &AddTransactionToBatchArgs,
         remaining_accounts: &[AccountInfo],
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
@@ -90,11 +92,14 @@ impl AddTransactionToBatch<'_> {
             ..
         } = self;
 
-        // Build message for external signer verification
+        // Build message for external signer verification.
+        // Hash the transaction message so external signers commit to the exact content.
+        let payload_hash = hash(&args.transaction_message);
         let message = create_batch_add_transaction_message(
             &batch.key(),
             signer.key(),
             batch.index,
+            &payload_hash.to_bytes(),
         );
 
         // Resolve and verify signer (native, session key, or external) and check Initiate permission
@@ -125,13 +130,13 @@ impl AddTransactionToBatch<'_> {
     }
 
     /// Add a transaction to the batch.
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, None))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, None))]
     pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
         Self::add_transaction_to_batch_inner(ctx, args)
     }
 
     /// Add a transaction to the batch with V2 signer support.
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, extra_verification_data))]
+    #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, extra_verification_data))]
     pub fn add_transaction_to_batch_v2(ctx: Context<Self>, args: AddTransactionToBatchArgs, extra_verification_data: Option<ExtraVerificationData>) -> Result<()> {
         Self::add_transaction_to_batch_inner(ctx, args)
     }

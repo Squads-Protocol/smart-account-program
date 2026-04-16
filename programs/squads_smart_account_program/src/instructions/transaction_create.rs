@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::hash::hash;
 
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
@@ -82,14 +83,26 @@ impl<'info> CreateTransaction<'info> {
             ..
         } = self;
 
-        // Check if the consensus account is active
-        consensus_account.is_active(remaining_accounts)?;
+        // Strip instructions sysvar (if at [0]) before is_active so
+        // SettingsState expiration sees the Settings account at [0].
+        let accounts_for_active = if remaining_accounts
+            .first()
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { &remaining_accounts[1..] } else { remaining_accounts };
 
-        // Build message for external signer verification
+        // Check if the consensus account is active
+        consensus_account.is_active(accounts_for_active)?;
+
+        // Build message for external signer verification.
+        // Hash the payload so external signers commit to the exact transaction content.
+        let payload_bytes = args.try_to_vec()
+            .map_err(|_| SmartAccountError::InvalidTransactionMessage)?;
+        let payload_hash = hash(&payload_bytes);
         let next_transaction_index = consensus_account.transaction_index().checked_add(1).unwrap();
         let message = create_transaction_message(
             &consensus_account.key(),
             next_transaction_index,
+            &payload_hash.to_bytes(),
         );
 
         // Resolve and verify signer (native, session key, or external) and check Initiate permission
