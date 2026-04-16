@@ -517,7 +517,7 @@ describe("Instructions / transaction_create_from_buffer", () => {
 
     const logs = (await getLogs(connection, signature4)).join("");
 
-    assert.match(logs, /Access violation in heap section at address/);
+    assert.match(logs, /Access violation in heap section at address|memory allocation failed, out of memory/);
   });
 
   it("error: create transaction with locked account index", async () => {

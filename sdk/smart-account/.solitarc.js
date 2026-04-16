@@ -39,6 +39,26 @@ module.exports = {
   binaryInstallDir,
   programDir,
   idlHook: (idl) => {
+    // Flatten nested account groups (e.g. ResolvedSigner { info: AccountInfo })
+    // into flat accounts that solita can handle. Anchor emits nested "accounts"
+    // arrays for struct-based account groups; solita expects a flat list with
+    // isMut/isSigner on every entry.
+    const flattenAccounts = (accounts) => {
+      return accounts.map((acc) => {
+        if (!acc.accounts) return acc;
+        // Recursively flatten children first
+        const children = flattenAccounts(acc.accounts);
+        if (children.length === 1) {
+          // Single-child wrapper (e.g. ResolvedSigner { info: AccountInfo })
+          // — replace with a flat account using parent name and child properties
+          return { ...children[0], name: acc.name };
+        }
+        // Multi-child composite — keep as nested so solita applies its own
+        // prefixing (e.g. transactionCreate -> transactionCreateItem*)
+        return { ...acc, accounts: children };
+      });
+    };
+
     // Transform the IDL to replace SmallVec types
     const transformType = (obj) => {
       if (typeof obj === "string" && obj === "SmallVec<u16,u8>") {
@@ -75,9 +95,18 @@ module.exports = {
 
     const transformedIdl = transformType(idl);
 
-    return {
+    // Flatten nested account groups in all instructions
+    const flattenedIdl = {
       ...transformedIdl,
-      types: transformedIdl.types.filter((type) => {
+      instructions: transformedIdl.instructions.map((ix) => ({
+        ...ix,
+        accounts: flattenAccounts(ix.accounts),
+      })),
+    };
+
+    return {
+      ...flattenedIdl,
+      types: flattenedIdl.types.filter((type) => {
         return !ignoredTypes.has(type.name);
       }),
     };

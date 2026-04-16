@@ -39,7 +39,7 @@ export const executeBatchTransactionV2Struct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _executeBatchTransactionV2_ instruction
  *
- * @property [] settings
+ * @property [_writable_] settings
  * @property [] signer
  * @property [_writable_] proposal
  * @property [_writable_] batch
@@ -113,6 +113,12 @@ export function createExecuteBatchTransactionV2Instruction(
       keys.push(acc)
     }
   }
+
+  keys.push({
+    pubkey: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+    isWritable: false,
+    isSigner: false,
+  })
 
   const ix = new web3.TransactionInstruction({
     programId,

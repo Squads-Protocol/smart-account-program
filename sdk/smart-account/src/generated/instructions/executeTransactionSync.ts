@@ -39,7 +39,7 @@ export const executeTransactionSyncStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _executeTransactionSync_ instruction
  *
- * @property [] consensusAccount
+ * @property [_writable_] consensusAccount
  * @property [] program
  * @category Instructions
  * @category ExecuteTransactionSync
@@ -92,6 +92,12 @@ export function createExecuteTransactionSyncInstruction(
       keys.push(acc)
     }
   }
+
+  keys.push({
+    pubkey: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+    isWritable: false,
+    isSigner: false,
+  })
 
   const ix = new web3.TransactionInstruction({
     programId,

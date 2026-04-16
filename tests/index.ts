@@ -1,5 +1,6 @@
 // The order of imports is the order the test suite will run in.
 import "./suites/program-config-init";
+import "./suites/instructions/neverNonce";
 
 // Parameterized tests — run for both V1 and V2 signer formats
 import "./suites/instructions/batchAccountsClose";

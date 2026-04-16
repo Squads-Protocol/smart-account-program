@@ -120,6 +120,12 @@ export function createCreateTransactionInstruction(
     }
   }
 
+  keys.push({
+    pubkey: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+    isWritable: false,
+    isSigner: false,
+  })
+
   const ix = new web3.TransactionInstruction({
     programId,
     keys,
