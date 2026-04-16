@@ -1,5 +1,6 @@
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
 import { SettingsAction, createExecuteSettingsTransactionSyncInstruction, PROGRAM_ID } from "../generated";
+import { appendInstructionsSysvar } from "./shared";
 
 export function executeSettingsTransactionSync({
     settingsPda,
@@ -44,5 +45,5 @@ export function executeSettingsTransactionSync({
     if (remainingAccounts) {
         ix.keys.push(...remainingAccounts);
     }
-    return ix;
+    return appendInstructionsSysvar(ix);
 }

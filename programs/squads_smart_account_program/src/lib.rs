@@ -7,7 +7,10 @@
 // Re-export anchor_lang for convenience.
 pub use anchor_lang;
 use anchor_lang::prelude::*;
-#[cfg(not(feature = "no-entrypoint"))]
+#[cfg(any(
+    not(feature = "no-entrypoint"),
+    all(feature = "custom-entrypoint", not(feature = "cpi"))
+))]
 use solana_security_txt::security_txt;
 
 pub use events::*;
@@ -18,6 +21,8 @@ pub use state::*;
 pub use utils::SmallVec;
 
 pub mod allocator;
+#[cfg(all(feature = "custom-entrypoint", not(feature = "cpi")))]
+mod entrypoint;
 pub mod errors;
 pub mod events;
 pub mod instructions;
@@ -25,7 +30,10 @@ pub mod interface;
 pub mod state;
 mod utils;
 
-#[cfg(not(feature = "no-entrypoint"))]
+#[cfg(any(
+    not(feature = "no-entrypoint"),
+    all(feature = "custom-entrypoint", not(feature = "cpi"))
+))]
 security_txt! {
     name: "Squads Smart Account Program",
     project_url: "https://squads.so",

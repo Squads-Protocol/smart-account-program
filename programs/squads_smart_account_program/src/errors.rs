@@ -86,6 +86,10 @@ pub enum SmartAccountError {
     SpendingLimitInvalidAmount,
     #[msg("Invalid Instruction Arguments")]
     InvalidInstructionArgs,
+    #[msg("The last account must be the Instructions sysvar")]
+    InvalidInstructionsSysvar,
+    #[msg("Durable nonce transactions are not allowed")]
+    DurableNonceForbidden,
     #[msg("Final message buffer hash doesnt match the expected hash")]
     FinalBufferHashMismatch,
     #[msg("Final buffer size cannot exceed 4000 bytes")]

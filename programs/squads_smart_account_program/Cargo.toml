@@ -10,8 +10,9 @@ crate-type = ["cdylib", "lib"]
 name = "squads_smart_account_program"
 
 [features]
-default = ["custom-heap"]
+default = ["custom-heap", "custom-entrypoint"]
 custom-heap = []
+custom-entrypoint = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
