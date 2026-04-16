@@ -22,7 +22,7 @@ export const executeBatchTransactionStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _executeBatchTransaction_ instruction
  *
- * @property [] settings
+ * @property [_writable_] settings
  * @property [] signer
  * @property [_writable_] proposal
  * @property [_writable_] batch

@@ -7,7 +7,6 @@
 
 import * as beet from '@metaplex-foundation/beet'
 import * as web3 from '@solana/web3.js'
-import { CreateBatchArgs, createBatchArgsBeet } from '../types/CreateBatchArgs'
 import {
   ExtraVerificationData,
   extraVerificationDataBeet,
@@ -15,71 +14,66 @@ import {
 
 /**
  * @category Instructions
- * @category CreateBatchV2
+ * @category IncrementAccountIndexV2
  * @category generated
  */
-export type CreateBatchV2InstructionArgs = {
-  args: CreateBatchArgs
+export type IncrementAccountIndexV2InstructionArgs = {
   extraVerificationData: beet.COption<ExtraVerificationData>
 }
 /**
  * @category Instructions
- * @category CreateBatchV2
+ * @category IncrementAccountIndexV2
  * @category generated
  */
-export const createBatchV2Struct = new beet.FixableBeetArgsStruct<
-  CreateBatchV2InstructionArgs & {
+export const incrementAccountIndexV2Struct = new beet.FixableBeetArgsStruct<
+  IncrementAccountIndexV2InstructionArgs & {
     instructionDiscriminator: number[] /* size: 8 */
   }
 >(
   [
     ['instructionDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
-    ['args', createBatchArgsBeet],
     ['extraVerificationData', beet.coption(extraVerificationDataBeet)],
   ],
-  'CreateBatchV2InstructionArgs'
+  'IncrementAccountIndexV2InstructionArgs'
 )
 /**
- * Accounts required by the _createBatchV2_ instruction
+ * Accounts required by the _incrementAccountIndexV2_ instruction
  *
  * @property [_writable_] settings
- * @property [_writable_] batch
- * @property [] creator
- * @property [_writable_, **signer**] rentPayer
+ * @property [] signer
+ * @property [] program
  * @category Instructions
- * @category CreateBatchV2
+ * @category IncrementAccountIndexV2
  * @category generated
  */
-export type CreateBatchV2InstructionAccounts = {
+export type IncrementAccountIndexV2InstructionAccounts = {
   settings: web3.PublicKey
-  batch: web3.PublicKey
-  creator: web3.PublicKey
-  rentPayer: web3.PublicKey
-  systemProgram?: web3.PublicKey
+  signer: web3.PublicKey
+  program: web3.PublicKey
   anchorRemainingAccounts?: web3.AccountMeta[]
 }
 
-export const createBatchV2InstructionDiscriminator = [
-  7, 248, 71, 145, 129, 190, 40, 127,
+export const incrementAccountIndexV2InstructionDiscriminator = [
+  194, 217, 170, 161, 159, 121, 67, 252,
 ]
 
 /**
- * Creates a _CreateBatchV2_ instruction.
+ * Creates a _IncrementAccountIndexV2_ instruction.
  *
  * @param accounts that will be accessed while the instruction is processed
  * @param args to provide as instruction data to the program
  *
  * @category Instructions
- * @category CreateBatchV2
+ * @category IncrementAccountIndexV2
  * @category generated
  */
-export function createCreateBatchV2Instruction(
-  accounts: CreateBatchV2InstructionAccounts,
-  args: CreateBatchV2InstructionArgs,
+export function createIncrementAccountIndexV2Instruction(
+  accounts: IncrementAccountIndexV2InstructionAccounts,
+  args: IncrementAccountIndexV2InstructionArgs,
   programId = new web3.PublicKey('SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG')
 ) {
-  const [data] = createBatchV2Struct.serialize({
-    instructionDiscriminator: createBatchV2InstructionDiscriminator,
+  const [data] = incrementAccountIndexV2Struct.serialize({
+    instructionDiscriminator: incrementAccountIndexV2InstructionDiscriminator,
     ...args,
   })
   const keys: web3.AccountMeta[] = [
@@ -89,22 +83,12 @@ export function createCreateBatchV2Instruction(
       isSigner: false,
     },
     {
-      pubkey: accounts.batch,
-      isWritable: true,
-      isSigner: false,
-    },
-    {
-      pubkey: accounts.creator,
+      pubkey: accounts.signer,
       isWritable: false,
       isSigner: false,
     },
     {
-      pubkey: accounts.rentPayer,
-      isWritable: true,
-      isSigner: true,
-    },
-    {
-      pubkey: accounts.systemProgram ?? web3.SystemProgram.programId,
+      pubkey: accounts.program,
       isWritable: false,
       isSigner: false,
     },

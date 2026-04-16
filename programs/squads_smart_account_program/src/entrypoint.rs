@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, Discriminator};
 use anchor_lang::solana_program::{
     entrypoint::ProgramResult,
     system_program,
@@ -20,14 +20,14 @@ pub fn process_instruction<'info>(
         return crate::entry(program_id, accounts, data);
     }
 
+    // Every non-bypassed instruction must have the Instructions sysvar appended
+    // as the last account. Strip it before forwarding to Anchor so that all
+    // instruction contexts see a consistent account list.
     let (instructions_sysvar, anchor_accounts) = accounts
         .split_last()
         .ok_or(anchor_lang::solana_program::program_error::ProgramError::NotEnoughAccountKeys)?;
 
-    if let Err(error) = validate_never_nonce(instructions_sysvar) {
-        error.log();
-        return Err(error.into());
-    }
+    validate_never_nonce(instructions_sysvar)?;
 
     crate::entry(program_id, anchor_accounts, data)
 }
@@ -39,6 +39,9 @@ fn should_bypass_nonce_validation(data: &[u8]) -> bool {
 
     discriminator == anchor_lang::idl::IDL_IX_TAG_LE.as_ref()
         || discriminator == anchor_lang::event::EVENT_IX_TAG_LE.as_ref()
+        // LogEvent is invoked via self-CPI for event logging. It only emits
+        // program logs and does not modify any state — safe to bypass.
+        || discriminator == crate::instruction::LogEvent::DISCRIMINATOR
 }
 
 fn validate_never_nonce(instructions_sysvar: &AccountInfo) -> Result<()> {

@@ -39,7 +39,7 @@ export const executeTransactionSyncStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _executeTransactionSync_ instruction
  *
- * @property [] consensusAccount
+ * @property [_writable_] consensusAccount
  * @property [] program
  * @category Instructions
  * @category ExecuteTransactionSync

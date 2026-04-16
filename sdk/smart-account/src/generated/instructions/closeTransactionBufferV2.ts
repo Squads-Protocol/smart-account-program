@@ -41,7 +41,7 @@ export const closeTransactionBufferV2Struct = new beet.FixableBeetArgsStruct<
  *
  * @property [_writable_] consensusAccount
  * @property [_writable_] transactionBuffer
- * @property [_writable_] creator
+ * @property [] creator
  * @category Instructions
  * @category CloseTransactionBufferV2
  * @category generated
@@ -89,7 +89,7 @@ export function createCloseTransactionBufferV2Instruction(
     },
     {
       pubkey: accounts.creator,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
   ]
@@ -99,6 +99,12 @@ export function createCloseTransactionBufferV2Instruction(
       keys.push(acc)
     }
   }
+
+  keys.push({
+    pubkey: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+    isWritable: false,
+    isSigner: false,
+  })
 
   const ix = new web3.TransactionInstruction({
     programId,

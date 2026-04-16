@@ -212,7 +212,8 @@ for (const format of formatsToRun) {
       { commitment: "confirmed" }
     );
     const newSignerExists = updatedSettings.signers.some(
-      (signer) => signer.key.equals(allowedKeypair.publicKey)
+      (signer) =>
+        "key" in signer && signer.key.equals(allowedKeypair.publicKey)
     );
     assert.ok(newSignerExists, "New signer should be added to settings");
 

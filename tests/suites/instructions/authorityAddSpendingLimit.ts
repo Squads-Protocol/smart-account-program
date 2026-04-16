@@ -1,4 +1,4 @@
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
 import * as assert from "assert";
 import BN from "bn.js";
@@ -42,6 +42,23 @@ describe("Instructions / authority_add_spending_limit", () => {
         programId,
       })
     )[0];
+
+    // Increment account_utilization to unlock index 1 for spending limits
+    {
+      const ix = smartAccount.generated.createIncrementAccountIndexInstruction(
+        { settings: controlledsettingsPda, signer: members.almighty.publicKey, program: programId },
+        programId
+      );
+      const msg = new TransactionMessage({
+        payerKey: members.almighty.publicKey,
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        instructions: [ix],
+      }).compileToV0Message();
+      const tx = new VersionedTransaction(msg);
+      tx.sign([members.almighty]);
+      const sig = await connection.sendRawTransaction(tx.serialize());
+      await connection.confirmTransaction(sig);
+    }
 
     feePayer = await generateFundedKeypair(connection);
 

@@ -39,7 +39,7 @@ export const createTransactionBufferStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _createTransactionBuffer_ instruction
  *
- * @property [] consensusAccount
+ * @property [_writable_] consensusAccount
  * @property [_writable_] transactionBuffer
  * @property [] creator
  * @property [_writable_, **signer**] rentPayer

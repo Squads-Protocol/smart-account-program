@@ -39,7 +39,7 @@ export const addTransactionToBatchStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _addTransactionToBatch_ instruction
  *
- * @property [] settings
+ * @property [_writable_] settings
  * @property [] proposal
  * @property [_writable_] batch
  * @property [_writable_] transaction

@@ -16,11 +16,10 @@ export type P256NativeData = {
  * @category userTypes
  * @category generated
  */
-export const p256NativeDataBeet =
-  new beet.BeetArgsStruct<P256NativeData>(
-    [
-      ['compressedPubkey', beet.uniformFixedSizeArray(beet.u8, 33)],
-      ['sessionKeyData', sessionKeyDataBeet],
-    ],
-    'P256NativeData'
-  )
+export const p256NativeDataBeet = new beet.BeetArgsStruct<P256NativeData>(
+  [
+    ['compressedPubkey', beet.uniformFixedSizeArray(beet.u8, 33)],
+    ['sessionKeyData', sessionKeyDataBeet],
+  ],
+  'P256NativeData'
+)

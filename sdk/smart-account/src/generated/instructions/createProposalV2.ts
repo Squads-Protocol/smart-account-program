@@ -45,7 +45,7 @@ export const createProposalV2Struct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _createProposalV2_ instruction
  *
- * @property [] consensusAccount
+ * @property [_writable_] consensusAccount
  * @property [_writable_] proposal
  * @property [] creator
  * @property [_writable_, **signer**] rentPayer
@@ -125,6 +125,12 @@ export function createCreateProposalV2Instruction(
       keys.push(acc)
     }
   }
+
+  keys.push({
+    pubkey: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+    isWritable: false,
+    isSigner: false,
+  })
 
   const ix = new web3.TransactionInstruction({
     programId,

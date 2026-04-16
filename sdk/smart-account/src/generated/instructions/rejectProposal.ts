@@ -39,8 +39,8 @@ export const rejectProposalStruct = new beet.FixableBeetArgsStruct<
 /**
  * Accounts required by the _rejectProposal_ instruction
  *
- * @property [] consensusAccount
- * @property [_writable_] signer
+ * @property [_writable_] consensusAccount
+ * @property [] signer
  * @property [_writable_] proposal
  * @property [] program
  * @category Instructions
@@ -90,7 +90,7 @@ export function createRejectProposalInstruction(
     },
     {
       pubkey: accounts.signer,
-      isWritable: true,
+      isWritable: false,
       isSigner: false,
     },
     {
