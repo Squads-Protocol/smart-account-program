@@ -181,6 +181,10 @@ impl<'info> SyncTransaction<'info> {
             .get(args.num_signers as usize)
             .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
         { 1usize } else { 0usize };
+        let outer_signer_keys: Vec<Pubkey> = ctx.remaining_accounts[..args.num_signers as usize]
+            .iter()
+            .map(|acc| *acc.key)
+            .collect();
         let remaining_accounts = &ctx.remaining_accounts[args.num_signers as usize + sysvar_offset..];
 
         let consensus_account_key = consensus_account.key();
@@ -197,7 +201,6 @@ impl<'info> SyncTransaction<'info> {
                 // Get the payload
                 let payload = args.payload.to_transaction_payload()?;
 
-                let settings = consensus_account.read_only_settings()?;
                 let settings_key = consensus_account_key;
                 // Deserialize the instructions
                 let compiled_instructions =
@@ -232,7 +235,7 @@ impl<'info> SyncTransaction<'info> {
                 let executable_message = SynchronousTransactionMessage::new_validated(
                     &settings_key,
                     &smart_account_pubkey,
-                    &settings.signers.as_v2(),
+                    &outer_signer_keys,
                     &settings_compiled_instructions,
                     &remaining_accounts,
                 )?;

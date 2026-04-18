@@ -1461,10 +1461,16 @@ impl ProgramInteractionPolicy {
             )?;
         }
 
+        let policy_signer_keys: Vec<Pubkey> = args
+            .policy_signers
+            .iter()
+            .map(|signer| signer.key())
+            .collect();
+
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
-            &args.policy_signers,
+            &policy_signer_keys,
             &settings_compiled_instructions,
             accounts,
         )?;
