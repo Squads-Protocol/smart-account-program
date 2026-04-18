@@ -736,6 +736,10 @@ impl Settings {
             }
 
             SettingsAction::MigrateToV2 => {
+                require!(
+                    matches!(self.signers, SmartAccountSignerWrapper::V1(_)),
+                    SmartAccountError::InvalidInstructionArgs
+                );
                 self.signers.force_v2();
                 self.invalidate_prior_transactions();
             }
