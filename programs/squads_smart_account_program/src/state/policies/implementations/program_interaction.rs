@@ -1461,16 +1461,20 @@ impl ProgramInteractionPolicy {
             )?;
         }
 
-        let policy_signer_keys: Vec<Pubkey> = args
-            .policy_signers
+        // Collect raw account keys from the accounts array for signer stripping.
+        // Must use raw AccountInfo keys (not canonical SmartAccountSigner keys) so
+        // session keys get stripped — their raw address differs from the parent's
+        // canonical key. Matches the pattern in transaction_execute_sync.rs.
+        let outer_signer_keys: Vec<Pubkey> = accounts
             .iter()
-            .map(|signer| signer.key())
+            .filter(|acc| acc.is_signer)
+            .map(|acc| *acc.key)
             .collect();
 
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
-            &policy_signer_keys,
+            &outer_signer_keys,
             &settings_compiled_instructions,
             accounts,
         )?;

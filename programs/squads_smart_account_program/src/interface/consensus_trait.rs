@@ -25,6 +25,7 @@ pub trait Consensus {
 
     // Core consensus fields
     fn signers(&self) -> &SmartAccountSignerWrapper;
+    fn signers_mut(&mut self) -> &mut SmartAccountSignerWrapper;
     fn threshold(&self) -> u16;
     fn time_lock(&self) -> u32;
     fn transaction_index(&self) -> u64;

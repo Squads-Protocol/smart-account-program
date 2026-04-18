@@ -838,6 +838,10 @@ impl Consensus for Settings {
         &self.signers
     }
 
+    fn signers_mut(&mut self) -> &mut SmartAccountSignerWrapper {
+        &mut self.signers
+    }
+
     fn threshold(&self) -> u16 {
         self.threshold
     }

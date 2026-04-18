@@ -160,6 +160,10 @@ impl Consensus for ConsensusAccount {
         self.as_consensus().signers()
     }
 
+    fn signers_mut(&mut self) -> &mut SmartAccountSignerWrapper {
+        self.as_consensus_mut().signers_mut()
+    }
+
     fn threshold(&self) -> u16 {
         self.as_consensus().threshold()
     }
