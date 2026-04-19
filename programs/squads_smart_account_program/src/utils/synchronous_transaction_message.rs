@@ -16,14 +16,12 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
     pub fn new_validated(
         settings_key: &Pubkey,
         smart_account_pubkey: &Pubkey,
-        consensus_account_signers: &[SmartAccountSigner],
+        outer_signer_keys: &[Pubkey],
         instructions: &'a [SmartAccountCompiledInstruction],
         remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<Self> {
-
         // Validate instruction indices first
         for instruction in instructions {
-
             require!(
                 (instruction.program_id_index as usize) < remaining_accounts.len(),
                 SmartAccountError::InvalidTransactionMessage
@@ -43,17 +41,16 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
             let mut account_info = account.clone();
 
             // For remaining accounts:
-            // - Set account as signer
-            // - Remove signer privilege from any smart account signers
-            // - Set smart account as non-writable
+            // - Set the smart account PDA as signer
+            // - Prevent re-entrancy through the settings account
+            // - Strip signer privilege from any outer authenticated signer
+            //   that is duplicated into the inner CPI account set
             if account.key == smart_account_pubkey {
                 account_info.is_signer = true;
             } else if account.key == settings_key {
                 // This prevents dangerous re-entrancy
                 account_info.is_writable = false;
-            } else if consensus_account_signers.iter().any(|signer| &signer.key() == account.key) && account.is_signer {
-                // We may want to remove this so that a signer can be a rent
-                // or feepayer on any of the CPI instructions
+            } else if account.is_signer && outer_signer_keys.iter().any(|key| key == account.key) {
                 account_info.is_signer = false;
             }
 

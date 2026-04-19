@@ -13,7 +13,8 @@ pub struct CreateTransactionFromBuffer<'info> {
 
     #[account(
         mut,
-        close = creator,
+        close = rent_collector,
+        has_one = rent_collector,
         // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
@@ -30,10 +31,14 @@ pub struct CreateTransactionFromBuffer<'info> {
     // transaction_create, so we just re-pass it here with the same constraint
     /// CHECK: Must match transaction_create.creator
     #[account(
-        mut,
         address = transaction_create.creator.key(),
     )]
     pub creator: AccountInfo<'info>,
+
+    /// CHECK: Validated via has_one on transaction_buffer.
+    /// Receives lamports on buffer close.
+    #[account(mut)]
+    pub rent_collector: AccountInfo<'info>,
 }
 
 impl<'info> CreateTransactionFromBuffer<'info> {
@@ -53,8 +58,15 @@ impl<'info> CreateTransactionFromBuffer<'info> {
             consensus_account.transaction_index().checked_add(1).unwrap(),
         );
 
+        // Strip instructions sysvar (if at [0]) before is_active so
+        // SettingsState expiration sees the Settings account at [0].
+        let accounts_for_active = if remaining_accounts
+            .first()
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { &remaining_accounts[1..] } else { remaining_accounts };
+
         // Check if the consensus account is active
-        consensus_account.is_active(&remaining_accounts)?;
+        consensus_account.is_active(accounts_for_active)?;
 
         // Validate account index is unlocked for Settings-based transactions
         if consensus_account.account_type() == ConsensusAccountType::Settings {

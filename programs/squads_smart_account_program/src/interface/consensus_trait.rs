@@ -25,6 +25,7 @@ pub trait Consensus {
 
     // Core consensus fields
     fn signers(&self) -> &SmartAccountSignerWrapper;
+    fn signers_mut(&mut self) -> &mut SmartAccountSignerWrapper;
     fn threshold(&self) -> u16;
     fn time_lock(&self) -> u32;
     fn transaction_index(&self) -> u64;
@@ -59,6 +60,8 @@ pub trait Consensus {
             return Err(SmartAccountError::NotASigner.into());
         }
 
+        let now = Clock::get()?.unix_timestamp as u64;
+
         // Slow path: native tx signer - check native match and session key match
         for signer in self.signers_v2().into_iter() {
             match signer.signer_type() {
@@ -69,8 +72,11 @@ pub trait Consensus {
                 }
                 _ => {
                     // Check for session key match — return parent signer's key
-                    if signer.get_session_key_data_if_matches(&signer_key).is_some() {
-                        return Ok(signer.key());
+                    // only if the session key has not expired.
+                    if let Some(skd) = signer.get_session_key_data_if_matches(&signer_key) {
+                        if skd.expiration > now {
+                            return Ok(signer.key());
+                        }
                     }
                 }
             }

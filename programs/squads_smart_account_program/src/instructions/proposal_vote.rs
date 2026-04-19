@@ -58,8 +58,15 @@ impl VoteOnProposal<'_> {
             ..
         } = self;
 
+        // Strip instructions sysvar (if at [0]) before is_active so
+        // SettingsState expiration sees the Settings account at [0].
+        let accounts_for_active = if remaining_accounts
+            .first()
+            .map_or(false, |acc| acc.key == &anchor_lang::solana_program::sysvar::instructions::ID)
+        { &remaining_accounts[1..] } else { remaining_accounts };
+
         // Check if the consensus account is active
-        consensus_account.is_active(&remaining_accounts)?;
+        consensus_account.is_active(accounts_for_active)?;
 
         // proposal
         match vote {
@@ -224,10 +231,21 @@ impl VoteOnProposal<'_> {
         let resolved_key = signer.resolved_key()?;
         proposal.cancel(resolved_key, usize::from(consensus_account.threshold()))?;
 
+        // Resolve rent payer: use signer if it's a native tx signer,
+        // otherwise fall back to the last remaining account.
+        let rent_payer = if signer.to_account_info().is_signer && signer.to_account_info().is_writable {
+            signer.to_account_info().clone()
+        } else {
+            let payer = ctx.remaining_accounts.last()
+                .ok_or(SmartAccountError::MissingAccount)?;
+            require!(payer.is_signer && payer.is_writable, SmartAccountError::MissingAccount);
+            payer.clone()
+        };
+
         Proposal::realloc_if_needed(
             proposal.to_account_info().clone(),
             consensus_account.signers_len(),
-            Some(signer.to_account_info().clone()),
+            Some(rent_payer),
             Some(system_program.to_account_info().clone()),
         )?;
 

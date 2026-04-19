@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::{errors::*, program::SquadsSmartAccountProgram, state::*};
+use crate::consensus_trait::Consensus;
+use crate::interface::consensus::ConsensusAccount;
 use crate::instructions::*;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::{
@@ -18,8 +20,11 @@ pub struct CreateSessionKeyArgs {
 
 #[derive(Accounts)]
 pub struct CreateSessionKey<'info> {
-    #[account(mut)]
-    pub settings: Account<'info, Settings>,
+    #[account(
+        mut,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
+    )]
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     pub signer: ResolvedSigner<'info>,
 
@@ -36,12 +41,12 @@ impl CreateSessionKey<'_> {
         let extra_verification_data = extra_verification_data
             .as_ref()
             .ok_or(SmartAccountError::MissingExtraVerificationData)?;
-        let settings = &self.settings;
+        let consensus_account = &self.consensus_account;
         let signer_key = self.signer.key();
 
-        // Look up the signer in settings — must exist and be an external signer
-        let signer = settings
-            .signers
+        // Look up the signer — must exist and be an external signer
+        let signer = consensus_account
+            .signers()
             .find(&signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
@@ -52,7 +57,7 @@ impl CreateSessionKey<'_> {
 
         // Build domain-specific message for session key creation
         let message = create_session_key_message(
-            &settings.key(),
+            &consensus_account.key(),
             &signer_key,
             &args.session_key,
             args.session_key_expiration,
@@ -80,14 +85,14 @@ impl CreateSessionKey<'_> {
 
         // Apply counter update if needed (WebAuthn)
         if let Some(new_counter) = counter_update {
-            self.settings
-                .signers
+            self.consensus_account
+                .signers_mut()
                 .update_signer_counter(&signer_key, new_counter)?;
         }
 
         // Apply nonce update
-        self.settings
-            .signers
+        self.consensus_account
+            .signers_mut()
             .update_signer_nonce(&signer_key, next_nonce)?;
 
         Ok(())
@@ -95,22 +100,23 @@ impl CreateSessionKey<'_> {
 
     /// Create a session key for an external signer.
     ///
-    /// Only external signers (P256Webauthn, Secp256k1, Ed25519External) support session keys.
+    /// Only external signers (P256Webauthn, Secp256k1, Ed25519External, P256Native) support session keys.
     /// The external signer must prove ownership via precompile or syscall verification.
+    /// Works on both Settings and Policy consensus accounts.
     #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts, &extra_verification_data))]
     pub fn create_session_key(
         ctx: Context<Self>,
         args: CreateSessionKeyArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        let consensus_account = &mut ctx.accounts.consensus_account;
         let signer_key = ctx.accounts.signer.key();
         let now = Clock::get()?.unix_timestamp as u64;
 
         // Prevent session key from colliding with an existing signer key.
         // If a signer is later removed, the session key could inherit an unexpected role.
         require!(
-            settings.signers.find(&args.session_key).is_none(),
+            consensus_account.signers().find(&args.session_key).is_none(),
             SmartAccountError::InvalidSessionKey
         );
 
@@ -118,20 +124,20 @@ impl CreateSessionKey<'_> {
         // Without this, find_signer_by_session_key returns the first match,
         // silently shadowing the second signer's session key.
         require!(
-            !settings.signers.has_session_key_assigned(&args.session_key),
+            !consensus_account.signers().has_session_key_assigned(&args.session_key),
             SmartAccountError::InvalidSessionKey
         );
 
         // Get mutable reference to the signer and set session key
-        let signer = settings
-            .signers
+        let signer = consensus_account
+            .signers_mut()
             .find_mut(&signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
         signer.set_session_key(args.session_key, args.session_key_expiration, now)?;
 
-        // Re-validate settings invariant after mutation
-        settings.invariant()?;
+        // Re-validate consensus invariant after mutation
+        consensus_account.invariant()?;
 
         Ok(())
     }

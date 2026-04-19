@@ -136,11 +136,15 @@ impl LegacySyncTransaction<'_> {
             smart_account_seeds[3],
             &[smart_account_bump],
         ];
+        let outer_signer_keys: Vec<Pubkey> = ctx.remaining_accounts[..args.num_signers as usize]
+            .iter()
+            .map(|acc| *acc.key)
+            .collect();
 
         let executable_message = SynchronousTransactionMessage::new_validated(
             &settings_key,
             &smart_account_pubkey,
-            &settings.signers.as_v2(),
+            &outer_signer_keys,
             &settings_compiled_instructions,
             &ctx.remaining_accounts,
         )?;

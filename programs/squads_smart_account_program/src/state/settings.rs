@@ -736,6 +736,10 @@ impl Settings {
             }
 
             SettingsAction::MigrateToV2 => {
+                require!(
+                    matches!(self.signers, SmartAccountSignerWrapper::V1(_)),
+                    SmartAccountError::InvalidInstructionArgs
+                );
                 self.signers.force_v2();
                 self.invalidate_prior_transactions();
             }
@@ -836,6 +840,10 @@ impl Consensus for Settings {
 
     fn signers(&self) -> &SmartAccountSignerWrapper {
         &self.signers
+    }
+
+    fn signers_mut(&mut self) -> &mut SmartAccountSignerWrapper {
+        &mut self.signers
     }
 
     fn threshold(&self) -> u16 {

@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 
 use crate::{errors::*, program::SquadsSmartAccountProgram, state::*};
+use crate::consensus_trait::Consensus;
+use crate::interface::consensus::ConsensusAccount;
 use crate::state::signer_v2::ExtraVerificationData;
 use crate::state::signer_v2::precompile::{
     create_revoke_session_key_message, split_instructions_sysvar, verify_precompile_signers,
@@ -15,8 +17,11 @@ pub struct RevokeSessionKeyArgs {
 
 #[derive(Accounts)]
 pub struct RevokeSessionKey<'info> {
-    #[account(mut)]
-    pub settings: Account<'info, Settings>,
+    #[account(
+        mut,
+        constraint = consensus_account.check_derivation(consensus_account.key()).is_ok()
+    )]
+    pub consensus_account: InterfaceAccount<'info, ConsensusAccount>,
 
     /// The authority revoking the session key. Can be either:
     /// 1. The external signer (verified via precompile/syscall)
@@ -32,18 +37,19 @@ impl RevokeSessionKey<'_> {
     ///
     /// Authorization: either the external signer (via precompile/syscall)
     /// or the current active session key holder (via native signature).
+    /// Works on both Settings and Policy consensus accounts.
     pub fn revoke_session_key(
         ctx: Context<Self>,
         args: RevokeSessionKeyArgs,
         extra_verification_data: Option<ExtraVerificationData>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        let consensus_account = &mut ctx.accounts.consensus_account;
         let authority_key = *ctx.accounts.authority.key;
         let now = Clock::get()?.unix_timestamp as u64;
 
         // Look up the target signer — must exist and be external
-        let signer = settings
-            .signers
+        let signer = consensus_account
+            .signers()
             .find(&args.signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
@@ -58,7 +64,7 @@ impl RevokeSessionKey<'_> {
                 .ok_or(SmartAccountError::MissingExtraVerificationData)?;
 
             let message = create_revoke_session_key_message(
-                &settings.key(),
+                &consensus_account.key(),
                 &args.signer_key,
             );
 
@@ -83,14 +89,14 @@ impl RevokeSessionKey<'_> {
 
             // Apply counter update if needed (WebAuthn)
             if let Some(new_counter) = counter_update {
-                settings
-                    .signers
+                consensus_account
+                    .signers_mut()
                     .update_signer_counter(&args.signer_key, new_counter)?;
             }
 
             // Apply nonce update
-            settings
-                .signers
+            consensus_account
+                .signers_mut()
                 .update_signer_nonce(&args.signer_key, next_nonce)?;
         } else {
             // Path 2: Session key holder is revoking their own delegation
@@ -107,15 +113,15 @@ impl RevokeSessionKey<'_> {
         }
 
         // Clear the session key
-        let signer_mut = settings
-            .signers
+        let signer_mut = consensus_account
+            .signers_mut()
             .find_mut(&args.signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
         signer_mut.clear_session_key()?;
 
-        // Re-validate settings invariant after mutation
-        settings.invariant()?;
+        // Re-validate consensus invariant after mutation
+        consensus_account.invariant()?;
 
         Ok(())
     }
