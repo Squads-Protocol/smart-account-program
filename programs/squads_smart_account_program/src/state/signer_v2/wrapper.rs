@@ -296,6 +296,13 @@ impl SmartAccountSignerWrapper {
             !self.has_duplicate_public_key(&signer),
             crate::errors::SmartAccountError::DuplicateSigner
         );
+        // Prevent reverse collision: new signer's key must not match any
+        // existing session key, otherwise the session key holder could
+        // authenticate as the wrong signer.
+        require!(
+            !self.has_session_key_assigned(&signer.key()),
+            crate::errors::SmartAccountError::DuplicateSigner
+        );
         self.push(signer)
     }
 
