@@ -17,7 +17,8 @@ pub struct CloseTransactionBuffer<'info> {
 
     #[account(
         mut,
-        close = creator,
+        close = rent_collector,
+        has_one = rent_collector,
         // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
@@ -30,9 +31,14 @@ pub struct CloseTransactionBuffer<'info> {
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    /// CHECK: Verified in validate. Uses AccountInfo (not ResolvedSigner) because
-    /// Anchor's `close = creator` requires the target to support mut constraints.
+    /// CHECK: Verified in validate. The creator authorizes the close but
+    /// lamports go to rent_collector.
     pub creator: AccountInfo<'info>,
+
+    /// CHECK: Validated via has_one on transaction_buffer.
+    /// Receives lamports on close.
+    #[account(mut)]
+    pub rent_collector: AccountInfo<'info>,
 }
 
 impl CloseTransactionBuffer<'_> {

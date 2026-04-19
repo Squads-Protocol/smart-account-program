@@ -201,6 +201,7 @@ impl<'info> CreateTransactionBuffer<'info> {
         let buffer = TransactionBuffer {
             settings: consensus_account_key,
             creator: pda_creator_key,
+            rent_collector: ctx.accounts.rent_payer.key(),
             buffer_index: args.buffer_index,
             account_index: args.account_index,
             final_buffer_hash: args.final_buffer_hash,

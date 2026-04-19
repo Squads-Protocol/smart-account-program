@@ -13,7 +13,8 @@ pub struct CreateTransactionFromBuffer<'info> {
 
     #[account(
         mut,
-        close = creator,
+        close = rent_collector,
+        has_one = rent_collector,
         // PDA derived from stored creator (canonical key for V2, raw key for V1)
         seeds = [
             SEED_PREFIX,
@@ -30,10 +31,14 @@ pub struct CreateTransactionFromBuffer<'info> {
     // transaction_create, so we just re-pass it here with the same constraint
     /// CHECK: Must match transaction_create.creator
     #[account(
-        mut,
         address = transaction_create.creator.key(),
     )]
     pub creator: AccountInfo<'info>,
+
+    /// CHECK: Validated via has_one on transaction_buffer.
+    /// Receives lamports on buffer close.
+    #[account(mut)]
+    pub rent_collector: AccountInfo<'info>,
 }
 
 impl<'info> CreateTransactionFromBuffer<'info> {

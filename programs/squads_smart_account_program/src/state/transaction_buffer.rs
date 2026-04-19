@@ -12,6 +12,8 @@ pub struct TransactionBuffer {
     pub settings: Pubkey,
     /// Signer of the smart account who created the TransactionBuffer.
     pub creator: Pubkey,
+    /// The account that paid rent and will receive lamports on close.
+    pub rent_collector: Pubkey,
     /// Index to seed address derivation
     pub buffer_index: u8,
     /// Smart account index of the transaction this buffer belongs to.
@@ -34,6 +36,7 @@ impl TransactionBuffer {
             8 +   // anchor account discriminator
             32 +  // multisig
             32 +  // creator
+            32 +  // rent_collector
             1 +   // buffer_index
             1 +   // vault_index
             32 +  // transaction_message_hash
