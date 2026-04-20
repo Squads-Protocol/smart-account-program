@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::pubkey;
 
 use crate::{
     errors::SmartAccountError,
@@ -10,6 +11,13 @@ use crate::{
         SEED_SETTINGS,
     },
 };
+
+// TODO: update before mainnet
+#[cfg(not(feature = "testing"))]
+const INCREMENT_AUTHORITY: Pubkey = pubkey!("11111111111111111111111111111111");
+
+#[cfg(feature = "testing")]
+const INCREMENT_AUTHORITY: Pubkey = pubkey!("DuFcCkArwSCTZ516uFbUcBYUM9TQdAo4xNDLWrzUnDGW");
 
 #[derive(Accounts)]
 pub struct IncrementAccountIndex<'info> {
@@ -34,24 +42,28 @@ impl IncrementAccountIndex<'_> {
         let settings = &self.settings;
         let signer_key = self.signer.key();
 
-        // Signer must be a member of the smart account
+        // Cannot exceed free account range
+        require!(
+            settings.account_utilization < FREE_ACCOUNT_MAX_INDEX,
+            SmartAccountError::MaxAccountIndexReached
+        );
+
+        // Increment authority can always increment
+        if signer_key == INCREMENT_AUTHORITY {
+            return Ok(());
+        }
+
+        // Member with any permission
         let signer_index = settings
             .is_signer(signer_key)
             .ok_or(SmartAccountError::NotASigner)?;
 
-        // Permission: Initiate OR Vote OR Execute (mask & 7 != 0)
         let permissions = settings.signers[signer_index].permissions;
         require!(
             permissions.has(Permission::Initiate)
                 || permissions.has(Permission::Vote)
                 || permissions.has(Permission::Execute),
             SmartAccountError::Unauthorized
-        );
-
-        // Cannot exceed free account range
-        require!(
-            settings.account_utilization < FREE_ACCOUNT_MAX_INDEX,
-            SmartAccountError::MaxAccountIndexReached
         );
 
         Ok(())
