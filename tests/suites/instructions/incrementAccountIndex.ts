@@ -7,6 +7,8 @@ import {
 } from "@solana/web3.js";
 import * as smartAccount from "@sqds/smart-account";
 import assert from "assert";
+import * as fs from "fs";
+import * as path from "path";
 import {
   createAutonomousSmartAccountV2,
   createLocalhostConnection,
@@ -15,6 +17,15 @@ import {
   getTestProgramId,
   TestMembers,
 } from "../../utils";
+
+function loadKeypairFromFile(filePath: string): Keypair {
+  const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  return Keypair.fromSecretKey(Uint8Array.from(raw));
+}
+
+const incrementAuthority = loadKeypairFromFile(
+  path.resolve(__dirname, "../../../test-increment-authority.json")
+);
 
 const { Settings } = smartAccount.accounts;
 const programId = getTestProgramId();
@@ -268,6 +279,51 @@ describe("Instructions / increment_account_index", () => {
 
     const tx = new VersionedTransaction(message);
     tx.sign([members.executor]);
+
+    const signature = await connection.sendRawTransaction(tx.serialize());
+    await connection.confirmTransaction(signature);
+
+    const settingsAccount = await Settings.fromAccountAddress(
+      connection,
+      settingsPda
+    );
+    assert.strictEqual(settingsAccount.accountUtilization, 1);
+  });
+
+  it("increment authority can increment without being a member", async () => {
+    const accountIndex = await getNextAccountIndex(connection, programId);
+    const [settingsPda] = await createAutonomousSmartAccountV2({
+      connection,
+      accountIndex,
+      members,
+      threshold: 2,
+      timeLock: 0,
+      rentCollector: null,
+      programId,
+    });
+
+    // Airdrop to the increment authority
+    await connection.confirmTransaction(
+      await connection.requestAirdrop(
+        incrementAuthority.publicKey,
+        LAMPORTS_PER_SOL
+      )
+    );
+
+    const incrementIx = createIncrementAccountIndexInstruction(
+      settingsPda,
+      incrementAuthority.publicKey,
+      programId
+    );
+
+    const message = new TransactionMessage({
+      payerKey: incrementAuthority.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions: [incrementIx],
+    }).compileToV0Message();
+
+    const tx = new VersionedTransaction(message);
+    tx.sign([incrementAuthority]);
 
     const signature = await connection.sendRawTransaction(tx.serialize());
     await connection.confirmTransaction(signature);
