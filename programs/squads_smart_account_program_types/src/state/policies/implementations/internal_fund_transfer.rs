@@ -22,9 +22,9 @@ impl InternalFundTransferPolicy {
     /// Convert a bitmask to a list of indices.
     pub fn mask_to_indices(mask: &[u8; 32]) -> Vec<u8> {
         let mut indices = Vec::new();
-        for i in 0..32 {
+        for (i, byte) in mask.iter().enumerate() {
             for j in 0..8 {
-                if mask[i] & (1 << j) != 0 {
+                if byte & (1 << j) != 0 {
                     indices.push((i * 8 + j) as u8);
                 }
             }

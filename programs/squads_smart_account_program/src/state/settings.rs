@@ -306,13 +306,13 @@ impl SettingsExt for Settings {
             }
 
             SettingsAction::PolicyCreate {
-                seed,
                 policy_creation_payload,
                 signers,
                 threshold,
                 time_lock,
                 start_timestamp,
                 expiration_args,
+                ..
             } => {
                 // Increment the policy seed if it exists, otherwise set it to
                 // 1 (First policy is being created)
