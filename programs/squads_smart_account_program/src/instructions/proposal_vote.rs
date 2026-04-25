@@ -52,7 +52,7 @@ impl VoteOnProposal<'_> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(ctx.remaining_accounts)?;
 
         // signer
         require!(

@@ -45,6 +45,7 @@ pub trait SettingsExt {
         rent_payer: Option<AccountInfo<'a>>,
         system_program: Option<AccountInfo<'a>>,
     ) -> Result<bool>;
+    #[allow(clippy::too_many_arguments)]
     fn modify_with_action<'info>(
         &mut self,
         self_key: &Pubkey,
@@ -282,7 +283,7 @@ impl SettingsExt for Settings {
 
                 require_keys_eq!(
                     spending_limit.settings,
-                    self_key.to_owned(),
+                    *self_key,
                     SmartAccountError::InvalidAccount
                 );
 
@@ -471,7 +472,7 @@ impl SettingsExt for Settings {
 
                 require_keys_eq!(
                     policy.settings,
-                    self_key.to_owned(),
+                    *self_key,
                     SmartAccountError::InvalidAccount
                 );
 
@@ -595,7 +596,7 @@ impl SettingsExt for Settings {
                 // Verify the policy belongs to this settings account
                 require_keys_eq!(
                     policy.settings,
-                    self_key.to_owned(),
+                    *self_key,
                     SmartAccountError::InvalidAccount
                 );
                 // Verify the policy rent collector matche the account getting reimbursed

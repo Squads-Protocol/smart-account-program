@@ -68,7 +68,7 @@ impl<'info> ExecuteTransaction<'info> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(ctx.remaining_accounts)?;
 
         // signer
         require!(
@@ -131,7 +131,7 @@ impl<'info> ExecuteTransaction<'info> {
                 ];
 
                 let (smart_account_key, smart_account_bump) =
-                    Pubkey::find_program_address(smart_account_seeds, &ctx.program_id);
+                    Pubkey::find_program_address(smart_account_seeds, ctx.program_id);
 
                 let smart_account_signer_seeds = &[
                     smart_account_seeds[0],
@@ -197,8 +197,8 @@ impl<'info> ExecuteTransaction<'info> {
                 let remaining_accounts = &ctx.remaining_accounts[account_offset..];
 
                 policy.execute(
-                    Some(&transaction),
-                    Some(&proposal),
+                    Some(transaction),
+                    Some(proposal),
                     &policy_payload.payload,
                     remaining_accounts,
                 )?;

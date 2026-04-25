@@ -127,14 +127,10 @@ impl PolicyExt for Policy {
                     settings_key: self.settings,
                     // if the transaction account is not provided, use a default
                     // pubkey (sync transactions)
-                    transaction_key: transaction_account
-                        .map(|t| t.key())
-                        .unwrap_or(Pubkey::default()),
+                    transaction_key: transaction_account.map(|t| t.key()).unwrap_or_default(),
                     // if the proposal account is not provided, use a default
                     // pubkey (sync transactions)
-                    proposal_key: proposal_account
-                        .map(|p| p.key())
-                        .unwrap_or(Pubkey::default()),
+                    proposal_key: proposal_account.map(|p| p.key()).unwrap_or_default(),
                     policy_signers: self.signers.clone(),
                 };
                 policy_state.execute_payload(args, payload, accounts)
@@ -186,7 +182,7 @@ impl Consensus for Policy {
                 );
                 // Deserialize the settings account
                 let account_data = settings_account_info.try_borrow_data()?;
-                let settings = Settings::try_deserialize(&mut &**account_data)?;
+                let settings = Settings::try_deserialize(&account_data)?;
 
                 // Generate the current core state hash
                 let current_hash = crate::state::SettingsExt::generate_core_state_hash(&settings)?;

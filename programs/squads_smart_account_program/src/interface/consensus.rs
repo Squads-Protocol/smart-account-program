@@ -15,7 +15,7 @@ use super::consensus_trait::{Consensus, ConsensusAccountType};
 #[derive(Clone)]
 pub enum ConsensusAccount {
     Settings(Settings),
-    Policy(Policy),
+    Policy(Box<Policy>),
 }
 
 static OWNERS: [Pubkey; 1] = [crate::ID];
@@ -46,7 +46,9 @@ impl AccountDeserialize for ConsensusAccount {
             Settings::DISCRIMINATOR => Ok(ConsensusAccount::Settings(Settings::try_deserialize(
                 reader,
             )?)),
-            Policy::DISCRIMINATOR => Ok(ConsensusAccount::Policy(Policy::try_deserialize(reader)?)),
+            Policy::DISCRIMINATOR => Ok(ConsensusAccount::Policy(Box::new(
+                Policy::try_deserialize(reader)?,
+            ))),
             _ => Err(anchor_lang::error::Error::from(
                 anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch,
             )),
@@ -59,9 +61,9 @@ impl AccountDeserialize for ConsensusAccount {
             Settings::DISCRIMINATOR => Ok(ConsensusAccount::Settings(
                 Settings::try_deserialize_unchecked(buf)?,
             )),
-            Policy::DISCRIMINATOR => Ok(ConsensusAccount::Policy(
+            Policy::DISCRIMINATOR => Ok(ConsensusAccount::Policy(Box::new(
                 Policy::try_deserialize_unchecked(buf)?,
-            )),
+            ))),
             _ => Err(anchor_lang::error::Error::from(
                 anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch,
             )),
@@ -115,7 +117,7 @@ impl ConsensusAccount {
     pub fn policy(&mut self) -> Result<&mut Policy> {
         match self {
             ConsensusAccount::Settings(_) => {
-                return Err(SmartAccountError::ConsensusAccountNotPolicy.into())
+                Err(SmartAccountError::ConsensusAccountNotPolicy.into())
             }
             ConsensusAccount::Policy(policy) => Ok(policy),
         }
@@ -125,7 +127,7 @@ impl ConsensusAccount {
     pub fn read_only_policy(&self) -> Result<&Policy> {
         match self {
             ConsensusAccount::Settings(_) => {
-                return Err(SmartAccountError::ConsensusAccountNotPolicy.into())
+                Err(SmartAccountError::ConsensusAccountNotPolicy.into())
             }
             ConsensusAccount::Policy(policy) => Ok(policy),
         }
@@ -135,7 +137,7 @@ impl ConsensusAccount {
     fn as_consensus(&self) -> &dyn Consensus {
         match self {
             ConsensusAccount::Settings(settings) => settings,
-            ConsensusAccount::Policy(policy) => policy,
+            ConsensusAccount::Policy(policy) => policy.as_ref(),
         }
     }
 
@@ -143,7 +145,7 @@ impl ConsensusAccount {
     fn as_consensus_mut(&mut self) -> &mut dyn Consensus {
         match self {
             ConsensusAccount::Settings(settings) => settings,
-            ConsensusAccount::Policy(policy) => policy,
+            ConsensusAccount::Policy(policy) => policy.as_mut(),
         }
     }
 }

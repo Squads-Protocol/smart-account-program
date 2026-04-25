@@ -195,7 +195,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             .map(Vec::as_slice)
             .collect::<Vec<&[&[u8]]>>();
         // Add the smart account seeds.
-        signer_seeds.push(&smart_account_seeds);
+        signer_seeds.push(smart_account_seeds);
 
         // NOTE: `self.to_instructions_and_accounts()` calls `take()` on
         // `self.message.instructions`, therefore after this point no more
@@ -210,7 +210,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 );
             }
             LogEvent::check_instruction(ix)?;
-            invoke_signed(&ix, &account_infos, &signer_seeds)?;
+            invoke_signed(ix, account_infos, &signer_seeds)?;
         }
         Ok(())
     }
@@ -254,6 +254,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         index < self.loaded_writable_accounts.len()
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 

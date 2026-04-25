@@ -118,7 +118,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
 
         // Reallocate the transaction account to the new length of the
         // actual transaction message
-        AccountInfo::realloc(&transaction_account_info, new_len, true)?;
+        AccountInfo::realloc(transaction_account_info, new_len, true)?;
 
         // Create the args for the `create_transaction` instruction
         let create_args = match &args {

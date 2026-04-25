@@ -46,7 +46,7 @@ pub fn check_pre_balances<'info>(
     let token_program_ids = TokenInterface::ids();
     for account in accounts {
         // Only track accounts owned by a token program and that are writable
-        if token_program_ids.contains(&account.owner) && account.is_writable {
+        if token_program_ids.contains(account.owner) && account.is_writable {
             // This may fail for accounts that are not token accounts, so skip if it does
             let Ok(token_account) = InterfaceAccount::<TokenAccount>::try_from(account) else {
                 continue;
@@ -80,10 +80,7 @@ pub fn check_pre_balances<'info>(
 
 impl<'info> Balances<'info> {
     /// Evaluate balance changes against the spending limits
-    pub fn evaluate_balance_changes(
-        &self,
-        spending_limits: &mut Vec<SpendingLimitV2>,
-    ) -> Result<()> {
+    pub fn evaluate_balance_changes(&self, spending_limits: &mut [SpendingLimitV2]) -> Result<()> {
         // Get the current timestamp
         let current_timestamp = Clock::get()?.unix_timestamp;
 

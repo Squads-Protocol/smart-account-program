@@ -107,11 +107,11 @@ pub trait ProgramInteractionPolicyExt {
         payload: &ProgramInteractionPayload,
     ) -> Result<()>;
 
-    fn evaluate_instruction_constraints<'info>(
+    fn evaluate_instruction_constraints(
         &self,
         instruction_constraint_indices: &[u8],
         instructions: &[SmartAccountCompiledInstruction],
-        accounts: &[AccountInfo<'info>],
+        accounts: &[AccountInfo<'_>],
     ) -> Result<()>;
 
     fn parse_hook_accounts<'info, 'a>(
@@ -193,11 +193,11 @@ impl ProgramInteractionPolicyExt for ProgramInteractionPolicy {
     }
 
     /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
-    fn evaluate_instruction_constraints<'info>(
+    fn evaluate_instruction_constraints(
         &self,
         instruction_constraint_indices: &[u8],
         instructions: &[SmartAccountCompiledInstruction],
-        accounts: &[AccountInfo<'info>],
+        accounts: &[AccountInfo<'_>],
     ) -> Result<()> {
         for (instruction, instruction_constraint_index) in
             instructions.iter().zip(instruction_constraint_indices)
@@ -418,7 +418,7 @@ fn evaluate_account_info(constraint: &AccountConstraint, account: &AccountInfo) 
     };
     match &constraint.account_constraint {
         AccountConstraintType::Pubkey(keys) => {
-            if !keys.contains(&account.key) {
+            if !keys.contains(account.key) {
                 return Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into());
             }
         }

@@ -87,7 +87,7 @@ impl<'info> SyncTransaction<'info> {
         }
 
         // Synchronous consensus validation
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)
     }
 }
 
@@ -120,7 +120,7 @@ impl<'info> SyncTransaction<'info> {
                 let settings_key = consensus_account_key;
                 // Deserialize the instructions
                 let compiled_instructions =
-                    SmallVec::<u8, CompiledInstruction>::try_from_slice(&payload)
+                    SmallVec::<u8, CompiledInstruction>::try_from_slice(payload)
                         .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
                 // Convert to SmartAccountCompiledInstruction
                 let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
@@ -153,7 +153,7 @@ impl<'info> SyncTransaction<'info> {
                     &smart_account_pubkey,
                     &settings.signers,
                     &settings_compiled_instructions,
-                    &remaining_accounts,
+                    remaining_accounts,
                 )?;
 
                 // Execute the transaction message instructions one-by-one.
@@ -174,12 +174,12 @@ impl<'info> SyncTransaction<'info> {
                     },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()
-                        .map(|acc| acc.key.clone())
+                        .map(|acc| *acc.key)
                         .collect(),
                     instruction_accounts: executable_message
                         .accounts
                         .iter()
-                        .map(|a| a.key.clone())
+                        .map(|a| *a.key)
                         .collect(),
                 };
                 event
@@ -204,7 +204,7 @@ impl<'info> SyncTransaction<'info> {
                 let remaining_accounts = &remaining_accounts[account_offset..];
 
                 // Execute the policy
-                policy.execute(None, None, payload, &remaining_accounts)?;
+                policy.execute(None, None, payload, remaining_accounts)?;
 
                 // Policy may updated during execution, log the event
                 let policy_update_event = PolicyEvent {
@@ -225,12 +225,9 @@ impl<'info> SyncTransaction<'info> {
                     },
                     signers: ctx.remaining_accounts[..args.num_signers as usize]
                         .iter()
-                        .map(|acc| acc.key.clone())
+                        .map(|acc| *acc.key)
                         .collect(),
-                    instruction_accounts: remaining_accounts
-                        .iter()
-                        .map(|acc| acc.key.clone())
-                        .collect(),
+                    instruction_accounts: remaining_accounts.iter().map(|acc| *acc.key).collect(),
                 };
                 event
             }

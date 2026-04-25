@@ -24,11 +24,11 @@ pub struct LogAuthorityInfo<'info> {
 /// Extension trait that lets `SmartAccountEvent` self-publish via an
 /// `invoke_signed` call to `log_event` on this program.
 pub trait SmartAccountEventExt {
-    fn log<'info>(&self, authority_info: &LogAuthorityInfo<'info>) -> Result<()>;
+    fn log(&self, authority_info: &LogAuthorityInfo) -> Result<()>;
 }
 
 impl SmartAccountEventExt for SmartAccountEvent {
-    fn log<'info>(&self, authority_info: &LogAuthorityInfo<'info>) -> Result<()> {
+    fn log(&self, authority_info: &LogAuthorityInfo) -> Result<()> {
         let mut signer_seeds: Vec<&[u8]> = authority_info
             .authority_seeds
             .iter()

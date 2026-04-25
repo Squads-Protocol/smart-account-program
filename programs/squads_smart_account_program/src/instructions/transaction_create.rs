@@ -66,7 +66,7 @@ impl<'info> CreateTransaction<'info> {
         } = self;
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(ctx.remaining_accounts)?;
 
         // Validate the transaction payload
         match consensus_account.account_type() {

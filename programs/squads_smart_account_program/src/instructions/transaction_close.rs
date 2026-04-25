@@ -88,9 +88,7 @@ impl CloseSettingsTransaction<'_> {
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
         } else {
-            Some(Proposal::try_deserialize(
-                &mut &**proposal.data.borrow_mut(),
-            )?)
+            Some(Proposal::try_deserialize(&proposal.data.borrow_mut())?)
         };
 
         #[allow(deprecated)]
@@ -113,6 +111,7 @@ impl CloseSettingsTransaction<'_> {
                 ProposalStatus::Cancelled { .. } => true,
                 // Should never really be in this state.
                 ProposalStatus::Executing => false,
+                _ => is_stale,
             }
         } else {
             // If no Proposal account exists then the ConfigTransaction can only be closed if stale
@@ -204,9 +203,7 @@ impl CloseTransaction<'_> {
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
         } else {
-            Some(Proposal::try_deserialize(
-                &mut &**proposal.data.borrow_mut(),
-            )?)
+            Some(Proposal::try_deserialize(&proposal.data.borrow_mut())?)
         };
 
         #[allow(deprecated)]
@@ -229,6 +226,7 @@ impl CloseTransaction<'_> {
                 ProposalStatus::Cancelled { .. } => true,
                 // Should never really be in this state.
                 ProposalStatus::Executing => false,
+                _ => is_stale,
             }
         } else {
             // If no Proposal account exists then the VaultTransaction can only be closed if stale
@@ -368,6 +366,7 @@ impl CloseBatchTransaction<'_> {
             ProposalStatus::Cancelled { .. } => true,
             // Should never really be in this state.
             ProposalStatus::Executing => false,
+            _ => is_proposal_stale,
         };
 
         require!(can_close, SmartAccountError::InvalidProposalStatus);
@@ -461,9 +460,7 @@ impl CloseBatch<'_> {
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
         } else {
-            Some(Proposal::try_deserialize(
-                &mut &**proposal.data.borrow_mut(),
-            )?)
+            Some(Proposal::try_deserialize(&proposal.data.borrow_mut())?)
         };
 
         #[allow(deprecated)]
@@ -486,6 +483,7 @@ impl CloseBatch<'_> {
                 ProposalStatus::Cancelled { .. } => true,
                 // Should never really be in this state.
                 ProposalStatus::Executing => false,
+                _ => is_stale,
             }
         } else {
             // If no Proposal account exists then the Batch can only be closed if stale
@@ -585,9 +583,7 @@ impl CloseEmptyPolicyTransaction<'_> {
         let proposal_account = if proposal.data.borrow().is_empty() {
             None
         } else {
-            Some(Proposal::try_deserialize(
-                &mut &**proposal.data.borrow_mut(),
-            )?)
+            Some(Proposal::try_deserialize(&proposal.data.borrow_mut())?)
         };
 
         let log_authority_info = LogAuthorityInfo {

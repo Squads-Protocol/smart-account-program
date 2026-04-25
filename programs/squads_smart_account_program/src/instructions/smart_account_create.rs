@@ -103,7 +103,7 @@ impl<'info> CreateSmartAccount<'info> {
         let settings_account_info = settings_configuration.find_and_initialize_settings_account(
             settings_pubkey,
             &ctx.accounts.creator.to_account_info(),
-            &ctx.remaining_accounts,
+            ctx.remaining_accounts,
             &ctx.accounts.system_program,
         )?;
         // Serialize the settings account.

@@ -37,7 +37,7 @@ impl<'a, 'info> SynchronousTransactionMessage<'a, 'info> {
         let mut accounts = Vec::with_capacity(remaining_accounts.len());
 
         // Process accounts and modify signer states
-        for (_, account) in remaining_accounts.iter().enumerate() {
+        for account in remaining_accounts.iter() {
             let mut account_info = account.clone();
 
             // For remaining accounts:

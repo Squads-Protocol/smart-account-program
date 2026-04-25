@@ -146,8 +146,8 @@ impl<'info> ExecuteSettingsTransaction<'info> {
                 &rent,
                 &ctx.accounts.rent_payer,
                 &ctx.accounts.system_program,
-                &ctx.remaining_accounts,
-                &ctx.program_id,
+                ctx.remaining_accounts,
+                ctx.program_id,
                 Some(&log_authority_info),
             )?;
         }

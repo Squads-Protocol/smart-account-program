@@ -66,7 +66,7 @@ impl<'info> SyncSettingsTransaction<'info> {
         validate_settings_actions(&args.actions)?;
 
         // Validates synchronous consensus across the signers
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)?;
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)?;
 
         Ok(())
     }
@@ -101,8 +101,8 @@ impl<'info> SyncSettingsTransaction<'info> {
                 &rent,
                 &ctx.accounts.rent_payer,
                 &ctx.accounts.system_program,
-                &ctx.remaining_accounts,
-                &ctx.program_id,
+                ctx.remaining_accounts,
+                ctx.program_id,
                 Some(&log_authority_info),
             )?;
         }
@@ -129,7 +129,7 @@ impl<'info> SyncSettingsTransaction<'info> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| acc.key.clone())
+                .map(|acc| *acc.key)
                 .collect::<Vec<_>>(),
             settings: settings.clone(),
             changes: args.actions.clone(),

@@ -60,7 +60,7 @@ impl CreateProposal<'_> {
         let creator_key = creator.key();
 
         // Check if the consensus account is active
-        consensus_account.is_active(&ctx.remaining_accounts)?;
+        consensus_account.is_active(ctx.remaining_accounts)?;
 
         // args
         // We can only create a proposal for an existing transaction.

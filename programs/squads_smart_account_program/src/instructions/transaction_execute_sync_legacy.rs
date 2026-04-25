@@ -48,7 +48,7 @@ impl LegacySyncTransaction<'_> {
         let Self {
             consensus_account, ..
         } = self;
-        validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
+        validate_synchronous_consensus(consensus_account, args.num_signers, remaining_accounts)
     }
     #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]
     pub fn sync_transaction(ctx: Context<Self>, args: LegacySyncTransactionArgs) -> Result<()> {
@@ -93,7 +93,7 @@ impl LegacySyncTransaction<'_> {
             &smart_account_pubkey,
             &settings.signers,
             &settings_compiled_instructions,
-            &ctx.remaining_accounts,
+            ctx.remaining_accounts,
         )?;
 
         // Execute the transaction message instructions one-by-one.
@@ -109,15 +109,11 @@ impl LegacySyncTransaction<'_> {
             settings_pubkey: settings_key,
             signers: ctx.remaining_accounts[..args.num_signers as usize]
                 .iter()
-                .map(|acc| acc.key.clone())
+                .map(|acc| *acc.key)
                 .collect(),
             account_index: args.account_index,
             instructions: executable_message.instructions.to_vec(),
-            instruction_accounts: executable_message
-                .accounts
-                .iter()
-                .map(|a| a.key.clone())
-                .collect(),
+            instruction_accounts: executable_message.accounts.iter().map(|a| *a.key).collect(),
         };
         let log_authority_info = LogAuthorityInfo {
             authority: settings_account_info,
