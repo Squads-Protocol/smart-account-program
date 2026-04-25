@@ -1,4 +1,4 @@
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 use crate::state::policies::policy_core::PolicyCreationPayload;
 use crate::state::{Period, PolicyExpirationArgs, SmartAccountSigner};

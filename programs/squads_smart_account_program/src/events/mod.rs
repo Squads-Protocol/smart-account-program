@@ -41,7 +41,7 @@ impl SmartAccountEventExt for SmartAccountEvent {
             event: self.try_to_vec()?,
         };
         let mut instruction_data = Vec::with_capacity(8 + 4 + data.event.len());
-        instruction_data.extend_from_slice(&crate::instruction::LogEvent::DISCRIMINATOR);
+        instruction_data.extend_from_slice(crate::instruction::LogEvent::DISCRIMINATOR);
         instruction_data.extend_from_slice(&data.try_to_vec()?);
 
         let ix = solana_program::instruction::Instruction {

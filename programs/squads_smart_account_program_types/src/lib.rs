@@ -17,12 +17,12 @@ pub use interface::*;
 pub use state::*;
 pub use utils::*;
 
-pub use solana_program::pubkey::Pubkey;
+pub use solana_pubkey::Pubkey;
 
 #[cfg(not(feature = "testing"))]
 pub const PROGRAM_ID: Pubkey =
-    solana_program::pubkey!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG");
+    solana_pubkey::pubkey!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG");
 
 #[cfg(feature = "testing")]
 pub const PROGRAM_ID: Pubkey =
-    solana_program::pubkey!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");
+    solana_pubkey::pubkey!("GyhGAqjokLwF9UXdQ2dR5Zwiup242j4mX4J1tSMKyAmD");

@@ -111,7 +111,7 @@ pub fn close<'info>(info: AccountInfo<'info>, sol_destination: AccountInfo<'info
     **info.lamports.borrow_mut() = 0;
 
     info.assign(&system_program::ID);
-    info.realloc(0, false).map_err(Into::into)
+    info.resize(0).map_err(Into::into)
 }
 
 /// Reallocates an account to a new size and ensures it maintains rent-exemption by transferring additional lamports if needed.
@@ -123,7 +123,7 @@ pub fn realloc<'info>(
     system_program: Option<AccountInfo<'info>>,
 ) -> Result<()> {
     // Reallocate more space
-    AccountInfo::realloc(account, new_size, false)?;
+    AccountInfo::resize(account, new_size)?;
 
     // Calculate if more lamports are needed for rent-exemption
     let rent_exempt_lamports = Rent::get().unwrap().minimum_balance(new_size).max(1);

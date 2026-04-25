@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "programs/*",
+    "programs/squads_smart_account_program",
+    "programs/squads_smart_account_program_types",
 ]
 
 [profile.release]

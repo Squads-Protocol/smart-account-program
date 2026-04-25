@@ -92,14 +92,18 @@ but with changes to its HEAP_LENGTH and its
 starting allocation address.
 */
 
-use solana_program::entrypoint::HEAP_START_ADDRESS;
-use std::{alloc::Layout, mem::size_of, ptr::null_mut};
-
 /// Length of the memory region used for program heap.
 pub const HEAP_LENGTH: usize = 8 * 32 * 1024;
 
+#[cfg(all(not(feature = "no-entrypoint"), not(test)))]
+use solana_program::entrypoint::HEAP_START_ADDRESS;
+#[cfg(all(not(feature = "no-entrypoint"), not(test)))]
+use std::{alloc::Layout, mem::size_of, ptr::null_mut};
+
+#[cfg(all(not(feature = "no-entrypoint"), not(test)))]
 struct BumpAllocator;
 
+#[cfg(all(not(feature = "no-entrypoint"), not(test)))]
 unsafe impl std::alloc::GlobalAlloc for BumpAllocator {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {

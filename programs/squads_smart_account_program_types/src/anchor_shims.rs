@@ -19,7 +19,7 @@ use crate::{
 macro_rules! impl_anchor_account {
     ($ty:ty) => {
         impl anchor_lang::Discriminator for $ty {
-            const DISCRIMINATOR: [u8; 8] = <$ty>::DISCRIMINATOR;
+            const DISCRIMINATOR: &'static [u8] = &<$ty>::DISCRIMINATOR;
         }
 
         impl anchor_lang::Owner for $ty {
@@ -31,7 +31,7 @@ macro_rules! impl_anchor_account {
         impl anchor_lang::AccountSerialize for $ty {
             fn try_serialize<W: Write>(&self, writer: &mut W) -> anchor_lang::Result<()> {
                 writer
-                    .write_all(&<Self as anchor_lang::Discriminator>::DISCRIMINATOR)
+                    .write_all(<Self as anchor_lang::Discriminator>::DISCRIMINATOR)
                     .map_err(|_| {
                         anchor_lang::error::Error::from(
                             anchor_lang::error::ErrorCode::AccountDidNotSerialize,
@@ -48,18 +48,19 @@ macro_rules! impl_anchor_account {
 
         impl anchor_lang::AccountDeserialize for $ty {
             fn try_deserialize(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                if buf.len() < 8 {
+                let disc = <Self as anchor_lang::Discriminator>::DISCRIMINATOR;
+                if buf.len() < disc.len() {
                     return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorNotFound.into());
                 }
-                let given: [u8; 8] = buf[..8].try_into().unwrap();
-                if given != <Self as anchor_lang::Discriminator>::DISCRIMINATOR {
+                if &buf[..disc.len()] != disc {
                     return Err(anchor_lang::error::ErrorCode::AccountDiscriminatorMismatch.into());
                 }
                 Self::try_deserialize_unchecked(buf)
             }
 
             fn try_deserialize_unchecked(buf: &mut &[u8]) -> anchor_lang::Result<Self> {
-                let mut data = &buf[8..];
+                let disc_len = <Self as anchor_lang::Discriminator>::DISCRIMINATOR.len();
+                let mut data = &buf[disc_len..];
                 BorshDeserialize::deserialize(&mut data).map_err(|_| {
                     anchor_lang::error::Error::from(
                         anchor_lang::error::ErrorCode::AccountDidNotDeserialize,

@@ -1,5 +1,5 @@
 #![allow(deprecated)]
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 /// Stores the data required for tracking the status of a smart account proposal.
 #[cfg_attr(
