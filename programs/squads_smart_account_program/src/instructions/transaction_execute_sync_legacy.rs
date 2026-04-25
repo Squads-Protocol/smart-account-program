@@ -1,3 +1,4 @@
+use crate::SmartAccountEventExt;
 use account_events::SynchronousTransactionEvent;
 use anchor_lang::prelude::*;
 

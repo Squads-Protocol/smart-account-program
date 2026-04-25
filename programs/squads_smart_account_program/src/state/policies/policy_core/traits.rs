@@ -1,37 +1,28 @@
+//! Policy trait definitions.
+//!
+//! `PolicySizeTrait`, `PolicyPayloadConversionTrait`, `PolicyExecutionContext`
+//! come from the types crate (pure data traits).
+//!
+//! `PolicyTrait` itself remains defined locally because it references
+//! `anchor_lang::prelude::{AccountInfo, Result}` which pull in anchor — so it
+//! can't live in the pure-types crate.
+
 use anchor_lang::prelude::*;
 
-/// Trait for policy creation payloads that can be converted to policy state
-pub trait PolicyPayloadConversionTrait {
-    type PolicyState;
+pub use squads_smart_account_program_types::state::policies::policy_core::{
+    PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
+};
 
-    /// Convert the creation payload to the actual policy state
-    fn to_policy_state(self) -> Result<Self::PolicyState>;
-}
-
-/// Trait for calculating Borsh serialization sizes of policy-related structs
-pub trait PolicySizeTrait {
-    /// Calculate the size when this payload is Borsh serialized
-    fn creation_payload_size(&self) -> usize;
-
-    /// Calculate the size of the resulting policy state when Borsh serialized
-    fn policy_state_size(&self) -> usize;
-}
-
-/// The context in which the policy is being executed
-pub enum PolicyExecutionContext {
-    /// The policy is being executed synchronously
-    Synchronous,
-    /// The policy is being executed asynchronously
-    Asynchronous,
-}
-/// Core trait for policy execution - implemented by specific policy types
+/// Core trait for policy execution — implemented by specific policy types in
+/// this crate. `type CreationPayload` carries `PolicyPayloadConversionTrait`
+/// from the types crate, but we rebind `Self::PolicyState` through the
+/// types-crate trait so program-side impls can stay anchor-flavored.
 pub trait PolicyTrait {
     /// The policy state
     type PolicyState;
 
     /// The creation payload
-    type CreationPayload: PolicyPayloadConversionTrait<PolicyState = Self::PolicyState>
-        + PolicySizeTrait;
+    type CreationPayload: PolicySizeTrait;
 
     /// The payload type used when executing this policy
     type UsagePayload;

@@ -1,3 +1,4 @@
+use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 
 use crate::program::SquadsSmartAccountProgram;

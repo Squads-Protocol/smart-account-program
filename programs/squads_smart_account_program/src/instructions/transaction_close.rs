@@ -9,6 +9,7 @@
 //! The other reason we have 3 different instructions is purely related to Anchor API which
 //! allows adding the `close` attribute only to `Account<'info, XXX>` types, which forces us
 //! into having 3 different `Accounts` structs.
+use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 

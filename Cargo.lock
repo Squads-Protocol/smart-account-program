@@ -2288,6 +2288,17 @@ dependencies = [
  "anchor-spl",
  "solana-program",
  "solana-security-txt",
+ "squads-smart-account-program-types",
+]
+
+[[package]]
+name = "squads-smart-account-program-types"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "borsh 0.10.4",
+ "solana-program",
+ "thiserror",
 ]
 
 [[package]]

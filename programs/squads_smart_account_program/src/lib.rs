@@ -18,12 +18,16 @@ pub use state::*;
 pub use utils::SmallVec;
 
 pub mod allocator;
+pub mod error_conv;
 pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod interface;
 pub mod state;
 mod utils;
+
+// Re-export the types crate for downstream consumers.
+pub use squads_smart_account_program_types as program_types;
 
 #[cfg(not(feature = "no-entrypoint"))]
 security_txt! {

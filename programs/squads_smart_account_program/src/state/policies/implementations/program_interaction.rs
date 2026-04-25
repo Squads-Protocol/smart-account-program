@@ -1,412 +1,332 @@
-use crate::{
-    errors::*,
-    state::policies::utils::{
-        check_pre_balances, PeriodV2, QuantityConstraints, SpendingLimitV2, TimeConstraints,
-        UsageState,
-    },
-    utils::{
-        derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
-    },
-    CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
-    PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage,
-    TransactionPayload, TransactionPayloadDetails, HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER,
-    SEED_HOOK_AUTHORITY, SEED_PREFIX, SEED_SMART_ACCOUNT,
-};
+//! `ProgramInteractionPolicy` — type definitions, constraints, payload types,
+//! and pure-data methods (`Hook::size`, `DataConstraint::evaluate`,
+//! `AccountConstraint::size`, sizes, etc.) live in the types crate.
+//!
+//! Program-local pieces:
+//!   * `PolicyTrait` impl (dispatches async vs sync execution)
+//!   * `Hook::execute`, `AccountConstraint::evaluate_against_account_info*`
+//!     (CPI + AccountInfo operations)
+//!   * `ProgramInteractionPolicyExt::validate_payload` (anchor Result dispatch)
+//!   * `program_interaction_creation_to_policy_state` (Clock-based helper)
+
 use anchor_lang::prelude::*;
 use solana_program::instruction::Instruction;
 
-// =============================================================================
-// CORE POLICY STRUCTURES
-// =============================================================================
+pub use squads_smart_account_program_types::{
+    AccountConstraint, AccountConstraintType, DataConstraint, DataOperator, DataValue, Hook,
+    InstructionConstraint, LimitedQuantityConstraints, LimitedSpendingLimit, LimitedTimeConstraints,
+    ProgramInteractionExecutionArgs, ProgramInteractionPayload, ProgramInteractionPolicy,
+    ProgramInteractionPolicyCreationPayload, ProgramInteractionTransactionPayload,
+    SyncTransactionPayloadDetails,
+};
+use squads_smart_account_program_types::{
+    QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState,
+};
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct ProgramInteractionPolicy {
-    /// The account index of the account that will be used to execute the policy
-    pub account_index: u8,
-    /// Constraints evaluated as a logical OR
-    pub instructions_constraints: Vec<InstructionConstraint>,
-    /// Hook invoked before inner instruction execution
-    pub pre_hook: Option<Hook>,
-    /// Hook invoked after inner instruction execution
-    pub post_hook: Option<Hook>,
-    /// Spending limits applied during policy execution
-    pub spending_limits: Vec<SpendingLimitV2>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct InstructionConstraint {
-    /// The program that this constraint applies to
-    pub program_id: Pubkey,
-    /// Account constraints (evaluated as logical AND)
-    pub account_constraints: Vec<AccountConstraint>,
-    /// Data constraints (evaluated as logical AND)
-    pub data_constraints: Vec<DataConstraint>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct Hook {
-    // Dictates how many extra accounts are required for the hook, beyond the program ID
-    pub num_extra_accounts: u8,
-    // Dictates constraints for the hook accounts
-    pub account_constraints: Vec<AccountConstraint>,
-    // Dictates which instruction data will be invoked
-    pub instruction_data: Vec<u8>,
-    // The program that will be invoked
-    pub program_id: Pubkey,
-    // Dictates if inner instruction data & account will be passed to the
-    // instruction on top of the instruction data
-    pub pass_inner_instructions: bool,
-}
-
-impl Hook {
-    pub fn size(&self) -> usize {
-        1 + // num_accounts
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.instruction_data.len() + // instruction_data
-        32 + // program_id
-        1 // pass_inner_instructions
-    }
-
-    // Get the total number of accounts required for the hook
-    pub fn num_accounts(&self) -> usize {
-        // Program ID also needs to get passed in, therefore add 1
-        self.num_extra_accounts
-            .checked_add(1)
-            .map(|v| v as usize)
-            .unwrap()
-    }
-}
-// =============================================================================
-// CONSTRAINT TYPES AND OPERATORS
-// =============================================================================
-
-impl InstructionConstraint {
-    pub fn size(&self) -> usize {
-        32 + // program_id
-        4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>() + // account_constraints vec
-        4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>() // data_constraints vec
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub enum DataOperator {
-    Equals,
-    NotEquals,
-    GreaterThan,
-    GreaterThanOrEqualTo,
-    LessThan,
-    LessThanOrEqualTo,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub enum DataValue {
-    U8(u8),
-    /// Little-endian u16
-    U16Le(u16),
-    /// Little-endian u32
-    U32Le(u32),
-    /// Little-endian u64
-    U64Le(u64),
-    /// Little-endian u128
-    U128Le(u128),
-    /// Byte slice for discriminators etc. Only supports Equals/NotEquals
-    U8Slice(Vec<u8>),
-}
-
-impl DataValue {
-    pub fn size(&self) -> usize {
-        1 + // enum discriminator
-        match self {
-            DataValue::U8(_) => 1,
-            DataValue::U16Le(_) => 2,
-            DataValue::U32Le(_) => 4,
-            DataValue::U64Le(_) => 8,
-            DataValue::U128Le(_) => 16,
-            DataValue::U8Slice(bytes) => 4 + bytes.len(), // vec length + bytes
-        }
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct DataConstraint {
-    pub data_offset: u64,
-    pub data_value: DataValue,
-    pub operator: DataOperator,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub enum AccountConstraintType {
-    Pubkey(Vec<Pubkey>),
-    AccountData(Vec<DataConstraint>),
-}
-
-impl AccountConstraintType {
-    pub fn size(&self) -> usize {
-        match self {
-            AccountConstraintType::Pubkey(keys) => 1 + 4 + keys.len() * 32,
-            AccountConstraintType::AccountData(constraints) => {
-                1 + 4 + constraints.iter().map(|c| c.size()).sum::<usize>()
-            }
-        }
-    }
-}
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq, Debug)]
-pub struct AccountConstraint {
-    pub account_index: u8,
-    pub account_constraint: AccountConstraintType,
-    pub owner: Option<Pubkey>,
-}
+use crate::error_conv::ToAnchorResult;
+use crate::{
+    errors::*,
+    state::policies::{
+        policy_core::{PolicyExecutionContext, PolicyTrait},
+        utils::check_pre_balances,
+    },
+    utils::{derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage},
+    CompiledInstruction, SmallVec, SmartAccountCompiledInstruction, TransactionMessage,
+    HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER, SEED_HOOK_AUTHORITY, SEED_PREFIX,
+    SEED_SMART_ACCOUNT,
+};
 
 // =============================================================================
-// SIZE CALCULATIONS
+// CREATION CONVERSION (Clock-dependent)
 // =============================================================================
 
-impl DataConstraint {
-    pub fn size(&self) -> usize {
-        8 + // data_offset
-        self.data_value.size() + // data_value
-        1 // operator
-    }
-}
+/// Convert a `ProgramInteractionPolicyCreationPayload` into the runtime
+/// policy state, resolving start timestamps against the current Clock.
+pub fn program_interaction_creation_to_policy_state(
+    payload: ProgramInteractionPolicyCreationPayload,
+) -> Result<ProgramInteractionPolicy> {
+    require!(
+        payload.instructions_constraints.len() <= 20,
+        SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+    );
+    require!(
+        payload.spending_limits.len() <= 10,
+        SmartAccountError::ProgramInteractionTooManySpendingLimits
+    );
 
-impl AccountConstraint {
-    pub fn size(&self) -> usize {
-        1 + // account_index
-        4 + self.account_constraint.size() + // account_constraint
-        32 + // owner
-        1 // owner discriminator
-    }
-}
+    let mut spending_limits = payload.spending_limits.clone();
+    spending_limits.sort_by_key(|c| c.mint);
 
-// =============================================================================
-// CONSTRAINT EVALUATION LOGIC
-// =============================================================================
-
-impl DataConstraint {
-    /// Evaluate constraint against instruction data
-    pub fn evaluate(&self, data: &[u8]) -> Result<()> {
-        let offset = self.data_offset as usize;
-
-        let constraint_passed = match &self.data_value {
-            DataValue::U8(expected) => {
-                // Check bounds
-                if offset >= data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
+    let current_timestamp = Clock::get()?.unix_timestamp;
+    Ok(ProgramInteractionPolicy {
+        account_index: payload.account_index,
+        instructions_constraints: payload.instructions_constraints,
+        pre_hook: payload.pre_hook,
+        post_hook: payload.post_hook,
+        spending_limits: spending_limits
+            .iter()
+            .map(|spending_limit| {
+                let start = if spending_limit.time_constraints.start == 0 {
+                    current_timestamp
+                } else {
+                    spending_limit.time_constraints.start
+                };
+                SpendingLimitV2 {
+                    mint: spending_limit.mint,
+                    time_constraints: TimeConstraints {
+                        start,
+                        period: spending_limit.time_constraints.period,
+                        expiration: spending_limit.time_constraints.expiration,
+                        accumulate_unused: false,
+                    },
+                    quantity_constraints: QuantityConstraints {
+                        max_per_period: spending_limit.quantity_constraints.max_per_period,
+                        max_per_use: 0,
+                        enforce_exact_quantity: false,
+                    },
+                    usage: UsageState {
+                        remaining_in_period: spending_limit.quantity_constraints.max_per_period,
+                        last_reset: start,
+                    },
                 }
-                let actual = data[offset];
-                self.compare(actual, *expected)?
-            }
-            DataValue::U16Le(expected) => {
-                // Check bounds for 2 bytes
-                if offset + 2 > data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
-                }
-                let bytes = &data[offset..offset + 2];
-                let actual = u16::from_le_bytes([bytes[0], bytes[1]]);
-                self.compare(actual, *expected)?
-            }
-            DataValue::U32Le(expected) => {
-                // Check bounds for 4 bytes
-                if offset + 4 > data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
-                }
-                let bytes = &data[offset..offset + 4];
-                let actual = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-                self.compare(actual, *expected)?
-            }
-            DataValue::U64Le(expected) => {
-                // Check bounds for 8 bytes
-                if offset + 8 > data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
-                }
-                let actual = u64::from_le_bytes(
-                    data[offset..offset + 8]
-                        .try_into()
-                        .map_err(|_| SmartAccountError::ProgramInteractionDataParsingError)?,
+            })
+            .collect(),
+    })
+}
+
+// =============================================================================
+// EXTENSION TRAITS
+// =============================================================================
+
+pub trait ProgramInteractionPolicyExt {
+    fn validate_payload(
+        &self,
+        context: PolicyExecutionContext,
+        payload: &ProgramInteractionPayload,
+    ) -> Result<()>;
+
+    fn evaluate_instruction_constraints<'info>(
+        &self,
+        instruction_constraint_indices: &[u8],
+        instructions: &[SmartAccountCompiledInstruction],
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<()>;
+
+    fn parse_hook_accounts<'info, 'a>(
+        &self,
+        accounts: &mut &'a [AccountInfo<'info>],
+    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]);
+}
+
+impl ProgramInteractionPolicyExt for ProgramInteractionPolicy {
+    fn validate_payload(
+        &self,
+        context: PolicyExecutionContext,
+        payload: &ProgramInteractionPayload,
+    ) -> Result<()> {
+        match (context, &payload.transaction_payload) {
+            (
+                PolicyExecutionContext::Synchronous,
+                ProgramInteractionTransactionPayload::AsyncTransaction(..),
+            ) => {
+                return Err(
+                    SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
+                        .into(),
                 );
-                self.compare(actual, *expected)?
             }
-            DataValue::U128Le(expected) => {
-                // Check bounds for 16 bytes
-                if offset + 16 > data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
-                }
-                let actual = u128::from_le_bytes(
-                    data[offset..offset + 16]
-                        .try_into()
-                        .map_err(|_| SmartAccountError::ProgramInteractionDataParsingError)?,
+            (
+                PolicyExecutionContext::Asynchronous,
+                ProgramInteractionTransactionPayload::SyncTransaction(..),
+            ) => {
+                return Err(
+                    SmartAccountError::ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction
+                        .into(),
                 );
-                self.compare(actual, *expected)?
             }
-            DataValue::U8Slice(expected) => {
-                // Check bounds for slice length
-                if offset + expected.len() > data.len() {
-                    return Err(SmartAccountError::ProgramInteractionDataTooShort.into());
-                }
-                let actual = &data[offset..offset + expected.len()];
-                match self.operator {
-                    DataOperator::Equals => actual == expected.as_slice(),
-                    DataOperator::NotEquals => actual != expected.as_slice(),
-                    _ => {
-                        return Err(
-                            SmartAccountError::ProgramInteractionUnsupportedSliceOperator.into(),
-                        );
-                    }
-                }
+            (_, _) => {}
+        }
+
+        let payload_account_index = payload.transaction_payload.get_account_index();
+        let instructions_len = match &payload.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
+                TransactionMessage::deserialize(
+                    &mut transaction_payload.transaction_message.as_slice(),
+                )?
+                .instructions
+                .len()
+            }
+            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
+                let instructions: SmallVec<u8, CompiledInstruction> =
+                    SmallVec::<u8, CompiledInstruction>::try_from_slice(
+                        &sync_transaction_payload.instructions,
+                    )
+                    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+                instructions.len()
             }
         };
+        require_eq!(
+            payload_account_index,
+            self.account_index,
+            SmartAccountError::InvalidPayload
+        );
 
-        if constraint_passed {
-            Ok(())
-        } else {
-            Err(SmartAccountError::ProgramInteractionInvalidNumericValue.into())
+        if !self.instructions_constraints.is_empty() {
+            if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+                require_eq!(
+                    instruction_constraint_indices.len(),
+                    instructions_len,
+                    SmartAccountError::ProgramInteractionInstructionCountMismatch
+                );
+                for instruction_constraint_index in instruction_constraint_indices {
+                    require!(
+                        *instruction_constraint_index < self.instructions_constraints.len() as u8,
+                        SmartAccountError::ProgramInteractionConstraintIndexOutOfBounds
+                    );
+                }
+            } else {
+                return Err(SmartAccountError::ProgramInteractionInstructionCountMismatch.into());
+            }
         }
-    }
-
-    /// Compare two values using the specified operator
-    fn compare<T: PartialOrd + PartialEq>(&self, actual: T, expected: T) -> Result<bool> {
-        Ok(match self.operator {
-            DataOperator::Equals => actual == expected,
-            DataOperator::NotEquals => actual != expected,
-            DataOperator::GreaterThan => actual > expected,
-            DataOperator::GreaterThanOrEqualTo => actual >= expected,
-            DataOperator::LessThan => actual < expected,
-            DataOperator::LessThanOrEqualTo => actual <= expected,
-        })
-    }
-}
-
-impl AccountConstraint {
-    /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
-    pub fn evaluate_against_instruction_indices_and_accounts(
-        &self,
-        instruction_account_indices: &[u8],
-        accounts: &[AccountInfo],
-    ) -> Result<()> {
-        // Get the account at the given constraint index
-        let mapped_account_index = instruction_account_indices[self.account_index as usize];
-        let account = &accounts[mapped_account_index as usize];
-
-        self.evaluate_against_account_info(account)?;
-
         Ok(())
     }
 
-    /// Simply evaluate the account constraint against a single AccountInfo
-    pub fn evaluate_against_account_info(&self, account: &AccountInfo) -> Result<()> {
-        // Evaluate the owner constraint
-        if let Some(owner) = self.owner {
-            require_eq!(
-                account.owner,
-                &owner,
-                SmartAccountError::IllegalAccountOwner
+    /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
+    fn evaluate_instruction_constraints<'info>(
+        &self,
+        instruction_constraint_indices: &[u8],
+        instructions: &[SmartAccountCompiledInstruction],
+        accounts: &[AccountInfo<'info>],
+    ) -> Result<()> {
+        for (instruction, instruction_constraint_index) in
+            instructions.iter().zip(instruction_constraint_indices)
+        {
+            let instruction_constraint =
+                &self.instructions_constraints[*instruction_constraint_index as usize];
+            require!(
+                accounts[instruction.program_id_index as usize].key
+                    == &instruction_constraint.program_id,
+                SmartAccountError::ProgramInteractionProgramIdMismatch
             );
-        };
-        // Evaluate the account constraint
-        match &self.account_constraint {
-            AccountConstraintType::Pubkey(keys) => {
-                if !keys.contains(&account.key) {
-                    return Err(
-                        SmartAccountError::ProgramInteractionAccountConstraintViolated.into(),
-                    );
-                }
+
+            for account_constraint in &instruction_constraint.account_constraints {
+                evaluate_ac_against_instruction_indices_and_accounts(
+                    account_constraint,
+                    &instruction.account_indexes,
+                    accounts,
+                )?;
             }
-            AccountConstraintType::AccountData(constraints) => {
-                let data = account.try_borrow_data()?;
-                for constraint in constraints {
-                    constraint.evaluate(&data)?;
-                }
+            for data_constraint in &instruction_constraint.data_constraints {
+                data_constraint.evaluate(instruction.data.as_slice()).to_anchor()?;
             }
         }
         Ok(())
     }
 
     /// Evaluate the account constraint against a set of AccountInfos
-    pub fn evaluate_against_account_infos<'info>(
+    fn parse_hook_accounts<'info, 'a>(
         &self,
-        account_infos: &'info [AccountInfo<'info>],
-    ) -> Result<()> {
-        let account_info_to_evalute = account_infos
-            .get(self.account_index as usize)
-            .ok_or(SmartAccountError::ProgramInteractionAccountConstraintViolated)
-            .unwrap();
+        accounts: &mut &'a [AccountInfo<'info>],
+    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
+        let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
+        let mut transaction_accounts = *accounts;
 
-        self.evaluate_against_account_info(account_info_to_evalute)?;
+        if self.pre_hook.is_some() {
+            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.pre_hook.as_ref().unwrap().num_accounts());
+            pre_hook_accounts_intermediate = pre_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        };
+        if self.post_hook.is_some() {
+            let (post_hook_accounts, remaining_accounts) = transaction_accounts
+                .split_at(self.post_hook.as_ref().unwrap().num_accounts());
+            post_hook_accounts_intermediate = post_hook_accounts;
+            transaction_accounts = remaining_accounts;
+        }
 
-        Ok(())
+        *accounts = transaction_accounts;
+
+        (
+            pre_hook_accounts_intermediate,
+            post_hook_accounts_intermediate,
+        )
     }
 }
 
 // =============================================================================
-// CREATION PAYLOAD TYPES
+// PAYLOAD HELPERS (AccountInfo/Pubkey plumbing)
 // =============================================================================
 
-/// Limited subset of TimeConstraints
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedTimeConstraints {
-    pub start: i64,
-    pub expiration: Option<i64>,
-    pub period: PeriodV2,
+pub trait ProgramInteractionPayloadExt {
+    fn get_transaction_payload(
+        &self,
+        transaction_key: Pubkey,
+    ) -> Result<squads_smart_account_program_types::TransactionPayloadDetails>;
+
+    fn get_sync_transaction_payload(&self) -> Result<&SyncTransactionPayloadDetails>;
 }
 
-/// Limited subset of QuantityConstraints
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedQuantityConstraints {
-    pub max_per_period: u64,
-}
+impl ProgramInteractionPayloadExt for ProgramInteractionPayload {
+    fn get_transaction_payload(
+        &self,
+        transaction_key: Pubkey,
+    ) -> Result<squads_smart_account_program_types::TransactionPayloadDetails> {
+        use squads_smart_account_program_types::TransactionPayloadDetails;
+        match &self.transaction_payload {
+            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
+                let transaction_message = TransactionMessage::deserialize(
+                    &mut transaction_payload.transaction_message.as_slice(),
+                )?;
+                let ephemeral_signer_bumps: Vec<u8> = (0..transaction_payload.ephemeral_signers)
+                    .map(|ephemeral_signer_index| {
+                        let ephemeral_signer_seeds = &[
+                            SEED_PREFIX,
+                            transaction_key.as_ref(),
+                            SEED_EPHEMERAL_SIGNER,
+                            &ephemeral_signer_index.to_le_bytes(),
+                        ];
 
-/// Limited subset of BalanceConstraint used to create a policy
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub struct LimitedSpendingLimit {
-    pub mint: Pubkey,
-    pub time_constraints: LimitedTimeConstraints,
-    pub quantity_constraints: LimitedQuantityConstraints,
-}
+                        let (_, bump) =
+                            Pubkey::find_program_address(ephemeral_signer_seeds, &crate::ID);
+                        bump
+                    })
+                    .collect();
 
-/// Payload used to create a program interaction policy
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ProgramInteractionPolicyCreationPayload {
-    pub account_index: u8,
-    pub instructions_constraints: Vec<InstructionConstraint>,
-    pub pre_hook: Option<Hook>,
-    pub post_hook: Option<Hook>,
-    pub spending_limits: Vec<LimitedSpendingLimit>,
-}
+                Ok(TransactionPayloadDetails {
+                    account_index: transaction_payload.account_index,
+                    ephemeral_signer_bumps,
+                    message: transaction_message.try_into()?,
+                })
+            }
+            _ => Err(SmartAccountError::InvalidPayload.into()),
+        }
+    }
 
-// =============================================================================
-// TRANSACTION PAYLOAD TYPES
-// =============================================================================
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct ProgramInteractionPayload {
-    pub instruction_constraint_indices: Option<Vec<u8>>,
-    pub transaction_payload: ProgramInteractionTransactionPayload,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub enum ProgramInteractionTransactionPayload {
-    AsyncTransaction(TransactionPayload),
-    SyncTransaction(SyncTransactionPayloadDetails),
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct SyncTransactionPayloadDetails {
-    pub account_index: u8,
-    pub instructions: Vec<u8>,
-}
-
-pub struct ProgramInteractionExecutionArgs {
-    pub settings_key: Pubkey,
-    pub transaction_key: Pubkey,
-    pub proposal_key: Pubkey,
-    pub policy_signers: Vec<SmartAccountSigner>,
+    fn get_sync_transaction_payload(&self) -> Result<&SyncTransactionPayloadDetails> {
+        match &self.transaction_payload {
+            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
+                Ok(sync_transaction_payload)
+            }
+            _ => Err(SmartAccountError::InvalidPayload.into()),
+        }
+    }
 }
 
 // =============================================================================
-// CORE POLICY IMPLEMENTATION
+// HOOK EXECUTION
 // =============================================================================
 
-impl Hook {
-    pub fn execute<'info>(
+pub trait HookExt {
+    fn execute<'info>(
+        &self,
+        hook_accounts: &'info [AccountInfo<'info>],
+        instructions: &[SmartAccountCompiledInstruction],
+        instruction_accounts: &[AccountInfo<'info>],
+    ) -> Result<()>;
+}
+
+impl HookExt for Hook {
+    fn execute<'info>(
         &self,
         hook_accounts: &'info [AccountInfo<'info>],
         instructions: &[SmartAccountCompiledInstruction],
@@ -416,7 +336,7 @@ impl Hook {
 
         // Evaluate the hook accounts
         for account_constraint in self.account_constraints.iter() {
-            account_constraint.evaluate_against_account_infos(hook_accounts)?;
+            evaluate_ac_against_account_infos(account_constraint, hook_accounts)?;
         }
 
         // Build the necessary account metas
@@ -479,277 +399,65 @@ impl Hook {
         Ok(())
     }
 }
-impl ProgramInteractionPolicy {
-    /// Evaluate the instruction constraints for a given instruction
-    pub fn evaluate_instruction_constraints<'info>(
-        &self,
-        instruction_constraint_indices: &[u8],
-        instructions: &[SmartAccountCompiledInstruction],
-        accounts: &[AccountInfo<'info>],
-    ) -> Result<()> {
-        // Iterate over instruction and their corresponding instruction constraint
-        for (instruction, instruction_constraint_index) in
-            instructions.iter().zip(instruction_constraint_indices)
-        {
-            let instruction_constraint =
-                &self.instructions_constraints[*instruction_constraint_index as usize];
-            // Evaluate the program id constraint
-            require!(
-                accounts[instruction.program_id_index as usize].key
-                    == &instruction_constraint.program_id,
-                SmartAccountError::ProgramInteractionProgramIdMismatch
-            );
-
-            // Evaluate the account constraints
-            for account_constraint in &instruction_constraint.account_constraints {
-                account_constraint.evaluate_against_instruction_indices_and_accounts(
-                    &instruction.account_indexes,
-                    accounts,
-                )?;
-            }
-            // Evaluate the data constraints
-            for data_constraint in &instruction_constraint.data_constraints {
-                data_constraint.evaluate(instruction.data.as_slice())?;
-            }
-        }
-        Ok(())
-    }
-
-    // Parses hook accounts from the accounts slice and returns them
-    pub fn parse_hook_accounts<'info, 'a>(
-        &self,
-        accounts: &mut &'a [AccountInfo<'info>],
-    ) -> (&'a [AccountInfo<'info>], &'a [AccountInfo<'info>]) {
-        // Split all accounts into pre hook accounts, post_hook accounts and
-        // transaction related accounts including lookups
-        let mut pre_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-        let mut post_hook_accounts_intermediate: &[AccountInfo<'info>] = &[];
-        let mut transaction_accounts = *accounts;
-
-        if self.pre_hook.is_some() {
-            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.pre_hook.as_ref().unwrap().num_accounts() as usize);
-            pre_hook_accounts_intermediate = pre_hook_accounts;
-            transaction_accounts = remaining_accounts;
-        };
-        if self.post_hook.is_some() {
-            let (post_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.post_hook.as_ref().unwrap().num_accounts() as usize);
-            post_hook_accounts_intermediate = post_hook_accounts;
-            transaction_accounts = remaining_accounts;
-        }
-
-        // Re-set transaction accounts
-        *accounts = transaction_accounts;
-
-        (
-            pre_hook_accounts_intermediate,
-            post_hook_accounts_intermediate,
-        )
-    }
-}
 
 // =============================================================================
-// SIZE IMPLEMENTATIONS FOR CREATION PAYLOAD TYPES
+// ACCOUNT CONSTRAINT EVALUATION
 // =============================================================================
 
-impl LimitedTimeConstraints {
-    pub fn size(&self) -> usize {
-        8 + // start
-        1 + // option discriminator for expiration
-        match self.expiration {
-            Some(_) => 8, // expiration value
-            None => 0,
-        } +
-        1 // period enum discriminator (PeriodV2 is small enum)
-    }
-}
-
-impl LimitedQuantityConstraints {
-    pub fn size(&self) -> usize {
-        8 // max_per_period
-    }
-}
-
-impl LimitedSpendingLimit {
-    pub fn size(&self) -> usize {
-        32 + // mint
-        self.time_constraints.size() + // time_constraints
-        self.quantity_constraints.size() // quantity_constraints
-    }
-}
-
-// =============================================================================
-// PAYLOAD CONVERSION IMPLEMENTATIONS
-// =============================================================================
-
-impl PolicyPayloadConversionTrait for ProgramInteractionPolicyCreationPayload {
-    type PolicyState = ProgramInteractionPolicy;
-
-    fn to_policy_state(self) -> Result<ProgramInteractionPolicy> {
-        // For sanity sake, we limit the number of instruction constraints and
-        // spending limits
-        require!(
-            self.instructions_constraints.len() <= 20,
-            SmartAccountError::ProgramInteractionTooManyInstructionConstraints
+fn evaluate_account_info(
+    constraint: &AccountConstraint,
+    account: &AccountInfo,
+) -> Result<()> {
+    if let Some(owner) = constraint.owner {
+        require_eq!(
+            account.owner,
+            &owner,
+            SmartAccountError::IllegalAccountOwner
         );
-        require!(
-            self.spending_limits.len() <= 10,
-            SmartAccountError::ProgramInteractionTooManySpendingLimits
-        );
-
-        let mut spending_limits = self.spending_limits.clone();
-        spending_limits.sort_by_key(|c| c.mint);
-
-        let current_timestamp = Clock::get()?.unix_timestamp;
-        Ok(ProgramInteractionPolicy {
-            account_index: self.account_index,
-            instructions_constraints: self.instructions_constraints,
-            pre_hook: self.pre_hook,
-            post_hook: self.post_hook,
-            spending_limits: spending_limits
-                .iter()
-                .map(|spending_limit| {
-                    // Determine the start timestamp
-                    let start = if spending_limit.time_constraints.start == 0 {
-                        current_timestamp
-                    } else {
-                        spending_limit.time_constraints.start
-                    };
-                    SpendingLimitV2 {
-                        mint: spending_limit.mint,
-                        time_constraints: TimeConstraints {
-                            start,
-                            period: spending_limit.time_constraints.period,
-                            expiration: spending_limit.time_constraints.expiration,
-                            accumulate_unused: false,
-                        },
-                        quantity_constraints: QuantityConstraints {
-                            max_per_period: spending_limit.quantity_constraints.max_per_period,
-                            max_per_use: 0,
-                            enforce_exact_quantity: false,
-                        },
-                        usage: UsageState {
-                            remaining_in_period: spending_limit.quantity_constraints.max_per_period,
-                            last_reset: start,
-                        },
-                    }
-                })
-                .collect(),
-        })
+    };
+    match &constraint.account_constraint {
+        AccountConstraintType::Pubkey(keys) => {
+            if !keys.contains(&account.key) {
+                return Err(
+                    SmartAccountError::ProgramInteractionAccountConstraintViolated.into(),
+                );
+            }
+        }
+        AccountConstraintType::AccountData(constraints) => {
+            let data = account.try_borrow_data()?;
+            for c in constraints {
+                c.evaluate(&data).to_anchor()?;
+            }
+        }
     }
+    Ok(())
 }
 
-impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
-    fn creation_payload_size(&self) -> usize {
-        1 + // account_scope
-        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
-        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
-        4 + self.spending_limits.iter().map(|constraint| constraint.size()).sum::<usize>()
-        // spending_limits vec
-    }
+fn evaluate_ac_against_instruction_indices_and_accounts(
+    constraint: &AccountConstraint,
+    instruction_account_indices: &[u8],
+    accounts: &[AccountInfo],
+) -> Result<()> {
+    let mapped_account_index = instruction_account_indices[constraint.account_index as usize];
+    let account = &accounts[mapped_account_index as usize];
+    evaluate_account_info(constraint, account)?;
+    Ok(())
+}
 
-    fn policy_state_size(&self) -> usize {
-        1 + // account_index (account_scope becomes account_index in policy state)
-        4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>() + // instructions_constraints vec
-        1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // pre_hook
-        1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0) + // post_hook
-        4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>()
-        // spending_limits vec
-    }
+fn evaluate_ac_against_account_infos<'info>(
+    constraint: &AccountConstraint,
+    account_infos: &'info [AccountInfo<'info>],
+) -> Result<()> {
+    let account_info_to_evaluate = account_infos
+        .get(constraint.account_index as usize)
+        .ok_or(SmartAccountError::ProgramInteractionAccountConstraintViolated)
+        .unwrap();
+    evaluate_account_info(constraint, account_info_to_evaluate)?;
+    Ok(())
 }
 
 // =============================================================================
-// TRANSACTION PAYLOAD IMPLEMENTATIONS
-// =============================================================================
-impl ProgramInteractionPayload {
-    /// Get the async transaction payload details for the policy
-    pub fn get_transaction_payload(
-        &self,
-        transaction_key: Pubkey,
-    ) -> Result<TransactionPayloadDetails> {
-        match &self.transaction_payload {
-            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
-                // Deserialize the transaction message
-                let transaction_message = TransactionMessage::deserialize(
-                    &mut transaction_payload.transaction_message.as_slice(),
-                )?;
-                // Derive the ephemeral signer bumps
-                let ephemeral_signer_bumps: Vec<u8> = (0..transaction_payload.ephemeral_signers)
-                    .map(|ephemeral_signer_index| {
-                        let ephemeral_signer_seeds = &[
-                            SEED_PREFIX,
-                            transaction_key.as_ref(),
-                            SEED_EPHEMERAL_SIGNER,
-                            &ephemeral_signer_index.to_le_bytes(),
-                        ];
-
-                        let (_, bump) =
-                            Pubkey::find_program_address(ephemeral_signer_seeds, &crate::ID);
-                        bump
-                    })
-                    .collect();
-
-                // Create the transaction payload details
-                Ok(TransactionPayloadDetails {
-                    account_index: transaction_payload.account_index,
-                    ephemeral_signer_bumps,
-                    message: transaction_message.try_into()?,
-                })
-            }
-            _ => Err(SmartAccountError::InvalidPayload.into()),
-        }
-    }
-
-    /// Get the sync transaction payload details for the policy
-    pub fn get_sync_transaction_payload(&self) -> Result<&SyncTransactionPayloadDetails> {
-        match &self.transaction_payload {
-            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
-                Ok(sync_transaction_payload)
-            }
-            _ => Err(SmartAccountError::InvalidPayload.into()),
-        }
-    }
-}
-
-impl ProgramInteractionTransactionPayload {
-    /// Get the account index for the transaction payload
-    pub fn get_account_index(&self) -> u8 {
-        match self {
-            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
-                transaction_payload.account_index
-            }
-            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
-                sync_transaction_payload.account_index
-            }
-        }
-    }
-
-    /// Get the number of instructions for the transaction payload
-    pub fn instructions_len(&self) -> Result<usize> {
-        match self {
-            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
-                // TODO: Inefficient to deserialize the transaction message and
-                // not do anything with it.
-                Ok(TransactionMessage::deserialize(
-                    &mut transaction_payload.transaction_message.as_slice(),
-                )
-                .map_err(|_| SmartAccountError::InvalidInstructionArgs)?
-                .instructions
-                .len())
-            }
-            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
-                // Since its a small vec, we can get the length directly from
-                // the first byte
-                Ok(sync_transaction_payload.instructions[0] as usize)
-            }
-        }
-    }
-}
-
-// =============================================================================
-// POLICY TRAIT IMPLEMENTATION
+// POLICY TRAIT IMPL
 // =============================================================================
 
 impl PolicyTrait for ProgramInteractionPolicy {
@@ -760,23 +468,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
 
     /// Validate the policy invariant
     fn invariant(&self) -> Result<()> {
-        // There can't be duplicate balance constraint for the same mint
-        // Assumes that the balance constraints are sorted by mint
-        let has_duplicate = self
-            .spending_limits
-            .windows(2)
-            .any(|window| window[0].mint == window[1].mint);
-        require!(
-            !has_duplicate,
-            SmartAccountError::ProgramInteractionDuplicateSpendingLimit
-        );
-
-        // Each spending limits invariant must be valid
-        for spending_limit in &self.spending_limits {
-            spending_limit.invariant()?;
-        }
-
-        Ok(())
+        ProgramInteractionPolicy::invariant(self).to_anchor()
     }
 
     /// Validate the payload for the policy
@@ -785,80 +477,7 @@ impl PolicyTrait for ProgramInteractionPolicy {
         context: PolicyExecutionContext,
         payload: &Self::UsagePayload,
     ) -> Result<()> {
-        // Validate that the payload is valid for the context
-        match (context, &payload.transaction_payload) {
-            (
-                PolicyExecutionContext::Synchronous,
-                ProgramInteractionTransactionPayload::AsyncTransaction(..),
-            ) => {
-                return Err(
-                    SmartAccountError::ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction
-                        .into(),
-                );
-            }
-            (
-                PolicyExecutionContext::Asynchronous,
-                ProgramInteractionTransactionPayload::SyncTransaction(..),
-            ) => {
-                return Err(
-                    SmartAccountError::ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction
-                        .into(),
-                );
-            }
-            // Both other variants are valid
-            (_, _) => {}
-        }
-
-        // Get the account index and instructions length
-        let payload_account_index = payload.transaction_payload.get_account_index();
-        let instructions_len = match &payload.transaction_payload {
-            ProgramInteractionTransactionPayload::AsyncTransaction(transaction_payload) => {
-                // TODO: Inefficient to deserialize the transaction message and
-                // not do anything with it.
-                TransactionMessage::deserialize(
-                    &mut transaction_payload.transaction_message.as_slice(),
-                )?
-                .instructions
-                .len()
-            }
-            ProgramInteractionTransactionPayload::SyncTransaction(sync_transaction_payload) => {
-                let instructions: SmallVec<u8, CompiledInstruction> =
-                    SmallVec::<u8, CompiledInstruction>::try_from_slice(
-                        &sync_transaction_payload.instructions,
-                    )
-                    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
-                instructions.len()
-            }
-        };
-        require_eq!(
-            payload_account_index,
-            self.account_index,
-            SmartAccountError::InvalidPayload
-        );
-
-        // If there are instruction constraints, ensure that the submitted instruction constraints are valid
-        if !self.instructions_constraints.is_empty() {
-            if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-                // Ensure that the instruction indices match the number of
-                // instructions
-                require_eq!(
-                    instruction_constraint_indices.len(),
-                    instructions_len,
-                    SmartAccountError::ProgramInteractionInstructionCountMismatch
-                );
-                // Ensure that the instruction constraint index is within the bounds
-                // of the instructions constraints
-                for instruction_constraint_index in instruction_constraint_indices {
-                    require!(
-                        *instruction_constraint_index < self.instructions_constraints.len() as u8,
-                        SmartAccountError::ProgramInteractionConstraintIndexOutOfBounds
-                    );
-                }
-            } else {
-                return Err(SmartAccountError::ProgramInteractionInstructionCountMismatch.into());
-            }
-        }
-        Ok(())
+        ProgramInteractionPolicyExt::validate_payload(self, context, payload)
     }
 
     // Wrapper method to distinguish between transaction and sync transaction payloads
@@ -870,634 +489,192 @@ impl PolicyTrait for ProgramInteractionPolicy {
     ) -> Result<()> {
         match &payload.transaction_payload {
             ProgramInteractionTransactionPayload::AsyncTransaction(..) => {
-                self.execute_payload_async(args, payload, accounts)
+                execute_payload_async(self, args, payload, accounts)
             }
             ProgramInteractionTransactionPayload::SyncTransaction(..) => {
-                self.execute_payload_sync(args, payload, accounts)
+                execute_payload_sync(self, args, payload, accounts)
             }
         }
     }
 }
 
 // =============================================================================
-// ASYNC TRANSACTION EXECUTION
+// ASYNC EXECUTION
 // =============================================================================
 
-impl ProgramInteractionPolicy {
-    /// Execute an async transaction through the policy
-    fn execute_payload_async<'info>(
-        &mut self,
-        args: ProgramInteractionExecutionArgs,
-        payload: &ProgramInteractionPayload,
-        mut accounts: &'info [AccountInfo<'info>],
-    ) -> Result<()> {
-        // Get the transaction payload
-        let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
+fn execute_payload_async<'info>(
+    policy: &mut ProgramInteractionPolicy,
+    args: ProgramInteractionExecutionArgs,
+    payload: &ProgramInteractionPayload,
+    mut accounts: &'info [AccountInfo<'info>],
+) -> Result<()> {
+    let transaction_payload = payload.get_transaction_payload(args.transaction_key)?;
 
-        // Largely copied from `transaction_execute.rs`
-        let smart_account_seeds = &[
-            SEED_PREFIX,
-            args.settings_key.as_ref(),
-            SEED_SMART_ACCOUNT,
-            &transaction_payload.account_index.to_le_bytes(),
-        ];
-        let (smart_account_pubkey, smart_account_bump) =
-            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+    let smart_account_seeds = &[
+        SEED_PREFIX,
+        args.settings_key.as_ref(),
+        SEED_SMART_ACCOUNT,
+        &transaction_payload.account_index.to_le_bytes(),
+    ];
+    let (smart_account_pubkey, smart_account_bump) =
+        Pubkey::find_program_address(smart_account_seeds, &crate::ID);
 
-        let smart_account_signer_seeds = &[
-            smart_account_seeds[0],
-            smart_account_seeds[1],
-            smart_account_seeds[2],
-            smart_account_seeds[3],
-            &[smart_account_bump],
-        ];
+    let smart_account_signer_seeds = &[
+        smart_account_seeds[0],
+        smart_account_seeds[1],
+        smart_account_seeds[2],
+        smart_account_seeds[3],
+        &[smart_account_bump],
+    ];
 
-        // Parse out the hook accounts from the accounts slice
-        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
+    let (pre_hook_accounts, post_hook_accounts) = policy.parse_hook_accounts(&mut accounts);
 
-        // Get the message account infos and address lookup table account infos
-        let num_lookups = transaction_payload.message.address_table_lookups.len();
-        // Execute the transaction
-        let message_account_infos = accounts
-            .get(num_lookups..)
-            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
-        let address_lookup_table_account_infos = accounts
-            .get(..num_lookups)
-            .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+    let num_lookups = transaction_payload.message.address_table_lookups.len();
+    let message_account_infos = accounts
+        .get(num_lookups..)
+        .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
+    let address_lookup_table_account_infos = accounts
+        .get(..num_lookups)
+        .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &transaction_payload.message.instructions,
-                message_account_infos,
-            )?;
-        }
-
-        // Execute the pre hook
-        if let Some(pre_hook) = &self.pre_hook {
-            pre_hook.execute(
-                pre_hook_accounts,
-                &transaction_payload.message.instructions,
-                &accounts[num_lookups..],
-            )?;
-        }
-        let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
-            args.transaction_key,
-            &transaction_payload.ephemeral_signer_bumps,
-        );
-
-        let executable_message = ExecutableTransactionMessage::new_validated(
-            transaction_payload.message.clone(),
+    if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+        policy.evaluate_instruction_constraints(
+            instruction_constraint_indices,
+            &transaction_payload.message.instructions,
             message_account_infos,
-            address_lookup_table_account_infos,
-            &smart_account_pubkey,
-            &ephemeral_signer_keys,
         )?;
-
-        let protected_accounts = &[args.proposal_key];
-
-        // Update the spending limits if present
-        if !self.spending_limits.is_empty() {
-            let current_timestamp = Clock::get()?.unix_timestamp;
-            // Reset the spending limits if needed
-            for spending_limit in &mut self.spending_limits {
-                spending_limit.reset_if_needed(current_timestamp);
-            }
-
-            let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
-            // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
-            executable_message.execute_message(
-                smart_account_signer_seeds,
-                &ephemeral_signer_seeds,
-                protected_accounts,
-            )?;
-            // Evaluate the balance changes post-execution
-            tracked_pre_balances.evaluate_balance_changes(&mut self.spending_limits)?;
-        } else {
-            // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
-            executable_message.execute_message(
-                smart_account_signer_seeds,
-                &ephemeral_signer_seeds,
-                protected_accounts,
-            )?;
-        }
-
-        // Execute post hook
-        if let Some(post_hook) = &self.post_hook {
-            post_hook.execute(
-                post_hook_accounts,
-                &transaction_payload.message.instructions,
-                &accounts[num_lookups..],
-            )?;
-        }
-        Ok(())
     }
 
-    // =============================================================================
-    // SYNC TRANSACTION EXECUTION
-    // =============================================================================
+    if let Some(pre_hook) = &policy.pre_hook {
+        pre_hook.execute(
+            pre_hook_accounts,
+            &transaction_payload.message.instructions,
+            &accounts[num_lookups..],
+        )?;
+    }
+    let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
+        args.transaction_key,
+        &transaction_payload.ephemeral_signer_bumps,
+    );
 
-    /// Execute a synchronous transaction through the policy
-    fn execute_payload_sync<'info>(
-        &mut self,
-        args: ProgramInteractionExecutionArgs,
-        payload: &ProgramInteractionPayload,
-        mut accounts: &'info [AccountInfo<'info>],
-    ) -> Result<()> {
-        // Get the sync transaction payload
-        let sync_transaction_payload = payload.get_sync_transaction_payload()?;
-        // Get the settings key
-        let settings_key = args.settings_key;
-        // Validate the instructions
-        let instructions = SmallVec::<u8, CompiledInstruction>::try_from_slice(
-            &sync_transaction_payload.instructions,
-        )
-        .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+    let executable_message = ExecutableTransactionMessage::new_validated(
+        transaction_payload.message.clone(),
+        message_account_infos,
+        address_lookup_table_account_infos,
+        &smart_account_pubkey,
+        &ephemeral_signer_keys,
+    )?;
 
-        // Convert to SmartAccountCompiledInstruction
-        let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
-            Vec::from(instructions)
-                .into_iter()
-                .map(SmartAccountCompiledInstruction::from)
-                .collect();
-        // Get the smart account seeds
-        let smart_account_seeds = &[
-            SEED_PREFIX,
-            settings_key.as_ref(),
-            SEED_SMART_ACCOUNT,
-            &sync_transaction_payload.account_index.to_le_bytes(),
-        ];
-        let (smart_account_pubkey, smart_account_bump) =
-            Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+    let protected_accounts = &[args.proposal_key];
 
-        // Get the signer seeds for the smart account
-        let smart_account_signer_seeds = &[
-            smart_account_seeds[0],
-            smart_account_seeds[1],
-            smart_account_seeds[2],
-            smart_account_seeds[3],
-            &[smart_account_bump],
-        ];
-
-        // Parse out the hook accounts from the accounts slice
-        let (pre_hook_accounts, post_hook_accounts) = self.parse_hook_accounts(&mut accounts);
-
-        // Evaluate the instruction constraints
-        if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
-            self.evaluate_instruction_constraints(
-                instruction_constraint_indices,
-                &settings_compiled_instructions,
-                accounts,
-            )?;
+    if !policy.spending_limits.is_empty() {
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        for spending_limit in &mut policy.spending_limits {
+            spending_limit.reset_if_needed(current_timestamp);
         }
 
-        // Execute the pre hook
-        if let Some(pre_hook) = &self.pre_hook {
-            pre_hook.execute(
-                pre_hook_accounts,
-                &settings_compiled_instructions,
-                &accounts,
-            )?;
-        }
+        let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
+        executable_message.execute_message(
+            smart_account_signer_seeds,
+            &ephemeral_signer_seeds,
+            protected_accounts,
+        )?;
+        tracked_pre_balances.evaluate_balance_changes(&mut policy.spending_limits)?;
+    } else {
+        executable_message.execute_message(
+            smart_account_signer_seeds,
+            &ephemeral_signer_seeds,
+            protected_accounts,
+        )?;
+    }
 
-        let executable_message = SynchronousTransactionMessage::new_validated(
-            &settings_key,
-            &smart_account_pubkey,
-            &args.policy_signers,
+    if let Some(post_hook) = &policy.post_hook {
+        post_hook.execute(
+            post_hook_accounts,
+            &transaction_payload.message.instructions,
+            &accounts[num_lookups..],
+        )?;
+    }
+    Ok(())
+}
+
+// =============================================================================
+// SYNC EXECUTION
+// =============================================================================
+
+fn execute_payload_sync<'info>(
+    policy: &mut ProgramInteractionPolicy,
+    args: ProgramInteractionExecutionArgs,
+    payload: &ProgramInteractionPayload,
+    mut accounts: &'info [AccountInfo<'info>],
+) -> Result<()> {
+    let sync_transaction_payload = payload.get_sync_transaction_payload()?;
+    let settings_key = args.settings_key;
+    let instructions = SmallVec::<u8, CompiledInstruction>::try_from_slice(
+        &sync_transaction_payload.instructions,
+    )
+    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+
+    let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
+        Vec::from(instructions)
+            .into_iter()
+            .map(SmartAccountCompiledInstruction::from)
+            .collect();
+    let smart_account_seeds = &[
+        SEED_PREFIX,
+        settings_key.as_ref(),
+        SEED_SMART_ACCOUNT,
+        &sync_transaction_payload.account_index.to_le_bytes(),
+    ];
+    let (smart_account_pubkey, smart_account_bump) =
+        Pubkey::find_program_address(smart_account_seeds, &crate::ID);
+
+    let smart_account_signer_seeds = &[
+        smart_account_seeds[0],
+        smart_account_seeds[1],
+        smart_account_seeds[2],
+        smart_account_seeds[3],
+        &[smart_account_bump],
+    ];
+
+    let (pre_hook_accounts, post_hook_accounts) = policy.parse_hook_accounts(&mut accounts);
+
+    if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
+        policy.evaluate_instruction_constraints(
+            instruction_constraint_indices,
             &settings_compiled_instructions,
             accounts,
         )?;
+    }
 
-        // Update the spending limits if present
-        if !self.spending_limits.is_empty() {
-            let current_timestamp = Clock::get()?.unix_timestamp;
-            // Reset the spending limits if needed
-            for spending_limit in &mut self.spending_limits {
-                spending_limit.reset_if_needed(current_timestamp);
-            }
+    if let Some(pre_hook) = &policy.pre_hook {
+        pre_hook.execute(pre_hook_accounts, &settings_compiled_instructions, accounts)?;
+    }
 
-            let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
-            // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
-            executable_message.execute(smart_account_signer_seeds)?;
-            // Evaluate the balance changes post-execution
-            tracked_pre_balances.evaluate_balance_changes(&mut self.spending_limits)?;
-        } else {
-            // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
-            executable_message.execute(smart_account_signer_seeds)?;
-        }
-        // Execute the post hook
-        if let Some(post_hook) = &self.post_hook {
-            post_hook.execute(
-                post_hook_accounts,
-                &settings_compiled_instructions,
-                &accounts,
-            )?;
+    let executable_message = SynchronousTransactionMessage::new_validated(
+        &settings_key,
+        &smart_account_pubkey,
+        &args.policy_signers,
+        &settings_compiled_instructions,
+        accounts,
+    )?;
+
+    if !policy.spending_limits.is_empty() {
+        let current_timestamp = Clock::get()?.unix_timestamp;
+        for spending_limit in &mut policy.spending_limits {
+            spending_limit.reset_if_needed(current_timestamp);
         }
 
-        Ok(())
-    }
-}
-
-// =============================================================================
-// TESTS
-// =============================================================================
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_data_constraint_u8_equals() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U8(42),
-            operator: DataOperator::Equals,
-        };
-
-        assert!(constraint.evaluate(&[42]).is_ok());
-
-        assert_eq!(
-            constraint.evaluate(&[41]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
+        let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
+        executable_message.execute(smart_account_signer_seeds)?;
+        tracked_pre_balances.evaluate_balance_changes(&mut policy.spending_limits)?;
+    } else {
+        executable_message.execute(smart_account_signer_seeds)?;
     }
 
-    #[test]
-    fn test_data_constraint_u8_greater_than() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U8(10),
-            operator: DataOperator::GreaterThan,
-        };
-
-        assert!(constraint.evaluate(&[11]).is_ok());
-
-        assert_eq!(
-            constraint.evaluate(&[10]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-        assert_eq!(
-            constraint.evaluate(&[9]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
+    if let Some(post_hook) = &policy.post_hook {
+        post_hook.execute(post_hook_accounts, &settings_compiled_instructions, accounts)?;
     }
 
-    #[test]
-    fn test_data_constraint_u16_little_endian() {
-        let constraint = DataConstraint {
-            data_offset: 1,
-            data_value: DataValue::U16Le(0x1234),
-            operator: DataOperator::Equals,
-        };
-
-        // Little endian: 0x1234 = [0x34, 0x12]
-        assert!(constraint.evaluate(&[0x00, 0x34, 0x12]).is_ok());
-
-        assert_eq!(
-            constraint.evaluate(&[0x00, 0x12, 0x34]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_u32_less_than_or_equal() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U32Le(1000),
-            operator: DataOperator::LessThanOrEqualTo,
-        };
-
-        // Little endian: 1000 = 0x03E8 = [0xE8, 0x03, 0x00, 0x00]
-        assert!(constraint.evaluate(&[0xE8, 0x03, 0x00, 0x00]).is_ok()); // 1000
-        assert!(constraint.evaluate(&[0xE7, 0x03, 0x00, 0x00]).is_ok()); // 999
-        assert_eq!(
-            constraint
-                .evaluate(&[0xE9, 0x03, 0x00, 0x00])
-                .err()
-                .unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        ); // 1001
-    }
-
-    #[test]
-    fn test_data_constraint_u64_not_equals() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U64Le(0x123456789ABCDEF0),
-            operator: DataOperator::NotEquals,
-        };
-
-        let target_bytes = 0x123456789ABCDEF0u64.to_le_bytes();
-        let different_bytes = 0x123456789ABCDEF1u64.to_le_bytes();
-
-        assert_eq!(
-            constraint.evaluate(&target_bytes).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-        assert!(constraint.evaluate(&different_bytes).is_ok());
-    }
-
-    #[test]
-    fn test_data_constraint_u128_greater_than_or_equal() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U128Le(1000),
-            operator: DataOperator::GreaterThanOrEqualTo,
-        };
-
-        let equal_bytes = 1000u128.to_le_bytes();
-        let greater_bytes = 1001u128.to_le_bytes();
-        let lesser_bytes = 999u128.to_le_bytes();
-
-        assert!(constraint.evaluate(&equal_bytes).is_ok());
-        assert!(constraint.evaluate(&greater_bytes).is_ok());
-        assert_eq!(
-            constraint.evaluate(&lesser_bytes).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_u8_slice_equals() {
-        let constraint = DataConstraint {
-            data_offset: 8,
-            data_value: DataValue::U8Slice(vec![0xDE, 0xAD, 0xBE, 0xEF]),
-            operator: DataOperator::Equals,
-        };
-
-        let mut data = vec![0; 12];
-        data[8..12].copy_from_slice(&[0xDE, 0xAD, 0xBE, 0xEF]);
-
-        assert!(constraint.evaluate(&data).is_ok());
-
-        // Different bytes
-        data[8] = 0xFF;
-        assert_eq!(
-            constraint.evaluate(&data).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_u8_slice_not_equals() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U8Slice(vec![0x01, 0x02, 0x03]),
-            operator: DataOperator::NotEquals,
-        };
-
-        assert!(constraint.evaluate(&[0x01, 0x02, 0x04]).is_ok());
-        assert_eq!(
-            constraint.evaluate(&[0x01, 0x02, 0x03]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_u8_slice_invalid_operator() {
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U8Slice(vec![0x01]),
-            operator: DataOperator::GreaterThan, // Invalid for U8Slice
-        };
-
-        assert_eq!(
-            constraint.evaluate(&[0x01]).err().unwrap(),
-            SmartAccountError::ProgramInteractionUnsupportedSliceOperator.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_out_of_bounds() {
-        let constraint = DataConstraint {
-            data_offset: 5,
-            data_value: DataValue::U8(42),
-            operator: DataOperator::Equals,
-        };
-
-        // Data too short
-        assert!(
-            constraint.evaluate(&[1, 2, 3]).err().unwrap()
-                == SmartAccountError::ProgramInteractionDataTooShort.into()
-        );
-
-        // Exact boundary
-        assert_eq!(
-            constraint.evaluate(&[1, 2, 3, 4, 5]).err().unwrap(),
-            SmartAccountError::ProgramInteractionDataTooShort.into()
-        );
-
-        // Just enough data
-        assert_eq!(
-            constraint.evaluate(&[1, 2, 3, 4, 5, 41]).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-        assert!(constraint.evaluate(&[1, 2, 3, 4, 5, 42]).is_ok());
-    }
-
-    #[test]
-    fn test_data_constraint_multi_byte_out_of_bounds() {
-        let constraint = DataConstraint {
-            data_offset: 2,
-            data_value: DataValue::U32Le(1000),
-            operator: DataOperator::Equals,
-        };
-
-        // Need 4 bytes starting at offset 2, so need at least 6 bytes total
-        assert_eq!(
-            constraint.evaluate(&[1, 2, 3, 4, 5]).err().unwrap(),
-            SmartAccountError::ProgramInteractionDataTooShort.into()
-        ); // Only 5 bytes
-
-        let mut data = vec![0; 6];
-        data[2..6].copy_from_slice(&1000u32.to_le_bytes());
-        assert!(constraint.evaluate(&data).is_ok());
-    }
-
-    #[test]
-    fn test_data_constraint_solana_instruction_discriminator() {
-        // Simulate checking for a specific Solana instruction discriminator
-        let swap_discriminator = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF];
-
-        let constraint = DataConstraint {
-            data_offset: 0,
-            data_value: DataValue::U8Slice(swap_discriminator.to_vec()),
-            operator: DataOperator::Equals,
-        };
-
-        // Create instruction data with correct discriminator + some payload
-        let mut instruction_data = swap_discriminator.to_vec();
-        instruction_data.extend_from_slice(&[0xFF, 0xEE, 0xDD, 0xCC]); // Additional data
-
-        assert!(constraint.evaluate(&instruction_data).is_ok());
-
-        // Wrong discriminator
-        let wrong_discriminator = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEE];
-        let mut wrong_data = wrong_discriminator.to_vec();
-        wrong_data.extend_from_slice(&[0xFF, 0xEE, 0xDD, 0xCC]);
-
-        assert_eq!(
-            constraint.evaluate(&wrong_data).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-    }
-
-    #[test]
-    fn test_data_constraint_amount_validation() {
-        // Simulate validating a swap amount in instruction data
-        // Amount at offset 12 (after 8-byte discriminator + 4-byte other data)
-        let max_amount = 1000u64;
-
-        let constraint = DataConstraint {
-            data_offset: 12,
-            data_value: DataValue::U64Le(max_amount),
-            operator: DataOperator::LessThanOrEqualTo,
-        };
-
-        // Create instruction with amount = 500 (valid)
-        let mut instruction_data = vec![0; 20]; // Discriminator + other data + amount
-        instruction_data[12..20].copy_from_slice(&500u64.to_le_bytes());
-        assert!(constraint.evaluate(&instruction_data).is_ok());
-
-        // Create instruction with amount = 1500 (invalid)
-        instruction_data[12..20].copy_from_slice(&1500u64.to_le_bytes());
-        assert_eq!(
-            constraint.evaluate(&instruction_data).err().unwrap(),
-            SmartAccountError::ProgramInteractionInvalidNumericValue.into()
-        );
-
-        // Exactly at limit (valid)
-        instruction_data[12..20].copy_from_slice(&1000u64.to_le_bytes());
-        assert!(constraint.evaluate(&instruction_data).is_ok());
-    }
-
-    #[test]
-    fn test_creation_payload_size_calculation() {
-        let payload = ProgramInteractionPolicyCreationPayload {
-            account_index: 1,
-            pre_hook: None,
-            post_hook: None,
-            instructions_constraints: vec![InstructionConstraint {
-                program_id: Pubkey::new_unique(),
-                account_constraints: vec![AccountConstraint {
-                    account_index: 0,
-                    account_constraint: AccountConstraintType::Pubkey(vec![
-                        Pubkey::new_unique(),
-                        Pubkey::new_unique(),
-                    ]),
-                    owner: None,
-                }],
-                data_constraints: vec![
-                    DataConstraint {
-                        data_offset: 0,
-                        data_value: DataValue::U8Slice(vec![
-                            0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-                        ]),
-                        operator: DataOperator::Equals,
-                    },
-                    DataConstraint {
-                        data_offset: 12,
-                        data_value: DataValue::U64Le(1000),
-                        operator: DataOperator::LessThanOrEqualTo,
-                    },
-                ],
-            }],
-            spending_limits: vec![LimitedSpendingLimit {
-                mint: Pubkey::new_unique(),
-                time_constraints: LimitedTimeConstraints {
-                    start: 1640995200,            // Jan 1, 2022
-                    expiration: Some(1672531200), // Jan 1, 2023
-                    period: PeriodV2::Daily,
-                },
-                quantity_constraints: LimitedQuantityConstraints {
-                    max_per_period: 1000,
-                },
-            }],
-        };
-
-        let calculated_size = payload.creation_payload_size();
-        let actual_serialized = payload.try_to_vec().unwrap();
-        let actual_size = actual_serialized.len();
-
-        // Since InitSpace overestimates size, we only check that the calculated
-        // size is greater than or equal to the actual size to make sure
-        // serialization succeeds
-        assert!(calculated_size >= actual_size);
-    }
-
-    #[test]
-    fn test_policy_state_size_calculation() {
-        let payload = ProgramInteractionPolicyCreationPayload {
-            account_index: 1,
-            pre_hook: None,
-            post_hook: None,
-            instructions_constraints: vec![InstructionConstraint {
-                program_id: Pubkey::new_unique(),
-                account_constraints: vec![AccountConstraint {
-                    account_index: 0,
-                    account_constraint: AccountConstraintType::Pubkey(vec![
-                        Pubkey::new_unique(),
-                        Pubkey::new_unique(),
-                    ]),
-                    owner: None,
-                }],
-                data_constraints: vec![
-                    DataConstraint {
-                        data_offset: 0,
-                        data_value: DataValue::U8Slice(vec![
-                            0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
-                        ]),
-                        operator: DataOperator::Equals,
-                    },
-                    DataConstraint {
-                        data_offset: 12,
-                        data_value: DataValue::U64Le(1000),
-                        operator: DataOperator::LessThanOrEqualTo,
-                    },
-                ],
-            }],
-            spending_limits: vec![LimitedSpendingLimit {
-                mint: Pubkey::new_unique(),
-                time_constraints: LimitedTimeConstraints {
-                    start: 1640995200,
-                    expiration: Some(1672531200),
-                    period: PeriodV2::Daily,
-                },
-                quantity_constraints: LimitedQuantityConstraints {
-                    max_per_period: 1000,
-                },
-            }],
-        };
-
-        let policy = payload.clone().to_policy_state().unwrap();
-        let calculated_size = payload.policy_state_size();
-        let actual_serialized = policy.try_to_vec().unwrap();
-        let actual_size = actual_serialized.len();
-
-        // Since InitSpace overestimates size, we only check that the calculated
-        // size is greater than or equal to the actual size to make sure
-        // serialization succeeds
-        assert!(calculated_size >= actual_size);
-    }
+    Ok(())
 }

@@ -1,3 +1,4 @@
+use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 
 use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};

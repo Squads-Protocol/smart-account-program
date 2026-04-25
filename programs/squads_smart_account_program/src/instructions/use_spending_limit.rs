@@ -1,3 +1,4 @@
+use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 use anchor_spl::token_2022::TransferChecked;
 use anchor_spl::token_interface;

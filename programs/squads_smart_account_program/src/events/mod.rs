@@ -1,36 +1,34 @@
+//! Event data lives in the types crate; this module re-exports it and adds a
+//! program-side extension trait `SmartAccountEventExt` that provides the
+//! `log()` CPI needed to emit events on-chain.
+
 use anchor_lang::{
     prelude::borsh::*, prelude::*, solana_program::program::invoke_signed, Discriminator,
 };
 
-use crate::{LogEventArgsV2};
+pub use squads_smart_account_program_types::SmartAccountEvent;
+
+use crate::LogEventArgsV2;
 
 pub mod account_events;
 pub use account_events::*;
 
-#[derive(BorshSerialize, BorshDeserialize)]
-pub enum SmartAccountEvent {
-    CreateSmartAccountEvent(CreateSmartAccountEvent),
-    SynchronousTransactionEvent(SynchronousTransactionEvent),
-    SynchronousSettingsTransactionEvent(SynchronousSettingsTransactionEvent),
-    AddSpendingLimitEvent(AddSpendingLimitEvent),
-    RemoveSpendingLimitEvent(RemoveSpendingLimitEvent),
-    UseSpendingLimitEvent(UseSpendingLimitEvent),
-    AuthoritySettingsEvent(AuthoritySettingsEvent),
-    AuthorityChangeEvent(AuthorityChangeEvent),
-    TransactionEvent(TransactionEvent),
-    ProposalEvent(ProposalEvent),
-    SynchronousTransactionEventV2(SynchronousTransactionEventV2),
-    SettingsChangePolicyEvent(SettingsChangePolicyEvent),
-    PolicyEvent(PolicyEvent),
-}
+/// Wraps the signer authority used to emit a CPI-style event.
 pub struct LogAuthorityInfo<'info> {
     pub authority: AccountInfo<'info>,
     pub authority_seeds: Vec<Vec<u8>>,
     pub bump: u8,
     pub program: AccountInfo<'info>,
 }
-impl SmartAccountEvent {
-    pub fn log<'info>(&self, authority_info: &LogAuthorityInfo<'info>) -> Result<()> {
+
+/// Extension trait that lets `SmartAccountEvent` self-publish via an
+/// `invoke_signed` call to `log_event` on this program.
+pub trait SmartAccountEventExt {
+    fn log<'info>(&self, authority_info: &LogAuthorityInfo<'info>) -> Result<()>;
+}
+
+impl SmartAccountEventExt for SmartAccountEvent {
+    fn log<'info>(&self, authority_info: &LogAuthorityInfo<'info>) -> Result<()> {
         let mut signer_seeds: Vec<&[u8]> = authority_info
             .authority_seeds
             .iter()
@@ -42,8 +40,7 @@ impl SmartAccountEvent {
         let data = LogEventArgsV2 {
             event: self.try_to_vec()?,
         };
-        let mut instruction_data =
-            Vec::with_capacity(8 + 4 + data.event.len());
+        let mut instruction_data = Vec::with_capacity(8 + 4 + data.event.len());
         instruction_data.extend_from_slice(&crate::instruction::LogEvent::DISCRIMINATOR);
         instruction_data.extend_from_slice(&data.try_to_vec()?);
 

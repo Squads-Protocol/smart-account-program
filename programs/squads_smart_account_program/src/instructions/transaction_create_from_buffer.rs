@@ -3,6 +3,8 @@ use crate::instructions::*;
 use crate::state::*;
 use anchor_lang::{prelude::*, system_program};
 
+use crate::state::TransactionBufferExt;
+
 #[derive(Accounts)]
 pub struct CreateTransactionFromBuffer<'info> {
     // The context needed for the CreateTransaction instruction
@@ -91,7 +93,7 @@ impl<'info> CreateTransactionFromBuffer<'info> {
                 ephemeral_signers,
                 ..
             }) => {
-                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer)?
+                Transaction::size_for_transaction(*ephemeral_signers, &transaction_buffer.buffer).map_err(crate::error_conv::types_err_to_anchor)?
             }
             CreateTransactionArgs::PolicyPayload { .. } => {
                 return Err(SmartAccountError::InvalidInstructionArgs.into())

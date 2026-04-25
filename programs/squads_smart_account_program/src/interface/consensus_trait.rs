@@ -1,13 +1,11 @@
+//! The `Consensus` trait (used by `InterfaceAccount<'info, ConsensusAccount>`
+//! in the program). `ConsensusAccountType` re-exported from the types crate.
+
 use anchor_lang::prelude::*;
-use borsh::{BorshDeserialize, BorshSerialize};
+
+pub use squads_smart_account_program_types::ConsensusAccountType;
 
 use crate::{Permission, SmartAccountSigner};
-
-#[derive(BorshSerialize, BorshDeserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-pub enum ConsensusAccountType {
-    Settings,
-    Policy,
-}
 
 pub trait Consensus {
     fn account_type(&self) -> ConsensusAccountType;
@@ -23,7 +21,6 @@ pub trait Consensus {
     fn stale_transaction_index(&self) -> u64;
 
     // Returns `Some(index)` if `signer_pubkey` is a signer, with `index` into the `signers` vec.
-    /// `None` otherwise.
     fn is_signer(&self, signer_pubkey: Pubkey) -> Option<usize> {
         self.signers()
             .binary_search_by_key(&signer_pubkey, |s| s.key)
@@ -60,8 +57,6 @@ pub trait Consensus {
     }
 
     /// How many "reject" votes are enough to make the transaction "Rejected".
-    /// The cutoff must be such that it is impossible for the remaining voters to reach the approval threshold.
-    /// For example: total voters = 7, threshold = 3, cutoff = 5.
     fn cutoff(&self) -> usize {
         self.num_voters()
             .checked_sub(usize::from(self.threshold()))
@@ -70,9 +65,9 @@ pub trait Consensus {
             .unwrap()
     }
 
-    // Stale transaction protection (ported from Settings)
+    // Stale transaction protection
     fn invalidate_prior_transactions(&mut self);
 
-    // Consensus validation (ported from Settings invariant)
+    // Consensus validation
     fn invariant(&self) -> Result<()>;
 }

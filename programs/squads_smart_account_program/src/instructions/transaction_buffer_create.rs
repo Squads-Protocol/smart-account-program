@@ -31,7 +31,7 @@ pub struct CreateTransactionBuffer<'info> {
     #[account(
         init,
         payer = rent_payer,
-        space = TransactionBuffer::size(args.final_buffer_size)?,
+        space = TransactionBuffer::size(args.final_buffer_size).map_err(crate::error_conv::types_err_to_anchor)?,
         seeds = [
             SEED_PREFIX,
             consensus_account.key().as_ref(),

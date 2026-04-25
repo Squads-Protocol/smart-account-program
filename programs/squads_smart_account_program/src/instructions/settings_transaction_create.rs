@@ -1,3 +1,4 @@
+use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 
 use crate::consensus_trait::{Consensus, ConsensusAccountType};
@@ -26,7 +27,7 @@ pub struct CreateSettingsTransaction<'info> {
     #[account(
         init,
         payer = rent_payer,
-        space = SettingsTransaction::size(&args.actions),
+        space = SettingsTransaction::size(&args.actions)?,
         seeds = [
             SEED_PREFIX,
             settings.key().as_ref(),
