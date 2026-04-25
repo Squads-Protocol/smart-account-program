@@ -14,10 +14,10 @@ use solana_program::instruction::Instruction;
 
 pub use squads_smart_account_program_types::{
     AccountConstraint, AccountConstraintType, DataConstraint, DataOperator, DataValue, Hook,
-    InstructionConstraint, LimitedQuantityConstraints, LimitedSpendingLimit, LimitedTimeConstraints,
-    ProgramInteractionExecutionArgs, ProgramInteractionPayload, ProgramInteractionPolicy,
-    ProgramInteractionPolicyCreationPayload, ProgramInteractionTransactionPayload,
-    SyncTransactionPayloadDetails,
+    InstructionConstraint, LimitedQuantityConstraints, LimitedSpendingLimit,
+    LimitedTimeConstraints, ProgramInteractionExecutionArgs, ProgramInteractionPayload,
+    ProgramInteractionPolicy, ProgramInteractionPolicyCreationPayload,
+    ProgramInteractionTransactionPayload, SyncTransactionPayloadDetails,
 };
 use squads_smart_account_program_types::{
     QuantityConstraints, SpendingLimitV2, TimeConstraints, UsageState,
@@ -30,7 +30,9 @@ use crate::{
         policy_core::{PolicyExecutionContext, PolicyTrait},
         utils::check_pre_balances,
     },
-    utils::{derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage},
+    utils::{
+        derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
+    },
     CompiledInstruction, SmallVec, SmartAccountCompiledInstruction, TransactionMessage,
     HOOK_AUTHORITY_PUBKEY, SEED_EPHEMERAL_SIGNER, SEED_HOOK_AUTHORITY, SEED_PREFIX,
     SEED_SMART_ACCOUNT,
@@ -216,7 +218,9 @@ impl ProgramInteractionPolicyExt for ProgramInteractionPolicy {
                 )?;
             }
             for data_constraint in &instruction_constraint.data_constraints {
-                data_constraint.evaluate(instruction.data.as_slice()).to_anchor()?;
+                data_constraint
+                    .evaluate(instruction.data.as_slice())
+                    .to_anchor()?;
             }
         }
         Ok(())
@@ -232,14 +236,14 @@ impl ProgramInteractionPolicyExt for ProgramInteractionPolicy {
         let mut transaction_accounts = *accounts;
 
         if self.pre_hook.is_some() {
-            let (pre_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.pre_hook.as_ref().unwrap().num_accounts());
+            let (pre_hook_accounts, remaining_accounts) =
+                transaction_accounts.split_at(self.pre_hook.as_ref().unwrap().num_accounts());
             pre_hook_accounts_intermediate = pre_hook_accounts;
             transaction_accounts = remaining_accounts;
         };
         if self.post_hook.is_some() {
-            let (post_hook_accounts, remaining_accounts) = transaction_accounts
-                .split_at(self.post_hook.as_ref().unwrap().num_accounts());
+            let (post_hook_accounts, remaining_accounts) =
+                transaction_accounts.split_at(self.post_hook.as_ref().unwrap().num_accounts());
             post_hook_accounts_intermediate = post_hook_accounts;
             transaction_accounts = remaining_accounts;
         }
@@ -404,10 +408,7 @@ impl HookExt for Hook {
 // ACCOUNT CONSTRAINT EVALUATION
 // =============================================================================
 
-fn evaluate_account_info(
-    constraint: &AccountConstraint,
-    account: &AccountInfo,
-) -> Result<()> {
+fn evaluate_account_info(constraint: &AccountConstraint, account: &AccountInfo) -> Result<()> {
     if let Some(owner) = constraint.owner {
         require_eq!(
             account.owner,
@@ -418,9 +419,7 @@ fn evaluate_account_info(
     match &constraint.account_constraint {
         AccountConstraintType::Pubkey(keys) => {
             if !keys.contains(&account.key) {
-                return Err(
-                    SmartAccountError::ProgramInteractionAccountConstraintViolated.into(),
-                );
+                return Err(SmartAccountError::ProgramInteractionAccountConstraintViolated.into());
             }
         }
         AccountConstraintType::AccountData(constraints) => {
@@ -610,10 +609,9 @@ fn execute_payload_sync<'info>(
 ) -> Result<()> {
     let sync_transaction_payload = payload.get_sync_transaction_payload()?;
     let settings_key = args.settings_key;
-    let instructions = SmallVec::<u8, CompiledInstruction>::try_from_slice(
-        &sync_transaction_payload.instructions,
-    )
-    .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
+    let instructions =
+        SmallVec::<u8, CompiledInstruction>::try_from_slice(&sync_transaction_payload.instructions)
+            .map_err(|_| SmartAccountError::InvalidInstructionArgs)?;
 
     let settings_compiled_instructions: Vec<SmartAccountCompiledInstruction> =
         Vec::from(instructions)
@@ -673,7 +671,11 @@ fn execute_payload_sync<'info>(
     }
 
     if let Some(post_hook) = &policy.post_hook {
-        post_hook.execute(post_hook_accounts, &settings_compiled_instructions, accounts)?;
+        post_hook.execute(
+            post_hook_accounts,
+            &settings_compiled_instructions,
+            accounts,
+        )?;
     }
 
     Ok(())

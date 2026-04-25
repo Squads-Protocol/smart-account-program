@@ -2,7 +2,8 @@ use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 
 use crate::{
-    consensus_trait::Consensus, errors::*, program::SquadsSmartAccountProgram, state::*, AuthorityChangeEvent, AuthoritySettingsEvent, LogAuthorityInfo, SmartAccountEvent
+    errors::*, program::SquadsSmartAccountProgram, state::*,
+    AuthorityChangeEvent, AuthoritySettingsEvent, LogAuthorityInfo, SmartAccountEvent,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -123,7 +124,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
             settings_pubkey: settings.key(),
             authority: ctx.accounts.settings_authority.key(),
             change: SettingsAction::AddSigner {
-                new_signer: new_signer,
+                new_signer,
             },
         };
         let log_authority_info = LogAuthorityInfo {
@@ -194,7 +195,7 @@ impl ExecuteSettingsTransactionAsAuthority<'_> {
             settings_pubkey: settings.key(),
             authority: ctx.accounts.settings_authority.key(),
             change: SettingsAction::ChangeThreshold {
-                new_threshold: new_threshold,
+                new_threshold,
             },
         };
         let log_authority_info = LogAuthorityInfo {

@@ -273,11 +273,13 @@ impl UseSpendingLimit<'_> {
             settings_pubkey: settings_key,
             spending_limit_pubkey: spending_limit.key(),
             smart_account: smart_account.key(),
-            smart_account_token_account: smart_account_token_account.map_or(Pubkey::default(),|account| account.key()),
+            smart_account_token_account: smart_account_token_account
+                .map_or(Pubkey::default(), |account| account.key()),
             destination: destination.key(),
-            destination_token_account: destination_token_account.map_or(Pubkey::default(),|account| account.key()),
+            destination_token_account: destination_token_account
+                .map_or(Pubkey::default(), |account| account.key()),
             signer: ctx.accounts.signer.key(),
-            mint: mint.map_or(Pubkey::default(),|account| account.key()),
+            mint: mint.map_or(Pubkey::default(), |account| account.key()),
             mint_decimals: args.decimals,
             amount: args.amount,
             spending_limit: SpendingLimit::try_from_slice(&spending_limit.try_to_vec()?)?,

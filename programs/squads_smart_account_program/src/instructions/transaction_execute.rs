@@ -222,7 +222,6 @@ impl<'info> ExecuteTransaction<'info> {
         // Check the account invariants
         consensus_account.invariant()?;
 
-
         // Log the execution event
         let execute_event = TransactionEvent {
             consensus_account: consensus_account.key(),
@@ -232,7 +231,9 @@ impl<'info> ExecuteTransaction<'info> {
             transaction_index: transaction.index,
             signer: Some(ctx.accounts.signer.key()),
             memo: None,
-            transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
+            transaction_content: Some(TransactionContent::Transaction(
+                transaction.clone().into_inner(),
+            )),
         };
 
         // Log the proposal vote event with execution state

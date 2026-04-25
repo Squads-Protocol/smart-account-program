@@ -56,7 +56,9 @@ pub struct CreateTransactionBuffer<'info> {
 impl CreateTransactionBuffer<'_> {
     fn validate(&self, args: &CreateTransactionBufferArgs) -> Result<()> {
         let Self {
-            consensus_account, creator, ..
+            consensus_account,
+            creator,
+            ..
         } = self;
 
         // creator is a signer on the smart account
@@ -84,7 +86,6 @@ impl CreateTransactionBuffer<'_> {
         ctx: Context<Self>,
         args: CreateTransactionBufferArgs,
     ) -> Result<()> {
-
         // Readonly Accounts
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let consensus_account = &ctx.accounts.consensus_account;

@@ -101,4 +101,3 @@ pub enum ProposalStatus {
     /// Proposal has been cancelled.
     Cancelled { timestamp: i64 },
 }
-

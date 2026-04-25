@@ -60,16 +60,14 @@ impl Transaction {
 
         let payload_size = borsh::to_vec(&payload).map(|v| v.len()).unwrap_or_default();
 
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             32 +  // consensus_account
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
             1 +   // account_index
             1 +   // account_bump
-            payload_size,
-        )
+            payload_size)
     }
 
     pub fn size_for_policy(payload: &PolicyPayload) -> Result<usize, SmartAccountError> {
@@ -81,16 +79,14 @@ impl Transaction {
             .map(|v| v.len())
             .unwrap_or_default();
 
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             32 +  // consensus_account
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
             1 +   // account_index
             1 +   // account_bump
-            payload_size,
-        )
+            payload_size)
     }
 
     pub fn size(

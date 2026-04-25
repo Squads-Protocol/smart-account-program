@@ -48,10 +48,7 @@ impl ProgramConfig<'_> {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn set_authority(
-        ctx: Context<Self>,
-        args: ProgramConfigSetAuthorityArgs,
-    ) -> Result<()> {
+    pub fn set_authority(ctx: Context<Self>, args: ProgramConfigSetAuthorityArgs) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
 
         program_config.authority = args.new_authority;
@@ -76,10 +73,7 @@ impl ProgramConfig<'_> {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn set_treasury(
-        ctx: Context<Self>,
-        args: ProgramConfigSetTreasuryArgs,
-    ) -> Result<()> {
+    pub fn set_treasury(ctx: Context<Self>, args: ProgramConfigSetTreasuryArgs) -> Result<()> {
         let program_config = &mut ctx.accounts.program_config;
 
         program_config.treasury = args.new_treasury;

@@ -102,10 +102,8 @@ pub struct SpendingLimitV2 {
 }
 
 impl SpendingLimitV2 {
-    pub const INIT_SPACE: usize = 32
-        + TimeConstraints::INIT_SPACE
-        + QuantityConstraints::INIT_SPACE
-        + UsageState::INIT_SPACE;
+    pub const INIT_SPACE: usize =
+        32 + TimeConstraints::INIT_SPACE + QuantityConstraints::INIT_SPACE + UsageState::INIT_SPACE;
 
     /// Check if the spending limit is currently active.
     pub fn is_active(&self, current_timestamp: i64) -> Result<(), SmartAccountError> {

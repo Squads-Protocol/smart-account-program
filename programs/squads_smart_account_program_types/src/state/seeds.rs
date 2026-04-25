@@ -62,8 +62,6 @@ pub fn get_smart_account_seeds<'a>(
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
 
     #[test]

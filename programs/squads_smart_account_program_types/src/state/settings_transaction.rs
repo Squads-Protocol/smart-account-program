@@ -49,16 +49,14 @@ impl SettingsTransaction {
             .into_iter()
             .sum();
 
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             32 +  // settings
             32 +  // creator
             32 +  // rent_collector
             8 +   // index
             1 +   // bump
             4 +   // actions vector length
-            actions_size,
-        )
+            actions_size)
     }
 }
 
@@ -91,7 +89,9 @@ pub enum SettingsAction {
     /// Remove a spending limit from the settings.
     RemoveSpendingLimit { spending_limit: Pubkey },
     /// Set the `archival_authority` config parameter of the settings.
-    SetArchivalAuthority { new_archival_authority: Option<Pubkey> },
+    SetArchivalAuthority {
+        new_archival_authority: Option<Pubkey>,
+    },
     /// Create a new policy account.
     PolicyCreate {
         seed: u64,

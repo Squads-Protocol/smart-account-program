@@ -60,8 +60,7 @@ pub struct SpendingLimitExecutionArgs {
 
 impl PolicySizeTrait for SpendingLimitPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
-        32
-            + 1
+        32 + 1
             + TimeConstraints::INIT_SPACE
             + QuantityConstraints::INIT_SPACE
             + 4

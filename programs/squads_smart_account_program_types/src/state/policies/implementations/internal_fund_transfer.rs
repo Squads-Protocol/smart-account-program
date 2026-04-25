@@ -125,8 +125,10 @@ pub struct InternalFundTransferPolicyCreationPayload {
 impl PolicySizeTrait for InternalFundTransferPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
         4 + self.source_account_indices.len()
-            + 4 + self.destination_account_indices.len()
-            + 4 + self.allowed_mints.len() * 32
+            + 4
+            + self.destination_account_indices.len()
+            + 4
+            + self.allowed_mints.len() * 32
     }
 
     fn policy_state_size(&self) -> usize {

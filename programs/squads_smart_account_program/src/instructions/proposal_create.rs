@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
-use crate::interface::consensus::ConsensusAccount;
 use crate::events::*;
+use crate::interface::consensus::ConsensusAccount;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
 
@@ -53,7 +53,9 @@ pub struct CreateProposal<'info> {
 impl CreateProposal<'_> {
     fn validate(&self, ctx: &Context<Self>, args: &CreateProposalArgs) -> Result<()> {
         let Self {
-            consensus_account, creator, ..
+            consensus_account,
+            creator,
+            ..
         } = self;
         let creator_key = creator.key();
 
@@ -82,10 +84,8 @@ impl CreateProposal<'_> {
 
         // Must have at least one of the following permissions: Initiate or Vote.
         require!(
-            consensus_account
-                .signer_has_permission(creator_key, Permission::Initiate)
-                || consensus_account
-                    .signer_has_permission(creator_key, Permission::Vote),
+            consensus_account.signer_has_permission(creator_key, Permission::Initiate)
+                || consensus_account.signer_has_permission(creator_key, Permission::Vote),
             SmartAccountError::Unauthorized
         );
 

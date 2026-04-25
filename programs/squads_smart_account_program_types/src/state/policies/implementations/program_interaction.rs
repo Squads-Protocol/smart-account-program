@@ -57,8 +57,18 @@ pub struct InstructionConstraint {
 
 impl InstructionConstraint {
     pub fn size(&self) -> usize {
-        32 + 4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>()
-            + 4 + self.data_constraints.iter().map(|c| c.size()).sum::<usize>()
+        32 + 4
+            + self
+                .account_constraints
+                .iter()
+                .map(|c| c.size())
+                .sum::<usize>()
+            + 4
+            + self
+                .data_constraints
+                .iter()
+                .map(|c| c.size())
+                .sum::<usize>()
     }
 }
 
@@ -77,8 +87,16 @@ pub struct Hook {
 
 impl Hook {
     pub fn size(&self) -> usize {
-        1 + 4 + self.account_constraints.iter().map(|c| c.size()).sum::<usize>()
-            + 4 + self.instruction_data.len() + 32 + 1
+        1 + 4
+            + self
+                .account_constraints
+                .iter()
+                .map(|c| c.size())
+                .sum::<usize>()
+            + 4
+            + self.instruction_data.len()
+            + 32
+            + 1
     }
 
     pub fn num_accounts(&self) -> usize {
@@ -340,17 +358,37 @@ pub struct ProgramInteractionPolicyCreationPayload {
 
 impl PolicySizeTrait for ProgramInteractionPolicyCreationPayload {
     fn creation_payload_size(&self) -> usize {
-        1 + 4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>()
-            + 1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0)
-            + 1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0)
-            + 4 + self.spending_limits.iter().map(|c| c.size()).sum::<usize>()
+        1 + 4
+            + self
+                .instructions_constraints
+                .iter()
+                .map(|c| c.size())
+                .sum::<usize>()
+            + 1
+            + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0)
+            + 1
+            + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0)
+            + 4
+            + self.spending_limits.iter().map(|c| c.size()).sum::<usize>()
     }
 
     fn policy_state_size(&self) -> usize {
-        1 + 4 + self.instructions_constraints.iter().map(|c| c.size()).sum::<usize>()
-            + 1 + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0)
-            + 1 + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0)
-            + 4 + self.spending_limits.iter().map(|_| SpendingLimitV2::INIT_SPACE).sum::<usize>()
+        1 + 4
+            + self
+                .instructions_constraints
+                .iter()
+                .map(|c| c.size())
+                .sum::<usize>()
+            + 1
+            + self.pre_hook.as_ref().map(|h| h.size()).unwrap_or(0)
+            + 1
+            + self.post_hook.as_ref().map(|h| h.size()).unwrap_or(0)
+            + 4
+            + self
+                .spending_limits
+                .iter()
+                .map(|_| SpendingLimitV2::INIT_SPACE)
+                .sum::<usize>()
     }
 }
 

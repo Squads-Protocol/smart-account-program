@@ -63,7 +63,6 @@ pub struct ExecuteSettingsTransaction<'info> {
     pub system_program: Option<Program<'info, System>>,
 
     pub program: Program<'info, SquadsSmartAccountProgram>,
-
     // In case the transaction contains Add(Remove)SpendingLimit actions,
     // `remaining_accounts` must contain the SpendingLimit accounts to be initialized/closed.
     // remaining_accounts

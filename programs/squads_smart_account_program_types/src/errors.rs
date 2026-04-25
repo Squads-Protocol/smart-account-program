@@ -150,7 +150,9 @@ pub enum SmartAccountError {
     ProgramInteractionProgramIdMismatch = 6068,
     #[error("Program interaction constraint violation: account constraint")]
     ProgramInteractionAccountConstraintViolated = 6069,
-    #[error("Program interaction constraint violation: instruction constraint index out of bounds")]
+    #[error(
+        "Program interaction constraint violation: instruction constraint index out of bounds"
+    )]
     ProgramInteractionConstraintIndexOutOfBounds = 6070,
     #[error("Program interaction constraint violation: instruction count mismatch")]
     ProgramInteractionInstructionCountMismatch = 6071,
@@ -164,7 +166,9 @@ pub enum SmartAccountError {
     ProgramInteractionIllegalTokenAccountModification = 6075,
     #[error("Program interaction invariant violation: duplicate spending limit for the same mint")]
     ProgramInteractionDuplicateSpendingLimit = 6076,
-    #[error("Program interaction constraint violation: too many instruction constraints. Max is 20")]
+    #[error(
+        "Program interaction constraint violation: too many instruction constraints. Max is 20"
+    )]
     ProgramInteractionTooManyInstructionConstraints = 6077,
     #[error("Program interaction constraint violation: too many spending limits. Max is 10")]
     ProgramInteractionTooManySpendingLimits = 6078,
@@ -210,7 +214,9 @@ pub enum SmartAccountError {
     SpendingLimitInvariantLastResetOutOfBounds = 6098,
     #[error("Spending limit invariant violation: last reset must be greater than start")]
     SpendingLimitInvariantLastResetSmallerThanStart = 6099,
-    #[error("Internal fund transfer policy invariant violation: source account index is not allowed")]
+    #[error(
+        "Internal fund transfer policy invariant violation: source account index is not allowed"
+    )]
     InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed = 6100,
     #[error("Internal fund transfer policy invariant violation: destination account index is not allowed")]
     InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed = 6101,
@@ -240,7 +246,9 @@ pub enum SmartAccountError {
     SettingsChangeAddSignerViolation = 6113,
     #[error("Settings change policy violation: signer permissions does not match allowed signer permissions")]
     SettingsChangeAddSignerPermissionsViolation = 6114,
-    #[error("Settings change policy violation: signer removal does not mach allowed signer removal")]
+    #[error(
+        "Settings change policy violation: signer removal does not mach allowed signer removal"
+    )]
     SettingsChangeRemoveSignerViolation = 6115,
     #[error("Settings change policy violation: time lock does not match allowed time lock")]
     SettingsChangeChangeTimelockViolation = 6116,
@@ -248,7 +256,9 @@ pub enum SmartAccountError {
     SettingsChangeActionMismatch = 6117,
     #[error("Settings change policy invariant violation: cannot have duplicate actions")]
     SettingsChangePolicyInvariantDuplicateActions = 6118,
-    #[error("Settings change policy invariant violation: action indices must match actions length")]
+    #[error(
+        "Settings change policy invariant violation: action indices must match actions length"
+    )]
     SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch = 6119,
     #[error("Settings change policy invariant violation: action index out of bounds")]
     SettingsChangePolicyInvariantActionIndexOutOfBounds = 6120,
@@ -256,7 +266,9 @@ pub enum SmartAccountError {
     PolicyNotActiveYet = 6121,
     #[error("Policy invariant violation: invalid policy expiration")]
     PolicyInvariantInvalidExpiration = 6122,
-    #[error("Policy expiration violation: submitted settings key does not match policy settings key")]
+    #[error(
+        "Policy expiration violation: submitted settings key does not match policy settings key"
+    )]
     PolicyExpirationViolationPolicySettingsKeyMismatch = 6123,
     #[error("Policy expiration violation: state expiration requires the settings to be submitted")]
     PolicyExpirationViolationSettingsAccountNotPresent = 6124,
@@ -378,7 +390,9 @@ impl TryFrom<u32> for SmartAccountError {
             6099 => Ok(Self::SpendingLimitInvariantLastResetSmallerThanStart),
             6100 => Ok(Self::InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed),
             6101 => Ok(Self::InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed),
-            6102 => Ok(Self::InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame),
+            6102 => {
+                Ok(Self::InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame)
+            }
             6103 => Ok(Self::InternalFundTransferPolicyInvariantMintNotAllowed),
             6104 => Ok(Self::InternalFundTransferPolicyInvariantAmountZero),
             6105 => Ok(Self::InternalFundTransferPolicyInvariantDuplicateMints),

@@ -246,4 +246,3 @@ impl Permissions {
         Self { mask: 0b111 }
     }
 }
-

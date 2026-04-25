@@ -181,7 +181,9 @@ impl<'info> Balances<'info> {
                 }
                 (None, None) => {}
                 _ => {
-                    return Err(SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into());
+                    return Err(
+                        SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
+                    );
                 }
             };
             require_eq!(

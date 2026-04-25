@@ -178,14 +178,17 @@ fn validate_accounts<'info>(
         // Native SOL transfer
         mint if mint == Pubkey::default() => {
             // Parse out the accounts
-            let (source_account_info, destination_account_info, system_program) =
-                if let [source_account_info, destination_account_info, system_program, _remaining @ ..] =
-                    accounts
-                {
-                    (source_account_info, destination_account_info, system_program)
-                } else {
-                    return err!(SmartAccountError::InvalidNumberOfAccounts);
-                };
+            let (source_account_info, destination_account_info, system_program) = if let [source_account_info, destination_account_info, system_program, _remaining @ ..] =
+                accounts
+            {
+                (
+                    source_account_info,
+                    destination_account_info,
+                    system_program,
+                )
+            } else {
+                return err!(SmartAccountError::InvalidNumberOfAccounts);
+            };
             // Check that the source account is the same as the source account info
             require!(
                 source_account_key == source_account_info.key(),

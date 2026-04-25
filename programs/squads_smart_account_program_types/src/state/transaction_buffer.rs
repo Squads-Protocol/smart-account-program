@@ -33,8 +33,7 @@ impl TransactionBuffer {
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
             return Err(SmartAccountError::FinalBufferSizeExceeded);
         }
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             32 +  // settings
             32 +  // creator
             1 +   // buffer_index
@@ -42,8 +41,7 @@ impl TransactionBuffer {
             32 +  // final_buffer_hash
             2 +   // final_buffer_size
             4 +   // buffer vec length
-            final_message_buffer_size as usize,
-        )
+            final_message_buffer_size as usize)
     }
 
     pub fn invariant(&self) -> Result<(), SmartAccountError> {

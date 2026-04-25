@@ -3,10 +3,10 @@ use anchor_lang::prelude::*;
 
 use crate::consensus_trait::{Consensus, ConsensusAccountType};
 use crate::program::SquadsSmartAccountProgram;
-use crate::{state::*, SmartAccountEvent};
 use crate::utils::validate_settings_actions;
 use crate::LogAuthorityInfo;
 use crate::{errors::*, TransactionContent, TransactionEvent, TransactionEventType};
+use crate::{state::*, SmartAccountEvent};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateSettingsTransactionArgs {

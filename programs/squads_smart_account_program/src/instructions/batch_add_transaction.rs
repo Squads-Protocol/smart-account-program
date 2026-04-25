@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::errors::*;
 use crate::state::*;
 use crate::TransactionMessage;
+use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct AddTransactionToBatchArgs {
@@ -111,7 +111,10 @@ impl AddTransactionToBatch<'_> {
 
     /// Add a transaction to the batch.
     #[access_control(ctx.accounts.validate())]
-    pub fn add_transaction_to_batch(ctx: Context<Self>, args: AddTransactionToBatchArgs) -> Result<()> {
+    pub fn add_transaction_to_batch(
+        ctx: Context<Self>,
+        args: AddTransactionToBatchArgs,
+    ) -> Result<()> {
         let batch = &mut ctx.accounts.batch;
         let transaction = &mut ctx.accounts.transaction;
         let rent_payer = &mut ctx.accounts.rent_payer;

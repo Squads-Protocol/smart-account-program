@@ -4,12 +4,11 @@ use anchor_lang::prelude::*;
 use crate::consensus_trait::Consensus;
 use crate::error_conv::ToAnchorResult;
 use crate::errors::*;
+use crate::events::*;
 use crate::interface::consensus::ConsensusAccount;
 use crate::interface::consensus_trait::ConsensusAccountType;
-use crate::events::*;
 use crate::program::SquadsSmartAccountProgram;
 use crate::state::*;
-use crate::utils::*;
 
 // Re-export wire types and args from the types crate.
 pub use squads_smart_account_program_types::{
@@ -154,14 +153,14 @@ impl<'info> CreateTransaction<'info> {
                     .collect();
 
                 transaction.payload = Payload::TransactionPayload(TransactionPayloadDetails {
-                    account_index: account_index,
+                    account_index,
                     ephemeral_signer_bumps,
                     message: transaction_message_parsed.try_into().to_anchor()?,
                 });
             }
             (CreateTransactionArgs::PolicyPayload { payload }, ConsensusAccountType::Policy) => {
                 transaction.payload =
-                    Payload::PolicyPayload(PolicyActionPayloadDetails { payload: payload });
+                    Payload::PolicyPayload(PolicyActionPayloadDetails { payload });
             }
             _ => {
                 return Err(SmartAccountError::InvalidTransactionMessage.into());
@@ -181,7 +180,9 @@ impl<'info> CreateTransaction<'info> {
             transaction_pubkey: transaction.key(),
             transaction_index,
             signer: Some(creator.key()),
-            transaction_content: Some(TransactionContent::Transaction(transaction.clone().into_inner())),
+            transaction_content: Some(TransactionContent::Transaction(
+                transaction.clone().into_inner(),
+            )),
             memo: None,
         };
 
@@ -197,4 +198,3 @@ impl<'info> CreateTransaction<'info> {
         Ok(())
     }
 }
-

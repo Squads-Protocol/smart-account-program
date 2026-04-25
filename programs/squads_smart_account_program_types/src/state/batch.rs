@@ -102,20 +102,19 @@ impl BatchTransaction {
         transaction_message: &[u8],
     ) -> Result<usize, borsh::maybestd::io::Error> {
         use crate::instructions::TransactionMessage;
-        let tm = <TransactionMessage as borsh::BorshDeserialize>::try_from_slice(transaction_message)?;
-        let sm: SmartAccountTransactionMessage = tm
-            .try_into()
-            .map_err(|_| borsh::maybestd::io::Error::new(
+        let tm =
+            <TransactionMessage as borsh::BorshDeserialize>::try_from_slice(transaction_message)?;
+        let sm: SmartAccountTransactionMessage = tm.try_into().map_err(|_| {
+            borsh::maybestd::io::Error::new(
                 borsh::maybestd::io::ErrorKind::InvalidData,
                 "invalid transaction message",
-            ))?;
+            )
+        })?;
         let message_size = borsh::to_vec(&sm)?.len();
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             1 +   // bump
             32 +  // rent_collector
             (4 + usize::from(ephemeral_signers_length)) +   // ephemeral_signers_bumps vec
-            message_size,
-        )
+            message_size)
     }
 }

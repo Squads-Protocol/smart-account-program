@@ -1,7 +1,15 @@
 use crate::SmartAccountEventExt;
 use anchor_lang::prelude::*;
 
-use crate::{consensus::ConsensusAccount, consensus_trait::{Consensus, ConsensusAccountType}, errors::*, events::*, program::SquadsSmartAccountProgram, state::*, utils::*};
+use crate::{
+    consensus::ConsensusAccount,
+    consensus_trait::{Consensus, ConsensusAccountType},
+    errors::*,
+    events::*,
+    program::SquadsSmartAccountProgram,
+    state::*,
+    utils::*,
+};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SyncSettingsTransactionArgs {
@@ -41,7 +49,9 @@ impl<'info> SyncSettingsTransaction<'info> {
         args: &SyncSettingsTransactionArgs,
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
-        let Self { consensus_account, .. } = self;
+        let Self {
+            consensus_account, ..
+        } = self;
         // Get the settings
         let settings = consensus_account.read_only_settings()?;
 

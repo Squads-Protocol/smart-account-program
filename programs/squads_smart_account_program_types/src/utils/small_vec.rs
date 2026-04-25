@@ -94,10 +94,7 @@ mod hint {
 /// Copied from borsh::ser::serialize_slice.
 #[cfg(feature = "borsh")]
 #[inline]
-fn serialize_slice<T: BorshSerialize, W: Write>(
-    data: &[T],
-    writer: &mut W,
-) -> std::io::Result<()> {
+fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> std::io::Result<()> {
     if let Some(u8_slice) = T::u8_slice(data) {
         writer.write_all(u8_slice)?;
     } else {
@@ -125,9 +122,7 @@ mod test {
 
         #[test]
         fn test_length_u8_type_u32() {
-            let mut input = &[
-                0x02, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00,
-            ][..];
+            let mut input = &[0x02, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00][..];
             let small_vec: SmallVec<u8, u32> = SmallVec::deserialize(&mut input).unwrap();
             assert_eq!(small_vec.0, vec![5, 9]);
         }
@@ -199,7 +194,12 @@ mod test {
             small_vec.serialize(&mut output).unwrap();
             assert_eq!(
                 output,
-                [&[0x02][..], &pubkey1.to_bytes()[..], &pubkey2.to_bytes()[..]].concat()[..]
+                [
+                    &[0x02][..],
+                    &pubkey1.to_bytes()[..],
+                    &pubkey2.to_bytes()[..]
+                ]
+                .concat()[..]
             );
         }
 
@@ -220,7 +220,12 @@ mod test {
             small_vec.serialize(&mut output).unwrap();
             assert_eq!(
                 output,
-                [&[0x02, 0x00][..], &pubkey1.to_bytes()[..], &pubkey2.to_bytes()[..]].concat()[..]
+                [
+                    &[0x02, 0x00][..],
+                    &pubkey1.to_bytes()[..],
+                    &pubkey2.to_bytes()[..]
+                ]
+                .concat()[..]
             );
         }
     }

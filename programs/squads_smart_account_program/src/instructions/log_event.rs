@@ -1,6 +1,6 @@
 use crate::{
-    instruction::LogEvent as LogEventInstruction, state::ProgramConfig,
-    Policy, Proposal, Settings, SettingsTransaction, Transaction,
+    instruction::LogEvent as LogEventInstruction, state::ProgramConfig, Policy, Proposal, Settings,
+    SettingsTransaction, Transaction,
 };
 use anchor_lang::{prelude::*, Discriminator};
 use solana_program::instruction::Instruction;

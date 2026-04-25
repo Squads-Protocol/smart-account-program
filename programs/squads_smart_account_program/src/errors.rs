@@ -113,7 +113,6 @@ pub enum SmartAccountError {
     #[msg("Invalid data constraint")]
     InvalidDataConstraint,
 
-
     #[msg("Invalid payload")]
     InvalidPayload,
     #[msg("Protected instruction")]
@@ -220,7 +219,9 @@ pub enum SmartAccountError {
     // ===============================================
     // Internal Fund Transfer Policy Errors
     // ===============================================
-    #[msg("Internal fund transfer policy invariant violation: source account index is not allowed")]
+    #[msg(
+        "Internal fund transfer policy invariant violation: source account index is not allowed"
+    )]
     InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed,
     #[msg("Internal fund transfer policy invariant violation: destination account index is not allowed")]
     InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed,
@@ -278,7 +279,9 @@ pub enum SmartAccountError {
     PolicyNotActiveYet,
     #[msg("Policy invariant violation: invalid policy expiration")]
     PolicyInvariantInvalidExpiration,
-    #[msg("Policy expiration violation: submitted settings key does not match policy settings key")]
+    #[msg(
+        "Policy expiration violation: submitted settings key does not match policy settings key"
+    )]
     PolicyExpirationViolationPolicySettingsKeyMismatch,
     #[msg("Policy expiration violation: state expiration requires the settings to be submitted")]
     PolicyExpirationViolationSettingsAccountNotPresent,

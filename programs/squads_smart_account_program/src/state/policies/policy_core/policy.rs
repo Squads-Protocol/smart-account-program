@@ -3,8 +3,8 @@
 
 use anchor_lang::prelude::*;
 
-pub use squads_smart_account_program_types::{PolicyExpiration, PolicyExpirationArgs, PolicyState};
 pub use squads_smart_account_program_types::Policy;
+pub use squads_smart_account_program_types::{PolicyExpiration, PolicyExpirationArgs, PolicyState};
 
 use super::payloads::PolicyPayload;
 use super::traits::PolicyExecutionContext;
@@ -12,9 +12,9 @@ use crate::error_conv::ToAnchorResult;
 use crate::{
     errors::*,
     interface::consensus_trait::{Consensus, ConsensusAccountType},
-    InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs,
-    Proposal, Settings, SettingsChangeExecutionArgs, SmartAccountSigner,
-    SpendingLimitExecutionArgs, Transaction, SEED_POLICY, SEED_PREFIX,
+    InternalFundTransferExecutionArgs, ProgramInteractionExecutionArgs, Proposal, Settings,
+    SettingsChangeExecutionArgs, SmartAccountSigner, SpendingLimitExecutionArgs, Transaction,
+    SEED_POLICY, SEED_PREFIX,
 };
 
 /// Program-side extensions for `Policy`: methods needing Clock, realloc, CPI.
@@ -69,8 +69,8 @@ impl PolicyExt for Policy {
         payload: &PolicyPayload,
     ) -> Result<()> {
         use crate::state::policies::implementations::{
-            InternalFundTransferPolicyExt, SpendingLimitPolicyExt, SettingsChangePolicyExt,
-            ProgramInteractionPolicyExt,
+            InternalFundTransferPolicyExt, ProgramInteractionPolicyExt, SettingsChangePolicyExt,
+            SpendingLimitPolicyExt,
         };
         match (&self.policy_state, payload) {
             (

@@ -45,7 +45,9 @@ impl LegacySyncTransaction<'_> {
         args: &LegacySyncTransactionArgs,
         remaining_accounts: &[AccountInfo],
     ) -> Result<()> {
-        let Self { consensus_account, .. } = self;
+        let Self {
+            consensus_account, ..
+        } = self;
         validate_synchronous_consensus(&consensus_account, args.num_signers, remaining_accounts)
     }
     #[access_control(ctx.accounts.validate(&args, &ctx.remaining_accounts))]

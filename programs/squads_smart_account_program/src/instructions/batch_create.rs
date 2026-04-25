@@ -47,9 +47,7 @@ pub struct CreateBatch<'info> {
 impl CreateBatch<'_> {
     fn validate(&self) -> Result<()> {
         let Self {
-            settings,
-            creator,
-            ..
+            settings, creator, ..
         } = self;
 
         // creator
@@ -75,10 +73,7 @@ impl CreateBatch<'_> {
         let settings_key = settings.key();
 
         // Increment the transaction index.
-        let index = settings
-            .transaction_index
-            .checked_add(1)
-            .expect("overflow");
+        let index = settings.transaction_index.checked_add(1).expect("overflow");
 
         let smart_account_seeds = &[
             SEED_PREFIX,

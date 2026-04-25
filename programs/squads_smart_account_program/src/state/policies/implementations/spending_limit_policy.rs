@@ -139,13 +139,17 @@ impl PolicyTrait for SpendingLimitPolicy {
         let current_timestamp = Clock::get()?.unix_timestamp;
 
         // Check that the spending limit is active
-        self.spending_limit.is_active(current_timestamp).to_anchor()?;
+        self.spending_limit
+            .is_active(current_timestamp)
+            .to_anchor()?;
 
         // Reset the period & amount
         self.spending_limit.reset_if_needed(current_timestamp);
 
         // Check that the amount complies with the spending limit
-        self.spending_limit.check_amount(payload.amount).to_anchor()?;
+        self.spending_limit
+            .check_amount(payload.amount)
+            .to_anchor()?;
 
         // Validate the accounts
         let validated_accounts = validate_accounts(self, &args.settings_key, payload, accounts)?;
@@ -240,14 +244,17 @@ fn validate_accounts<'info>(
         // Native SOL transfer
         mint if mint == Pubkey::default() => {
             // Parse out the accounts
-            let (source_account_info, destination_account_info, system_program) =
-                if let [source_account_info, destination_account_info, system_program, _remaining @ ..] =
-                    accounts
-                {
-                    (source_account_info, destination_account_info, system_program)
-                } else {
-                    return err!(SmartAccountError::InvalidNumberOfAccounts);
-                };
+            let (source_account_info, destination_account_info, system_program) = if let [source_account_info, destination_account_info, system_program, _remaining @ ..] =
+                accounts
+            {
+                (
+                    source_account_info,
+                    destination_account_info,
+                    system_program,
+                )
+            } else {
+                return err!(SmartAccountError::InvalidNumberOfAccounts);
+            };
             // Check that the source account is the same as the source account info
             require!(
                 source_account_key == source_account_info.key(),

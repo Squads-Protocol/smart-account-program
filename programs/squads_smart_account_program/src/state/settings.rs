@@ -377,7 +377,9 @@ impl SettingsExt for Settings {
                 // TODO: Get rid of this clone
                 let policy_state = match policy_creation_payload.clone() {
                     PolicyCreationPayload::InternalFundTransfer(creation_payload) => {
-                        PolicyState::InternalFundTransfer(creation_payload.to_policy_state().to_anchor()?)
+                        PolicyState::InternalFundTransfer(
+                            creation_payload.to_policy_state().to_anchor()?,
+                        )
                     }
                     PolicyCreationPayload::ProgramInteraction(creation_payload) => {
                         PolicyState::ProgramInteraction(
@@ -486,8 +488,7 @@ impl SettingsExt for Settings {
                     .ok_or(SmartAccountError::MissingAccount)?;
 
                 // Only accept updates to the same policy type
-                let new_policy_state = match (&policy.policy_state, policy_update_payload.clone())
-                {
+                let new_policy_state = match (&policy.policy_state, policy_update_payload.clone()) {
                     (
                         PolicyState::InternalFundTransfer(_),
                         PolicyCreationPayload::InternalFundTransfer(creation_payload),
@@ -513,9 +514,9 @@ impl SettingsExt for Settings {
                     (
                         PolicyState::SettingsChange(_),
                         PolicyCreationPayload::SettingsChange(creation_payload),
-                    ) => PolicyState::SettingsChange(
-                        creation_payload.to_policy_state().to_anchor()?,
-                    ),
+                    ) => {
+                        PolicyState::SettingsChange(creation_payload.to_policy_state().to_anchor()?)
+                    }
                     (_, _) => {
                         return err!(SmartAccountError::InvalidPolicyPayload);
                     }
@@ -540,7 +541,13 @@ impl SettingsExt for Settings {
 
                 // Update the policy
                 policy
-                    .update_state(signers, *threshold, *time_lock, new_policy_state, expiration.clone())
+                    .update_state(
+                        signers,
+                        *threshold,
+                        *time_lock,
+                        new_policy_state,
+                        expiration.clone(),
+                    )
                     .to_anchor()?;
 
                 // Invalidate prior transaction due to the update

@@ -56,16 +56,16 @@ impl LegacyTransaction {
         ephemeral_signers_length: u8,
         transaction_message: &[u8],
     ) -> Result<usize, borsh::maybestd::io::Error> {
-        let tm = <TransactionMessage as borsh::BorshDeserialize>::try_from_slice(transaction_message)?;
-        let sm: SmartAccountTransactionMessage = tm
-            .try_into()
-            .map_err(|_| borsh::maybestd::io::Error::new(
+        let tm =
+            <TransactionMessage as borsh::BorshDeserialize>::try_from_slice(transaction_message)?;
+        let sm: SmartAccountTransactionMessage = tm.try_into().map_err(|_| {
+            borsh::maybestd::io::Error::new(
                 borsh::maybestd::io::ErrorKind::InvalidData,
                 "invalid transaction message",
-            ))?;
+            )
+        })?;
         let message_size = borsh::to_vec(&sm)?.len();
-        Ok(
-            8 +   // anchor account discriminator
+        Ok(8 +   // anchor account discriminator
             32 +  // settings
             32 +  // creator
             32 +  // rent_collector
@@ -74,8 +74,7 @@ impl LegacyTransaction {
             1 +   // account_index
             1 +   // account_bump
             (4 + usize::from(ephemeral_signers_length)) +   // ephemeral_signers_bumps vec
-            message_size,
-        )
+            message_size)
     }
 }
 
@@ -153,7 +152,9 @@ impl TryFrom<TransactionMessage> for SmartAccountTransactionMessage {
             return Err(SmartAccountError::InvalidTransactionMessage);
         }
         if usize::from(message.num_writable_non_signers)
-            > account_keys.len().saturating_sub(usize::from(message.num_signers))
+            > account_keys
+                .len()
+                .saturating_sub(usize::from(message.num_signers))
         {
             return Err(SmartAccountError::InvalidTransactionMessage);
         }

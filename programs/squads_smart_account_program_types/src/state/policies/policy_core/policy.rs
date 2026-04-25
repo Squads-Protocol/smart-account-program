@@ -123,11 +123,9 @@ impl Policy {
             return Err(SmartAccountError::InvalidStaleTransactionIndex);
         }
 
-        if let Some(expiration) = &self.expiration {
-            if let PolicyExpiration::Timestamp(timestamp) = expiration {
-                if *timestamp <= self.start {
-                    return Err(SmartAccountError::PolicyInvariantInvalidExpiration);
-                }
+        if let Some(PolicyExpiration::Timestamp(timestamp)) = &self.expiration {
+            if *timestamp <= self.start {
+                return Err(SmartAccountError::PolicyInvariantInvalidExpiration);
             }
         }
 
@@ -139,6 +137,7 @@ impl Policy {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Create policy state safely.
     pub fn create_state(
         settings: Pubkey,

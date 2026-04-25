@@ -5,8 +5,8 @@
 use anchor_lang::prelude::*;
 
 pub use squads_smart_account_program_types::{
-    AllowedSettingsChange, LimitedSettingsAction, SettingsChangeExecutionArgs, SettingsChangePayload,
-    SettingsChangePolicy, SettingsChangePolicyCreationPayload,
+    AllowedSettingsChange, LimitedSettingsAction, SettingsChangeExecutionArgs,
+    SettingsChangePayload, SettingsChangePolicy, SettingsChangePolicyCreationPayload,
 };
 
 use crate::error_conv::ToAnchorResult;
@@ -15,7 +15,10 @@ use crate::{
     errors::*,
     events::*,
     get_settings_signer_seeds,
-    state::{policies::policy_core::{PolicyExecutionContext, PolicyTrait}, SettingsExt},
+    state::{
+        policies::policy_core::{PolicyExecutionContext, PolicyTrait},
+        SettingsExt,
+    },
     Settings, SettingsAction,
 };
 
@@ -133,14 +136,18 @@ pub fn validate_accounts<'info>(
     settings_key: Pubkey,
     accounts: &'info [AccountInfo<'info>],
 ) -> Result<ValidatedAccounts<'info>> {
-    let (settings_account_info, rent_payer_info, system_program_info, program_info) =
-        if let [settings_account_info, rent_payer_info, system_program_info, program_info, _remaining @ ..] =
-            accounts
-        {
-            (settings_account_info, rent_payer_info, system_program_info, program_info)
-        } else {
-            return err!(SmartAccountError::InvalidNumberOfAccounts);
-        };
+    let (settings_account_info, rent_payer_info, system_program_info, program_info) = if let [settings_account_info, rent_payer_info, system_program_info, program_info, _remaining @ ..] =
+        accounts
+    {
+        (
+            settings_account_info,
+            rent_payer_info,
+            system_program_info,
+            program_info,
+        )
+    } else {
+        return err!(SmartAccountError::InvalidNumberOfAccounts);
+    };
 
     require!(
         settings_account_info.key() == settings_key,

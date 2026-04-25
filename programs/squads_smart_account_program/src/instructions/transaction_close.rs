@@ -524,7 +524,6 @@ pub struct CloseEmptyPolicyTransaction<'info> {
     #[account(mut, seeds = [SEED_PREFIX, SEED_PROGRAM_CONFIG], bump)]
     pub program_config: Account<'info, ProgramConfig>,
 
-
     /// CHECK: We only need to validate the address.
     #[account(
         constraint = empty_policy.data_is_empty() @ SmartAccountError::InvalidEmptyPolicy,
