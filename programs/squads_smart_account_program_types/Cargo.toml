@@ -10,7 +10,7 @@ name = "squads_smart_account_program_types"
 crate-type = ["lib"]
 
 [features]
-default = ["borsh"]
+default = []
 borsh = ["dep:borsh"]
 anchor = ["borsh", "dep:anchor-lang"]
 testing = []
