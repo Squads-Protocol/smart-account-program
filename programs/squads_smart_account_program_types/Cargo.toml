@@ -13,6 +13,7 @@ crate-type = ["lib"]
 default = []
 borsh = ["dep:borsh"]
 anchor = ["borsh", "dep:anchor-lang"]
+instructions = ["borsh"]
 testing = []
 
 [dependencies]

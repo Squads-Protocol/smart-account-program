@@ -18,6 +18,11 @@ pub mod transaction_execute_sync;
 pub mod transaction_execute_sync_legacy;
 pub mod use_spending_limit;
 
+#[cfg(feature = "instructions")]
+pub mod builders;
+#[cfg(feature = "instructions")]
+pub use builders::*;
+
 pub use authority_settings_transaction_execute::*;
 pub use authority_spending_limit_add::*;
 pub use authority_spending_limit_remove::*;
