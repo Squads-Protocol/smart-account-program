@@ -2555,6 +2555,7 @@ version = "0.1.0"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
+ "sha2 0.10.8",
  "solana-pubkey",
  "thiserror 1.0.69",
 ]

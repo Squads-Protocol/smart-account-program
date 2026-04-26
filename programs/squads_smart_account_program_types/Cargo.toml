@@ -10,15 +10,16 @@ name = "squads_smart_account_program_types"
 crate-type = ["lib"]
 
 [features]
-default = []
+default = ["instructions"]
 borsh = ["dep:borsh", "solana-pubkey/borsh"]
 anchor = ["borsh", "dep:anchor-lang"]
 ephemeral-signers = ["solana-pubkey/curve25519"]
-instructions = ["borsh"]
+instructions = ["borsh", "dep:sha2"]
 testing = []
 
 [dependencies]
 solana-pubkey = { version = "2.4.0", default-features = false }
 borsh = { version = "0.10.3", optional = true }
 anchor-lang = { version = "=0.32.1", optional = true, default-features = false, features = ["allow-missing-optionals"] }
+sha2 = { version = "0.10", optional = true, default-features = false }
 thiserror = "1"
