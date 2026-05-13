@@ -19,8 +19,9 @@ cpi = ["no-entrypoint"]
 testing = ["squads-smart-account-program-types/testing"]
 
 [dependencies]
-anchor-lang = { version = "=0.29.0", features = ["allow-missing-optionals"] }
-anchor-spl = { version="=0.29.0", features=["token"] }
-solana-program = "1.17.4"
+anchor-lang = { version = "=0.32.1", default-features = false, features = ["allow-missing-optionals"] }
+anchor-spl = { version = "=0.32.1", default-features = false, features = ["token", "token_2022", "mint"] }
+solana-program = { version = "2.3.0", default-features = false, features = ["borsh"] }
+solana-address-lookup-table-interface = { version = "2.2.2", default-features = false, features = ["bincode", "bytemuck"] }
 solana-security-txt = "1.1.1"
-squads-smart-account-program-types = { path = "../squads_smart_account_program_types", features = ["anchor"] }
+squads-smart-account-program-types = { path = "../squads_smart_account_program_types", default-features = false, features = ["anchor", "ephemeral-signers"] }

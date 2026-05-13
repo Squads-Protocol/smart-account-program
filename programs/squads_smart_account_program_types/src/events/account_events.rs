@@ -1,4 +1,4 @@
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 use crate::interface::ConsensusAccountType;
 use crate::state::{

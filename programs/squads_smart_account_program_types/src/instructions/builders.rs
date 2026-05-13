@@ -5,28 +5,32 @@
 //! borsh-serializes the args, and assembles the `Instruction` with the correct
 //! account order and signer/writable flags expected by the on-chain program.
 //!
-//! Built only when the `instructions` feature is enabled (which also turns on
-//! `borsh`). Uses `solana_program::instruction::{Instruction, AccountMeta}`
-//! from the existing `solana-program` dependency.
+//! Built only when the `instructions` feature is enabled. Uses the in-crate
+//! `Instruction` and `AccountMeta` types defined in `ix_types`, which mirror
+//! `solana_instruction` field-for-field. This keeps the feature free of any
+//! `solana-program` / `solana-instruction` dependency — only `solana-pubkey`,
+//! `borsh`, and `sha2` are required.
 
 use borsh::BorshSerialize;
-use solana_program::{
-    hash::hash,
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
-};
+use sha2::{Digest, Sha256};
+use solana_pubkey::Pubkey;
 
+use crate::instructions::ix_types::{AccountMeta, Instruction};
 use crate::{instructions::*, PROGRAM_ID};
 
-/// Solana System program ID (`11111111111111111111111111111111`).
-const SYSTEM_PROGRAM_ID: Pubkey = solana_program::pubkey!("11111111111111111111111111111111");
+/// Solana System program ID (`11111111111111111111111111111111` is the
+/// base58 encoding of the all-zero 32-byte array).
+const SYSTEM_PROGRAM_ID: Pubkey = Pubkey::new_from_array([0u8; 32]);
 
 /// Compute the Anchor 8-byte discriminator for an instruction by name.
 /// Matches Anchor's codegen: `sha256("global:<snake_case_name>")[..8]`.
 fn ix_discriminator(name: &str) -> [u8; 8] {
+    let mut hasher = Sha256::new();
+    hasher.update(b"global:");
+    hasher.update(name.as_bytes());
+    let digest = hasher.finalize();
     let mut out = [0u8; 8];
-    let preimage = format!("global:{}", name);
-    out.copy_from_slice(&hash(preimage.as_bytes()).to_bytes()[..8]);
+    out.copy_from_slice(&digest[..8]);
     out
 }
 

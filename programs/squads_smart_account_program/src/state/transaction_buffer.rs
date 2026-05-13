@@ -2,7 +2,7 @@
 //! trait for methods that need `solana_program::hash::hash`.
 
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
+use solana_program::hash::hash;
 
 pub use squads_smart_account_program_types::{TransactionBuffer, MAX_BUFFER_SIZE};
 

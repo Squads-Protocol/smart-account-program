@@ -108,7 +108,7 @@ fn serialize_slice<T: BorshSerialize, W: Write>(data: &[T], writer: &mut W) -> s
 #[cfg(all(test, feature = "borsh"))]
 mod test {
     use super::*;
-    use solana_program::pubkey::Pubkey;
+    use solana_pubkey::Pubkey;
 
     mod deserialize {
         use super::*;

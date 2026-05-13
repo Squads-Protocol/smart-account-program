@@ -1,4 +1,4 @@
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 use crate::state::{SEED_EPHEMERAL_SIGNER, SEED_PREFIX};
 

@@ -1,4 +1,4 @@
-use solana_program::pubkey::Pubkey;
+use solana_pubkey::Pubkey;
 
 pub const SEED_PREFIX: &[u8] = b"smart_account";
 pub const SEED_PROGRAM_CONFIG: &[u8] = b"program_config";
@@ -60,7 +60,7 @@ pub fn get_smart_account_seeds<'a>(
     ]
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "ephemeral-signers"))]
 mod tests {
     use super::*;
 
