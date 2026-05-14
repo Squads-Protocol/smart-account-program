@@ -616,9 +616,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@sqds/smart-account@workspace:^, @sqds/smart-account@workspace:sdk/smart-account":
+"@sqds/smart-account@workspace:^, @sqds/smart-account@workspace:sdk/ts":
   version: 0.0.0-use.local
-  resolution: "@sqds/smart-account@workspace:sdk/smart-account"
+  resolution: "@sqds/smart-account@workspace:sdk/ts"
   dependencies:
     "@metaplex-foundation/beet": 0.7.1
     "@metaplex-foundation/beet-solana": 0.4.0
