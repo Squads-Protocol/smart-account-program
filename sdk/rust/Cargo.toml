@@ -1,0 +1,25 @@
+[package]
+name = "squads-smart-account"
+version = "0.1.0"
+edition = "2024"
+license-file = "../../LICENSE"
+description = "Pure data types and SDK helpers for the Squads Smart Account Program"
+
+[lib]
+name = "squads_smart_account"
+crate-type = ["lib"]
+
+[features]
+default = ["instructions"]
+borsh = ["dep:borsh", "solana-address/borsh"]
+anchor = ["borsh", "dep:anchor-lang"]
+ephemeral-signers = ["solana-address/curve25519"]
+instructions = ["borsh", "dep:sha2"]
+testing = []
+
+[dependencies]
+solana-address = { version = "2.6", default-features = false, features = ["copy", "decode", "sha2", "atomic"] }
+borsh = { version = "1.6", optional = true }
+anchor-lang = { version = "=1.0.2", optional = true, default-features = false, features = ["allow-missing-optionals"] }
+sha2 = { version = "0.11", optional = true, default-features = false }
+thiserror = "2"

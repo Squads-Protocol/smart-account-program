@@ -4,6 +4,8 @@ members = [
     "programs/*",
 ]
 
+exclude = ["sdk/rust"]
+
 [profile.release]
 overflow-checks = true
 lto = "fat"
