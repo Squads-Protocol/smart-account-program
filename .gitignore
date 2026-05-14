@@ -13,4 +13,7 @@ test-ledger
 .yarn/
 
 lib
+dist
 .crates
+
+.claude/
