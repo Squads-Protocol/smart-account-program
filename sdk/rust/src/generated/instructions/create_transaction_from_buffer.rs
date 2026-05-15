@@ -15,7 +15,7 @@ pub const CREATE_TRANSACTION_FROM_BUFFER_DISCRIMINATOR: [u8; 8] =
 /// Accounts.
 #[derive(Debug)]
 pub struct CreateTransactionFromBuffer {
-    pub transaction_create_settings: solana_address::Address,
+    pub transaction_create_consensus_account: solana_address::Address,
 
     pub transaction_create_transaction: solana_address::Address,
     /// The member of the multisig that is creating the transaction.
@@ -24,6 +24,8 @@ pub struct CreateTransactionFromBuffer {
     pub transaction_create_rent_payer: solana_address::Address,
 
     pub transaction_create_system_program: solana_address::Address,
+
+    pub transaction_create_program: solana_address::Address,
 
     pub transaction_buffer: solana_address::Address,
 
@@ -44,9 +46,9 @@ impl CreateTransactionFromBuffer {
         args: CreateTransactionFromBufferInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(8 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
-            self.transaction_create_settings,
+            self.transaction_create_consensus_account,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -63,6 +65,10 @@ impl CreateTransactionFromBuffer {
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.transaction_create_system_program,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.transaction_create_program,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -123,20 +129,22 @@ impl CreateTransactionFromBufferInstructionArgs {
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` transaction_create_settings
+///   0. `[writable]` transaction_create_consensus_account
 ///   1. `[writable]` transaction_create_transaction
 ///   2. `[signer]` transaction_create_creator
 ///   3. `[writable, signer]` transaction_create_rent_payer
-///   4. `[]` transaction_create_system_program
-///   5. `[writable]` transaction_buffer
-///   6. `[writable, signer]` creator
+///   4. `[optional]` transaction_create_system_program (default to `11111111111111111111111111111111`)
+///   5. `[optional]` transaction_create_program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
+///   6. `[writable]` transaction_buffer
+///   7. `[writable, signer]` creator
 #[derive(Clone, Debug, Default)]
 pub struct CreateTransactionFromBufferBuilder {
-    transaction_create_settings: Option<solana_address::Address>,
+    transaction_create_consensus_account: Option<solana_address::Address>,
     transaction_create_transaction: Option<solana_address::Address>,
     transaction_create_creator: Option<solana_address::Address>,
     transaction_create_rent_payer: Option<solana_address::Address>,
     transaction_create_system_program: Option<solana_address::Address>,
+    transaction_create_program: Option<solana_address::Address>,
     transaction_buffer: Option<solana_address::Address>,
     creator: Option<solana_address::Address>,
     args: Option<CreateTransactionArgs>,
@@ -148,11 +156,11 @@ impl CreateTransactionFromBufferBuilder {
         Self::default()
     }
     #[inline(always)]
-    pub fn transaction_create_settings(
+    pub fn transaction_create_consensus_account(
         &mut self,
-        transaction_create_settings: solana_address::Address,
+        transaction_create_consensus_account: solana_address::Address,
     ) -> &mut Self {
-        self.transaction_create_settings = Some(transaction_create_settings);
+        self.transaction_create_consensus_account = Some(transaction_create_consensus_account);
         self
     }
     #[inline(always)]
@@ -181,12 +189,22 @@ impl CreateTransactionFromBufferBuilder {
         self.transaction_create_rent_payer = Some(transaction_create_rent_payer);
         self
     }
+    /// `[optional account, default to '11111111111111111111111111111111']`
     #[inline(always)]
     pub fn transaction_create_system_program(
         &mut self,
         transaction_create_system_program: solana_address::Address,
     ) -> &mut Self {
         self.transaction_create_system_program = Some(transaction_create_system_program);
+        self
+    }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
+    #[inline(always)]
+    pub fn transaction_create_program(
+        &mut self,
+        transaction_create_program: solana_address::Address,
+    ) -> &mut Self {
+        self.transaction_create_program = Some(transaction_create_program);
         self
     }
     #[inline(always)]
@@ -222,9 +240,9 @@ impl CreateTransactionFromBufferBuilder {
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = CreateTransactionFromBuffer {
-            transaction_create_settings: self
-                .transaction_create_settings
-                .expect("transaction_create_settings is not set"),
+            transaction_create_consensus_account: self
+                .transaction_create_consensus_account
+                .expect("transaction_create_consensus_account is not set"),
             transaction_create_transaction: self
                 .transaction_create_transaction
                 .expect("transaction_create_transaction is not set"),
@@ -236,7 +254,10 @@ impl CreateTransactionFromBufferBuilder {
                 .expect("transaction_create_rent_payer is not set"),
             transaction_create_system_program: self
                 .transaction_create_system_program
-                .expect("transaction_create_system_program is not set"),
+                .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
+            transaction_create_program: self.transaction_create_program.unwrap_or(
+                solana_address::address!("SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"),
+            ),
             transaction_buffer: self
                 .transaction_buffer
                 .expect("transaction_buffer is not set"),
@@ -252,7 +273,7 @@ impl CreateTransactionFromBufferBuilder {
 
 /// `create_transaction_from_buffer` CPI accounts.
 pub struct CreateTransactionFromBufferCpiAccounts<'a, 'b> {
-    pub transaction_create_settings: &'b solana_account_info::AccountInfo<'a>,
+    pub transaction_create_consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_create_transaction: &'b solana_account_info::AccountInfo<'a>,
     /// The member of the multisig that is creating the transaction.
@@ -261,6 +282,8 @@ pub struct CreateTransactionFromBufferCpiAccounts<'a, 'b> {
     pub transaction_create_rent_payer: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_create_system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub transaction_create_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_buffer: &'b solana_account_info::AccountInfo<'a>,
 
@@ -272,7 +295,7 @@ pub struct CreateTransactionFromBufferCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub transaction_create_settings: &'b solana_account_info::AccountInfo<'a>,
+    pub transaction_create_consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_create_transaction: &'b solana_account_info::AccountInfo<'a>,
     /// The member of the multisig that is creating the transaction.
@@ -281,6 +304,8 @@ pub struct CreateTransactionFromBufferCpi<'a, 'b> {
     pub transaction_create_rent_payer: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_create_system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub transaction_create_program: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_buffer: &'b solana_account_info::AccountInfo<'a>,
 
@@ -297,11 +322,12 @@ impl<'a, 'b> CreateTransactionFromBufferCpi<'a, 'b> {
     ) -> Self {
         Self {
             __program: program,
-            transaction_create_settings: accounts.transaction_create_settings,
+            transaction_create_consensus_account: accounts.transaction_create_consensus_account,
             transaction_create_transaction: accounts.transaction_create_transaction,
             transaction_create_creator: accounts.transaction_create_creator,
             transaction_create_rent_payer: accounts.transaction_create_rent_payer,
             transaction_create_system_program: accounts.transaction_create_system_program,
+            transaction_create_program: accounts.transaction_create_program,
             transaction_buffer: accounts.transaction_buffer,
             creator: accounts.creator,
             __args: args,
@@ -330,9 +356,9 @@ impl<'a, 'b> CreateTransactionFromBufferCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(8 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
-            *self.transaction_create_settings.key,
+            *self.transaction_create_consensus_account.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -349,6 +375,10 @@ impl<'a, 'b> CreateTransactionFromBufferCpi<'a, 'b> {
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.transaction_create_system_program.key,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.transaction_create_program.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -377,13 +407,14 @@ impl<'a, 'b> CreateTransactionFromBufferCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(9 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.transaction_create_settings.clone());
+        account_infos.push(self.transaction_create_consensus_account.clone());
         account_infos.push(self.transaction_create_transaction.clone());
         account_infos.push(self.transaction_create_creator.clone());
         account_infos.push(self.transaction_create_rent_payer.clone());
         account_infos.push(self.transaction_create_system_program.clone());
+        account_infos.push(self.transaction_create_program.clone());
         account_infos.push(self.transaction_buffer.clone());
         account_infos.push(self.creator.clone());
         remaining_accounts
@@ -402,13 +433,14 @@ impl<'a, 'b> CreateTransactionFromBufferCpi<'a, 'b> {
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` transaction_create_settings
+///   0. `[writable]` transaction_create_consensus_account
 ///   1. `[writable]` transaction_create_transaction
 ///   2. `[signer]` transaction_create_creator
 ///   3. `[writable, signer]` transaction_create_rent_payer
 ///   4. `[]` transaction_create_system_program
-///   5. `[writable]` transaction_buffer
-///   6. `[writable, signer]` creator
+///   5. `[]` transaction_create_program
+///   6. `[writable]` transaction_buffer
+///   7. `[writable, signer]` creator
 #[derive(Clone, Debug)]
 pub struct CreateTransactionFromBufferCpiBuilder<'a, 'b> {
     instruction: Box<CreateTransactionFromBufferCpiBuilderInstruction<'a, 'b>>,
@@ -418,11 +450,12 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
         let instruction = Box::new(CreateTransactionFromBufferCpiBuilderInstruction {
             __program: program,
-            transaction_create_settings: None,
+            transaction_create_consensus_account: None,
             transaction_create_transaction: None,
             transaction_create_creator: None,
             transaction_create_rent_payer: None,
             transaction_create_system_program: None,
+            transaction_create_program: None,
             transaction_buffer: None,
             creator: None,
             args: None,
@@ -431,11 +464,12 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
         Self { instruction }
     }
     #[inline(always)]
-    pub fn transaction_create_settings(
+    pub fn transaction_create_consensus_account(
         &mut self,
-        transaction_create_settings: &'b solana_account_info::AccountInfo<'a>,
+        transaction_create_consensus_account: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
-        self.instruction.transaction_create_settings = Some(transaction_create_settings);
+        self.instruction.transaction_create_consensus_account =
+            Some(transaction_create_consensus_account);
         self
     }
     #[inline(always)]
@@ -471,6 +505,14 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
     ) -> &mut Self {
         self.instruction.transaction_create_system_program =
             Some(transaction_create_system_program);
+        self
+    }
+    #[inline(always)]
+    pub fn transaction_create_program(
+        &mut self,
+        transaction_create_program: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.transaction_create_program = Some(transaction_create_program);
         self
     }
     #[inline(always)]
@@ -531,10 +573,10 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
         let instruction = CreateTransactionFromBufferCpi {
             __program: self.instruction.__program,
 
-            transaction_create_settings: self
+            transaction_create_consensus_account: self
                 .instruction
-                .transaction_create_settings
-                .expect("transaction_create_settings is not set"),
+                .transaction_create_consensus_account
+                .expect("transaction_create_consensus_account is not set"),
 
             transaction_create_transaction: self
                 .instruction
@@ -556,6 +598,11 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
                 .transaction_create_system_program
                 .expect("transaction_create_system_program is not set"),
 
+            transaction_create_program: self
+                .instruction
+                .transaction_create_program
+                .expect("transaction_create_program is not set"),
+
             transaction_buffer: self
                 .instruction
                 .transaction_buffer
@@ -574,11 +621,12 @@ impl<'a, 'b> CreateTransactionFromBufferCpiBuilder<'a, 'b> {
 #[derive(Clone, Debug)]
 struct CreateTransactionFromBufferCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    transaction_create_settings: Option<&'b solana_account_info::AccountInfo<'a>>,
+    transaction_create_consensus_account: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_create_transaction: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_create_creator: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_create_rent_payer: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_create_system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    transaction_create_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_buffer: Option<&'b solana_account_info::AccountInfo<'a>>,
     creator: Option<&'b solana_account_info::AccountInfo<'a>>,
     args: Option<CreateTransactionArgs>,

@@ -49,18 +49,20 @@ export function getExecuteTransactionDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type ExecuteTransactionInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountProposal extends string | AccountMeta<string> = string,
   TAccountTransaction extends string | AccountMeta<string> = string,
   TAccountSigner extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? WritableAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountProposal extends string
         ? WritableAccount<TAccountProposal>
         : TAccountProposal,
@@ -71,6 +73,9 @@ export type ExecuteTransactionInstruction<
         ? ReadonlySignerAccount<TAccountSigner> &
             AccountSignerMeta<TAccountSigner>
         : TAccountSigner,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -105,40 +110,45 @@ export function getExecuteTransactionInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type ExecuteTransactionInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountProposal extends string = string,
   TAccountTransaction extends string = string,
   TAccountSigner extends string = string,
+  TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   /** The proposal account associated with the transaction. */
   proposal: Address<TAccountProposal>;
   /** The transaction to execute. */
   transaction: Address<TAccountTransaction>;
   signer: TransactionSigner<TAccountSigner>;
+  program?: Address<TAccountProgram>;
 };
 
 export function getExecuteTransactionInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountProposal extends string,
   TAccountTransaction extends string,
   TAccountSigner extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: ExecuteTransactionInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountTransaction,
-    TAccountSigner
+    TAccountSigner,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): ExecuteTransactionInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountProposal,
   TAccountTransaction,
-  TAccountSigner
+  TAccountSigner,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -146,32 +156,44 @@ export function getExecuteTransactionInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: true,
+    },
     proposal: { value: input.proposal ?? null, isWritable: true },
     transaction: { value: input.transaction ?? null, isWritable: false },
     signer: { value: input.signer ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
     ResolvedInstructionAccount
   >;
 
+  // Resolve default values.
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("proposal", accounts.proposal),
       getAccountMeta("transaction", accounts.transaction),
       getAccountMeta("signer", accounts.signer),
+      getAccountMeta("program", accounts.program),
     ],
     data: getExecuteTransactionInstructionDataEncoder().encode({}),
     programAddress,
   } as ExecuteTransactionInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountTransaction,
-    TAccountSigner
+    TAccountSigner,
+    TAccountProgram
   >);
 }
 
@@ -181,12 +203,13 @@ export type ParsedExecuteTransactionInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     /** The proposal account associated with the transaction. */
     proposal: TAccountMetas[1];
     /** The transaction to execute. */
     transaction: TAccountMetas[2];
     signer: TAccountMetas[3];
+    program: TAccountMetas[4];
   };
   data: ExecuteTransactionInstructionData;
 };
@@ -199,12 +222,12 @@ export function parseExecuteTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedExecuteTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 5) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 4,
+        expectedAccountMetas: 5,
       },
     );
   }
@@ -217,10 +240,11 @@ export function parseExecuteTransactionInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       proposal: getNextAccount(),
       transaction: getNextAccount(),
       signer: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getExecuteTransactionInstructionDataDecoder().decode(
       instruction.data,

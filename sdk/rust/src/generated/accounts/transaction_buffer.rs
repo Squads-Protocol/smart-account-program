@@ -12,7 +12,7 @@ use solana_address::Address;
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct TransactionBuffer {
     pub discriminator: [u8; 8],
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Address,
     /// Signer of the smart account who created the TransactionBuffer.
     pub creator: Address,

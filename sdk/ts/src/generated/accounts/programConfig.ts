@@ -49,7 +49,6 @@ export function getProgramConfigDiscriminatorBytes(): ReadonlyUint8Array {
   );
 }
 
-/** Global program configuration account. */
 export type ProgramConfig = {
   discriminator: ReadonlyUint8Array;
   /** Counter for the number of smart accounts created. */

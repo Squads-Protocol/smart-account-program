@@ -56,7 +56,6 @@ export function getBatchTransactionDiscriminatorBytes(): ReadonlyUint8Array {
   );
 }
 
-/** Stores data required for execution of one transaction from a batch. */
 export type BatchTransaction = {
   discriminator: ReadonlyUint8Array;
   /** PDA bump. */

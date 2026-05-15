@@ -65,8 +65,10 @@ export type ChangeThresholdAsAuthorityInstruction<
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSettingsAuthority extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -164,7 +166,7 @@ export type ChangeThresholdAsAuthorityInput<
   rentPayer?: TransactionSigner<TAccountRentPayer>;
   /** We might need it in case reallocation is needed. */
   systemProgram?: Address<TAccountSystemProgram>;
-  program: Address<TAccountProgram>;
+  program?: Address<TAccountProgram>;
   newThreshold: ChangeThresholdAsAuthorityInstructionDataArgs["newThreshold"];
   memo: ChangeThresholdAsAuthorityInstructionDataArgs["memo"];
 };
@@ -216,6 +218,16 @@ export function getChangeThresholdAsAuthorityInstruction<
 
   // Original args.
   const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({

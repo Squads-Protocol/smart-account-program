@@ -72,56 +72,202 @@ export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DESTINATION = 0x178a; /
 export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXCEEDED = 0x178b; // 6027
 /** DecimalsMismatch: Decimals don't match the mint */
 export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__DECIMALS_MISMATCH = 0x178c; // 6028
-/** SpendingLimitExpired: Spending limit is expired */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXPIRED = 0x178d; // 6029
 /** UnknownPermission: Signer has unknown permission */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__UNKNOWN_PERMISSION = 0x178e; // 6030
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__UNKNOWN_PERMISSION = 0x178d; // 6029
 /** ProtectedAccount: Account is protected, it cannot be passed into a CPI as writable */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_ACCOUNT = 0x178f; // 6031
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_ACCOUNT = 0x178e; // 6030
 /** TimeLockExceedsMaxAllowed: Time lock exceeds the maximum allowed (90 days) */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_EXCEEDS_MAX_ALLOWED = 0x1790; // 6032
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_EXCEEDS_MAX_ALLOWED = 0x178f; // 6031
 /** IllegalAccountOwner: Account is not owned by Smart Account program */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ILLEGAL_ACCOUNT_OWNER = 0x1791; // 6033
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ILLEGAL_ACCOUNT_OWNER = 0x1790; // 6032
 /** RentReclamationDisabled: Rent reclamation is disabled for this smart account */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__RENT_RECLAMATION_DISABLED = 0x1792; // 6034
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__RENT_RECLAMATION_DISABLED = 0x1791; // 6033
 /** InvalidRentCollector: Invalid rent collector address */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_RENT_COLLECTOR = 0x1793; // 6035
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_RENT_COLLECTOR = 0x1792; // 6034
 /** ProposalForAnotherSmartAccount: Proposal is for another smart account */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROPOSAL_FOR_ANOTHER_SMART_ACCOUNT = 0x1794; // 6036
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROPOSAL_FOR_ANOTHER_SMART_ACCOUNT = 0x1793; // 6035
 /** TransactionForAnotherSmartAccount: Transaction is for another smart account */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_SMART_ACCOUNT = 0x1795; // 6037
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_SMART_ACCOUNT = 0x1794; // 6036
 /** TransactionNotMatchingProposal: Transaction doesn't match proposal */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_MATCHING_PROPOSAL = 0x1796; // 6038
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_MATCHING_PROPOSAL = 0x1795; // 6037
 /** TransactionNotLastInBatch: Transaction is not last in batch */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_LAST_IN_BATCH = 0x1797; // 6039
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_LAST_IN_BATCH = 0x1796; // 6038
 /** BatchNotEmpty: Batch is not empty */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__BATCH_NOT_EMPTY = 0x1798; // 6040
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__BATCH_NOT_EMPTY = 0x1797; // 6039
 /** SpendingLimitInvalidAmount: Invalid SpendingLimit amount */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_AMOUNT = 0x1799; // 6041
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_AMOUNT = 0x1798; // 6040
 /** InvalidInstructionArgs: Invalid Instruction Arguments */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_INSTRUCTION_ARGS = 0x179a; // 6042
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_INSTRUCTION_ARGS = 0x1799; // 6041
 /** FinalBufferHashMismatch: Final message buffer hash doesnt match the expected hash */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_HASH_MISMATCH = 0x179b; // 6043
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_HASH_MISMATCH = 0x179a; // 6042
 /** FinalBufferSizeExceeded: Final buffer size cannot exceed 4000 bytes */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_SIZE_EXCEEDED = 0x179c; // 6044
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_SIZE_EXCEEDED = 0x179b; // 6043
 /** FinalBufferSizeMismatch: Final buffer size mismatch */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_SIZE_MISMATCH = 0x179d; // 6045
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__FINAL_BUFFER_SIZE_MISMATCH = 0x179c; // 6044
 /** SmartAccountCreateDeprecated: smart_account_create has been deprecated. Use smart_account_create_v2 instead. */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SMART_ACCOUNT_CREATE_DEPRECATED = 0x179e; // 6046
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SMART_ACCOUNT_CREATE_DEPRECATED = 0x179d; // 6045
 /** ThresholdNotReached: Signers do not reach consensus threshold */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__THRESHOLD_NOT_REACHED = 0x179f; // 6047
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__THRESHOLD_NOT_REACHED = 0x179e; // 6046
 /** InvalidSignerCount: Invalid number of signer accounts. Must be greater or equal to the threshold */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_SIGNER_COUNT = 0x17a0; // 6048
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_SIGNER_COUNT = 0x179f; // 6047
 /** MissingSignature: Missing signature */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__MISSING_SIGNATURE = 0x17a1; // 6049
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__MISSING_SIGNATURE = 0x17a0; // 6048
 /** InsufficientAggregatePermissions: Insufficient aggregate permissions across signing members */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_AGGREGATE_PERMISSIONS = 0x17a2; // 6050
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_AGGREGATE_PERMISSIONS = 0x17a1; // 6049
 /** InsufficientVotePermissions: Insufficient vote permissions across signing members */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_VOTE_PERMISSIONS = 0x17a3; // 6051
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_VOTE_PERMISSIONS = 0x17a2; // 6050
 /** TimeLockNotZero: Smart account must not be time locked */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_ZERO = 0x17a4; // 6052
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_ZERO = 0x17a3; // 6051
 /** NotImplemented: Feature not implemented */
-export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_IMPLEMENTED = 0x17a5; // 6053
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_IMPLEMENTED = 0x17a4; // 6052
+/** SpendingLimitInvalidCadenceConfiguration: Invalid cadence configuration */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_CADENCE_CONFIGURATION = 0x17a5; // 6053
+/** InvalidDataConstraint: Invalid data constraint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DATA_CONSTRAINT = 0x17a6; // 6054
+/** InvalidPayload: Invalid payload */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_PAYLOAD = 0x17a7; // 6055
+/** ProtectedInstruction: Protected instruction */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_INSTRUCTION = 0x17a8; // 6056
+/** PlaceholderError: Placeholder error */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PLACEHOLDER_ERROR = 0x17a9; // 6057
+/** InvalidPolicyPayload: Invalid policy payload */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_POLICY_PAYLOAD = 0x17aa; // 6058
+/** InvalidEmptyPolicy: Invalid empty policy */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_EMPTY_POLICY = 0x17ab; // 6059
+/** TransactionForAnotherPolicy: Transaction is for another policy */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_POLICY = 0x17ac; // 6060
+/** ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction: Program interaction sync payload not allowed with async transaction */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ASYNC_PAYLOAD_NOT_ALLOWED_WITH_SYNC_TRANSACTION = 0x17ad; // 6061
+/** ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction: Program interaction sync payload not allowed with sync transaction */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_SYNC_PAYLOAD_NOT_ALLOWED_WITH_ASYNC_TRANSACTION = 0x17ae; // 6062
+/** ProgramInteractionDataTooShort: Program interaction data constraint failed: instruction data too short */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_TOO_SHORT = 0x17af; // 6063
+/** ProgramInteractionInvalidNumericValue: Program interaction data constraint failed: invalid numeric value */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_NUMERIC_VALUE = 0x17b0; // 6064
+/** ProgramInteractionInvalidByteSequence: Program interaction data constraint failed: invalid byte sequence */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_BYTE_SEQUENCE = 0x17b1; // 6065
+/** ProgramInteractionUnsupportedSliceOperator: Program interaction data constraint failed: unsupported operator for byte slice */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_UNSUPPORTED_SLICE_OPERATOR = 0x17b2; // 6066
+/** ProgramInteractionDataParsingError: Program interaction constraint failed: instruction data parsing error */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_PARSING_ERROR = 0x17b3; // 6067
+/** ProgramInteractionProgramIdMismatch: Program interaction constraint failed: program ID mismatch */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_PROGRAM_ID_MISMATCH = 0x17b4; // 6068
+/** ProgramInteractionAccountConstraintViolated: Program interaction constraint violation: account constraint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ACCOUNT_CONSTRAINT_VIOLATED = 0x17b5; // 6069
+/** ProgramInteractionConstraintIndexOutOfBounds: Program interaction constraint violation: instruction constraint index out of bounds */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_CONSTRAINT_INDEX_OUT_OF_BOUNDS = 0x17b6; // 6070
+/** ProgramInteractionInstructionCountMismatch: Program interaction constraint violation: instruction count mismatch */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSTRUCTION_COUNT_MISMATCH = 0x17b7; // 6071
+/** ProgramInteractionInsufficientLamportAllowance: Program interaction constraint violation: insufficient remaining lamport allowance */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_LAMPORT_ALLOWANCE = 0x17b8; // 6072
+/** ProgramInteractionInsufficientTokenAllowance: Program interaction constraint violation: insufficient remaining token allowance */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_TOKEN_ALLOWANCE = 0x17b9; // 6073
+/** ProgramInteractionModifiedIllegalBalance: Program interaction constraint violation: modified illegal balance */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_MODIFIED_ILLEGAL_BALANCE = 0x17ba; // 6074
+/** ProgramInteractionIllegalTokenAccountModification: Program interaction constraint violation: illegal token account modification */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ILLEGAL_TOKEN_ACCOUNT_MODIFICATION = 0x17bb; // 6075
+/** ProgramInteractionDuplicateSpendingLimit: Program interaction invariant violation: duplicate spending limit for the same mint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DUPLICATE_SPENDING_LIMIT = 0x17bc; // 6076
+/** ProgramInteractionTooManyInstructionConstraints: Program interaction constraint violation: too many instruction constraints. Max is 20 */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_INSTRUCTION_CONSTRAINTS = 0x17bd; // 6077
+/** ProgramInteractionTooManySpendingLimits: Program interaction constraint violation: too many spending limits. Max is 10 */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_SPENDING_LIMITS = 0x17be; // 6078
+/** ProgramInteractionTemplateHookError: Program interaction hook violation: template hook error */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TEMPLATE_HOOK_ERROR = 0x17bf; // 6079
+/** ProgramInteractionHookAuthorityCannotBePartOfHookAccounts: Program interaction hook violation: hook authority cannot be part of hook accounts */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_HOOK_AUTHORITY_CANNOT_BE_PART_OF_HOOK_ACCOUNTS = 0x17c0; // 6080
+/** SpendingLimitNotActive: Spending limit is not active */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_NOT_ACTIVE = 0x17c1; // 6081
+/** SpendingLimitExpired: Spending limit is expired */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXPIRED = 0x17c2; // 6082
+/** SpendingLimitPolicyInvariantAccumulateUnused: Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_ACCUMULATE_UNUSED = 0x17c3; // 6083
+/** SpendingLimitViolatesExactQuantityConstraint: Amount violates exact quantity constraint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_EXACT_QUANTITY_CONSTRAINT = 0x17c4; // 6084
+/** SpendingLimitViolatesMaxPerUseConstraint: Amount violates max per use constraint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_MAX_PER_USE_CONSTRAINT = 0x17c5; // 6085
+/** SpendingLimitInsufficientRemainingAmount: Spending limit is insufficient */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INSUFFICIENT_REMAINING_AMOUNT = 0x17c6; // 6086
+/** SpendingLimitInvariantMaxPerPeriodZero: Spending limit invariant violation: max per period must be non-zero */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_PERIOD_ZERO = 0x17c7; // 6087
+/** SpendingLimitInvariantStartTimePositive: Spending limit invariant violation: start time must be positive */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_START_TIME_POSITIVE = 0x17c8; // 6088
+/** SpendingLimitInvariantExpirationSmallerThanStart: Spending limit invariant violation: expiration must be greater than start */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXPIRATION_SMALLER_THAN_START = 0x17c9; // 6089
+/** SpendingLimitInvariantOverflowEnabledMustHaveExpiration: Spending limit invariant violation: overflow enabled must have expiration */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_ENABLED_MUST_HAVE_EXPIRATION = 0x17ca; // 6090
+/** SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled: Spending limit invariant violation: one time period cannot have overflow enabled */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_ONE_TIME_PERIOD_CANNOT_HAVE_OVERFLOW_ENABLED = 0x17cb; // 6091
+/** SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount: Spending limit invariant violation: remaining amount must be less than max amount */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_REMAINING_AMOUNT_GREATER_THAN_MAX_AMOUNT = 0x17cc; // 6092
+/** SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod: Spending limit invariant violation: remaining amount must be less than or equal to max per period */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_REMAINING_AMOUNT_GREATER_THAN_MAX_PER_PERIOD = 0x17cd; // 6093
+/** SpendingLimitInvariantExactQuantityMaxPerUseZero: Spending limit invariant violation: exact quantity must have max per use non-zero */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXACT_QUANTITY_MAX_PER_USE_ZERO = 0x17ce; // 6094
+/** SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod: Spending limit invariant violation: max per use must be less than or equal to max per period */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_USE_GREATER_THAN_MAX_PER_PERIOD = 0x17cf; // 6095
+/** SpendingLimitInvariantCustomPeriodNegative: Spending limit invariant violation: custom period must be positive */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_CUSTOM_PERIOD_NEGATIVE = 0x17d0; // 6096
+/** SpendingLimitPolicyInvariantDuplicateDestinations: Spending limit policy invariant violation: cannot have duplicate destinations for the same mint */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_DUPLICATE_DESTINATIONS = 0x17d1; // 6097
+/** SpendingLimitInvariantLastResetOutOfBounds: Spending limit invariant violation: last reset must be between start and expiration */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_OUT_OF_BOUNDS = 0x17d2; // 6098
+/** SpendingLimitInvariantLastResetSmallerThanStart: Spending limit invariant violation: last reset must be greater than start */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_SMALLER_THAN_START = 0x17d3; // 6099
+/** InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed: Internal fund transfer policy invariant violation: source account index is not allowed */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_ACCOUNT_INDEX_NOT_ALLOWED = 0x17d4; // 6100
+/** InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed: Internal fund transfer policy invariant violation: destination account index is not allowed */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DESTINATION_ACCOUNT_INDEX_NOT_ALLOWED = 0x17d5; // 6101
+/** InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame: Internal fund transfer policy invariant violation: source and destination cannot be the same */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_AND_DESTINATION_CANNOT_BE_THE_SAME = 0x17d6; // 6102
+/** InternalFundTransferPolicyInvariantMintNotAllowed: Internal fund transfer policy invariant violation: mint is not allowed */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_MINT_NOT_ALLOWED = 0x17d7; // 6103
+/** InternalFundTransferPolicyInvariantAmountZero: Internal fund transfer policy invariant violation: amount must be greater than 0 */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_AMOUNT_ZERO = 0x17d8; // 6104
+/** InternalFundTransferPolicyInvariantDuplicateMints: Internal fund transfer policy invariant violation: cannot have duplicate mints */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DUPLICATE_MINTS = 0x17d9; // 6105
+/** ConsensusAccountNotSettings: Consensus account is not a settings */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_SETTINGS = 0x17da; // 6106
+/** ConsensusAccountNotPolicy: Consensus account is not a policy */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_POLICY = 0x17db; // 6107
+/** SettingsChangePolicyActionsMustBeNonZero: Settings change policy invariant violation: actions must be non-zero */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_ACTIONS_MUST_BE_NON_ZERO = 0x17dc; // 6108
+/** SettingsChangeInvalidSettingsKey: Settings change policy violation: submitted settings account must match policy settings key */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_KEY = 0x17dd; // 6109
+/** SettingsChangeInvalidSettingsAccount: Settings change policy violation: submitted settings account must be writable */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_ACCOUNT = 0x17de; // 6110
+/** SettingsChangeInvalidRentPayer: Settings change policy violation: rent payer must be writable and signer */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_RENT_PAYER = 0x17df; // 6111
+/** SettingsChangeInvalidSystemProgram: Settings change policy violation: system program must be the system program */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SYSTEM_PROGRAM = 0x17e0; // 6112
+/** SettingsChangeAddSignerViolation: Settings change policy violation: signer does not match allowed signer */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_VIOLATION = 0x17e1; // 6113
+/** SettingsChangeAddSignerPermissionsViolation: Settings change policy violation: signer permissions does not match allowed signer permissions */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_PERMISSIONS_VIOLATION = 0x17e2; // 6114
+/** SettingsChangeRemoveSignerViolation: Settings change policy violation: signer removal does not mach allowed signer removal */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_REMOVE_SIGNER_VIOLATION = 0x17e3; // 6115
+/** SettingsChangeChangeTimelockViolation: Settings change policy violation: time lock does not match allowed time lock */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_CHANGE_TIMELOCK_VIOLATION = 0x17e4; // 6116
+/** SettingsChangeActionMismatch: Settings change policy violation: action does not match allowed action */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ACTION_MISMATCH = 0x17e5; // 6117
+/** SettingsChangePolicyInvariantDuplicateActions: Settings change policy invariant violation: cannot have duplicate actions */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_DUPLICATE_ACTIONS = 0x17e6; // 6118
+/** SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch: Settings change policy invariant violation: action indices must match actions length */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDICES_ACTIONS_LENGTH_MISMATCH = 0x17e7; // 6119
+/** SettingsChangePolicyInvariantActionIndexOutOfBounds: Settings change policy invariant violation: action index out of bounds */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDEX_OUT_OF_BOUNDS = 0x17e8; // 6120
+/** PolicyNotActiveYet: Policy is not active yet */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_NOT_ACTIVE_YET = 0x17e9; // 6121
+/** PolicyInvariantInvalidExpiration: Policy invariant violation: invalid policy expiration */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_INVARIANT_INVALID_EXPIRATION = 0x17ea; // 6122
+/** PolicyExpirationViolationPolicySettingsKeyMismatch: Policy expiration violation: submitted settings key does not match policy settings key */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_POLICY_SETTINGS_KEY_MISMATCH = 0x17eb; // 6123
+/** PolicyExpirationViolationSettingsAccountNotPresent: Policy expiration violation: state expiration requires the settings to be submitted */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_SETTINGS_ACCOUNT_NOT_PRESENT = 0x17ec; // 6124
+/** PolicyExpirationViolationHashExpired: Policy expiration violation: state hash has expired */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_HASH_EXPIRED = 0x17ed; // 6125
+/** PolicyExpirationViolationTimestampExpired: Policy expiration violation: timestamp has expired */
+export const SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_TIMESTAMP_EXPIRED = 0x17ee; // 6126
 
 export type SquadsSmartAccountProgramError =
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ACCOUNT_NOT_EMPTY
@@ -129,6 +275,8 @@ export type SquadsSmartAccountProgramError =
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ALREADY_CANCELLED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ALREADY_REJECTED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__BATCH_NOT_EMPTY
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_POLICY
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_SETTINGS
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__DECIMALS_MISMATCH
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__DUPLICATE_SIGNER
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__EMPTY_SIGNERS
@@ -138,11 +286,21 @@ export type SquadsSmartAccountProgramError =
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ILLEGAL_ACCOUNT_OWNER
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_AGGREGATE_PERMISSIONS
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_VOTE_PERMISSIONS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_AMOUNT_ZERO
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DESTINATION_ACCOUNT_INDEX_NOT_ALLOWED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DUPLICATE_MINTS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_MINT_NOT_ALLOWED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_ACCOUNT_INDEX_NOT_ALLOWED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_AND_DESTINATION_CANNOT_BE_THE_SAME
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_ACCOUNT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DATA_CONSTRAINT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DESTINATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_EMPTY_POLICY
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_INSTRUCTION_ARGS
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_MINT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_NUMBER_OF_ACCOUNTS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_PAYLOAD
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_POLICY_PAYLOAD
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_PROPOSAL_STATUS
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_RENT_COLLECTOR
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_SIGNER_COUNT
@@ -159,20 +317,81 @@ export type SquadsSmartAccountProgramError =
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_IMPLEMENTED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_SUPPORTED_FOR_CONTROLLED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NO_VOTERS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PLACEHOLDER_ERROR
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_HASH_EXPIRED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_POLICY_SETTINGS_KEY_MISMATCH
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_SETTINGS_ACCOUNT_NOT_PRESENT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_TIMESTAMP_EXPIRED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_INVARIANT_INVALID_EXPIRATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_NOT_ACTIVE_YET
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ACCOUNT_CONSTRAINT_VIOLATED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ASYNC_PAYLOAD_NOT_ALLOWED_WITH_SYNC_TRANSACTION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_CONSTRAINT_INDEX_OUT_OF_BOUNDS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_PARSING_ERROR
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_TOO_SHORT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DUPLICATE_SPENDING_LIMIT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_HOOK_AUTHORITY_CANNOT_BE_PART_OF_HOOK_ACCOUNTS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ILLEGAL_TOKEN_ACCOUNT_MODIFICATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSTRUCTION_COUNT_MISMATCH
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_LAMPORT_ALLOWANCE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_TOKEN_ALLOWANCE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_BYTE_SEQUENCE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_NUMERIC_VALUE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_MODIFIED_ILLEGAL_BALANCE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_PROGRAM_ID_MISMATCH
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_SYNC_PAYLOAD_NOT_ALLOWED_WITH_ASYNC_TRANSACTION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TEMPLATE_HOOK_ERROR
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_INSTRUCTION_CONSTRAINTS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_SPENDING_LIMITS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_UNSUPPORTED_SLICE_OPERATOR
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROPOSAL_FOR_ANOTHER_SMART_ACCOUNT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_ACCOUNT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_INSTRUCTION
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__REMOVE_LAST_SIGNER
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__RENT_RECLAMATION_DISABLED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ACTION_MISMATCH
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_PERMISSIONS_VIOLATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_VIOLATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_CHANGE_TIMELOCK_VIOLATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_RENT_PAYER
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_ACCOUNT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_KEY
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SYSTEM_PROGRAM
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_ACTIONS_MUST_BE_NON_ZERO
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDEX_OUT_OF_BOUNDS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDICES_ACTIONS_LENGTH_MISMATCH
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_DUPLICATE_ACTIONS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_REMOVE_SIGNER_VIOLATION
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SMART_ACCOUNT_CREATE_DEPRECATED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXCEEDED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXPIRED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INSUFFICIENT_REMAINING_AMOUNT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_AMOUNT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_CADENCE_CONFIGURATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_CUSTOM_PERIOD_NEGATIVE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXACT_QUANTITY_MAX_PER_USE_ZERO
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXPIRATION_SMALLER_THAN_START
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_OUT_OF_BOUNDS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_SMALLER_THAN_START
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_PERIOD_ZERO
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_USE_GREATER_THAN_MAX_PER_PERIOD
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_ONE_TIME_PERIOD_CANNOT_HAVE_OVERFLOW_ENABLED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_ENABLED_MUST_HAVE_EXPIRATION
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_REMAINING_AMOUNT_GREATER_THAN_MAX_AMOUNT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_REMAINING_AMOUNT_GREATER_THAN_MAX_PER_PERIOD
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_START_TIME_POSITIVE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_NOT_ACTIVE
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_ACCUMULATE_UNUSED
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_DUPLICATE_DESTINATIONS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_EXACT_QUANTITY_CONSTRAINT
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_MAX_PER_USE_CONSTRAINT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__STALE_PROPOSAL
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__THRESHOLD_NOT_REACHED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_EXCEEDS_MAX_ALLOWED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_RELEASED
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_ZERO
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TOO_MANY_SIGNERS
+  | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_POLICY
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_SMART_ACCOUNT
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_LAST_IN_BATCH
   | typeof SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_MATCHING_PROPOSAL
@@ -189,6 +408,8 @@ if (process.env["NODE_ENV"] !== "production") {
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ALREADY_CANCELLED]: `Signer already cancelled the transaction`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ALREADY_REJECTED]: `Signer already rejected the transaction`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__BATCH_NOT_EMPTY]: `Batch is not empty`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_POLICY]: `Consensus account is not a policy`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__CONSENSUS_ACCOUNT_NOT_SETTINGS]: `Consensus account is not a settings`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__DECIMALS_MISMATCH]: `Decimals don't match the mint`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__DUPLICATE_SIGNER]: `Found multiple signers with the same pubkey`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__EMPTY_SIGNERS]: `Signers array is empty`,
@@ -198,11 +419,21 @@ if (process.env["NODE_ENV"] !== "production") {
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__ILLEGAL_ACCOUNT_OWNER]: `Account is not owned by Smart Account program`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_AGGREGATE_PERMISSIONS]: `Insufficient aggregate permissions across signing members`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INSUFFICIENT_VOTE_PERMISSIONS]: `Insufficient vote permissions across signing members`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_AMOUNT_ZERO]: `Internal fund transfer policy invariant violation: amount must be greater than 0`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DESTINATION_ACCOUNT_INDEX_NOT_ALLOWED]: `Internal fund transfer policy invariant violation: destination account index is not allowed`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_DUPLICATE_MINTS]: `Internal fund transfer policy invariant violation: cannot have duplicate mints`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_MINT_NOT_ALLOWED]: `Internal fund transfer policy invariant violation: mint is not allowed`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_ACCOUNT_INDEX_NOT_ALLOWED]: `Internal fund transfer policy invariant violation: source account index is not allowed`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INTERNAL_FUND_TRANSFER_POLICY_INVARIANT_SOURCE_AND_DESTINATION_CANNOT_BE_THE_SAME]: `Internal fund transfer policy invariant violation: source and destination cannot be the same`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_ACCOUNT]: `Invalid account provided`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DATA_CONSTRAINT]: `Invalid data constraint`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_DESTINATION]: `Invalid destination`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_EMPTY_POLICY]: `Invalid empty policy`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_INSTRUCTION_ARGS]: `Invalid Instruction Arguments`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_MINT]: `Invalid mint`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_NUMBER_OF_ACCOUNTS]: `Wrong number of accounts provided`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_PAYLOAD]: `Invalid payload`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_POLICY_PAYLOAD]: `Invalid policy payload`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_PROPOSAL_STATUS]: `Invalid proposal status`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_RENT_COLLECTOR]: `Invalid rent collector address`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__INVALID_SIGNER_COUNT]: `Invalid number of signer accounts. Must be greater or equal to the threshold`,
@@ -219,20 +450,81 @@ if (process.env["NODE_ENV"] !== "production") {
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_IMPLEMENTED]: `Feature not implemented`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NOT_SUPPORTED_FOR_CONTROLLED]: `Instruction not supported for controlled smart account`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__NO_VOTERS]: `Signers don't include any voters`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PLACEHOLDER_ERROR]: `Placeholder error`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_HASH_EXPIRED]: `Policy expiration violation: state hash has expired`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_POLICY_SETTINGS_KEY_MISMATCH]: `Policy expiration violation: submitted settings key does not match policy settings key`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_SETTINGS_ACCOUNT_NOT_PRESENT]: `Policy expiration violation: state expiration requires the settings to be submitted`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_EXPIRATION_VIOLATION_TIMESTAMP_EXPIRED]: `Policy expiration violation: timestamp has expired`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_INVARIANT_INVALID_EXPIRATION]: `Policy invariant violation: invalid policy expiration`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__POLICY_NOT_ACTIVE_YET]: `Policy is not active yet`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ACCOUNT_CONSTRAINT_VIOLATED]: `Program interaction constraint violation: account constraint`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ASYNC_PAYLOAD_NOT_ALLOWED_WITH_SYNC_TRANSACTION]: `Program interaction sync payload not allowed with async transaction`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_CONSTRAINT_INDEX_OUT_OF_BOUNDS]: `Program interaction constraint violation: instruction constraint index out of bounds`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_PARSING_ERROR]: `Program interaction constraint failed: instruction data parsing error`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DATA_TOO_SHORT]: `Program interaction data constraint failed: instruction data too short`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_DUPLICATE_SPENDING_LIMIT]: `Program interaction invariant violation: duplicate spending limit for the same mint`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_HOOK_AUTHORITY_CANNOT_BE_PART_OF_HOOK_ACCOUNTS]: `Program interaction hook violation: hook authority cannot be part of hook accounts`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_ILLEGAL_TOKEN_ACCOUNT_MODIFICATION]: `Program interaction constraint violation: illegal token account modification`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSTRUCTION_COUNT_MISMATCH]: `Program interaction constraint violation: instruction count mismatch`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_LAMPORT_ALLOWANCE]: `Program interaction constraint violation: insufficient remaining lamport allowance`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INSUFFICIENT_TOKEN_ALLOWANCE]: `Program interaction constraint violation: insufficient remaining token allowance`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_BYTE_SEQUENCE]: `Program interaction data constraint failed: invalid byte sequence`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_INVALID_NUMERIC_VALUE]: `Program interaction data constraint failed: invalid numeric value`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_MODIFIED_ILLEGAL_BALANCE]: `Program interaction constraint violation: modified illegal balance`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_PROGRAM_ID_MISMATCH]: `Program interaction constraint failed: program ID mismatch`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_SYNC_PAYLOAD_NOT_ALLOWED_WITH_ASYNC_TRANSACTION]: `Program interaction sync payload not allowed with sync transaction`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TEMPLATE_HOOK_ERROR]: `Program interaction hook violation: template hook error`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_INSTRUCTION_CONSTRAINTS]: `Program interaction constraint violation: too many instruction constraints. Max is 20`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_TOO_MANY_SPENDING_LIMITS]: `Program interaction constraint violation: too many spending limits. Max is 10`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROGRAM_INTERACTION_UNSUPPORTED_SLICE_OPERATOR]: `Program interaction data constraint failed: unsupported operator for byte slice`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROPOSAL_FOR_ANOTHER_SMART_ACCOUNT]: `Proposal is for another smart account`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_ACCOUNT]: `Account is protected, it cannot be passed into a CPI as writable`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__PROTECTED_INSTRUCTION]: `Protected instruction`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__REMOVE_LAST_SIGNER]: `Cannot remove last signer`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__RENT_RECLAMATION_DISABLED]: `Rent reclamation is disabled for this smart account`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ACTION_MISMATCH]: `Settings change policy violation: action does not match allowed action`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_PERMISSIONS_VIOLATION]: `Settings change policy violation: signer permissions does not match allowed signer permissions`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_ADD_SIGNER_VIOLATION]: `Settings change policy violation: signer does not match allowed signer`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_CHANGE_TIMELOCK_VIOLATION]: `Settings change policy violation: time lock does not match allowed time lock`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_RENT_PAYER]: `Settings change policy violation: rent payer must be writable and signer`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_ACCOUNT]: `Settings change policy violation: submitted settings account must be writable`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SETTINGS_KEY]: `Settings change policy violation: submitted settings account must match policy settings key`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_INVALID_SYSTEM_PROGRAM]: `Settings change policy violation: system program must be the system program`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_ACTIONS_MUST_BE_NON_ZERO]: `Settings change policy invariant violation: actions must be non-zero`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDEX_OUT_OF_BOUNDS]: `Settings change policy invariant violation: action index out of bounds`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_ACTION_INDICES_ACTIONS_LENGTH_MISMATCH]: `Settings change policy invariant violation: action indices must match actions length`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_POLICY_INVARIANT_DUPLICATE_ACTIONS]: `Settings change policy invariant violation: cannot have duplicate actions`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SETTINGS_CHANGE_REMOVE_SIGNER_VIOLATION]: `Settings change policy violation: signer removal does not mach allowed signer removal`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SMART_ACCOUNT_CREATE_DEPRECATED]: `smart_account_create has been deprecated. Use smart_account_create_v2 instead.`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXCEEDED]: `Spending limit exceeded`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_EXPIRED]: `Spending limit is expired`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INSUFFICIENT_REMAINING_AMOUNT]: `Spending limit is insufficient`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_AMOUNT]: `Invalid SpendingLimit amount`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVALID_CADENCE_CONFIGURATION]: `Invalid cadence configuration`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_CUSTOM_PERIOD_NEGATIVE]: `Spending limit invariant violation: custom period must be positive`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXACT_QUANTITY_MAX_PER_USE_ZERO]: `Spending limit invariant violation: exact quantity must have max per use non-zero`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_EXPIRATION_SMALLER_THAN_START]: `Spending limit invariant violation: expiration must be greater than start`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_OUT_OF_BOUNDS]: `Spending limit invariant violation: last reset must be between start and expiration`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_LAST_RESET_SMALLER_THAN_START]: `Spending limit invariant violation: last reset must be greater than start`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_PERIOD_ZERO]: `Spending limit invariant violation: max per period must be non-zero`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_MAX_PER_USE_GREATER_THAN_MAX_PER_PERIOD]: `Spending limit invariant violation: max per use must be less than or equal to max per period`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_ONE_TIME_PERIOD_CANNOT_HAVE_OVERFLOW_ENABLED]: `Spending limit invariant violation: one time period cannot have overflow enabled`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_ENABLED_MUST_HAVE_EXPIRATION]: `Spending limit invariant violation: overflow enabled must have expiration`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_OVERFLOW_REMAINING_AMOUNT_GREATER_THAN_MAX_AMOUNT]: `Spending limit invariant violation: remaining amount must be less than max amount`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_REMAINING_AMOUNT_GREATER_THAN_MAX_PER_PERIOD]: `Spending limit invariant violation: remaining amount must be less than or equal to max per period`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_INVARIANT_START_TIME_POSITIVE]: `Spending limit invariant violation: start time must be positive`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_NOT_ACTIVE]: `Spending limit is not active`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_ACCUMULATE_UNUSED]: `Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_POLICY_INVARIANT_DUPLICATE_DESTINATIONS]: `Spending limit policy invariant violation: cannot have duplicate destinations for the same mint`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_EXACT_QUANTITY_CONSTRAINT]: `Amount violates exact quantity constraint`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__SPENDING_LIMIT_VIOLATES_MAX_PER_USE_CONSTRAINT]: `Amount violates max per use constraint`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__STALE_PROPOSAL]: `Proposal is stale`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__THRESHOLD_NOT_REACHED]: `Signers do not reach consensus threshold`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_EXCEEDS_MAX_ALLOWED]: `Time lock exceeds the maximum allowed (90 days)`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_RELEASED]: `Proposal time lock has not been released`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TIME_LOCK_NOT_ZERO]: `Smart account must not be time locked`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TOO_MANY_SIGNERS]: `Too many signers, can be up to 65535`,
+    [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_POLICY]: `Transaction is for another policy`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_FOR_ANOTHER_SMART_ACCOUNT]: `Transaction is for another smart account`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_LAST_IN_BATCH]: `Transaction is not last in batch`,
     [SQUADS_SMART_ACCOUNT_PROGRAM_ERROR__TRANSACTION_NOT_MATCHING_PROPOSAL]: `Transaction doesn't match proposal`,

@@ -37,6 +37,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
+import { findProgramConfigPda } from "../pdas";
 import { SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS } from "../programs";
 
 export const SET_PROGRAM_CONFIG_AUTHORITY_DISCRIMINATOR: ReadonlyUint8Array =
@@ -105,6 +106,72 @@ export function getSetProgramConfigAuthorityInstructionDataCodec(): FixedSizeCod
     getSetProgramConfigAuthorityInstructionDataEncoder(),
     getSetProgramConfigAuthorityInstructionDataDecoder(),
   );
+}
+
+export type SetProgramConfigAuthorityAsyncInput<
+  TAccountProgramConfig extends string = string,
+  TAccountAuthority extends string = string,
+> = {
+  programConfig?: Address<TAccountProgramConfig>;
+  authority: TransactionSigner<TAccountAuthority>;
+  newAuthority: SetProgramConfigAuthorityInstructionDataArgs["newAuthority"];
+};
+
+export async function getSetProgramConfigAuthorityInstructionAsync<
+  TAccountProgramConfig extends string,
+  TAccountAuthority extends string,
+  TProgramAddress extends Address =
+    typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
+>(
+  input: SetProgramConfigAuthorityAsyncInput<
+    TAccountProgramConfig,
+    TAccountAuthority
+  >,
+  config?: { programAddress?: TProgramAddress },
+): Promise<
+  SetProgramConfigAuthorityInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountAuthority
+  >
+> {
+  // Program address.
+  const programAddress =
+    config?.programAddress ?? SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    programConfig: { value: input.programConfig ?? null, isWritable: true },
+    authority: { value: input.authority ?? null, isWritable: false },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedInstructionAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.programConfig.value) {
+    accounts.programConfig.value = await findProgramConfigPda();
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta("programConfig", accounts.programConfig),
+      getAccountMeta("authority", accounts.authority),
+    ],
+    data: getSetProgramConfigAuthorityInstructionDataEncoder().encode(
+      args as SetProgramConfigAuthorityInstructionDataArgs,
+    ),
+    programAddress,
+  } as SetProgramConfigAuthorityInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountAuthority
+  >);
 }
 
 export type SetProgramConfigAuthorityInput<

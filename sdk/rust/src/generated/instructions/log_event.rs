@@ -70,8 +70,6 @@ impl Default for LogEventInstructionData {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct LogEventInstructionArgs {
-    pub account_seeds: Vec<Vec<u8>>,
-    pub bump: u8,
     pub event: Vec<u8>,
 }
 
@@ -89,8 +87,6 @@ impl LogEventInstructionArgs {
 #[derive(Clone, Debug, Default)]
 pub struct LogEventBuilder {
     log_authority: Option<solana_address::Address>,
-    account_seeds: Option<Vec<Vec<u8>>>,
-    bump: Option<u8>,
     event: Option<Vec<u8>>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
@@ -102,16 +98,6 @@ impl LogEventBuilder {
     #[inline(always)]
     pub fn log_authority(&mut self, log_authority: solana_address::Address) -> &mut Self {
         self.log_authority = Some(log_authority);
-        self
-    }
-    #[inline(always)]
-    pub fn account_seeds(&mut self, account_seeds: Vec<Vec<u8>>) -> &mut Self {
-        self.account_seeds = Some(account_seeds);
-        self
-    }
-    #[inline(always)]
-    pub fn bump(&mut self, bump: u8) -> &mut Self {
-        self.bump = Some(bump);
         self
     }
     #[inline(always)]
@@ -140,11 +126,6 @@ impl LogEventBuilder {
             log_authority: self.log_authority.expect("log_authority is not set"),
         };
         let args = LogEventInstructionArgs {
-            account_seeds: self
-                .account_seeds
-                .clone()
-                .expect("account_seeds is not set"),
-            bump: self.bump.clone().expect("bump is not set"),
             event: self.event.clone().expect("event is not set"),
         };
 
@@ -253,8 +234,6 @@ impl<'a, 'b> LogEventCpiBuilder<'a, 'b> {
         let instruction = Box::new(LogEventCpiBuilderInstruction {
             __program: program,
             log_authority: None,
-            account_seeds: None,
-            bump: None,
             event: None,
             __remaining_accounts: Vec::new(),
         });
@@ -266,16 +245,6 @@ impl<'a, 'b> LogEventCpiBuilder<'a, 'b> {
         log_authority: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
         self.instruction.log_authority = Some(log_authority);
-        self
-    }
-    #[inline(always)]
-    pub fn account_seeds(&mut self, account_seeds: Vec<Vec<u8>>) -> &mut Self {
-        self.instruction.account_seeds = Some(account_seeds);
-        self
-    }
-    #[inline(always)]
-    pub fn bump(&mut self, bump: u8) -> &mut Self {
-        self.instruction.bump = Some(bump);
         self
     }
     #[inline(always)]
@@ -318,12 +287,6 @@ impl<'a, 'b> LogEventCpiBuilder<'a, 'b> {
     #[allow(clippy::vec_init_then_push)]
     pub fn invoke_signed(&self, signers_seeds: &[&[&[u8]]]) -> solana_program_error::ProgramResult {
         let args = LogEventInstructionArgs {
-            account_seeds: self
-                .instruction
-                .account_seeds
-                .clone()
-                .expect("account_seeds is not set"),
-            bump: self.instruction.bump.clone().expect("bump is not set"),
             event: self.instruction.event.clone().expect("event is not set"),
         };
         let instruction = LogEventCpi {
@@ -346,8 +309,6 @@ impl<'a, 'b> LogEventCpiBuilder<'a, 'b> {
 struct LogEventCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
     log_authority: Option<&'b solana_account_info::AccountInfo<'a>>,
-    account_seeds: Option<Vec<Vec<u8>>>,
-    bump: Option<u8>,
     event: Option<Vec<u8>>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

@@ -13,7 +13,7 @@ pub const CLOSE_TRANSACTION_BUFFER_DISCRIMINATOR: [u8; 8] = [224, 221, 123, 213,
 /// Accounts.
 #[derive(Debug)]
 pub struct CloseTransactionBuffer {
-    pub settings: solana_address::Address,
+    pub consensus_account: solana_address::Address,
 
     pub transaction_buffer: solana_address::Address,
     /// The signer on the smart account that created the TransactionBuffer.
@@ -32,7 +32,7 @@ impl CloseTransactionBuffer {
     ) -> solana_instruction::Instruction {
         let mut accounts = Vec::with_capacity(3 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.settings,
+            self.consensus_account,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -83,12 +83,12 @@ impl Default for CloseTransactionBufferInstructionData {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
+///   0. `[]` consensus_account
 ///   1. `[writable]` transaction_buffer
 ///   2. `[signer]` creator
 #[derive(Clone, Debug, Default)]
 pub struct CloseTransactionBufferBuilder {
-    settings: Option<solana_address::Address>,
+    consensus_account: Option<solana_address::Address>,
     transaction_buffer: Option<solana_address::Address>,
     creator: Option<solana_address::Address>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
@@ -99,8 +99,8 @@ impl CloseTransactionBufferBuilder {
         Self::default()
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: solana_address::Address) -> &mut Self {
-        self.settings = Some(settings);
+    pub fn consensus_account(&mut self, consensus_account: solana_address::Address) -> &mut Self {
+        self.consensus_account = Some(consensus_account);
         self
     }
     #[inline(always)]
@@ -132,7 +132,9 @@ impl CloseTransactionBufferBuilder {
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = CloseTransactionBuffer {
-            settings: self.settings.expect("settings is not set"),
+            consensus_account: self
+                .consensus_account
+                .expect("consensus_account is not set"),
             transaction_buffer: self
                 .transaction_buffer
                 .expect("transaction_buffer is not set"),
@@ -145,7 +147,7 @@ impl CloseTransactionBufferBuilder {
 
 /// `close_transaction_buffer` CPI accounts.
 pub struct CloseTransactionBufferCpiAccounts<'a, 'b> {
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_buffer: &'b solana_account_info::AccountInfo<'a>,
     /// The signer on the smart account that created the TransactionBuffer.
@@ -157,7 +159,7 @@ pub struct CloseTransactionBufferCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub transaction_buffer: &'b solana_account_info::AccountInfo<'a>,
     /// The signer on the smart account that created the TransactionBuffer.
@@ -171,7 +173,7 @@ impl<'a, 'b> CloseTransactionBufferCpi<'a, 'b> {
     ) -> Self {
         Self {
             __program: program,
-            settings: accounts.settings,
+            consensus_account: accounts.consensus_account,
             transaction_buffer: accounts.transaction_buffer,
             creator: accounts.creator,
         }
@@ -201,7 +203,7 @@ impl<'a, 'b> CloseTransactionBufferCpi<'a, 'b> {
     ) -> solana_program_error::ProgramResult {
         let mut accounts = Vec::with_capacity(3 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.settings.key,
+            *self.consensus_account.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(
@@ -230,7 +232,7 @@ impl<'a, 'b> CloseTransactionBufferCpi<'a, 'b> {
         };
         let mut account_infos = Vec::with_capacity(4 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.settings.clone());
+        account_infos.push(self.consensus_account.clone());
         account_infos.push(self.transaction_buffer.clone());
         account_infos.push(self.creator.clone());
         remaining_accounts
@@ -249,7 +251,7 @@ impl<'a, 'b> CloseTransactionBufferCpi<'a, 'b> {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
+///   0. `[]` consensus_account
 ///   1. `[writable]` transaction_buffer
 ///   2. `[signer]` creator
 #[derive(Clone, Debug)]
@@ -261,7 +263,7 @@ impl<'a, 'b> CloseTransactionBufferCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
         let instruction = Box::new(CloseTransactionBufferCpiBuilderInstruction {
             __program: program,
-            settings: None,
+            consensus_account: None,
             transaction_buffer: None,
             creator: None,
             __remaining_accounts: Vec::new(),
@@ -269,8 +271,11 @@ impl<'a, 'b> CloseTransactionBufferCpiBuilder<'a, 'b> {
         Self { instruction }
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.settings = Some(settings);
+    pub fn consensus_account(
+        &mut self,
+        consensus_account: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.consensus_account = Some(consensus_account);
         self
     }
     #[inline(always)]
@@ -324,7 +329,10 @@ impl<'a, 'b> CloseTransactionBufferCpiBuilder<'a, 'b> {
         let instruction = CloseTransactionBufferCpi {
             __program: self.instruction.__program,
 
-            settings: self.instruction.settings.expect("settings is not set"),
+            consensus_account: self
+                .instruction
+                .consensus_account
+                .expect("consensus_account is not set"),
 
             transaction_buffer: self
                 .instruction
@@ -343,7 +351,7 @@ impl<'a, 'b> CloseTransactionBufferCpiBuilder<'a, 'b> {
 #[derive(Clone, Debug)]
 struct CloseTransactionBufferCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    settings: Option<&'b solana_account_info::AccountInfo<'a>>,
+    consensus_account: Option<&'b solana_account_info::AccountInfo<'a>>,
     transaction_buffer: Option<&'b solana_account_info::AccountInfo<'a>>,
     creator: Option<&'b solana_account_info::AccountInfo<'a>>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

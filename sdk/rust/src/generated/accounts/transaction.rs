@@ -5,45 +5,24 @@
 //! <https://github.com/codama-idl/codama>
 //!
 
-use crate::generated::types::SmartAccountTransactionMessage;
+use crate::generated::types::Payload;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use solana_address::Address;
 
-/// Stores data required for tracking the voting and execution status of a smart
-/// account transaction.
-/// Smart Account transaction is a transaction that's executed on behalf of the
-/// smart account PDA
-/// and wraps arbitrary Solana instructions, typically calling into other Solana programs.
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Transaction {
     pub discriminator: [u8; 8],
-    /// The settings this belongs to.
-    pub settings: Address,
+    /// The consensus account this belongs to.
+    pub consensus_account: Address,
     /// Signer of the Smart Account who submitted the transaction.
     pub creator: Address,
     /// The rent collector for the transaction account.
     pub rent_collector: Address,
-    /// Index of this transaction within the smart account.
+    /// Index of this transaction within the consensus account.
     pub index: u64,
-    /// bump for the transaction seeds.
-    pub bump: u8,
-    /// The account index of the smart account this transaction belongs to.
-    pub account_index: u8,
-    /// Derivation bump of the smart account PDA this transaction belongs to.
-    pub account_bump: u8,
-    /// Derivation bumps for additional signers.
-    /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
-    /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
-    /// When wrapping such transactions into smart account ones, we replace these "ephemeral" signing keypairs
-    /// with PDAs derived from the SmartAccountTransaction's `transaction_index`
-    /// and controlled by the Smart Account Program;
-    /// during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,
-    /// thus "signing" on behalf of these PDAs.
-    pub ephemeral_signer_bumps: Vec<u8>,
-    /// data required for executing the transaction.
-    pub message: SmartAccountTransactionMessage,
+    /// The payload of the transaction.
+    pub payload: Payload,
 }
 
 pub const TRANSACTION_DISCRIMINATOR: [u8; 8] = [11, 24, 174, 129, 203, 117, 242, 23];

@@ -63,7 +63,8 @@ export type RemoveSpendingLimitAsAuthorityInstruction<
   TAccountSettingsAuthority extends string | AccountMeta<string> = string,
   TAccountSpendingLimit extends string | AccountMeta<string> = string,
   TAccountRentCollector extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -151,7 +152,7 @@ export type RemoveSpendingLimitAsAuthorityInput<
   spendingLimit: Address<TAccountSpendingLimit>;
   /** This is usually the same as `settings_authority`, but can be a different account if needed. */
   rentCollector: Address<TAccountRentCollector>;
-  program: Address<TAccountProgram>;
+  program?: Address<TAccountProgram>;
   memo: RemoveSpendingLimitAsAuthorityInstructionDataArgs["memo"];
 };
 
@@ -202,6 +203,12 @@ export function getRemoveSpendingLimitAsAuthorityInstruction<
 
   // Original args.
   const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({

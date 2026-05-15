@@ -56,18 +56,21 @@ export function getCancelProposalDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type CancelProposalInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountSigner extends string | AccountMeta<string> = string,
   TAccountProposal extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? ReadonlyAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountSigner extends string
         ? WritableSignerAccount<TAccountSigner> &
             AccountSignerMeta<TAccountSigner>
@@ -78,6 +81,9 @@ export type CancelProposalInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -119,39 +125,44 @@ export function getCancelProposalInstructionDataCodec(): Codec<
 }
 
 export type CancelProposalInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountSigner extends string = string,
   TAccountProposal extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   signer: TransactionSigner<TAccountSigner>;
   proposal: Address<TAccountProposal>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
   args: CancelProposalInstructionDataArgs["args"];
 };
 
 export function getCancelProposalInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountSigner extends string,
   TAccountProposal extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: CancelProposalInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountSigner,
     TAccountProposal,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CancelProposalInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountSigner,
   TAccountProposal,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -159,10 +170,14 @@ export function getCancelProposalInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: false,
+    },
     signer: { value: input.signer ?? null, isWritable: true },
     proposal: { value: input.proposal ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -172,13 +187,24 @@ export function getCancelProposalInstruction<
   // Original args.
   const args = { ...input };
 
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("signer", accounts.signer),
       getAccountMeta("proposal", accounts.proposal),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCancelProposalInstructionDataEncoder().encode(
       args as CancelProposalInstructionDataArgs,
@@ -186,10 +212,11 @@ export function getCancelProposalInstruction<
     programAddress,
   } as CancelProposalInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountSigner,
     TAccountProposal,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -199,10 +226,11 @@ export type ParsedCancelProposalInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     signer: TAccountMetas[1];
     proposal: TAccountMetas[2];
     systemProgram?: TAccountMetas[3] | undefined;
+    program: TAccountMetas[4];
   };
   data: CancelProposalInstructionData;
 };
@@ -215,12 +243,12 @@ export function parseCancelProposalInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCancelProposalInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 5) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 4,
+        expectedAccountMetas: 5,
       },
     );
   }
@@ -239,10 +267,11 @@ export function parseCancelProposalInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       signer: getNextAccount(),
       proposal: getNextAccount(),
       systemProgram: getNextOptionalAccount(),
+      program: getNextAccount(),
     },
     data: getCancelProposalInstructionDataDecoder().decode(instruction.data),
   };

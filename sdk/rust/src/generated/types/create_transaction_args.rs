@@ -5,15 +5,16 @@
 //! <https://github.com/codama-idl/codama>
 //!
 
+use crate::generated::types::PolicyPayload;
+use crate::generated::types::TransactionPayload;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct CreateTransactionArgs {
-    /// Index of the smart account this transaction belongs to.
-    pub account_index: u8,
-    /// Number of ephemeral signing PDAs required by the transaction.
-    pub ephemeral_signers: u8,
-    pub transaction_message: Vec<u8>,
-    pub memo: Option<String>,
+pub enum CreateTransactionArgs {
+    TransactionPayload(TransactionPayload),
+    PolicyPayload {
+        /// The payload of the policy transaction.
+        payload: PolicyPayload,
+    },
 }

@@ -15,7 +15,7 @@ pub const EXECUTE_SETTINGS_TRANSACTION_SYNC_DISCRIMINATOR: [u8; 8] =
 /// Accounts.
 #[derive(Debug)]
 pub struct ExecuteSettingsTransactionSync {
-    pub settings: solana_address::Address,
+    pub consensus_account: solana_address::Address,
     /// The account that will be charged/credited in case the settings transaction causes space reallocation,
     /// for example when adding a new signer, adding or removing a spending limit.
     /// This is usually the same as `signer`, but can be a different account if needed.
@@ -41,7 +41,10 @@ impl ExecuteSettingsTransactionSync {
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
         let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
-        accounts.push(solana_instruction::AccountMeta::new(self.settings, false));
+        accounts.push(solana_instruction::AccountMeta::new(
+            self.consensus_account,
+            false,
+        ));
         if let Some(rent_payer) = self.rent_payer {
             accounts.push(solana_instruction::AccountMeta::new(rent_payer, true));
         } else {
@@ -120,13 +123,13 @@ impl ExecuteSettingsTransactionSyncInstructionArgs {
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` settings
+///   0. `[writable]` consensus_account
 ///   1. `[writable, signer, optional]` rent_payer
-///   2. `[optional]` system_program
-///   3. `[]` program
+///   2. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   3. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct ExecuteSettingsTransactionSyncBuilder {
-    settings: Option<solana_address::Address>,
+    consensus_account: Option<solana_address::Address>,
     rent_payer: Option<solana_address::Address>,
     system_program: Option<solana_address::Address>,
     program: Option<solana_address::Address>,
@@ -141,8 +144,8 @@ impl ExecuteSettingsTransactionSyncBuilder {
         Self::default()
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: solana_address::Address) -> &mut Self {
-        self.settings = Some(settings);
+    pub fn consensus_account(&mut self, consensus_account: solana_address::Address) -> &mut Self {
+        self.consensus_account = Some(consensus_account);
         self
     }
     /// `[optional account]`
@@ -161,6 +164,7 @@ impl ExecuteSettingsTransactionSyncBuilder {
         self.system_program = system_program;
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -200,10 +204,14 @@ impl ExecuteSettingsTransactionSyncBuilder {
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = ExecuteSettingsTransactionSync {
-            settings: self.settings.expect("settings is not set"),
+            consensus_account: self
+                .consensus_account
+                .expect("consensus_account is not set"),
             rent_payer: self.rent_payer,
             system_program: self.system_program,
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = ExecuteSettingsTransactionSyncInstructionArgs {
             num_signers: self.num_signers.clone().expect("num_signers is not set"),
@@ -217,7 +225,7 @@ impl ExecuteSettingsTransactionSyncBuilder {
 
 /// `execute_settings_transaction_sync` CPI accounts.
 pub struct ExecuteSettingsTransactionSyncCpiAccounts<'a, 'b> {
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
     /// The account that will be charged/credited in case the settings transaction causes space reallocation,
     /// for example when adding a new signer, adding or removing a spending limit.
     /// This is usually the same as `signer`, but can be a different account if needed.
@@ -233,7 +241,7 @@ pub struct ExecuteSettingsTransactionSyncCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
     /// The account that will be charged/credited in case the settings transaction causes space reallocation,
     /// for example when adding a new signer, adding or removing a spending limit.
     /// This is usually the same as `signer`, but can be a different account if needed.
@@ -254,7 +262,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpi<'a, 'b> {
     ) -> Self {
         Self {
             __program: program,
-            settings: accounts.settings,
+            consensus_account: accounts.consensus_account,
             rent_payer: accounts.rent_payer,
             system_program: accounts.system_program,
             program: accounts.program,
@@ -286,7 +294,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpi<'a, 'b> {
     ) -> solana_program_error::ProgramResult {
         let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
-            *self.settings.key,
+            *self.consensus_account.key,
             false,
         ));
         if let Some(rent_payer) = self.rent_payer {
@@ -332,7 +340,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpi<'a, 'b> {
         };
         let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.settings.clone());
+        account_infos.push(self.consensus_account.clone());
         if let Some(rent_payer) = self.rent_payer {
             account_infos.push(rent_payer.clone());
         }
@@ -356,7 +364,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpi<'a, 'b> {
 ///
 /// ### Accounts:
 ///
-///   0. `[writable]` settings
+///   0. `[writable]` consensus_account
 ///   1. `[writable, signer, optional]` rent_payer
 ///   2. `[optional]` system_program
 ///   3. `[]` program
@@ -369,7 +377,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
         let instruction = Box::new(ExecuteSettingsTransactionSyncCpiBuilderInstruction {
             __program: program,
-            settings: None,
+            consensus_account: None,
             rent_payer: None,
             system_program: None,
             program: None,
@@ -381,8 +389,11 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpiBuilder<'a, 'b> {
         Self { instruction }
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.settings = Some(settings);
+    pub fn consensus_account(
+        &mut self,
+        consensus_account: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.consensus_account = Some(consensus_account);
         self
     }
     /// `[optional account]`
@@ -478,7 +489,10 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpiBuilder<'a, 'b> {
         let instruction = ExecuteSettingsTransactionSyncCpi {
             __program: self.instruction.__program,
 
-            settings: self.instruction.settings.expect("settings is not set"),
+            consensus_account: self
+                .instruction
+                .consensus_account
+                .expect("consensus_account is not set"),
 
             rent_payer: self.instruction.rent_payer,
 
@@ -497,7 +511,7 @@ impl<'a, 'b> ExecuteSettingsTransactionSyncCpiBuilder<'a, 'b> {
 #[derive(Clone, Debug)]
 struct ExecuteSettingsTransactionSyncCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    settings: Option<&'b solana_account_info::AccountInfo<'a>>,
+    consensus_account: Option<&'b solana_account_info::AccountInfo<'a>>,
     rent_payer: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,

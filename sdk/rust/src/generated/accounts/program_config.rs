@@ -9,8 +9,6 @@ use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use solana_address::Address;
 
-/// Global program configuration account.
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProgramConfig {
     pub discriminator: [u8; 8],

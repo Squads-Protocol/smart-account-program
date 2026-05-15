@@ -51,16 +51,17 @@ export function getExecuteTransactionSyncDiscriminatorBytes(): ReadonlyUint8Arra
 
 export type ExecuteTransactionSyncInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? ReadonlyAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountProgram extends string
         ? ReadonlyAccount<TAccountProgram>
         : TAccountProgram,
@@ -125,27 +126,27 @@ export function getExecuteTransactionSyncInstructionDataCodec(): Codec<
 }
 
 export type ExecuteTransactionSyncInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
-  program: Address<TAccountProgram>;
+  consensusAccount: Address<TAccountConsensusAccount>;
+  program?: Address<TAccountProgram>;
   accountIndex: ExecuteTransactionSyncInstructionDataArgs["accountIndex"];
   numSigners: ExecuteTransactionSyncInstructionDataArgs["numSigners"];
   instructions: ExecuteTransactionSyncInstructionDataArgs["instructions"];
 };
 
 export function getExecuteTransactionSyncInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
-  input: ExecuteTransactionSyncInput<TAccountSettings, TAccountProgram>,
+  input: ExecuteTransactionSyncInput<TAccountConsensusAccount, TAccountProgram>,
   config?: { programAddress?: TProgramAddress },
 ): ExecuteTransactionSyncInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountProgram
 > {
   // Program address.
@@ -154,7 +155,10 @@ export function getExecuteTransactionSyncInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: false,
+    },
     program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -165,10 +169,16 @@ export function getExecuteTransactionSyncInstruction<
   // Original args.
   const args = { ...input };
 
+  // Resolve default values.
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("program", accounts.program),
     ],
     data: getExecuteTransactionSyncInstructionDataEncoder().encode(
@@ -177,7 +187,7 @@ export function getExecuteTransactionSyncInstruction<
     programAddress,
   } as ExecuteTransactionSyncInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProgram
   >);
 }
@@ -188,7 +198,7 @@ export type ParsedExecuteTransactionSyncInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     program: TAccountMetas[1];
   };
   data: ExecuteTransactionSyncInstructionData;
@@ -219,7 +229,7 @@ export function parseExecuteTransactionSyncInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { settings: getNextAccount(), program: getNextAccount() },
+    accounts: { consensusAccount: getNextAccount(), program: getNextAccount() },
     data: getExecuteTransactionSyncInstructionDataDecoder().decode(
       instruction.data,
     ),

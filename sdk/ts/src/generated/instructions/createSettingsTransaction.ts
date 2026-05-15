@@ -74,6 +74,8 @@ export type CreateSettingsTransactionInstruction<
   TAccountRentPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -96,6 +98,9 @@ export type CreateSettingsTransactionInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -157,6 +162,7 @@ export type CreateSettingsTransactionInput<
   TAccountCreator extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   transaction: Address<TAccountTransaction>;
@@ -165,6 +171,7 @@ export type CreateSettingsTransactionInput<
   /** The payer for the transaction account rent. */
   rentPayer: TransactionSigner<TAccountRentPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
   actions: CreateSettingsTransactionInstructionDataArgs["actions"];
   memo: CreateSettingsTransactionInstructionDataArgs["memo"];
 };
@@ -175,6 +182,7 @@ export function getCreateSettingsTransactionInstruction<
   TAccountCreator extends string,
   TAccountRentPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
@@ -183,7 +191,8 @@ export function getCreateSettingsTransactionInstruction<
     TAccountTransaction,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CreateSettingsTransactionInstruction<
@@ -192,7 +201,8 @@ export function getCreateSettingsTransactionInstruction<
   TAccountTransaction,
   TAccountCreator,
   TAccountRentPayer,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -205,6 +215,7 @@ export function getCreateSettingsTransactionInstruction<
     creator: { value: input.creator ?? null, isWritable: false },
     rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -219,6 +230,10 @@ export function getCreateSettingsTransactionInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -228,6 +243,7 @@ export function getCreateSettingsTransactionInstruction<
       getAccountMeta("creator", accounts.creator),
       getAccountMeta("rentPayer", accounts.rentPayer),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCreateSettingsTransactionInstructionDataEncoder().encode(
       args as CreateSettingsTransactionInstructionDataArgs,
@@ -239,7 +255,8 @@ export function getCreateSettingsTransactionInstruction<
     TAccountTransaction,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -256,6 +273,7 @@ export type ParsedCreateSettingsTransactionInstruction<
     /** The payer for the transaction account rent. */
     rentPayer: TAccountMetas[3];
     systemProgram: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: CreateSettingsTransactionInstructionData;
 };
@@ -268,12 +286,12 @@ export function parseCreateSettingsTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCreateSettingsTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 6) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 6,
       },
     );
   }
@@ -291,6 +309,7 @@ export function parseCreateSettingsTransactionInstruction<
       creator: getNextAccount(),
       rentPayer: getNextAccount(),
       systemProgram: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getCreateSettingsTransactionInstructionDataDecoder().decode(
       instruction.data,

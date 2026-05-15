@@ -55,7 +55,10 @@ export type ExecuteSettingsTransactionInstruction<
   TAccountProposal extends string | AccountMeta<string> = string,
   TAccountTransaction extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -81,6 +84,9 @@ export type ExecuteSettingsTransactionInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -124,6 +130,7 @@ export type ExecuteSettingsTransactionInput<
   TAccountTransaction extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
   /** The settings account of the smart account that owns the transaction. */
   settings: Address<TAccountSettings>;
@@ -141,6 +148,7 @@ export type ExecuteSettingsTransactionInput<
   rentPayer?: TransactionSigner<TAccountRentPayer>;
   /** We might need it in case reallocation is needed. */
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
 };
 
 export function getExecuteSettingsTransactionInstruction<
@@ -150,6 +158,7 @@ export function getExecuteSettingsTransactionInstruction<
   TAccountTransaction extends string,
   TAccountRentPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
@@ -159,7 +168,8 @@ export function getExecuteSettingsTransactionInstruction<
     TAccountProposal,
     TAccountTransaction,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): ExecuteSettingsTransactionInstruction<
@@ -169,7 +179,8 @@ export function getExecuteSettingsTransactionInstruction<
   TAccountProposal,
   TAccountTransaction,
   TAccountRentPayer,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -183,11 +194,22 @@ export function getExecuteSettingsTransactionInstruction<
     transaction: { value: input.transaction ?? null, isWritable: false },
     rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
     ResolvedInstructionAccount
   >;
+
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
@@ -198,6 +220,7 @@ export function getExecuteSettingsTransactionInstruction<
       getAccountMeta("transaction", accounts.transaction),
       getAccountMeta("rentPayer", accounts.rentPayer),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getExecuteSettingsTransactionInstructionDataEncoder().encode({}),
     programAddress,
@@ -208,7 +231,8 @@ export function getExecuteSettingsTransactionInstruction<
     TAccountProposal,
     TAccountTransaction,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -234,6 +258,7 @@ export type ParsedExecuteSettingsTransactionInstruction<
     rentPayer?: TAccountMetas[4] | undefined;
     /** We might need it in case reallocation is needed. */
     systemProgram?: TAccountMetas[5] | undefined;
+    program: TAccountMetas[6];
   };
   data: ExecuteSettingsTransactionInstructionData;
 };
@@ -246,12 +271,12 @@ export function parseExecuteSettingsTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedExecuteSettingsTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 6,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -276,6 +301,7 @@ export function parseExecuteSettingsTransactionInstruction<
       transaction: getNextAccount(),
       rentPayer: getNextOptionalAccount(),
       systemProgram: getNextOptionalAccount(),
+      program: getNextAccount(),
     },
     data: getExecuteSettingsTransactionInstructionDataDecoder().decode(
       instruction.data,

@@ -186,12 +186,12 @@ impl UseSpendingLimitInstructionArgs {
 ///   2. `[writable]` spending_limit
 ///   3. `[writable]` smart_account
 ///   4. `[writable]` destination
-///   5. `[optional]` system_program
+///   5. `[optional]` system_program (default to `11111111111111111111111111111111`)
 ///   6. `[optional]` mint
 ///   7. `[writable, optional]` smart_account_token_account
 ///   8. `[writable, optional]` destination_token_account
 ///   9. `[optional]` token_program
-///   10. `[]` program
+///   10. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct UseSpendingLimitBuilder {
     settings: Option<solana_address::Address>,
@@ -285,6 +285,7 @@ impl UseSpendingLimitBuilder {
         self.token_program = token_program;
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -334,7 +335,9 @@ impl UseSpendingLimitBuilder {
             smart_account_token_account: self.smart_account_token_account,
             destination_token_account: self.destination_token_account,
             token_program: self.token_program,
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = UseSpendingLimitInstructionArgs {
             amount: self.amount.clone().expect("amount is not set"),

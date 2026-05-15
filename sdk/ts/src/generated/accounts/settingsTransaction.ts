@@ -56,11 +56,6 @@ export function getSettingsTransactionDiscriminatorBytes(): ReadonlyUint8Array {
   );
 }
 
-/**
- * Stores data required for execution of a settings configuration transaction.
- * Settings transactions can perform a predefined set of actions on the Settings PDA, such as adding/removing members,
- * changing the threshold, etc.
- */
 export type SettingsTransaction = {
   discriminator: ReadonlyUint8Array;
   /** The settings this belongs to. */

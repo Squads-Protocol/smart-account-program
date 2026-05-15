@@ -68,13 +68,15 @@ export type UseSpendingLimitInstruction<
   TAccountSpendingLimit extends string | AccountMeta<string> = string,
   TAccountSmartAccount extends string | AccountMeta<string> = string,
   TAccountDestination extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
   TAccountMint extends string | AccountMeta<string> = string,
   TAccountSmartAccountTokenAccount extends string | AccountMeta<string> =
     string,
   TAccountDestinationTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -208,7 +210,7 @@ export type UseSpendingLimitInput<
   destinationTokenAccount?: Address<TAccountDestinationTokenAccount>;
   /** In case `spending_limit.mint` is an SPL token. */
   tokenProgram?: Address<TAccountTokenProgram>;
-  program: Address<TAccountProgram>;
+  program?: Address<TAccountProgram>;
   amount: UseSpendingLimitInstructionDataArgs["amount"];
   decimals: UseSpendingLimitInstructionDataArgs["decimals"];
   memo: UseSpendingLimitInstructionDataArgs["memo"];
@@ -288,6 +290,16 @@ export function getUseSpendingLimitInstruction<
 
   // Original args.
   const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({

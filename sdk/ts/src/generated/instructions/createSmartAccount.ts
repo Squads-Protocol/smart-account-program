@@ -52,6 +52,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
+import { findProgramConfigPda } from "../pdas";
 import { SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS } from "../programs";
 import {
   getSmartAccountSignerDecoder,
@@ -76,7 +77,8 @@ export type CreateSmartAccountInstruction<
   TAccountCreator extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -193,6 +195,112 @@ export function getCreateSmartAccountInstructionDataCodec(): Codec<
   );
 }
 
+export type CreateSmartAccountAsyncInput<
+  TAccountProgramConfig extends string = string,
+  TAccountTreasury extends string = string,
+  TAccountCreator extends string = string,
+  TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
+> = {
+  /** Global program config account. */
+  programConfig?: Address<TAccountProgramConfig>;
+  /** The treasury where the creation fee is transferred to. */
+  treasury: Address<TAccountTreasury>;
+  /** The creator of the smart account. */
+  creator: TransactionSigner<TAccountCreator>;
+  systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
+  settingsAuthority: CreateSmartAccountInstructionDataArgs["settingsAuthority"];
+  threshold: CreateSmartAccountInstructionDataArgs["threshold"];
+  signers: CreateSmartAccountInstructionDataArgs["signers"];
+  timeLock: CreateSmartAccountInstructionDataArgs["timeLock"];
+  rentCollector: CreateSmartAccountInstructionDataArgs["rentCollector"];
+  memo: CreateSmartAccountInstructionDataArgs["memo"];
+};
+
+export async function getCreateSmartAccountInstructionAsync<
+  TAccountProgramConfig extends string,
+  TAccountTreasury extends string,
+  TAccountCreator extends string,
+  TAccountSystemProgram extends string,
+  TAccountProgram extends string,
+  TProgramAddress extends Address =
+    typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
+>(
+  input: CreateSmartAccountAsyncInput<
+    TAccountProgramConfig,
+    TAccountTreasury,
+    TAccountCreator,
+    TAccountSystemProgram,
+    TAccountProgram
+  >,
+  config?: { programAddress?: TProgramAddress },
+): Promise<
+  CreateSmartAccountInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountTreasury,
+    TAccountCreator,
+    TAccountSystemProgram,
+    TAccountProgram
+  >
+> {
+  // Program address.
+  const programAddress =
+    config?.programAddress ?? SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    programConfig: { value: input.programConfig ?? null, isWritable: true },
+    treasury: { value: input.treasury ?? null, isWritable: true },
+    creator: { value: input.creator ?? null, isWritable: true },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedInstructionAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.programConfig.value) {
+    accounts.programConfig.value = await findProgramConfigPda();
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta("programConfig", accounts.programConfig),
+      getAccountMeta("treasury", accounts.treasury),
+      getAccountMeta("creator", accounts.creator),
+      getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
+    ],
+    data: getCreateSmartAccountInstructionDataEncoder().encode(
+      args as CreateSmartAccountInstructionDataArgs,
+    ),
+    programAddress,
+  } as CreateSmartAccountInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountTreasury,
+    TAccountCreator,
+    TAccountSystemProgram,
+    TAccountProgram
+  >);
+}
+
 export type CreateSmartAccountInput<
   TAccountProgramConfig extends string = string,
   TAccountTreasury extends string = string,
@@ -207,7 +315,7 @@ export type CreateSmartAccountInput<
   /** The creator of the smart account. */
   creator: TransactionSigner<TAccountCreator>;
   systemProgram?: Address<TAccountSystemProgram>;
-  program: Address<TAccountProgram>;
+  program?: Address<TAccountProgram>;
   settingsAuthority: CreateSmartAccountInstructionDataArgs["settingsAuthority"];
   threshold: CreateSmartAccountInstructionDataArgs["threshold"];
   signers: CreateSmartAccountInstructionDataArgs["signers"];
@@ -265,6 +373,10 @@ export function getCreateSmartAccountInstruction<
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
   }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");

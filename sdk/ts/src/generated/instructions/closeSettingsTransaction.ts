@@ -54,6 +54,8 @@ export type CloseSettingsTransactionInstruction<
     string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -77,6 +79,9 @@ export type CloseSettingsTransactionInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -120,6 +125,7 @@ export type CloseSettingsTransactionInput<
   TAccountProposalRentCollector extends string = string,
   TAccountTransactionRentCollector extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   /** the logic within `settings_transaction_close` does the rest of the checks. */
@@ -131,6 +137,7 @@ export type CloseSettingsTransactionInput<
   /** The rent collector. */
   transactionRentCollector: Address<TAccountTransactionRentCollector>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
 };
 
 export function getCloseSettingsTransactionInstruction<
@@ -140,6 +147,7 @@ export function getCloseSettingsTransactionInstruction<
   TAccountProposalRentCollector extends string,
   TAccountTransactionRentCollector extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
@@ -149,7 +157,8 @@ export function getCloseSettingsTransactionInstruction<
     TAccountTransaction,
     TAccountProposalRentCollector,
     TAccountTransactionRentCollector,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CloseSettingsTransactionInstruction<
@@ -159,7 +168,8 @@ export function getCloseSettingsTransactionInstruction<
   TAccountTransaction,
   TAccountProposalRentCollector,
   TAccountTransactionRentCollector,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -179,6 +189,7 @@ export function getCloseSettingsTransactionInstruction<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -189,6 +200,10 @@ export function getCloseSettingsTransactionInstruction<
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
   }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
@@ -203,6 +218,7 @@ export function getCloseSettingsTransactionInstruction<
         accounts.transactionRentCollector,
       ),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCloseSettingsTransactionInstructionDataEncoder().encode({}),
     programAddress,
@@ -213,7 +229,8 @@ export function getCloseSettingsTransactionInstruction<
     TAccountTransaction,
     TAccountProposalRentCollector,
     TAccountTransactionRentCollector,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -233,6 +250,7 @@ export type ParsedCloseSettingsTransactionInstruction<
     /** The rent collector. */
     transactionRentCollector: TAccountMetas[4];
     systemProgram: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: CloseSettingsTransactionInstructionData;
 };
@@ -245,12 +263,12 @@ export function parseCloseSettingsTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCloseSettingsTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 6,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -269,6 +287,7 @@ export function parseCloseSettingsTransactionInstruction<
       proposalRentCollector: getNextAccount(),
       transactionRentCollector: getNextAccount(),
       systemProgram: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getCloseSettingsTransactionInstructionDataDecoder().decode(
       instruction.data,

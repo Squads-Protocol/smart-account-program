@@ -10,8 +10,6 @@ use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use solana_address::Address;
 
-/// Stores data required for execution of one transaction from a batch.
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct BatchTransaction {
     pub discriminator: [u8; 8],

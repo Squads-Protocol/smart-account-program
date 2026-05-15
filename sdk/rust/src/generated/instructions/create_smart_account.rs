@@ -118,7 +118,7 @@ impl CreateSmartAccountInstructionArgs {
 ///   1. `[writable]` treasury
 ///   2. `[writable, signer]` creator
 ///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
-///   4. `[]` program
+///   4. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct CreateSmartAccountBuilder {
     program_config: Option<solana_address::Address>,
@@ -163,6 +163,7 @@ impl CreateSmartAccountBuilder {
         self.system_program = Some(system_program);
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -225,7 +226,9 @@ impl CreateSmartAccountBuilder {
             system_program: self
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = CreateSmartAccountInstructionArgs {
             settings_authority: self.settings_authority.clone(),

@@ -8,16 +8,15 @@
 
 import {
   getAddressEncoder,
+  getBytesEncoder,
   getProgramDerivedAddress,
-  getU64Encoder,
-  getUtf8Encoder,
   type Address,
   type ProgramDerivedAddress,
 } from "@solana/kit";
 
 export type TransactionSeeds = {
-  settings: Address;
-  transactionIndex: number | bigint;
+  consensusAccount: Address;
+  consensusAccount: Address;
 };
 
 export async function findTransactionPda(
@@ -30,10 +29,16 @@ export async function findTransactionPda(
   return await getProgramDerivedAddress({
     programAddress,
     seeds: [
-      getUtf8Encoder().encode("smart_account"),
-      getAddressEncoder().encode(seeds.settings),
-      getUtf8Encoder().encode("transaction"),
-      getU64Encoder().encode(seeds.transactionIndex),
+      getBytesEncoder().encode(
+        new Uint8Array([
+          115, 109, 97, 114, 116, 95, 97, 99, 99, 111, 117, 110, 116,
+        ]),
+      ),
+      getAddressEncoder().encode(seeds.consensusAccount),
+      getBytesEncoder().encode(
+        new Uint8Array([116, 114, 97, 110, 115, 97, 99, 116, 105, 111, 110]),
+      ),
+      getAddressEncoder().encode(seeds.consensusAccount),
     ],
   });
 }

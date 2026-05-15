@@ -1,62 +1,41 @@
-//! Policy types ported from the program's `state/policies/` subtree.
+//! Policy types still needed in helpers after the IDL refresh.
 //!
-//! These are **data-only** mirror types — the program-side versions carry
-//! invariant checks, size accounting, and `validate_payload` business logic;
-//! none of that is meaningful off-chain, so we only port the struct/enum
-//! shapes needed for borsh round-trip of event payloads and on-chain account
-//! decoding.
+//! The anchor 0.30+ IDL emits most of the policy data tree (PolicyPayload,
+//! PolicyCreationPayload, the 4 implementations' payload structs, etc.). What
+//! anchor's IDL builder does NOT see are types only used inside the on-chain
+//! `Policy` account's storage — `Policy` itself isn't surfaced as a top-level
+//! account in the IDL because the program only ever loads it through the
+//! `InterfaceAccount<'info, ConsensusAccount>` interface wrapper.
 //!
-//! When the program's `policies/` types change, these need to be kept in
-//! sync. The cleanest way is to compare against
-//! `programs/squads_smart_account_program/src/state/policies/**` directly.
+//! So this module hosts the program-side Policy storage types (Policy struct,
+//! PolicyState enum, PolicyExpiration enum, and the 4 *Policy state structs
+//! they contain). Everything else is re-exported from `crate::generated::types`.
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_address::Address;
 
-use crate::generated::types::{Permissions, SmartAccountSigner};
+use crate::generated::types::{
+    AllowedSettingsChange, LimitedTimeConstraints, PeriodV2, QuantityConstraints,
+    SmartAccountSigner, TimeConstraints, UsageState,
+};
+
+pub use crate::generated::types::{
+    AccountConstraint, AccountConstraintType, DataConstraint, DataOperator, DataValue, Hook,
+    InstructionConstraint, InternalFundTransferPayload, InternalFundTransferPolicyCreationPayload,
+    LimitedQuantityConstraints, LimitedSettingsAction, LimitedSpendingLimit, PolicyCreationPayload,
+    PolicyExpirationArgs, PolicyPayload, ProgramInteractionPayload,
+    ProgramInteractionPolicyCreationPayload, ProgramInteractionTransactionPayload,
+    SettingsChangePayload, SettingsChangePolicyCreationPayload, SpendingLimitPayload,
+    SpendingLimitPolicyCreationPayload, SyncTransactionPayloadDetails,
+};
 
 // ---------------------------------------------------------------------------
-// Top-level policy enums
+// Storage-only types (not in IDL because Policy account isn't surfaced)
 // ---------------------------------------------------------------------------
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum PolicyCreationPayload {
-    InternalFundTransfer(InternalFundTransferPolicyCreationPayload),
-    SpendingLimit(SpendingLimitPolicyCreationPayload),
-    SettingsChange(SettingsChangePolicyCreationPayload),
-    ProgramInteraction(ProgramInteractionPolicyCreationPayload),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum PolicyPayload {
-    InternalFundTransfer(InternalFundTransferPayload),
-    ProgramInteraction(ProgramInteractionPayload),
-    SpendingLimit(SpendingLimitPayload),
-    SettingsChange(SettingsChangePayload),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum PolicyExpiration {
-    Timestamp(i64),
-    SettingsState([u8; 32]),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum PolicyExpirationArgs {
-    Timestamp(i64),
-    SettingsState,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum PolicyState {
-    InternalFundTransfer(InternalFundTransferPolicy),
-    SpendingLimit(SpendingLimitPolicy),
-    SettingsChange(SettingsChangePolicy),
-    ProgramInteraction(ProgramInteractionPolicy),
-}
 
 /// Mirror of the program's `state/policies/policy_core/policy.rs::Policy`
-/// (no discriminator). Used inside `PolicyEvent::policy`.
+/// (no discriminator field — the on-chain account stores anchor's 8-byte
+/// discriminator separately but the in-memory struct doesn't).
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Policy {
     pub settings: Address,
@@ -73,73 +52,29 @@ pub struct Policy {
     pub rent_collector: Address,
 }
 
-// ---------------------------------------------------------------------------
-// Internal fund transfer policy
-// ---------------------------------------------------------------------------
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+pub enum PolicyState {
+    InternalFundTransfer(InternalFundTransferPolicy),
+    SpendingLimit(SpendingLimitPolicy),
+    SettingsChange(SettingsChangePolicy),
+    ProgramInteraction(ProgramInteractionPolicy),
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
+pub enum PolicyExpiration {
+    Timestamp(i64),
+    SettingsState([u8; 32]),
+}
+
+// The four *Policy storage states embedded inside PolicyState. Codama emits
+// the *PolicyCreationPayload (input) and *Payload (execution) variants of
+// each but not the *Policy (storage) shapes.
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct InternalFundTransferPolicy {
     pub source_account_mask: [u8; 32],
     pub destination_account_mask: [u8; 32],
     pub allowed_mints: Vec<Address>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct InternalFundTransferPayload {
-    pub source_index: u8,
-    pub destination_index: u8,
-    pub mint: Address,
-    pub decimals: u8,
-    pub amount: u64,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct InternalFundTransferPolicyCreationPayload {
-    pub source_account_indices: Vec<u8>,
-    pub destination_account_indices: Vec<u8>,
-    pub allowed_mints: Vec<Address>,
-}
-
-// ---------------------------------------------------------------------------
-// Spending-limit policy
-// ---------------------------------------------------------------------------
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub enum PeriodV2 {
-    OneTime,
-    Daily,
-    Weekly,
-    Monthly,
-    Custom(i64),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub struct TimeConstraints {
-    pub start: i64,
-    pub expiration: Option<i64>,
-    pub period: PeriodV2,
-    pub accumulate_unused: bool,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub struct QuantityConstraints {
-    pub max_per_period: u64,
-    pub max_per_use: u64,
-    pub enforce_exact_quantity: bool,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, Eq, PartialEq)]
-pub struct UsageState {
-    pub remaining_in_period: u64,
-    pub last_reset: i64,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SpendingLimitV2 {
-    pub mint: Address,
-    pub time_constraints: TimeConstraints,
-    pub quantity_constraints: QuantityConstraints,
-    pub usage: UsageState,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
@@ -150,70 +85,9 @@ pub struct SpendingLimitPolicy {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SpendingLimitPolicyCreationPayload {
-    pub mint: Address,
-    pub source_account_index: u8,
-    pub time_constraints: TimeConstraints,
-    pub quantity_constraints: QuantityConstraints,
-    pub usage_state: Option<UsageState>,
-    pub destinations: Vec<Address>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SpendingLimitPayload {
-    pub amount: u64,
-    pub destination: Address,
-    pub decimals: u8,
-}
-
-// ---------------------------------------------------------------------------
-// Settings-change policy
-// ---------------------------------------------------------------------------
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SettingsChangePolicy {
     pub actions: Vec<AllowedSettingsChange>,
 }
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum AllowedSettingsChange {
-    AddSigner {
-        new_signer: Option<Address>,
-        new_signer_permissions: Option<Permissions>,
-    },
-    RemoveSigner {
-        old_signer: Option<Address>,
-    },
-    ChangeThreshold,
-    ChangeTimeLock {
-        new_time_lock: Option<u32>,
-    },
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SettingsChangePolicyCreationPayload {
-    pub actions: Vec<AllowedSettingsChange>,
-}
-
-/// Subset of [`super::snapshots::SettingsActionFull`] permitted under
-/// `SettingsChange` policies.
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum LimitedSettingsAction {
-    AddSigner { new_signer: SmartAccountSigner },
-    RemoveSigner { old_signer: Address },
-    ChangeThreshold { new_threshold: u16 },
-    SetTimeLock { new_time_lock: u32 },
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SettingsChangePayload {
-    pub action_index: Vec<u8>,
-    pub actions: Vec<LimitedSettingsAction>,
-}
-
-// ---------------------------------------------------------------------------
-// Program-interaction policy
-// ---------------------------------------------------------------------------
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct ProgramInteractionPolicy {
@@ -224,104 +98,22 @@ pub struct ProgramInteractionPolicy {
     pub spending_limits: Vec<SpendingLimitV2>,
 }
 
+/// Stored spending limit (with usage state) — sister of the standalone
+/// `SpendingLimit` account. Not in IDL because it's only used as a nested
+/// type inside Policy's storage.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct InstructionConstraint {
-    pub program_id: Address,
-    pub account_constraints: Vec<AccountConstraint>,
-    pub data_constraints: Vec<DataConstraint>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct Hook {
-    pub num_extra_accounts: u8,
-    pub account_constraints: Vec<AccountConstraint>,
-    pub instruction_data: Vec<u8>,
-    pub program_id: Address,
-    pub pass_inner_instructions: bool,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum DataOperator {
-    Equals,
-    NotEquals,
-    GreaterThan,
-    GreaterThanOrEqualTo,
-    LessThan,
-    LessThanOrEqualTo,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum DataValue {
-    U8(u8),
-    U16Le(u16),
-    U32Le(u32),
-    U64Le(u64),
-    U128Le(u128),
-    U8Slice(Vec<u8>),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct DataConstraint {
-    pub data_offset: u64,
-    pub data_value: DataValue,
-    pub operator: DataOperator,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum AccountConstraintType {
-    Address(Vec<Address>),
-    AccountData(Vec<DataConstraint>),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct AccountConstraint {
-    pub account_index: u8,
-    pub account_constraint: AccountConstraintType,
-    pub owner: Option<Address>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct LimitedTimeConstraints {
-    pub start: i64,
-    pub expiration: Option<i64>,
-    pub period: PeriodV2,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct LimitedQuantityConstraints {
-    pub max_per_period: u64,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct LimitedSpendingLimit {
+pub struct SpendingLimitV2 {
     pub mint: Address,
-    pub time_constraints: LimitedTimeConstraints,
-    pub quantity_constraints: LimitedQuantityConstraints,
+    pub time_constraints: TimeConstraints,
+    pub quantity_constraints: QuantityConstraints,
+    pub usage: UsageState,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct ProgramInteractionPolicyCreationPayload {
-    pub account_index: u8,
-    pub instructions_constraints: Vec<InstructionConstraint>,
-    pub pre_hook: Option<Hook>,
-    pub post_hook: Option<Hook>,
-    pub spending_limits: Vec<LimitedSpendingLimit>,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct ProgramInteractionPayload {
-    pub instruction_constraint_indices: Option<Vec<u8>>,
-    pub transaction_payload: ProgramInteractionTransactionPayload,
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub enum ProgramInteractionTransactionPayload {
-    AsyncTransaction(crate::helpers::events::snapshots::AsyncTransactionPayload),
-    SyncTransaction(SyncTransactionPayloadDetails),
-}
-
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
-pub struct SyncTransactionPayloadDetails {
-    pub account_index: u8,
-    pub instructions: Vec<u8>,
+// Suppress unused-import warnings on the codama re-exports above — they're
+// brought into scope so callers can `use helpers::events::policy::*;` and
+// get the full type catalogue.
+#[allow(dead_code)]
+fn _unused() {
+    let _: Option<LimitedTimeConstraints> = None;
+    let _: Option<PeriodV2> = None;
 }

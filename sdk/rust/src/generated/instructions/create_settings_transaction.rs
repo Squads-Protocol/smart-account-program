@@ -24,6 +24,8 @@ pub struct CreateSettingsTransaction {
     pub rent_payer: solana_address::Address,
 
     pub system_program: solana_address::Address,
+
+    pub program: solana_address::Address,
 }
 
 impl CreateSettingsTransaction {
@@ -40,7 +42,7 @@ impl CreateSettingsTransaction {
         args: CreateSettingsTransactionInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(self.settings, false));
         accounts.push(solana_instruction::AccountMeta::new(
             self.transaction,
@@ -53,6 +55,10 @@ impl CreateSettingsTransaction {
         accounts.push(solana_instruction::AccountMeta::new(self.rent_payer, true));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
@@ -114,6 +120,7 @@ impl CreateSettingsTransactionInstructionArgs {
 ///   2. `[signer]` creator
 ///   3. `[writable, signer]` rent_payer
 ///   4. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   5. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct CreateSettingsTransactionBuilder {
     settings: Option<solana_address::Address>,
@@ -121,6 +128,7 @@ pub struct CreateSettingsTransactionBuilder {
     creator: Option<solana_address::Address>,
     rent_payer: Option<solana_address::Address>,
     system_program: Option<solana_address::Address>,
+    program: Option<solana_address::Address>,
     actions: Option<Vec<SettingsAction>>,
     memo: Option<String>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
@@ -156,6 +164,12 @@ impl CreateSettingsTransactionBuilder {
     #[inline(always)]
     pub fn system_program(&mut self, system_program: solana_address::Address) -> &mut Self {
         self.system_program = Some(system_program);
+        self
+    }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
+    #[inline(always)]
+    pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
+        self.program = Some(program);
         self
     }
     #[inline(always)]
@@ -194,6 +208,9 @@ impl CreateSettingsTransactionBuilder {
             system_program: self
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = CreateSettingsTransactionInstructionArgs {
             actions: self.actions.clone().expect("actions is not set"),
@@ -215,6 +232,8 @@ pub struct CreateSettingsTransactionCpiAccounts<'a, 'b> {
     pub rent_payer: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
 /// `create_settings_transaction` CPI instruction.
@@ -231,6 +250,8 @@ pub struct CreateSettingsTransactionCpi<'a, 'b> {
     pub rent_payer: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
     /// The arguments for the instruction.
     pub __args: CreateSettingsTransactionInstructionArgs,
 }
@@ -248,6 +269,7 @@ impl<'a, 'b> CreateSettingsTransactionCpi<'a, 'b> {
             creator: accounts.creator,
             rent_payer: accounts.rent_payer,
             system_program: accounts.system_program,
+            program: accounts.program,
             __args: args,
         }
     }
@@ -274,7 +296,7 @@ impl<'a, 'b> CreateSettingsTransactionCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new(
             *self.settings.key,
             false,
@@ -295,6 +317,10 @@ impl<'a, 'b> CreateSettingsTransactionCpi<'a, 'b> {
             *self.system_program.key,
             false,
         ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false,
+        ));
         remaining_accounts.iter().for_each(|remaining_account| {
             accounts.push(solana_instruction::AccountMeta {
                 pubkey: *remaining_account.0.key,
@@ -313,13 +339,14 @@ impl<'a, 'b> CreateSettingsTransactionCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
         account_infos.push(self.settings.clone());
         account_infos.push(self.transaction.clone());
         account_infos.push(self.creator.clone());
         account_infos.push(self.rent_payer.clone());
         account_infos.push(self.system_program.clone());
+        account_infos.push(self.program.clone());
         remaining_accounts
             .iter()
             .for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
@@ -341,6 +368,7 @@ impl<'a, 'b> CreateSettingsTransactionCpi<'a, 'b> {
 ///   2. `[signer]` creator
 ///   3. `[writable, signer]` rent_payer
 ///   4. `[]` system_program
+///   5. `[]` program
 #[derive(Clone, Debug)]
 pub struct CreateSettingsTransactionCpiBuilder<'a, 'b> {
     instruction: Box<CreateSettingsTransactionCpiBuilderInstruction<'a, 'b>>,
@@ -355,6 +383,7 @@ impl<'a, 'b> CreateSettingsTransactionCpiBuilder<'a, 'b> {
             creator: None,
             rent_payer: None,
             system_program: None,
+            program: None,
             actions: None,
             memo: None,
             __remaining_accounts: Vec::new(),
@@ -395,6 +424,11 @@ impl<'a, 'b> CreateSettingsTransactionCpiBuilder<'a, 'b> {
         system_program: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
         self.instruction.system_program = Some(system_program);
+        self
+    }
+    #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.program = Some(program);
         self
     }
     #[inline(always)]
@@ -468,6 +502,8 @@ impl<'a, 'b> CreateSettingsTransactionCpiBuilder<'a, 'b> {
                 .instruction
                 .system_program
                 .expect("system_program is not set"),
+
+            program: self.instruction.program.expect("program is not set"),
             __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
@@ -485,6 +521,7 @@ struct CreateSettingsTransactionCpiBuilderInstruction<'a, 'b> {
     creator: Option<&'b solana_account_info::AccountInfo<'a>>,
     rent_payer: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    program: Option<&'b solana_account_info::AccountInfo<'a>>,
     actions: Option<Vec<SettingsAction>>,
     memo: Option<String>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.

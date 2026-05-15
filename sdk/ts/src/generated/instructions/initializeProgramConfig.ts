@@ -40,6 +40,7 @@ import {
   getAccountMetaFactory,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
+import { findProgramConfigPda } from "../pdas";
 import { SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS } from "../programs";
 
 export const INITIALIZE_PROGRAM_CONFIG_DISCRIMINATOR: ReadonlyUint8Array =
@@ -54,7 +55,8 @@ export function getInitializeProgramConfigDiscriminatorBytes(): ReadonlyUint8Arr
 export type InitializeProgramConfigInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
   TAccountProgramConfig extends string | AccountMeta<string> = string,
-  TAccountInitializer extends string | AccountMeta<string> = string,
+  TAccountInitializer extends string | AccountMeta<string> =
+    "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8",
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -129,6 +131,91 @@ export function getInitializeProgramConfigInstructionDataCodec(): FixedSizeCodec
   );
 }
 
+export type InitializeProgramConfigAsyncInput<
+  TAccountProgramConfig extends string = string,
+  TAccountInitializer extends string = string,
+  TAccountSystemProgram extends string = string,
+> = {
+  programConfig?: Address<TAccountProgramConfig>;
+  /** The hard-coded account that is used to initialize the program config once. */
+  initializer?: TransactionSigner<TAccountInitializer>;
+  systemProgram?: Address<TAccountSystemProgram>;
+  authority: InitializeProgramConfigInstructionDataArgs["authority"];
+  smartAccountCreationFee: InitializeProgramConfigInstructionDataArgs["smartAccountCreationFee"];
+  treasury: InitializeProgramConfigInstructionDataArgs["treasury"];
+};
+
+export async function getInitializeProgramConfigInstructionAsync<
+  TAccountProgramConfig extends string,
+  TAccountInitializer extends string,
+  TAccountSystemProgram extends string,
+  TProgramAddress extends Address =
+    typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
+>(
+  input: InitializeProgramConfigAsyncInput<
+    TAccountProgramConfig,
+    TAccountInitializer,
+    TAccountSystemProgram
+  >,
+  config?: { programAddress?: TProgramAddress },
+): Promise<
+  InitializeProgramConfigInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountInitializer,
+    TAccountSystemProgram
+  >
+> {
+  // Program address.
+  const programAddress =
+    config?.programAddress ?? SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    programConfig: { value: input.programConfig ?? null, isWritable: true },
+    initializer: { value: input.initializer ?? null, isWritable: true },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedInstructionAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.programConfig.value) {
+    accounts.programConfig.value = await findProgramConfigPda();
+  }
+  if (!accounts.initializer.value) {
+    accounts.initializer.value =
+      "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8" as Address<"init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8">;
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta("programConfig", accounts.programConfig),
+      getAccountMeta("initializer", accounts.initializer),
+      getAccountMeta("systemProgram", accounts.systemProgram),
+    ],
+    data: getInitializeProgramConfigInstructionDataEncoder().encode(
+      args as InitializeProgramConfigInstructionDataArgs,
+    ),
+    programAddress,
+  } as InitializeProgramConfigInstruction<
+    TProgramAddress,
+    TAccountProgramConfig,
+    TAccountInitializer,
+    TAccountSystemProgram
+  >);
+}
+
 export type InitializeProgramConfigInput<
   TAccountProgramConfig extends string = string,
   TAccountInitializer extends string = string,
@@ -136,7 +223,7 @@ export type InitializeProgramConfigInput<
 > = {
   programConfig: Address<TAccountProgramConfig>;
   /** The hard-coded account that is used to initialize the program config once. */
-  initializer: TransactionSigner<TAccountInitializer>;
+  initializer?: TransactionSigner<TAccountInitializer>;
   systemProgram?: Address<TAccountSystemProgram>;
   authority: InitializeProgramConfigInstructionDataArgs["authority"];
   smartAccountCreationFee: InitializeProgramConfigInstructionDataArgs["smartAccountCreationFee"];
@@ -181,6 +268,10 @@ export function getInitializeProgramConfigInstruction<
   const args = { ...input };
 
   // Resolve default values.
+  if (!accounts.initializer.value) {
+    accounts.initializer.value =
+      "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8" as Address<"init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8">;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;

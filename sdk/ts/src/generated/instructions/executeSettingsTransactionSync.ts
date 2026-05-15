@@ -69,18 +69,20 @@ export function getExecuteSettingsTransactionSyncDiscriminatorBytes(): ReadonlyU
 
 export type ExecuteSettingsTransactionSyncInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends string | AccountMeta<string> = string,
-  TAccountProgram extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? WritableAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountRentPayer extends string
         ? WritableSignerAccount<TAccountRentPayer> &
             AccountSignerMeta<TAccountRentPayer>
@@ -155,12 +157,12 @@ export function getExecuteSettingsTransactionSyncInstructionDataCodec(): Codec<
 }
 
 export type ExecuteSettingsTransactionSyncInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   /**
    * The account that will be charged/credited in case the settings transaction causes space reallocation,
    * for example when adding a new signer, adding or removing a spending limit.
@@ -169,14 +171,14 @@ export type ExecuteSettingsTransactionSyncInput<
   rentPayer?: TransactionSigner<TAccountRentPayer>;
   /** We might need it in case reallocation is needed. */
   systemProgram?: Address<TAccountSystemProgram>;
-  program: Address<TAccountProgram>;
+  program?: Address<TAccountProgram>;
   numSigners: ExecuteSettingsTransactionSyncInstructionDataArgs["numSigners"];
   actions: ExecuteSettingsTransactionSyncInstructionDataArgs["actions"];
   memo: ExecuteSettingsTransactionSyncInstructionDataArgs["memo"];
 };
 
 export function getExecuteSettingsTransactionSyncInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountRentPayer extends string,
   TAccountSystemProgram extends string,
   TAccountProgram extends string,
@@ -184,7 +186,7 @@ export function getExecuteSettingsTransactionSyncInstruction<
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: ExecuteSettingsTransactionSyncInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountRentPayer,
     TAccountSystemProgram,
     TAccountProgram
@@ -192,7 +194,7 @@ export function getExecuteSettingsTransactionSyncInstruction<
   config?: { programAddress?: TProgramAddress },
 ): ExecuteSettingsTransactionSyncInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountRentPayer,
   TAccountSystemProgram,
   TAccountProgram
@@ -203,7 +205,10 @@ export function getExecuteSettingsTransactionSyncInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: true },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: true,
+    },
     rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     program: { value: input.program ?? null, isWritable: false },
@@ -216,10 +221,20 @@ export function getExecuteSettingsTransactionSyncInstruction<
   // Original args.
   const args = { ...input };
 
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("rentPayer", accounts.rentPayer),
       getAccountMeta("systemProgram", accounts.systemProgram),
       getAccountMeta("program", accounts.program),
@@ -230,7 +245,7 @@ export function getExecuteSettingsTransactionSyncInstruction<
     programAddress,
   } as ExecuteSettingsTransactionSyncInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountRentPayer,
     TAccountSystemProgram,
     TAccountProgram
@@ -243,7 +258,7 @@ export type ParsedExecuteSettingsTransactionSyncInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     /**
      * The account that will be charged/credited in case the settings transaction causes space reallocation,
      * for example when adding a new signer, adding or removing a spending limit.
@@ -289,7 +304,7 @@ export function parseExecuteSettingsTransactionSyncInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       rentPayer: getNextOptionalAccount(),
       systemProgram: getNextOptionalAccount(),
       program: getNextAccount(),

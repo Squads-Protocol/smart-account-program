@@ -131,7 +131,7 @@ impl AddSpendingLimitAsAuthorityInstructionArgs {
 ///   2. `[writable]` spending_limit
 ///   3. `[writable, signer]` rent_payer
 ///   4. `[optional]` system_program (default to `11111111111111111111111111111111`)
-///   5. `[]` program
+///   5. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct AddSpendingLimitAsAuthorityBuilder {
     settings: Option<solana_address::Address>,
@@ -184,6 +184,7 @@ impl AddSpendingLimitAsAuthorityBuilder {
         self.system_program = Some(system_program);
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -262,7 +263,9 @@ impl AddSpendingLimitAsAuthorityBuilder {
             system_program: self
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = AddSpendingLimitAsAuthorityInstructionArgs {
             seed: self.seed.clone().expect("seed is not set"),

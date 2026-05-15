@@ -10,10 +10,6 @@ use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use solana_address::Address;
 
-/// Stores data required for execution of a settings configuration transaction.
-/// Settings transactions can perform a predefined set of actions on the Settings PDA, such as adding/removing members,
-/// changing the threshold, etc.
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SettingsTransaction {
     pub discriminator: [u8; 8],

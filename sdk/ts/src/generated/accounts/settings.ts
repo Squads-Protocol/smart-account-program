@@ -118,7 +118,8 @@ export type Settings = {
   signers: Array<SmartAccountSigner>;
   /** Counter for how many sub accounts are in use (improves off-chain indexing) */
   accountUtilization: number;
-  reserved1: number;
+  /** Seed used for deterministic policy creation. */
+  policySeed: Option<bigint>;
   reserved2: number;
 };
 
@@ -174,7 +175,8 @@ export type SettingsArgs = {
   signers: Array<SmartAccountSignerArgs>;
   /** Counter for how many sub accounts are in use (improves off-chain indexing) */
   accountUtilization: number;
-  reserved1: number;
+  /** Seed used for deterministic policy creation. */
+  policySeed: OptionOrNullable<number | bigint>;
   reserved2: number;
 };
 
@@ -194,7 +196,7 @@ export function getSettingsEncoder(): Encoder<SettingsArgs> {
       ["bump", getU8Encoder()],
       ["signers", getArrayEncoder(getSmartAccountSignerEncoder())],
       ["accountUtilization", getU8Encoder()],
-      ["reserved1", getU8Encoder()],
+      ["policySeed", getOptionEncoder(getU64Encoder())],
       ["reserved2", getU8Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR }),
@@ -216,7 +218,7 @@ export function getSettingsDecoder(): Decoder<Settings> {
     ["bump", getU8Decoder()],
     ["signers", getArrayDecoder(getSmartAccountSignerDecoder())],
     ["accountUtilization", getU8Decoder()],
-    ["reserved1", getU8Decoder()],
+    ["policySeed", getOptionDecoder(getU64Decoder())],
     ["reserved2", getU8Decoder()],
   ]);
 }

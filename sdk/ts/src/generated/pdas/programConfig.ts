@@ -7,8 +7,8 @@
  */
 
 import {
+  getBytesEncoder,
   getProgramDerivedAddress,
-  getUtf8Encoder,
   type Address,
   type ProgramDerivedAddress,
 } from "@solana/kit";
@@ -22,8 +22,16 @@ export async function findProgramConfigPda(
   return await getProgramDerivedAddress({
     programAddress,
     seeds: [
-      getUtf8Encoder().encode("smart_account"),
-      getUtf8Encoder().encode("program_config"),
+      getBytesEncoder().encode(
+        new Uint8Array([
+          115, 109, 97, 114, 116, 95, 97, 99, 99, 111, 117, 110, 116,
+        ]),
+      ),
+      getBytesEncoder().encode(
+        new Uint8Array([
+          112, 114, 111, 103, 114, 97, 109, 95, 99, 111, 110, 102, 105, 103,
+        ]),
+      ),
     ],
   });
 }

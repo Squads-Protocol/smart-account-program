@@ -31,17 +31,16 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use crate::generated::instructions::log_event::LOG_EVENT_DISCRIMINATOR;
 
 pub use snapshots::{
-    AsyncTransactionPayload, ConsensusAccountType, Payload, PolicyActionPayloadDetails,
-    ProposalSnapshot, SettingsActionFull, SettingsSnapshot, SettingsTransactionSnapshot,
-    SpendingLimitSnapshot, TransactionPayloadDetails, TransactionSnapshot,
+    ConsensusAccountType, Payload, PolicyActionPayloadDetails, ProposalSnapshot, SettingsSnapshot,
+    SettingsTransactionSnapshot, SpendingLimitSnapshot, TransactionPayload,
+    TransactionPayloadDetails, TransactionSnapshot,
 };
 pub use variants::{
     AddSpendingLimitEvent, AuthorityChangeEvent, AuthoritySettingsEvent, CreateSmartAccountEvent,
     PolicyEvent, PolicyEventType, ProposalEvent, ProposalEventType, RemoveSpendingLimitEvent,
-    SettingsChangePolicyEvent, SynchronousSettingsTransactionEvent,
-    SynchronousTransactionEvent, SynchronousTransactionEventPayload,
-    SynchronousTransactionEventV2, TransactionContent, TransactionEvent, TransactionEventType,
-    UseSpendingLimitEvent,
+    SettingsChangePolicyEvent, SynchronousSettingsTransactionEvent, SynchronousTransactionEvent,
+    SynchronousTransactionEventPayload, SynchronousTransactionEventV2, TransactionContent,
+    TransactionEvent, TransactionEventType, UseSpendingLimitEvent,
 };
 
 /// Inner-instruction wrapper used by the program's `LogEvent` self-CPI.
@@ -54,19 +53,19 @@ pub struct LogEventArgsV2 {
 /// borsh decoding round-trips on the bytes the program emits.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub enum SmartAccountEvent {
-    CreateSmartAccount(CreateSmartAccountEvent),                       // 0
-    SynchronousTransaction(SynchronousTransactionEvent),               // 1
+    CreateSmartAccount(CreateSmartAccountEvent),         // 0
+    SynchronousTransaction(SynchronousTransactionEvent), // 1
     SynchronousSettingsTransaction(SynchronousSettingsTransactionEvent), // 2
-    AddSpendingLimit(AddSpendingLimitEvent),                           // 3
-    RemoveSpendingLimit(RemoveSpendingLimitEvent),                     // 4
-    UseSpendingLimit(UseSpendingLimitEvent),                           // 5
-    AuthoritySettings(AuthoritySettingsEvent),                         // 6
-    AuthorityChange(AuthorityChangeEvent),                             // 7
-    Transaction(TransactionEvent),                                     // 8
-    Proposal(ProposalEvent),                                           // 9
-    SynchronousTransactionV2(SynchronousTransactionEventV2),           // 10
-    SettingsChangePolicy(SettingsChangePolicyEvent),                   // 11
-    Policy(PolicyEvent),                                               // 12
+    AddSpendingLimit(AddSpendingLimitEvent),             // 3
+    RemoveSpendingLimit(RemoveSpendingLimitEvent),       // 4
+    UseSpendingLimit(UseSpendingLimitEvent),             // 5
+    AuthoritySettings(AuthoritySettingsEvent),           // 6
+    AuthorityChange(AuthorityChangeEvent),               // 7
+    Transaction(TransactionEvent),                       // 8
+    Proposal(ProposalEvent),                             // 9
+    SynchronousTransactionV2(SynchronousTransactionEventV2), // 10
+    SettingsChangePolicy(SettingsChangePolicyEvent),     // 11
+    Policy(PolicyEvent),                                 // 12
 }
 
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]

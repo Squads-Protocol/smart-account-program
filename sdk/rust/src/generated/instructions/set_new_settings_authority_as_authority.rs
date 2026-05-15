@@ -128,8 +128,8 @@ impl SetNewSettingsAuthorityAsAuthorityInstructionArgs {
 ///   0. `[writable]` settings
 ///   1. `[signer]` settings_authority
 ///   2. `[writable, signer, optional]` rent_payer
-///   3. `[optional]` system_program
-///   4. `[]` program
+///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   4. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct SetNewSettingsAuthorityAsAuthorityBuilder {
     settings: Option<solana_address::Address>,
@@ -173,6 +173,7 @@ impl SetNewSettingsAuthorityAsAuthorityBuilder {
         self.system_program = system_program;
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -213,7 +214,9 @@ impl SetNewSettingsAuthorityAsAuthorityBuilder {
                 .expect("settings_authority is not set"),
             rent_payer: self.rent_payer,
             system_program: self.system_program,
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = SetNewSettingsAuthorityAsAuthorityInstructionArgs {
             new_settings_authority: self

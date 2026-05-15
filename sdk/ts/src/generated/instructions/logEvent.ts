@@ -12,16 +12,12 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getArrayDecoder,
-  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
   getU32Decoder,
   getU32Encoder,
-  getU8Decoder,
-  getU8Encoder,
   SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
   SolanaError,
   transformEncoder,
@@ -70,28 +66,15 @@ export type LogEventInstruction<
 
 export type LogEventInstructionData = {
   discriminator: ReadonlyUint8Array;
-  accountSeeds: Array<ReadonlyUint8Array>;
-  bump: number;
   event: ReadonlyUint8Array;
 };
 
-export type LogEventInstructionDataArgs = {
-  accountSeeds: Array<ReadonlyUint8Array>;
-  bump: number;
-  event: ReadonlyUint8Array;
-};
+export type LogEventInstructionDataArgs = { event: ReadonlyUint8Array };
 
 export function getLogEventInstructionDataEncoder(): Encoder<LogEventInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      [
-        "accountSeeds",
-        getArrayEncoder(
-          addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
-        ),
-      ],
-      ["bump", getU8Encoder()],
       ["event", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: LOG_EVENT_DISCRIMINATOR }),
@@ -101,11 +84,6 @@ export function getLogEventInstructionDataEncoder(): Encoder<LogEventInstruction
 export function getLogEventInstructionDataDecoder(): Decoder<LogEventInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    [
-      "accountSeeds",
-      getArrayDecoder(addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())),
-    ],
-    ["bump", getU8Decoder()],
     ["event", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
@@ -122,8 +100,6 @@ export function getLogEventInstructionDataCodec(): Codec<
 
 export type LogEventInput<TAccountLogAuthority extends string = string> = {
   logAuthority: TransactionSigner<TAccountLogAuthority>;
-  accountSeeds: LogEventInstructionDataArgs["accountSeeds"];
-  bump: LogEventInstructionDataArgs["bump"];
   event: LogEventInstructionDataArgs["event"];
 };
 

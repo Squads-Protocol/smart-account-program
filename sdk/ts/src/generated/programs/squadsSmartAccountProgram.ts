@@ -71,32 +71,34 @@ import {
   getChangeThresholdAsAuthorityInstruction,
   getCloseBatchInstruction,
   getCloseBatchTransactionInstruction,
+  getCloseEmptyPolicyTransactionInstructionAsync,
   getCloseSettingsTransactionInstruction,
   getCloseTransactionBufferInstruction,
   getCloseTransactionInstruction,
   getCreateBatchInstruction,
   getCreateProposalInstruction,
   getCreateSettingsTransactionInstruction,
-  getCreateSmartAccountInstruction,
+  getCreateSmartAccountInstructionAsync,
   getCreateTransactionBufferInstruction,
-  getCreateTransactionFromBufferInstruction,
-  getCreateTransactionInstruction,
+  getCreateTransactionFromBufferInstructionAsync,
+  getCreateTransactionInstructionAsync,
   getExecuteBatchTransactionInstruction,
   getExecuteSettingsTransactionInstruction,
   getExecuteSettingsTransactionSyncInstruction,
   getExecuteTransactionInstruction,
   getExecuteTransactionSyncInstruction,
+  getExecuteTransactionSyncV2Instruction,
   getExtendTransactionBufferInstruction,
-  getInitializeProgramConfigInstruction,
+  getInitializeProgramConfigInstructionAsync,
   getLogEventInstruction,
   getRejectProposalInstruction,
   getRemoveSignerAsAuthorityInstruction,
   getRemoveSpendingLimitAsAuthorityInstruction,
   getSetArchivalAuthorityAsAuthorityInstruction,
   getSetNewSettingsAuthorityAsAuthorityInstruction,
-  getSetProgramConfigAuthorityInstruction,
-  getSetProgramConfigSmartAccountCreationFeeInstruction,
-  getSetProgramConfigTreasuryInstruction,
+  getSetProgramConfigAuthorityInstructionAsync,
+  getSetProgramConfigSmartAccountCreationFeeInstructionAsync,
+  getSetProgramConfigTreasuryInstructionAsync,
   getSetTimeLockAsAuthorityInstruction,
   getUseSpendingLimitInstruction,
   parseActivateProposalInstruction,
@@ -108,6 +110,7 @@ import {
   parseChangeThresholdAsAuthorityInstruction,
   parseCloseBatchInstruction,
   parseCloseBatchTransactionInstruction,
+  parseCloseEmptyPolicyTransactionInstruction,
   parseCloseSettingsTransactionInstruction,
   parseCloseTransactionBufferInstruction,
   parseCloseTransactionInstruction,
@@ -123,6 +126,7 @@ import {
   parseExecuteSettingsTransactionSyncInstruction,
   parseExecuteTransactionInstruction,
   parseExecuteTransactionSyncInstruction,
+  parseExecuteTransactionSyncV2Instruction,
   parseExtendTransactionBufferInstruction,
   parseInitializeProgramConfigInstruction,
   parseLogEventInstruction,
@@ -145,23 +149,25 @@ import {
   type ChangeThresholdAsAuthorityInput,
   type CloseBatchInput,
   type CloseBatchTransactionInput,
+  type CloseEmptyPolicyTransactionAsyncInput,
   type CloseSettingsTransactionInput,
   type CloseTransactionBufferInput,
   type CloseTransactionInput,
   type CreateBatchInput,
   type CreateProposalInput,
   type CreateSettingsTransactionInput,
-  type CreateSmartAccountInput,
+  type CreateSmartAccountAsyncInput,
+  type CreateTransactionAsyncInput,
   type CreateTransactionBufferInput,
-  type CreateTransactionFromBufferInput,
-  type CreateTransactionInput,
+  type CreateTransactionFromBufferAsyncInput,
   type ExecuteBatchTransactionInput,
   type ExecuteSettingsTransactionInput,
   type ExecuteSettingsTransactionSyncInput,
   type ExecuteTransactionInput,
   type ExecuteTransactionSyncInput,
+  type ExecuteTransactionSyncV2Input,
   type ExtendTransactionBufferInput,
-  type InitializeProgramConfigInput,
+  type InitializeProgramConfigAsyncInput,
   type LogEventInput,
   type ParsedActivateProposalInstruction,
   type ParsedAddSignerAsAuthorityInstruction,
@@ -172,6 +178,7 @@ import {
   type ParsedChangeThresholdAsAuthorityInstruction,
   type ParsedCloseBatchInstruction,
   type ParsedCloseBatchTransactionInstruction,
+  type ParsedCloseEmptyPolicyTransactionInstruction,
   type ParsedCloseSettingsTransactionInstruction,
   type ParsedCloseTransactionBufferInstruction,
   type ParsedCloseTransactionInstruction,
@@ -187,6 +194,7 @@ import {
   type ParsedExecuteSettingsTransactionSyncInstruction,
   type ParsedExecuteTransactionInstruction,
   type ParsedExecuteTransactionSyncInstruction,
+  type ParsedExecuteTransactionSyncV2Instruction,
   type ParsedExtendTransactionBufferInstruction,
   type ParsedInitializeProgramConfigInstruction,
   type ParsedLogEventInstruction,
@@ -205,21 +213,15 @@ import {
   type RemoveSpendingLimitAsAuthorityInput,
   type SetArchivalAuthorityAsAuthorityInput,
   type SetNewSettingsAuthorityAsAuthorityInput,
-  type SetProgramConfigAuthorityInput,
-  type SetProgramConfigSmartAccountCreationFeeInput,
-  type SetProgramConfigTreasuryInput,
+  type SetProgramConfigAuthorityAsyncInput,
+  type SetProgramConfigSmartAccountCreationFeeAsyncInput,
+  type SetProgramConfigTreasuryAsyncInput,
   type SetTimeLockAsAuthorityInput,
   type UseSpendingLimitInput,
 } from "../instructions";
 import {
-  findBatchTransactionPda,
-  findEphemeralSignerPda,
-  findPolicyPda,
   findProgramConfigPda,
-  findProposalPda,
-  findSettingsPda,
-  findSmartAccountPda,
-  findSpendingLimitPda,
+  findTransactionCreateTransactionPda,
   findTransactionPda,
 } from "../pdas";
 
@@ -231,11 +233,11 @@ export enum SquadsSmartAccountProgramAccount {
   BatchTransaction,
   ProgramConfig,
   Proposal,
-  SettingsTransaction,
   Settings,
+  SettingsTransaction,
   SpendingLimit,
-  TransactionBuffer,
   Transaction,
+  TransactionBuffer,
 }
 
 export function identifySquadsSmartAccountProgramAccount(
@@ -290,23 +292,23 @@ export function identifySquadsSmartAccountProgramAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([199, 151, 72, 87, 77, 124, 16, 0]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramAccount.SettingsTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([223, 179, 163, 190, 177, 224, 67, 173]),
       ),
       0,
     )
   ) {
     return SquadsSmartAccountProgramAccount.Settings;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([199, 151, 72, 87, 77, 124, 16, 0]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramAccount.SettingsTransaction;
   }
   if (
     containsBytes(
@@ -323,23 +325,23 @@ export function identifySquadsSmartAccountProgramAccount(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([90, 36, 35, 219, 93, 225, 110, 96]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramAccount.TransactionBuffer;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([11, 24, 174, 129, 203, 117, 242, 23]),
       ),
       0,
     )
   ) {
     return SquadsSmartAccountProgramAccount.Transaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 36, 35, 219, 93, 225, 110, 96]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramAccount.TransactionBuffer;
   }
   throw new SolanaError(
     SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_ACCOUNT,
@@ -348,43 +350,45 @@ export function identifySquadsSmartAccountProgramAccount(
 }
 
 export enum SquadsSmartAccountProgramInstruction {
+  ActivateProposal,
+  AddSignerAsAuthority,
+  AddSpendingLimitAsAuthority,
+  AddTransactionToBatch,
+  ApproveProposal,
+  CancelProposal,
+  ChangeThresholdAsAuthority,
+  CloseBatch,
+  CloseBatchTransaction,
+  CloseEmptyPolicyTransaction,
+  CloseSettingsTransaction,
+  CloseTransaction,
+  CloseTransactionBuffer,
+  CreateBatch,
+  CreateProposal,
+  CreateSettingsTransaction,
+  CreateSmartAccount,
+  CreateTransaction,
+  CreateTransactionBuffer,
+  CreateTransactionFromBuffer,
+  ExecuteBatchTransaction,
+  ExecuteSettingsTransaction,
+  ExecuteSettingsTransactionSync,
+  ExecuteTransaction,
+  ExecuteTransactionSync,
+  ExecuteTransactionSyncV2,
+  ExtendTransactionBuffer,
   InitializeProgramConfig,
+  LogEvent,
+  RejectProposal,
+  RemoveSignerAsAuthority,
+  RemoveSpendingLimitAsAuthority,
+  SetArchivalAuthorityAsAuthority,
+  SetNewSettingsAuthorityAsAuthority,
   SetProgramConfigAuthority,
   SetProgramConfigSmartAccountCreationFee,
   SetProgramConfigTreasury,
-  CreateSmartAccount,
-  AddSignerAsAuthority,
-  RemoveSignerAsAuthority,
   SetTimeLockAsAuthority,
-  ChangeThresholdAsAuthority,
-  SetNewSettingsAuthorityAsAuthority,
-  SetArchivalAuthorityAsAuthority,
-  AddSpendingLimitAsAuthority,
-  RemoveSpendingLimitAsAuthority,
-  CreateSettingsTransaction,
-  ExecuteSettingsTransaction,
-  CreateTransaction,
-  CreateTransactionBuffer,
-  CloseTransactionBuffer,
-  ExtendTransactionBuffer,
-  CreateTransactionFromBuffer,
-  ExecuteTransaction,
-  CreateBatch,
-  AddTransactionToBatch,
-  ExecuteBatchTransaction,
-  CreateProposal,
-  ActivateProposal,
-  ApproveProposal,
-  RejectProposal,
-  CancelProposal,
   UseSpendingLimit,
-  CloseSettingsTransaction,
-  CloseTransaction,
-  CloseBatchTransaction,
-  CloseBatch,
-  ExecuteTransactionSync,
-  ExecuteSettingsTransactionSync,
-  LogEvent,
 }
 
 export function identifySquadsSmartAccountProgramInstruction(
@@ -395,12 +399,375 @@ export function identifySquadsSmartAccountProgramInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 186, 203, 234, 70, 185, 191, 21]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ActivateProposal;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([80, 198, 228, 154, 7, 234, 99, 56]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.AddSignerAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([169, 189, 84, 54, 30, 244, 223, 212]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([147, 75, 197, 227, 20, 149, 150, 113]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.AddTransactionToBatch;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([136, 108, 102, 85, 98, 114, 7, 147]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ApproveProposal;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([106, 74, 128, 146, 19, 65, 39, 23]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CancelProposal;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([51, 141, 78, 133, 70, 47, 95, 124]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([166, 174, 35, 253, 209, 211, 181, 28]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseBatch;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([86, 144, 133, 225, 45, 209, 62, 251]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseBatchTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([183, 66, 199, 226, 42, 87, 146, 77]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseEmptyPolicyTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([251, 112, 34, 108, 214, 13, 41, 116]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseSettingsTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([97, 46, 152, 170, 42, 215, 192, 218]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([224, 221, 123, 213, 0, 204, 5, 191]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CloseTransactionBuffer;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([159, 198, 248, 43, 248, 31, 235, 86]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateBatch;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([132, 116, 68, 174, 216, 160, 198, 22]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateProposal;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([101, 168, 254, 203, 222, 102, 95, 192]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateSettingsTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([197, 102, 253, 231, 77, 84, 50, 17]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateSmartAccount;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([227, 193, 53, 239, 55, 126, 112, 105]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([57, 97, 250, 156, 59, 211, 32, 208]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateTransactionBuffer;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([53, 192, 39, 239, 124, 84, 43, 249]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([237, 67, 201, 173, 33, 130, 88, 134]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([131, 210, 27, 88, 27, 204, 143, 189]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([138, 209, 64, 163, 79, 67, 233, 76]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([231, 173, 49, 91, 235, 24, 68, 19]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteTransaction;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([43, 102, 248, 89, 231, 97, 104, 134]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteTransactionSync;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 81, 187, 81, 39, 70, 128, 78]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExecuteTransactionSyncV2;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([190, 86, 246, 95, 231, 154, 229, 91]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([6, 131, 61, 237, 40, 110, 83, 124]),
       ),
       0,
     )
   ) {
     return SquadsSmartAccountProgramInstruction.InitializeProgramConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([5, 9, 90, 141, 223, 134, 57, 217]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.LogEvent;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([114, 162, 164, 82, 191, 11, 102, 25]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.RejectProposal;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([58, 19, 149, 16, 181, 16, 125, 148]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([94, 32, 68, 127, 251, 44, 145, 7]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([178, 199, 4, 13, 237, 234, 152, 202]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([221, 112, 133, 229, 146, 58, 90, 56]),
+      ),
+      0,
+    )
+  ) {
+    return SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority;
   }
   if (
     containsBytes(
@@ -439,276 +806,12 @@ export function identifySquadsSmartAccountProgramInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([197, 102, 253, 231, 77, 84, 50, 17]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateSmartAccount;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([80, 198, 228, 154, 7, 234, 99, 56]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.AddSignerAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([58, 19, 149, 16, 181, 16, 125, 148]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([2, 234, 93, 93, 40, 92, 31, 234]),
       ),
       0,
     )
   ) {
     return SquadsSmartAccountProgramInstruction.SetTimeLockAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([51, 141, 78, 133, 70, 47, 95, 124]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([221, 112, 133, 229, 146, 58, 90, 56]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([178, 199, 4, 13, 237, 234, 152, 202]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([169, 189, 84, 54, 30, 244, 223, 212]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([94, 32, 68, 127, 251, 44, 145, 7]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([101, 168, 254, 203, 222, 102, 95, 192]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateSettingsTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([131, 210, 27, 88, 27, 204, 143, 189]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([227, 193, 53, 239, 55, 126, 112, 105]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([57, 97, 250, 156, 59, 211, 32, 208]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateTransactionBuffer;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([224, 221, 123, 213, 0, 204, 5, 191]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CloseTransactionBuffer;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([190, 86, 246, 95, 231, 154, 229, 91]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([53, 192, 39, 239, 124, 84, 43, 249]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([231, 173, 49, 91, 235, 24, 68, 19]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExecuteTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([159, 198, 248, 43, 248, 31, 235, 86]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateBatch;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([147, 75, 197, 227, 20, 149, 150, 113]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.AddTransactionToBatch;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([237, 67, 201, 173, 33, 130, 88, 134]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([132, 116, 68, 174, 216, 160, 198, 22]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CreateProposal;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([90, 186, 203, 234, 70, 185, 191, 21]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ActivateProposal;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([136, 108, 102, 85, 98, 114, 7, 147]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ApproveProposal;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([114, 162, 164, 82, 191, 11, 102, 25]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.RejectProposal;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([106, 74, 128, 146, 19, 65, 39, 23]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CancelProposal;
   }
   if (
     containsBytes(
@@ -721,83 +824,6 @@ export function identifySquadsSmartAccountProgramInstruction(
   ) {
     return SquadsSmartAccountProgramInstruction.UseSpendingLimit;
   }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([251, 112, 34, 108, 214, 13, 41, 116]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CloseSettingsTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([97, 46, 152, 170, 42, 215, 192, 218]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CloseTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([86, 144, 133, 225, 45, 209, 62, 251]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CloseBatchTransaction;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([166, 174, 35, 253, 209, 211, 181, 28]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.CloseBatch;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([43, 102, 248, 89, 231, 97, 104, 134]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExecuteTransactionSync;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([138, 209, 64, 163, 79, 67, 233, 76]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([5, 9, 90, 141, 223, 134, 57, 217]),
-      ),
-      0,
-    )
-  ) {
-    return SquadsSmartAccountProgramInstruction.LogEvent;
-  }
   throw new SolanaError(
     SOLANA_ERROR__PROGRAM_CLIENTS__FAILED_TO_IDENTIFY_INSTRUCTION,
     { instructionData: data, programName: "squadsSmartAccountProgram" },
@@ -808,8 +834,107 @@ export type ParsedSquadsSmartAccountProgramInstruction<
   TProgram extends string = "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
 > =
   | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ActivateProposal;
+    } & ParsedActivateProposalInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.AddSignerAsAuthority;
+    } & ParsedAddSignerAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority;
+    } & ParsedAddSpendingLimitAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.AddTransactionToBatch;
+    } & ParsedAddTransactionToBatchInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ApproveProposal;
+    } & ParsedApproveProposalInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CancelProposal;
+    } & ParsedCancelProposalInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority;
+    } & ParsedChangeThresholdAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseBatch;
+    } & ParsedCloseBatchInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseBatchTransaction;
+    } & ParsedCloseBatchTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseEmptyPolicyTransaction;
+    } & ParsedCloseEmptyPolicyTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseSettingsTransaction;
+    } & ParsedCloseSettingsTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseTransaction;
+    } & ParsedCloseTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CloseTransactionBuffer;
+    } & ParsedCloseTransactionBufferInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateBatch;
+    } & ParsedCreateBatchInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateProposal;
+    } & ParsedCreateProposalInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateSettingsTransaction;
+    } & ParsedCreateSettingsTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateSmartAccount;
+    } & ParsedCreateSmartAccountInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateTransaction;
+    } & ParsedCreateTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateTransactionBuffer;
+    } & ParsedCreateTransactionBufferInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer;
+    } & ParsedCreateTransactionFromBufferInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction;
+    } & ParsedExecuteBatchTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction;
+    } & ParsedExecuteSettingsTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync;
+    } & ParsedExecuteSettingsTransactionSyncInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteTransaction;
+    } & ParsedExecuteTransactionInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteTransactionSync;
+    } & ParsedExecuteTransactionSyncInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExecuteTransactionSyncV2;
+    } & ParsedExecuteTransactionSyncV2Instruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer;
+    } & ParsedExtendTransactionBufferInstruction<TProgram>)
+  | ({
       instructionType: SquadsSmartAccountProgramInstruction.InitializeProgramConfig;
     } & ParsedInitializeProgramConfigInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.LogEvent;
+    } & ParsedLogEventInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.RejectProposal;
+    } & ParsedRejectProposalInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority;
+    } & ParsedRemoveSignerAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority;
+    } & ParsedRemoveSpendingLimitAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority;
+    } & ParsedSetArchivalAuthorityAsAuthorityInstruction<TProgram>)
+  | ({
+      instructionType: SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority;
+    } & ParsedSetNewSettingsAuthorityAsAuthorityInstruction<TProgram>)
   | ({
       instructionType: SquadsSmartAccountProgramInstruction.SetProgramConfigAuthority;
     } & ParsedSetProgramConfigAuthorityInstruction<TProgram>)
@@ -820,104 +945,11 @@ export type ParsedSquadsSmartAccountProgramInstruction<
       instructionType: SquadsSmartAccountProgramInstruction.SetProgramConfigTreasury;
     } & ParsedSetProgramConfigTreasuryInstruction<TProgram>)
   | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateSmartAccount;
-    } & ParsedCreateSmartAccountInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.AddSignerAsAuthority;
-    } & ParsedAddSignerAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority;
-    } & ParsedRemoveSignerAsAuthorityInstruction<TProgram>)
-  | ({
       instructionType: SquadsSmartAccountProgramInstruction.SetTimeLockAsAuthority;
     } & ParsedSetTimeLockAsAuthorityInstruction<TProgram>)
   | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority;
-    } & ParsedChangeThresholdAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority;
-    } & ParsedSetNewSettingsAuthorityAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority;
-    } & ParsedSetArchivalAuthorityAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority;
-    } & ParsedAddSpendingLimitAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority;
-    } & ParsedRemoveSpendingLimitAsAuthorityInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateSettingsTransaction;
-    } & ParsedCreateSettingsTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction;
-    } & ParsedExecuteSettingsTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateTransaction;
-    } & ParsedCreateTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateTransactionBuffer;
-    } & ParsedCreateTransactionBufferInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CloseTransactionBuffer;
-    } & ParsedCloseTransactionBufferInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer;
-    } & ParsedExtendTransactionBufferInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer;
-    } & ParsedCreateTransactionFromBufferInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExecuteTransaction;
-    } & ParsedExecuteTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateBatch;
-    } & ParsedCreateBatchInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.AddTransactionToBatch;
-    } & ParsedAddTransactionToBatchInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction;
-    } & ParsedExecuteBatchTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CreateProposal;
-    } & ParsedCreateProposalInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ActivateProposal;
-    } & ParsedActivateProposalInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ApproveProposal;
-    } & ParsedApproveProposalInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.RejectProposal;
-    } & ParsedRejectProposalInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CancelProposal;
-    } & ParsedCancelProposalInstruction<TProgram>)
-  | ({
       instructionType: SquadsSmartAccountProgramInstruction.UseSpendingLimit;
-    } & ParsedUseSpendingLimitInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CloseSettingsTransaction;
-    } & ParsedCloseSettingsTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CloseTransaction;
-    } & ParsedCloseTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CloseBatchTransaction;
-    } & ParsedCloseBatchTransactionInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.CloseBatch;
-    } & ParsedCloseBatchInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExecuteTransactionSync;
-    } & ParsedExecuteTransactionSyncInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync;
-    } & ParsedExecuteSettingsTransactionSyncInstruction<TProgram>)
-  | ({
-      instructionType: SquadsSmartAccountProgramInstruction.LogEvent;
-    } & ParsedLogEventInstruction<TProgram>);
+    } & ParsedUseSpendingLimitInstruction<TProgram>);
 
 export function parseSquadsSmartAccountProgramInstruction<
   TProgram extends string,
@@ -927,12 +959,266 @@ export function parseSquadsSmartAccountProgramInstruction<
   const instructionType =
     identifySquadsSmartAccountProgramInstruction(instruction);
   switch (instructionType) {
+    case SquadsSmartAccountProgramInstruction.ActivateProposal: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.ActivateProposal,
+        ...parseActivateProposalInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.AddSignerAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.AddSignerAsAuthority,
+        ...parseAddSignerAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority,
+        ...parseAddSpendingLimitAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.AddTransactionToBatch: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.AddTransactionToBatch,
+        ...parseAddTransactionToBatchInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ApproveProposal: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.ApproveProposal,
+        ...parseApproveProposalInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CancelProposal: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CancelProposal,
+        ...parseCancelProposalInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority,
+        ...parseChangeThresholdAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseBatch: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CloseBatch,
+        ...parseCloseBatchInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseBatchTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CloseBatchTransaction,
+        ...parseCloseBatchTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseEmptyPolicyTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CloseEmptyPolicyTransaction,
+        ...parseCloseEmptyPolicyTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseSettingsTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CloseSettingsTransaction,
+        ...parseCloseSettingsTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CloseTransaction,
+        ...parseCloseTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CloseTransactionBuffer: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CloseTransactionBuffer,
+        ...parseCloseTransactionBufferInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateBatch: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CreateBatch,
+        ...parseCreateBatchInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateProposal: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CreateProposal,
+        ...parseCreateProposalInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateSettingsTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CreateSettingsTransaction,
+        ...parseCreateSettingsTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateSmartAccount: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CreateSmartAccount,
+        ...parseCreateSmartAccountInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.CreateTransaction,
+        ...parseCreateTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateTransactionBuffer: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CreateTransactionBuffer,
+        ...parseCreateTransactionBufferInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer,
+        ...parseCreateTransactionFromBufferInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction,
+        ...parseExecuteBatchTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction,
+        ...parseExecuteSettingsTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync,
+        ...parseExecuteSettingsTransactionSyncInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteTransaction: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteTransaction,
+        ...parseExecuteTransactionInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteTransactionSync: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteTransactionSync,
+        ...parseExecuteTransactionSyncInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExecuteTransactionSyncV2: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExecuteTransactionSyncV2,
+        ...parseExecuteTransactionSyncV2Instruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer,
+        ...parseExtendTransactionBufferInstruction(instruction),
+      };
+    }
     case SquadsSmartAccountProgramInstruction.InitializeProgramConfig: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType:
           SquadsSmartAccountProgramInstruction.InitializeProgramConfig,
         ...parseInitializeProgramConfigInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.LogEvent: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.LogEvent,
+        ...parseLogEventInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.RejectProposal: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: SquadsSmartAccountProgramInstruction.RejectProposal,
+        ...parseRejectProposalInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority,
+        ...parseRemoveSignerAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority,
+        ...parseRemoveSpendingLimitAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority,
+        ...parseSetArchivalAuthorityAsAuthorityInstruction(instruction),
+      };
+    }
+    case SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType:
+          SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority,
+        ...parseSetNewSettingsAuthorityAsAuthorityInstruction(instruction),
       };
     }
     case SquadsSmartAccountProgramInstruction.SetProgramConfigAuthority: {
@@ -959,30 +1245,6 @@ export function parseSquadsSmartAccountProgramInstruction<
         ...parseSetProgramConfigTreasuryInstruction(instruction),
       };
     }
-    case SquadsSmartAccountProgramInstruction.CreateSmartAccount: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CreateSmartAccount,
-        ...parseCreateSmartAccountInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.AddSignerAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.AddSignerAsAuthority,
-        ...parseAddSignerAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.RemoveSignerAsAuthority,
-        ...parseRemoveSignerAsAuthorityInstruction(instruction),
-      };
-    }
     case SquadsSmartAccountProgramInstruction.SetTimeLockAsAuthority: {
       assertIsInstructionWithAccounts(instruction);
       return {
@@ -991,225 +1253,11 @@ export function parseSquadsSmartAccountProgramInstruction<
         ...parseSetTimeLockAsAuthorityInstruction(instruction),
       };
     }
-    case SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ChangeThresholdAsAuthority,
-        ...parseChangeThresholdAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.SetNewSettingsAuthorityAsAuthority,
-        ...parseSetNewSettingsAuthorityAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.SetArchivalAuthorityAsAuthority,
-        ...parseSetArchivalAuthorityAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.AddSpendingLimitAsAuthority,
-        ...parseAddSpendingLimitAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.RemoveSpendingLimitAsAuthority,
-        ...parseRemoveSpendingLimitAsAuthorityInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateSettingsTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CreateSettingsTransaction,
-        ...parseCreateSettingsTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExecuteSettingsTransaction,
-        ...parseExecuteSettingsTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CreateTransaction,
-        ...parseCreateTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateTransactionBuffer: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CreateTransactionBuffer,
-        ...parseCreateTransactionBufferInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CloseTransactionBuffer: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CloseTransactionBuffer,
-        ...parseCloseTransactionBufferInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExtendTransactionBuffer,
-        ...parseExtendTransactionBufferInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CreateTransactionFromBuffer,
-        ...parseCreateTransactionFromBufferInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExecuteTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExecuteTransaction,
-        ...parseExecuteTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateBatch: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CreateBatch,
-        ...parseCreateBatchInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.AddTransactionToBatch: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.AddTransactionToBatch,
-        ...parseAddTransactionToBatchInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExecuteBatchTransaction,
-        ...parseExecuteBatchTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CreateProposal: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CreateProposal,
-        ...parseCreateProposalInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ActivateProposal: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.ActivateProposal,
-        ...parseActivateProposalInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ApproveProposal: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.ApproveProposal,
-        ...parseApproveProposalInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.RejectProposal: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.RejectProposal,
-        ...parseRejectProposalInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CancelProposal: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CancelProposal,
-        ...parseCancelProposalInstruction(instruction),
-      };
-    }
     case SquadsSmartAccountProgramInstruction.UseSpendingLimit: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: SquadsSmartAccountProgramInstruction.UseSpendingLimit,
         ...parseUseSpendingLimitInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CloseSettingsTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CloseSettingsTransaction,
-        ...parseCloseSettingsTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CloseTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CloseTransaction,
-        ...parseCloseTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CloseBatchTransaction: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.CloseBatchTransaction,
-        ...parseCloseBatchTransactionInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.CloseBatch: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.CloseBatch,
-        ...parseCloseBatchInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExecuteTransactionSync: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExecuteTransactionSync,
-        ...parseExecuteTransactionSyncInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType:
-          SquadsSmartAccountProgramInstruction.ExecuteSettingsTransactionSync,
-        ...parseExecuteSettingsTransactionSyncInstruction(instruction),
-      };
-    }
-    case SquadsSmartAccountProgramInstruction.LogEvent: {
-      assertIsInstructionWithAccounts(instruction);
-      return {
-        instructionType: SquadsSmartAccountProgramInstruction.LogEvent,
-        ...parseLogEventInstruction(instruction),
       };
     }
     default:
@@ -1238,139 +1286,57 @@ export type SquadsSmartAccountProgramPluginAccounts = {
     SelfFetchFunctions<ProgramConfigArgs, ProgramConfig>;
   proposal: ReturnType<typeof getProposalCodec> &
     SelfFetchFunctions<ProposalArgs, Proposal>;
-  settingsTransaction: ReturnType<typeof getSettingsTransactionCodec> &
-    SelfFetchFunctions<SettingsTransactionArgs, SettingsTransaction>;
   settings: ReturnType<typeof getSettingsCodec> &
     SelfFetchFunctions<SettingsArgs, Settings>;
+  settingsTransaction: ReturnType<typeof getSettingsTransactionCodec> &
+    SelfFetchFunctions<SettingsTransactionArgs, SettingsTransaction>;
   spendingLimit: ReturnType<typeof getSpendingLimitCodec> &
     SelfFetchFunctions<SpendingLimitArgs, SpendingLimit>;
-  transactionBuffer: ReturnType<typeof getTransactionBufferCodec> &
-    SelfFetchFunctions<TransactionBufferArgs, TransactionBuffer>;
   transaction: ReturnType<typeof getTransactionCodec> &
     SelfFetchFunctions<TransactionArgs, Transaction>;
+  transactionBuffer: ReturnType<typeof getTransactionBufferCodec> &
+    SelfFetchFunctions<TransactionBufferArgs, TransactionBuffer>;
 };
 
 export type SquadsSmartAccountProgramPluginInstructions = {
-  initializeProgramConfig: (
-    input: InitializeProgramConfigInput,
-  ) => ReturnType<typeof getInitializeProgramConfigInstruction> &
-    SelfPlanAndSendFunctions;
-  setProgramConfigAuthority: (
-    input: SetProgramConfigAuthorityInput,
-  ) => ReturnType<typeof getSetProgramConfigAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  setProgramConfigSmartAccountCreationFee: (
-    input: SetProgramConfigSmartAccountCreationFeeInput,
-  ) => ReturnType<
-    typeof getSetProgramConfigSmartAccountCreationFeeInstruction
-  > &
-    SelfPlanAndSendFunctions;
-  setProgramConfigTreasury: (
-    input: SetProgramConfigTreasuryInput,
-  ) => ReturnType<typeof getSetProgramConfigTreasuryInstruction> &
-    SelfPlanAndSendFunctions;
-  createSmartAccount: (
-    input: CreateSmartAccountInput,
-  ) => ReturnType<typeof getCreateSmartAccountInstruction> &
+  activateProposal: (
+    input: ActivateProposalInput,
+  ) => ReturnType<typeof getActivateProposalInstruction> &
     SelfPlanAndSendFunctions;
   addSignerAsAuthority: (
     input: AddSignerAsAuthorityInput,
   ) => ReturnType<typeof getAddSignerAsAuthorityInstruction> &
     SelfPlanAndSendFunctions;
-  removeSignerAsAuthority: (
-    input: RemoveSignerAsAuthorityInput,
-  ) => ReturnType<typeof getRemoveSignerAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  setTimeLockAsAuthority: (
-    input: SetTimeLockAsAuthorityInput,
-  ) => ReturnType<typeof getSetTimeLockAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  changeThresholdAsAuthority: (
-    input: ChangeThresholdAsAuthorityInput,
-  ) => ReturnType<typeof getChangeThresholdAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  setNewSettingsAuthorityAsAuthority: (
-    input: SetNewSettingsAuthorityAsAuthorityInput,
-  ) => ReturnType<typeof getSetNewSettingsAuthorityAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  setArchivalAuthorityAsAuthority: (
-    input: SetArchivalAuthorityAsAuthorityInput,
-  ) => ReturnType<typeof getSetArchivalAuthorityAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
   addSpendingLimitAsAuthority: (
     input: AddSpendingLimitAsAuthorityInput,
   ) => ReturnType<typeof getAddSpendingLimitAsAuthorityInstruction> &
     SelfPlanAndSendFunctions;
-  removeSpendingLimitAsAuthority: (
-    input: RemoveSpendingLimitAsAuthorityInput,
-  ) => ReturnType<typeof getRemoveSpendingLimitAsAuthorityInstruction> &
-    SelfPlanAndSendFunctions;
-  createSettingsTransaction: (
-    input: CreateSettingsTransactionInput,
-  ) => ReturnType<typeof getCreateSettingsTransactionInstruction> &
-    SelfPlanAndSendFunctions;
-  executeSettingsTransaction: (
-    input: ExecuteSettingsTransactionInput,
-  ) => ReturnType<typeof getExecuteSettingsTransactionInstruction> &
-    SelfPlanAndSendFunctions;
-  createTransaction: (
-    input: CreateTransactionInput,
-  ) => ReturnType<typeof getCreateTransactionInstruction> &
-    SelfPlanAndSendFunctions;
-  createTransactionBuffer: (
-    input: CreateTransactionBufferInput,
-  ) => ReturnType<typeof getCreateTransactionBufferInstruction> &
-    SelfPlanAndSendFunctions;
-  closeTransactionBuffer: (
-    input: CloseTransactionBufferInput,
-  ) => ReturnType<typeof getCloseTransactionBufferInstruction> &
-    SelfPlanAndSendFunctions;
-  extendTransactionBuffer: (
-    input: ExtendTransactionBufferInput,
-  ) => ReturnType<typeof getExtendTransactionBufferInstruction> &
-    SelfPlanAndSendFunctions;
-  createTransactionFromBuffer: (
-    input: CreateTransactionFromBufferInput,
-  ) => ReturnType<typeof getCreateTransactionFromBufferInstruction> &
-    SelfPlanAndSendFunctions;
-  executeTransaction: (
-    input: ExecuteTransactionInput,
-  ) => ReturnType<typeof getExecuteTransactionInstruction> &
-    SelfPlanAndSendFunctions;
-  createBatch: (
-    input: CreateBatchInput,
-  ) => ReturnType<typeof getCreateBatchInstruction> & SelfPlanAndSendFunctions;
   addTransactionToBatch: (
     input: AddTransactionToBatchInput,
   ) => ReturnType<typeof getAddTransactionToBatchInstruction> &
-    SelfPlanAndSendFunctions;
-  executeBatchTransaction: (
-    input: ExecuteBatchTransactionInput,
-  ) => ReturnType<typeof getExecuteBatchTransactionInstruction> &
-    SelfPlanAndSendFunctions;
-  createProposal: (
-    input: CreateProposalInput,
-  ) => ReturnType<typeof getCreateProposalInstruction> &
-    SelfPlanAndSendFunctions;
-  activateProposal: (
-    input: ActivateProposalInput,
-  ) => ReturnType<typeof getActivateProposalInstruction> &
     SelfPlanAndSendFunctions;
   approveProposal: (
     input: ApproveProposalInput,
   ) => ReturnType<typeof getApproveProposalInstruction> &
     SelfPlanAndSendFunctions;
-  rejectProposal: (
-    input: RejectProposalInput,
-  ) => ReturnType<typeof getRejectProposalInstruction> &
-    SelfPlanAndSendFunctions;
   cancelProposal: (
     input: CancelProposalInput,
   ) => ReturnType<typeof getCancelProposalInstruction> &
     SelfPlanAndSendFunctions;
-  useSpendingLimit: (
-    input: UseSpendingLimitInput,
-  ) => ReturnType<typeof getUseSpendingLimitInstruction> &
+  changeThresholdAsAuthority: (
+    input: ChangeThresholdAsAuthorityInput,
+  ) => ReturnType<typeof getChangeThresholdAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  closeBatch: (
+    input: CloseBatchInput,
+  ) => ReturnType<typeof getCloseBatchInstruction> & SelfPlanAndSendFunctions;
+  closeBatchTransaction: (
+    input: CloseBatchTransactionInput,
+  ) => ReturnType<typeof getCloseBatchTransactionInstruction> &
+    SelfPlanAndSendFunctions;
+  closeEmptyPolicyTransaction: (
+    input: CloseEmptyPolicyTransactionAsyncInput,
+  ) => ReturnType<typeof getCloseEmptyPolicyTransactionInstructionAsync> &
     SelfPlanAndSendFunctions;
   closeSettingsTransaction: (
     input: CloseSettingsTransactionInput,
@@ -1380,36 +1346,120 @@ export type SquadsSmartAccountProgramPluginInstructions = {
     input: CloseTransactionInput,
   ) => ReturnType<typeof getCloseTransactionInstruction> &
     SelfPlanAndSendFunctions;
-  closeBatchTransaction: (
-    input: CloseBatchTransactionInput,
-  ) => ReturnType<typeof getCloseBatchTransactionInstruction> &
+  closeTransactionBuffer: (
+    input: CloseTransactionBufferInput,
+  ) => ReturnType<typeof getCloseTransactionBufferInstruction> &
     SelfPlanAndSendFunctions;
-  closeBatch: (
-    input: CloseBatchInput,
-  ) => ReturnType<typeof getCloseBatchInstruction> & SelfPlanAndSendFunctions;
-  executeTransactionSync: (
-    input: ExecuteTransactionSyncInput,
-  ) => ReturnType<typeof getExecuteTransactionSyncInstruction> &
+  createBatch: (
+    input: CreateBatchInput,
+  ) => ReturnType<typeof getCreateBatchInstruction> & SelfPlanAndSendFunctions;
+  createProposal: (
+    input: CreateProposalInput,
+  ) => ReturnType<typeof getCreateProposalInstruction> &
+    SelfPlanAndSendFunctions;
+  createSettingsTransaction: (
+    input: CreateSettingsTransactionInput,
+  ) => ReturnType<typeof getCreateSettingsTransactionInstruction> &
+    SelfPlanAndSendFunctions;
+  createSmartAccount: (
+    input: CreateSmartAccountAsyncInput,
+  ) => ReturnType<typeof getCreateSmartAccountInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  createTransaction: (
+    input: CreateTransactionAsyncInput,
+  ) => ReturnType<typeof getCreateTransactionInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  createTransactionBuffer: (
+    input: CreateTransactionBufferInput,
+  ) => ReturnType<typeof getCreateTransactionBufferInstruction> &
+    SelfPlanAndSendFunctions;
+  createTransactionFromBuffer: (
+    input: CreateTransactionFromBufferAsyncInput,
+  ) => ReturnType<typeof getCreateTransactionFromBufferInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  executeBatchTransaction: (
+    input: ExecuteBatchTransactionInput,
+  ) => ReturnType<typeof getExecuteBatchTransactionInstruction> &
+    SelfPlanAndSendFunctions;
+  executeSettingsTransaction: (
+    input: ExecuteSettingsTransactionInput,
+  ) => ReturnType<typeof getExecuteSettingsTransactionInstruction> &
     SelfPlanAndSendFunctions;
   executeSettingsTransactionSync: (
     input: ExecuteSettingsTransactionSyncInput,
   ) => ReturnType<typeof getExecuteSettingsTransactionSyncInstruction> &
     SelfPlanAndSendFunctions;
+  executeTransaction: (
+    input: ExecuteTransactionInput,
+  ) => ReturnType<typeof getExecuteTransactionInstruction> &
+    SelfPlanAndSendFunctions;
+  executeTransactionSync: (
+    input: ExecuteTransactionSyncInput,
+  ) => ReturnType<typeof getExecuteTransactionSyncInstruction> &
+    SelfPlanAndSendFunctions;
+  executeTransactionSyncV2: (
+    input: ExecuteTransactionSyncV2Input,
+  ) => ReturnType<typeof getExecuteTransactionSyncV2Instruction> &
+    SelfPlanAndSendFunctions;
+  extendTransactionBuffer: (
+    input: ExtendTransactionBufferInput,
+  ) => ReturnType<typeof getExtendTransactionBufferInstruction> &
+    SelfPlanAndSendFunctions;
+  initializeProgramConfig: (
+    input: InitializeProgramConfigAsyncInput,
+  ) => ReturnType<typeof getInitializeProgramConfigInstructionAsync> &
+    SelfPlanAndSendFunctions;
   logEvent: (
     input: LogEventInput,
   ) => ReturnType<typeof getLogEventInstruction> & SelfPlanAndSendFunctions;
+  rejectProposal: (
+    input: RejectProposalInput,
+  ) => ReturnType<typeof getRejectProposalInstruction> &
+    SelfPlanAndSendFunctions;
+  removeSignerAsAuthority: (
+    input: RemoveSignerAsAuthorityInput,
+  ) => ReturnType<typeof getRemoveSignerAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  removeSpendingLimitAsAuthority: (
+    input: RemoveSpendingLimitAsAuthorityInput,
+  ) => ReturnType<typeof getRemoveSpendingLimitAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  setArchivalAuthorityAsAuthority: (
+    input: SetArchivalAuthorityAsAuthorityInput,
+  ) => ReturnType<typeof getSetArchivalAuthorityAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  setNewSettingsAuthorityAsAuthority: (
+    input: SetNewSettingsAuthorityAsAuthorityInput,
+  ) => ReturnType<typeof getSetNewSettingsAuthorityAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  setProgramConfigAuthority: (
+    input: SetProgramConfigAuthorityAsyncInput,
+  ) => ReturnType<typeof getSetProgramConfigAuthorityInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  setProgramConfigSmartAccountCreationFee: (
+    input: SetProgramConfigSmartAccountCreationFeeAsyncInput,
+  ) => ReturnType<
+    typeof getSetProgramConfigSmartAccountCreationFeeInstructionAsync
+  > &
+    SelfPlanAndSendFunctions;
+  setProgramConfigTreasury: (
+    input: SetProgramConfigTreasuryAsyncInput,
+  ) => ReturnType<typeof getSetProgramConfigTreasuryInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  setTimeLockAsAuthority: (
+    input: SetTimeLockAsAuthorityInput,
+  ) => ReturnType<typeof getSetTimeLockAsAuthorityInstruction> &
+    SelfPlanAndSendFunctions;
+  useSpendingLimit: (
+    input: UseSpendingLimitInput,
+  ) => ReturnType<typeof getUseSpendingLimitInstruction> &
+    SelfPlanAndSendFunctions;
 };
 
 export type SquadsSmartAccountProgramPluginPdas = {
   programConfig: typeof findProgramConfigPda;
-  settings: typeof findSettingsPda;
-  smartAccount: typeof findSmartAccountPda;
-  ephemeralSigner: typeof findEphemeralSignerPda;
   transaction: typeof findTransactionPda;
-  proposal: typeof findProposalPda;
-  batchTransaction: typeof findBatchTransactionPda;
-  spendingLimit: typeof findSpendingLimitPda;
-  policy: typeof findPolicyPda;
+  transactionCreateTransaction: typeof findTransactionCreateTransactionPda;
 };
 
 export type SquadsSmartAccountProgramPluginRequirements = ClientWithRpc<
@@ -1434,168 +1484,68 @@ export function squadsSmartAccountProgramProgram() {
           ),
           programConfig: addSelfFetchFunctions(client, getProgramConfigCodec()),
           proposal: addSelfFetchFunctions(client, getProposalCodec()),
+          settings: addSelfFetchFunctions(client, getSettingsCodec()),
           settingsTransaction: addSelfFetchFunctions(
             client,
             getSettingsTransactionCodec(),
           ),
-          settings: addSelfFetchFunctions(client, getSettingsCodec()),
           spendingLimit: addSelfFetchFunctions(client, getSpendingLimitCodec()),
+          transaction: addSelfFetchFunctions(client, getTransactionCodec()),
           transactionBuffer: addSelfFetchFunctions(
             client,
             getTransactionBufferCodec(),
           ),
-          transaction: addSelfFetchFunctions(client, getTransactionCodec()),
         },
         instructions: {
-          initializeProgramConfig: (input) =>
+          activateProposal: (input) =>
             addSelfPlanAndSendFunctions(
               client,
-              getInitializeProgramConfigInstruction(input),
-            ),
-          setProgramConfigAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetProgramConfigAuthorityInstruction(input),
-            ),
-          setProgramConfigSmartAccountCreationFee: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetProgramConfigSmartAccountCreationFeeInstruction(input),
-            ),
-          setProgramConfigTreasury: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetProgramConfigTreasuryInstruction(input),
-            ),
-          createSmartAccount: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateSmartAccountInstruction(input),
+              getActivateProposalInstruction(input),
             ),
           addSignerAsAuthority: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getAddSignerAsAuthorityInstruction(input),
             ),
-          removeSignerAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getRemoveSignerAsAuthorityInstruction(input),
-            ),
-          setTimeLockAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetTimeLockAsAuthorityInstruction(input),
-            ),
-          changeThresholdAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getChangeThresholdAsAuthorityInstruction(input),
-            ),
-          setNewSettingsAuthorityAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetNewSettingsAuthorityAsAuthorityInstruction(input),
-            ),
-          setArchivalAuthorityAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getSetArchivalAuthorityAsAuthorityInstruction(input),
-            ),
           addSpendingLimitAsAuthority: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getAddSpendingLimitAsAuthorityInstruction(input),
-            ),
-          removeSpendingLimitAsAuthority: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getRemoveSpendingLimitAsAuthorityInstruction(input),
-            ),
-          createSettingsTransaction: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateSettingsTransactionInstruction(input),
-            ),
-          executeSettingsTransaction: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getExecuteSettingsTransactionInstruction(input),
-            ),
-          createTransaction: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateTransactionInstruction(input),
-            ),
-          createTransactionBuffer: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateTransactionBufferInstruction(input),
-            ),
-          closeTransactionBuffer: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCloseTransactionBufferInstruction(input),
-            ),
-          extendTransactionBuffer: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getExtendTransactionBufferInstruction(input),
-            ),
-          createTransactionFromBuffer: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateTransactionFromBufferInstruction(input),
-            ),
-          executeTransaction: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getExecuteTransactionInstruction(input),
-            ),
-          createBatch: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateBatchInstruction(input),
             ),
           addTransactionToBatch: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getAddTransactionToBatchInstruction(input),
             ),
-          executeBatchTransaction: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getExecuteBatchTransactionInstruction(input),
-            ),
-          createProposal: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getCreateProposalInstruction(input),
-            ),
-          activateProposal: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getActivateProposalInstruction(input),
-            ),
           approveProposal: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getApproveProposalInstruction(input),
-            ),
-          rejectProposal: (input) =>
-            addSelfPlanAndSendFunctions(
-              client,
-              getRejectProposalInstruction(input),
             ),
           cancelProposal: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getCancelProposalInstruction(input),
             ),
-          useSpendingLimit: (input) =>
+          changeThresholdAsAuthority: (input) =>
             addSelfPlanAndSendFunctions(
               client,
-              getUseSpendingLimitInstruction(input),
+              getChangeThresholdAsAuthorityInstruction(input),
+            ),
+          closeBatch: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseBatchInstruction(input),
+            ),
+          closeBatchTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseBatchTransactionInstruction(input),
+            ),
+          closeEmptyPolicyTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseEmptyPolicyTransactionInstructionAsync(input),
             ),
           closeSettingsTransaction: (input) =>
             addSelfPlanAndSendFunctions(
@@ -1607,39 +1557,143 @@ export function squadsSmartAccountProgramProgram() {
               client,
               getCloseTransactionInstruction(input),
             ),
-          closeBatchTransaction: (input) =>
+          closeTransactionBuffer: (input) =>
             addSelfPlanAndSendFunctions(
               client,
-              getCloseBatchTransactionInstruction(input),
+              getCloseTransactionBufferInstruction(input),
             ),
-          closeBatch: (input) =>
+          createBatch: (input) =>
             addSelfPlanAndSendFunctions(
               client,
-              getCloseBatchInstruction(input),
+              getCreateBatchInstruction(input),
             ),
-          executeTransactionSync: (input) =>
+          createProposal: (input) =>
             addSelfPlanAndSendFunctions(
               client,
-              getExecuteTransactionSyncInstruction(input),
+              getCreateProposalInstruction(input),
+            ),
+          createSettingsTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateSettingsTransactionInstruction(input),
+            ),
+          createSmartAccount: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateSmartAccountInstructionAsync(input),
+            ),
+          createTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateTransactionInstructionAsync(input),
+            ),
+          createTransactionBuffer: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateTransactionBufferInstruction(input),
+            ),
+          createTransactionFromBuffer: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCreateTransactionFromBufferInstructionAsync(input),
+            ),
+          executeBatchTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExecuteBatchTransactionInstruction(input),
+            ),
+          executeSettingsTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExecuteSettingsTransactionInstruction(input),
             ),
           executeSettingsTransactionSync: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getExecuteSettingsTransactionSyncInstruction(input),
             ),
+          executeTransaction: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExecuteTransactionInstruction(input),
+            ),
+          executeTransactionSync: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExecuteTransactionSyncInstruction(input),
+            ),
+          executeTransactionSyncV2: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExecuteTransactionSyncV2Instruction(input),
+            ),
+          extendTransactionBuffer: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getExtendTransactionBufferInstruction(input),
+            ),
+          initializeProgramConfig: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getInitializeProgramConfigInstructionAsync(input),
+            ),
           logEvent: (input) =>
             addSelfPlanAndSendFunctions(client, getLogEventInstruction(input)),
+          rejectProposal: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRejectProposalInstruction(input),
+            ),
+          removeSignerAsAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRemoveSignerAsAuthorityInstruction(input),
+            ),
+          removeSpendingLimitAsAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRemoveSpendingLimitAsAuthorityInstruction(input),
+            ),
+          setArchivalAuthorityAsAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetArchivalAuthorityAsAuthorityInstruction(input),
+            ),
+          setNewSettingsAuthorityAsAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetNewSettingsAuthorityAsAuthorityInstruction(input),
+            ),
+          setProgramConfigAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetProgramConfigAuthorityInstructionAsync(input),
+            ),
+          setProgramConfigSmartAccountCreationFee: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetProgramConfigSmartAccountCreationFeeInstructionAsync(input),
+            ),
+          setProgramConfigTreasury: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetProgramConfigTreasuryInstructionAsync(input),
+            ),
+          setTimeLockAsAuthority: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getSetTimeLockAsAuthorityInstruction(input),
+            ),
+          useSpendingLimit: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getUseSpendingLimitInstruction(input),
+            ),
         },
         pdas: {
           programConfig: findProgramConfigPda,
-          settings: findSettingsPda,
-          smartAccount: findSmartAccountPda,
-          ephemeralSigner: findEphemeralSignerPda,
           transaction: findTransactionPda,
-          proposal: findProposalPda,
-          batchTransaction: findBatchTransactionPda,
-          spendingLimit: findSpendingLimitPda,
-          policy: findPolicyPda,
+          transactionCreateTransaction: findTransactionCreateTransactionPda,
         },
       },
     });

@@ -58,7 +58,7 @@ export function getCreateTransactionBufferDiscriminatorBytes(): ReadonlyUint8Arr
 
 export type CreateTransactionBufferInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountTransactionBuffer extends string | AccountMeta<string> = string,
   TAccountCreator extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
@@ -69,9 +69,9 @@ export type CreateTransactionBufferInstruction<
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? ReadonlyAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountTransactionBuffer extends string
         ? WritableAccount<TAccountTransactionBuffer>
         : TAccountTransactionBuffer,
@@ -156,13 +156,13 @@ export function getCreateTransactionBufferInstructionDataCodec(): Codec<
 }
 
 export type CreateTransactionBufferInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountCreator extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   /** The signer on the smart account that is creating the transaction. */
   creator: TransactionSigner<TAccountCreator>;
@@ -177,7 +177,7 @@ export type CreateTransactionBufferInput<
 };
 
 export function getCreateTransactionBufferInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountTransactionBuffer extends string,
   TAccountCreator extends string,
   TAccountRentPayer extends string,
@@ -186,7 +186,7 @@ export function getCreateTransactionBufferInstruction<
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: CreateTransactionBufferInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountTransactionBuffer,
     TAccountCreator,
     TAccountRentPayer,
@@ -195,7 +195,7 @@ export function getCreateTransactionBufferInstruction<
   config?: { programAddress?: TProgramAddress },
 ): CreateTransactionBufferInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountTransactionBuffer,
   TAccountCreator,
   TAccountRentPayer,
@@ -207,7 +207,10 @@ export function getCreateTransactionBufferInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: false,
+    },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
       isWritable: true,
@@ -233,7 +236,7 @@ export function getCreateTransactionBufferInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("transactionBuffer", accounts.transactionBuffer),
       getAccountMeta("creator", accounts.creator),
       getAccountMeta("rentPayer", accounts.rentPayer),
@@ -245,7 +248,7 @@ export function getCreateTransactionBufferInstruction<
     programAddress,
   } as CreateTransactionBufferInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountTransactionBuffer,
     TAccountCreator,
     TAccountRentPayer,
@@ -259,7 +262,7 @@ export type ParsedCreateTransactionBufferInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     transactionBuffer: TAccountMetas[1];
     /** The signer on the smart account that is creating the transaction. */
     creator: TAccountMetas[2];
@@ -296,7 +299,7 @@ export function parseCreateTransactionBufferInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       transactionBuffer: getNextAccount(),
       creator: getNextAccount(),
       rentPayer: getNextAccount(),

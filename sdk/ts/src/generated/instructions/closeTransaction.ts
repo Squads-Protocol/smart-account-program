@@ -46,7 +46,7 @@ export function getCloseTransactionDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type CloseTransactionInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountProposal extends string | AccountMeta<string> = string,
   TAccountTransaction extends string | AccountMeta<string> = string,
   TAccountProposalRentCollector extends string | AccountMeta<string> = string,
@@ -54,14 +54,16 @@ export type CloseTransactionInstruction<
     string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? ReadonlyAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountProposal extends string
         ? WritableAccount<TAccountProposal>
         : TAccountProposal,
@@ -77,6 +79,9 @@ export type CloseTransactionInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -111,14 +116,15 @@ export function getCloseTransactionInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type CloseTransactionInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountProposal extends string = string,
   TAccountTransaction extends string = string,
   TAccountProposalRentCollector extends string = string,
   TAccountTransactionRentCollector extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   /** the logic within `transaction_close` does the rest of the checks. */
   proposal: Address<TAccountProposal>;
   /** Transaction corresponding to the `proposal`. */
@@ -128,35 +134,39 @@ export type CloseTransactionInput<
   /** The rent collector. */
   transactionRentCollector: Address<TAccountTransactionRentCollector>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
 };
 
 export function getCloseTransactionInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountProposal extends string,
   TAccountTransaction extends string,
   TAccountProposalRentCollector extends string,
   TAccountTransactionRentCollector extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: CloseTransactionInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountTransaction,
     TAccountProposalRentCollector,
     TAccountTransactionRentCollector,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CloseTransactionInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountProposal,
   TAccountTransaction,
   TAccountProposalRentCollector,
   TAccountTransactionRentCollector,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -164,7 +174,10 @@ export function getCloseTransactionInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: false,
+    },
     proposal: { value: input.proposal ?? null, isWritable: true },
     transaction: { value: input.transaction ?? null, isWritable: true },
     proposalRentCollector: {
@@ -176,6 +189,7 @@ export function getCloseTransactionInstruction<
       isWritable: true,
     },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -187,11 +201,15 @@ export function getCloseTransactionInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("proposal", accounts.proposal),
       getAccountMeta("transaction", accounts.transaction),
       getAccountMeta("proposalRentCollector", accounts.proposalRentCollector),
@@ -200,17 +218,19 @@ export function getCloseTransactionInstruction<
         accounts.transactionRentCollector,
       ),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCloseTransactionInstructionDataEncoder().encode({}),
     programAddress,
   } as CloseTransactionInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountTransaction,
     TAccountProposalRentCollector,
     TAccountTransactionRentCollector,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -220,7 +240,7 @@ export type ParsedCloseTransactionInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     /** the logic within `transaction_close` does the rest of the checks. */
     proposal: TAccountMetas[1];
     /** Transaction corresponding to the `proposal`. */
@@ -230,6 +250,7 @@ export type ParsedCloseTransactionInstruction<
     /** The rent collector. */
     transactionRentCollector: TAccountMetas[4];
     systemProgram: TAccountMetas[5];
+    program: TAccountMetas[6];
   };
   data: CloseTransactionInstructionData;
 };
@@ -242,12 +263,12 @@ export function parseCloseTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCloseTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 6,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -260,12 +281,13 @@ export function parseCloseTransactionInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       proposal: getNextAccount(),
       transaction: getNextAccount(),
       proposalRentCollector: getNextAccount(),
       transactionRentCollector: getNextAccount(),
       systemProgram: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getCloseTransactionInstructionDataDecoder().decode(instruction.data),
   };

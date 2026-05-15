@@ -14,13 +14,15 @@ pub const APPROVE_PROPOSAL_DISCRIMINATOR: [u8; 8] = [136, 108, 102, 85, 98, 114,
 /// Accounts.
 #[derive(Debug)]
 pub struct ApproveProposal {
-    pub settings: solana_address::Address,
+    pub consensus_account: solana_address::Address,
 
     pub signer: solana_address::Address,
 
     pub proposal: solana_address::Address,
 
     pub system_program: Option<solana_address::Address>,
+
+    pub program: solana_address::Address,
 }
 
 impl ApproveProposal {
@@ -37,9 +39,9 @@ impl ApproveProposal {
         args: ApproveProposalInstructionArgs,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.settings,
+            self.consensus_account,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(self.signer, true));
@@ -55,6 +57,10 @@ impl ApproveProposal {
                 false,
             ));
         }
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
+            false,
+        ));
         accounts.extend_from_slice(remaining_accounts);
         let mut data = ApproveProposalInstructionData::new().try_to_vec().unwrap();
         let mut args = args.try_to_vec().unwrap();
@@ -106,16 +112,18 @@ impl ApproveProposalInstructionArgs {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
+///   0. `[]` consensus_account
 ///   1. `[writable, signer]` signer
 ///   2. `[writable]` proposal
-///   3. `[optional]` system_program
+///   3. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   4. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct ApproveProposalBuilder {
-    settings: Option<solana_address::Address>,
+    consensus_account: Option<solana_address::Address>,
     signer: Option<solana_address::Address>,
     proposal: Option<solana_address::Address>,
     system_program: Option<solana_address::Address>,
+    program: Option<solana_address::Address>,
     args: Option<VoteOnProposalArgs>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
@@ -125,8 +133,8 @@ impl ApproveProposalBuilder {
         Self::default()
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: solana_address::Address) -> &mut Self {
-        self.settings = Some(settings);
+    pub fn consensus_account(&mut self, consensus_account: solana_address::Address) -> &mut Self {
+        self.consensus_account = Some(consensus_account);
         self
     }
     #[inline(always)]
@@ -143,6 +151,12 @@ impl ApproveProposalBuilder {
     #[inline(always)]
     pub fn system_program(&mut self, system_program: Option<solana_address::Address>) -> &mut Self {
         self.system_program = system_program;
+        self
+    }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
+    #[inline(always)]
+    pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
+        self.program = Some(program);
         self
     }
     #[inline(always)]
@@ -168,10 +182,15 @@ impl ApproveProposalBuilder {
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = ApproveProposal {
-            settings: self.settings.expect("settings is not set"),
+            consensus_account: self
+                .consensus_account
+                .expect("consensus_account is not set"),
             signer: self.signer.expect("signer is not set"),
             proposal: self.proposal.expect("proposal is not set"),
             system_program: self.system_program,
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = ApproveProposalInstructionArgs {
             args: self.args.clone().expect("args is not set"),
@@ -183,13 +202,15 @@ impl ApproveProposalBuilder {
 
 /// `approve_proposal` CPI accounts.
 pub struct ApproveProposalCpiAccounts<'a, 'b> {
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub signer: &'b solana_account_info::AccountInfo<'a>,
 
     pub proposal: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
 /// `approve_proposal` CPI instruction.
@@ -197,13 +218,15 @@ pub struct ApproveProposalCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub signer: &'b solana_account_info::AccountInfo<'a>,
 
     pub proposal: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
     /// The arguments for the instruction.
     pub __args: ApproveProposalInstructionArgs,
 }
@@ -216,10 +239,11 @@ impl<'a, 'b> ApproveProposalCpi<'a, 'b> {
     ) -> Self {
         Self {
             __program: program,
-            settings: accounts.settings,
+            consensus_account: accounts.consensus_account,
             signer: accounts.signer,
             proposal: accounts.proposal,
             system_program: accounts.system_program,
+            program: accounts.program,
             __args: args,
         }
     }
@@ -246,9 +270,9 @@ impl<'a, 'b> ApproveProposalCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(4 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(5 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.settings.key,
+            *self.consensus_account.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new(*self.signer.key, true));
@@ -267,6 +291,10 @@ impl<'a, 'b> ApproveProposalCpi<'a, 'b> {
                 false,
             ));
         }
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false,
+        ));
         remaining_accounts.iter().for_each(|remaining_account| {
             accounts.push(solana_instruction::AccountMeta {
                 pubkey: *remaining_account.0.key,
@@ -283,14 +311,15 @@ impl<'a, 'b> ApproveProposalCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(5 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(6 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.settings.clone());
+        account_infos.push(self.consensus_account.clone());
         account_infos.push(self.signer.clone());
         account_infos.push(self.proposal.clone());
         if let Some(system_program) = self.system_program {
             account_infos.push(system_program.clone());
         }
+        account_infos.push(self.program.clone());
         remaining_accounts
             .iter()
             .for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
@@ -307,10 +336,11 @@ impl<'a, 'b> ApproveProposalCpi<'a, 'b> {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
+///   0. `[]` consensus_account
 ///   1. `[writable, signer]` signer
 ///   2. `[writable]` proposal
 ///   3. `[optional]` system_program
+///   4. `[]` program
 #[derive(Clone, Debug)]
 pub struct ApproveProposalCpiBuilder<'a, 'b> {
     instruction: Box<ApproveProposalCpiBuilderInstruction<'a, 'b>>,
@@ -320,18 +350,22 @@ impl<'a, 'b> ApproveProposalCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
         let instruction = Box::new(ApproveProposalCpiBuilderInstruction {
             __program: program,
-            settings: None,
+            consensus_account: None,
             signer: None,
             proposal: None,
             system_program: None,
+            program: None,
             args: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.settings = Some(settings);
+    pub fn consensus_account(
+        &mut self,
+        consensus_account: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.consensus_account = Some(consensus_account);
         self
     }
     #[inline(always)]
@@ -351,6 +385,11 @@ impl<'a, 'b> ApproveProposalCpiBuilder<'a, 'b> {
         system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
     ) -> &mut Self {
         self.instruction.system_program = system_program;
+        self
+    }
+    #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.program = Some(program);
         self
     }
     #[inline(always)]
@@ -398,13 +437,18 @@ impl<'a, 'b> ApproveProposalCpiBuilder<'a, 'b> {
         let instruction = ApproveProposalCpi {
             __program: self.instruction.__program,
 
-            settings: self.instruction.settings.expect("settings is not set"),
+            consensus_account: self
+                .instruction
+                .consensus_account
+                .expect("consensus_account is not set"),
 
             signer: self.instruction.signer.expect("signer is not set"),
 
             proposal: self.instruction.proposal.expect("proposal is not set"),
 
             system_program: self.instruction.system_program,
+
+            program: self.instruction.program.expect("program is not set"),
             __args: args,
         };
         instruction.invoke_signed_with_remaining_accounts(
@@ -417,10 +461,11 @@ impl<'a, 'b> ApproveProposalCpiBuilder<'a, 'b> {
 #[derive(Clone, Debug)]
 struct ApproveProposalCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    settings: Option<&'b solana_account_info::AccountInfo<'a>>,
+    consensus_account: Option<&'b solana_account_info::AccountInfo<'a>>,
     signer: Option<&'b solana_account_info::AccountInfo<'a>>,
     proposal: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    program: Option<&'b solana_account_info::AccountInfo<'a>>,
     args: Option<VoteOnProposalArgs>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,

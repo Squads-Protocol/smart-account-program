@@ -117,7 +117,7 @@ impl RemoveSpendingLimitAsAuthorityInstructionArgs {
 ///   1. `[signer]` settings_authority
 ///   2. `[writable]` spending_limit
 ///   3. `[writable]` rent_collector
-///   4. `[]` program
+///   4. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct RemoveSpendingLimitAsAuthorityBuilder {
     settings: Option<solana_address::Address>,
@@ -155,6 +155,7 @@ impl RemoveSpendingLimitAsAuthorityBuilder {
         self.rent_collector = Some(rent_collector);
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -190,7 +191,9 @@ impl RemoveSpendingLimitAsAuthorityBuilder {
                 .expect("settings_authority is not set"),
             spending_limit: self.spending_limit.expect("spending_limit is not set"),
             rent_collector: self.rent_collector.expect("rent_collector is not set"),
-            program: self.program.expect("program is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = RemoveSpendingLimitAsAuthorityInstructionArgs {
             memo: self.memo.clone(),

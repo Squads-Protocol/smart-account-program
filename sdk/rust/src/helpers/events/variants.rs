@@ -3,15 +3,23 @@
 //! Field shapes match the program's `events/account_events.rs` exactly so
 //! borsh decoding round-trips on the bytes emitted by the program's
 //! `LogEvent` self-CPI.
+//!
+//! Most leaf types (`SettingsAction`, `LimitedSettingsAction`, `PolicyPayload`,
+//! Hook/InstructionConstraint/etc.) are now codama-emitted and imported from
+//! `crate::generated::types`. Only the snapshot types and policy-storage
+//! structures that the IDL doesn't surface live in [`super::snapshots`] /
+//! [`super::policy`].
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_address::Address;
 
-use crate::generated::types::SmartAccountCompiledInstruction;
-use crate::helpers::events::policy::{LimitedSettingsAction, Policy, PolicyPayload};
+use crate::generated::types::{
+    LimitedSettingsAction, PolicyPayload, SettingsAction, SmartAccountCompiledInstruction,
+};
+use crate::helpers::events::policy::Policy;
 use crate::helpers::events::snapshots::{
-    ConsensusAccountType, ProposalSnapshot, SettingsActionFull, SettingsSnapshot,
-    SettingsTransactionSnapshot, SpendingLimitSnapshot, TransactionSnapshot,
+    ConsensusAccountType, ProposalSnapshot, SettingsSnapshot, SettingsTransactionSnapshot,
+    SpendingLimitSnapshot, TransactionSnapshot,
 };
 
 // 0
@@ -37,7 +45,7 @@ pub struct SynchronousSettingsTransactionEvent {
     pub settings_pubkey: Address,
     pub signers: Vec<Address>,
     pub settings: SettingsSnapshot,
-    pub changes: Vec<SettingsActionFull>,
+    pub changes: Vec<SettingsAction>,
 }
 
 // 3
@@ -77,7 +85,7 @@ pub struct AuthoritySettingsEvent {
     pub settings: SettingsSnapshot,
     pub settings_pubkey: Address,
     pub authority: Address,
-    pub change: SettingsActionFull,
+    pub change: SettingsAction,
 }
 
 // 7
@@ -108,7 +116,7 @@ pub enum TransactionContent {
     SettingsTransaction {
         settings: SettingsSnapshot,
         transaction: SettingsTransactionSnapshot,
-        changes: Vec<SettingsActionFull>,
+        changes: Vec<SettingsAction>,
     },
 }
 

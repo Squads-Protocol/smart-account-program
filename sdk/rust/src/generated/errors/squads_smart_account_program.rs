@@ -97,81 +97,312 @@ pub enum SquadsSmartAccountProgramError {
     /// 6028 - Decimals don't match the mint
     #[error("Decimals don't match the mint")]
     DecimalsMismatch = 0x178C,
-    /// 6029 - Spending limit is expired
-    #[error("Spending limit is expired")]
-    SpendingLimitExpired = 0x178D,
-    /// 6030 - Signer has unknown permission
+    /// 6029 - Signer has unknown permission
     #[error("Signer has unknown permission")]
-    UnknownPermission = 0x178E,
-    /// 6031 - Account is protected, it cannot be passed into a CPI as writable
+    UnknownPermission = 0x178D,
+    /// 6030 - Account is protected, it cannot be passed into a CPI as writable
     #[error("Account is protected, it cannot be passed into a CPI as writable")]
-    ProtectedAccount = 0x178F,
-    /// 6032 - Time lock exceeds the maximum allowed (90 days)
+    ProtectedAccount = 0x178E,
+    /// 6031 - Time lock exceeds the maximum allowed (90 days)
     #[error("Time lock exceeds the maximum allowed (90 days)")]
-    TimeLockExceedsMaxAllowed = 0x1790,
-    /// 6033 - Account is not owned by Smart Account program
+    TimeLockExceedsMaxAllowed = 0x178F,
+    /// 6032 - Account is not owned by Smart Account program
     #[error("Account is not owned by Smart Account program")]
-    IllegalAccountOwner = 0x1791,
-    /// 6034 - Rent reclamation is disabled for this smart account
+    IllegalAccountOwner = 0x1790,
+    /// 6033 - Rent reclamation is disabled for this smart account
     #[error("Rent reclamation is disabled for this smart account")]
-    RentReclamationDisabled = 0x1792,
-    /// 6035 - Invalid rent collector address
+    RentReclamationDisabled = 0x1791,
+    /// 6034 - Invalid rent collector address
     #[error("Invalid rent collector address")]
-    InvalidRentCollector = 0x1793,
-    /// 6036 - Proposal is for another smart account
+    InvalidRentCollector = 0x1792,
+    /// 6035 - Proposal is for another smart account
     #[error("Proposal is for another smart account")]
-    ProposalForAnotherSmartAccount = 0x1794,
-    /// 6037 - Transaction is for another smart account
+    ProposalForAnotherSmartAccount = 0x1793,
+    /// 6036 - Transaction is for another smart account
     #[error("Transaction is for another smart account")]
-    TransactionForAnotherSmartAccount = 0x1795,
-    /// 6038 - Transaction doesn't match proposal
+    TransactionForAnotherSmartAccount = 0x1794,
+    /// 6037 - Transaction doesn't match proposal
     #[error("Transaction doesn't match proposal")]
-    TransactionNotMatchingProposal = 0x1796,
-    /// 6039 - Transaction is not last in batch
+    TransactionNotMatchingProposal = 0x1795,
+    /// 6038 - Transaction is not last in batch
     #[error("Transaction is not last in batch")]
-    TransactionNotLastInBatch = 0x1797,
-    /// 6040 - Batch is not empty
+    TransactionNotLastInBatch = 0x1796,
+    /// 6039 - Batch is not empty
     #[error("Batch is not empty")]
-    BatchNotEmpty = 0x1798,
-    /// 6041 - Invalid SpendingLimit amount
+    BatchNotEmpty = 0x1797,
+    /// 6040 - Invalid SpendingLimit amount
     #[error("Invalid SpendingLimit amount")]
-    SpendingLimitInvalidAmount = 0x1799,
-    /// 6042 - Invalid Instruction Arguments
+    SpendingLimitInvalidAmount = 0x1798,
+    /// 6041 - Invalid Instruction Arguments
     #[error("Invalid Instruction Arguments")]
-    InvalidInstructionArgs = 0x179A,
-    /// 6043 - Final message buffer hash doesnt match the expected hash
+    InvalidInstructionArgs = 0x1799,
+    /// 6042 - Final message buffer hash doesnt match the expected hash
     #[error("Final message buffer hash doesnt match the expected hash")]
-    FinalBufferHashMismatch = 0x179B,
-    /// 6044 - Final buffer size cannot exceed 4000 bytes
+    FinalBufferHashMismatch = 0x179A,
+    /// 6043 - Final buffer size cannot exceed 4000 bytes
     #[error("Final buffer size cannot exceed 4000 bytes")]
-    FinalBufferSizeExceeded = 0x179C,
-    /// 6045 - Final buffer size mismatch
+    FinalBufferSizeExceeded = 0x179B,
+    /// 6044 - Final buffer size mismatch
     #[error("Final buffer size mismatch")]
-    FinalBufferSizeMismatch = 0x179D,
-    /// 6046 - smart_account_create has been deprecated. Use smart_account_create_v2 instead.
+    FinalBufferSizeMismatch = 0x179C,
+    /// 6045 - smart_account_create has been deprecated. Use smart_account_create_v2 instead.
     #[error("smart_account_create has been deprecated. Use smart_account_create_v2 instead.")]
-    SmartAccountCreateDeprecated = 0x179E,
-    /// 6047 - Signers do not reach consensus threshold
+    SmartAccountCreateDeprecated = 0x179D,
+    /// 6046 - Signers do not reach consensus threshold
     #[error("Signers do not reach consensus threshold")]
-    ThresholdNotReached = 0x179F,
-    /// 6048 - Invalid number of signer accounts. Must be greater or equal to the threshold
+    ThresholdNotReached = 0x179E,
+    /// 6047 - Invalid number of signer accounts. Must be greater or equal to the threshold
     #[error("Invalid number of signer accounts. Must be greater or equal to the threshold")]
-    InvalidSignerCount = 0x17A0,
-    /// 6049 - Missing signature
+    InvalidSignerCount = 0x179F,
+    /// 6048 - Missing signature
     #[error("Missing signature")]
-    MissingSignature = 0x17A1,
-    /// 6050 - Insufficient aggregate permissions across signing members
+    MissingSignature = 0x17A0,
+    /// 6049 - Insufficient aggregate permissions across signing members
     #[error("Insufficient aggregate permissions across signing members")]
-    InsufficientAggregatePermissions = 0x17A2,
-    /// 6051 - Insufficient vote permissions across signing members
+    InsufficientAggregatePermissions = 0x17A1,
+    /// 6050 - Insufficient vote permissions across signing members
     #[error("Insufficient vote permissions across signing members")]
-    InsufficientVotePermissions = 0x17A3,
-    /// 6052 - Smart account must not be time locked
+    InsufficientVotePermissions = 0x17A2,
+    /// 6051 - Smart account must not be time locked
     #[error("Smart account must not be time locked")]
-    TimeLockNotZero = 0x17A4,
-    /// 6053 - Feature not implemented
+    TimeLockNotZero = 0x17A3,
+    /// 6052 - Feature not implemented
     #[error("Feature not implemented")]
-    NotImplemented = 0x17A5,
+    NotImplemented = 0x17A4,
+    /// 6053 - Invalid cadence configuration
+    #[error("Invalid cadence configuration")]
+    SpendingLimitInvalidCadenceConfiguration = 0x17A5,
+    /// 6054 - Invalid data constraint
+    #[error("Invalid data constraint")]
+    InvalidDataConstraint = 0x17A6,
+    /// 6055 - Invalid payload
+    #[error("Invalid payload")]
+    InvalidPayload = 0x17A7,
+    /// 6056 - Protected instruction
+    #[error("Protected instruction")]
+    ProtectedInstruction = 0x17A8,
+    /// 6057 - Placeholder error
+    #[error("Placeholder error")]
+    PlaceholderError = 0x17A9,
+    /// 6058 - Invalid policy payload
+    #[error("Invalid policy payload")]
+    InvalidPolicyPayload = 0x17AA,
+    /// 6059 - Invalid empty policy
+    #[error("Invalid empty policy")]
+    InvalidEmptyPolicy = 0x17AB,
+    /// 6060 - Transaction is for another policy
+    #[error("Transaction is for another policy")]
+    TransactionForAnotherPolicy = 0x17AC,
+    /// 6061 - Program interaction sync payload not allowed with async transaction
+    #[error("Program interaction sync payload not allowed with async transaction")]
+    ProgramInteractionAsyncPayloadNotAllowedWithSyncTransaction = 0x17AD,
+    /// 6062 - Program interaction sync payload not allowed with sync transaction
+    #[error("Program interaction sync payload not allowed with sync transaction")]
+    ProgramInteractionSyncPayloadNotAllowedWithAsyncTransaction = 0x17AE,
+    /// 6063 - Program interaction data constraint failed: instruction data too short
+    #[error("Program interaction data constraint failed: instruction data too short")]
+    ProgramInteractionDataTooShort = 0x17AF,
+    /// 6064 - Program interaction data constraint failed: invalid numeric value
+    #[error("Program interaction data constraint failed: invalid numeric value")]
+    ProgramInteractionInvalidNumericValue = 0x17B0,
+    /// 6065 - Program interaction data constraint failed: invalid byte sequence
+    #[error("Program interaction data constraint failed: invalid byte sequence")]
+    ProgramInteractionInvalidByteSequence = 0x17B1,
+    /// 6066 - Program interaction data constraint failed: unsupported operator for byte slice
+    #[error("Program interaction data constraint failed: unsupported operator for byte slice")]
+    ProgramInteractionUnsupportedSliceOperator = 0x17B2,
+    /// 6067 - Program interaction constraint failed: instruction data parsing error
+    #[error("Program interaction constraint failed: instruction data parsing error")]
+    ProgramInteractionDataParsingError = 0x17B3,
+    /// 6068 - Program interaction constraint failed: program ID mismatch
+    #[error("Program interaction constraint failed: program ID mismatch")]
+    ProgramInteractionProgramIdMismatch = 0x17B4,
+    /// 6069 - Program interaction constraint violation: account constraint
+    #[error("Program interaction constraint violation: account constraint")]
+    ProgramInteractionAccountConstraintViolated = 0x17B5,
+    /// 6070 - Program interaction constraint violation: instruction constraint index out of bounds
+    #[error(
+        "Program interaction constraint violation: instruction constraint index out of bounds"
+    )]
+    ProgramInteractionConstraintIndexOutOfBounds = 0x17B6,
+    /// 6071 - Program interaction constraint violation: instruction count mismatch
+    #[error("Program interaction constraint violation: instruction count mismatch")]
+    ProgramInteractionInstructionCountMismatch = 0x17B7,
+    /// 6072 - Program interaction constraint violation: insufficient remaining lamport allowance
+    #[error("Program interaction constraint violation: insufficient remaining lamport allowance")]
+    ProgramInteractionInsufficientLamportAllowance = 0x17B8,
+    /// 6073 - Program interaction constraint violation: insufficient remaining token allowance
+    #[error("Program interaction constraint violation: insufficient remaining token allowance")]
+    ProgramInteractionInsufficientTokenAllowance = 0x17B9,
+    /// 6074 - Program interaction constraint violation: modified illegal balance
+    #[error("Program interaction constraint violation: modified illegal balance")]
+    ProgramInteractionModifiedIllegalBalance = 0x17BA,
+    /// 6075 - Program interaction constraint violation: illegal token account modification
+    #[error("Program interaction constraint violation: illegal token account modification")]
+    ProgramInteractionIllegalTokenAccountModification = 0x17BB,
+    /// 6076 - Program interaction invariant violation: duplicate spending limit for the same mint
+    #[error("Program interaction invariant violation: duplicate spending limit for the same mint")]
+    ProgramInteractionDuplicateSpendingLimit = 0x17BC,
+    /// 6077 - Program interaction constraint violation: too many instruction constraints. Max is 20
+    #[error(
+        "Program interaction constraint violation: too many instruction constraints. Max is 20"
+    )]
+    ProgramInteractionTooManyInstructionConstraints = 0x17BD,
+    /// 6078 - Program interaction constraint violation: too many spending limits. Max is 10
+    #[error("Program interaction constraint violation: too many spending limits. Max is 10")]
+    ProgramInteractionTooManySpendingLimits = 0x17BE,
+    /// 6079 - Program interaction hook violation: template hook error
+    #[error("Program interaction hook violation: template hook error")]
+    ProgramInteractionTemplateHookError = 0x17BF,
+    /// 6080 - Program interaction hook violation: hook authority cannot be part of hook accounts
+    #[error("Program interaction hook violation: hook authority cannot be part of hook accounts")]
+    ProgramInteractionHookAuthorityCannotBePartOfHookAccounts = 0x17C0,
+    /// 6081 - Spending limit is not active
+    #[error("Spending limit is not active")]
+    SpendingLimitNotActive = 0x17C1,
+    /// 6082 - Spending limit is expired
+    #[error("Spending limit is expired")]
+    SpendingLimitExpired = 0x17C2,
+    /// 6083 - Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true
+    #[error("Spending limit policy invariant violation: usage state cannot be Some() if accumulate_unused is true")]
+    SpendingLimitPolicyInvariantAccumulateUnused = 0x17C3,
+    /// 6084 - Amount violates exact quantity constraint
+    #[error("Amount violates exact quantity constraint")]
+    SpendingLimitViolatesExactQuantityConstraint = 0x17C4,
+    /// 6085 - Amount violates max per use constraint
+    #[error("Amount violates max per use constraint")]
+    SpendingLimitViolatesMaxPerUseConstraint = 0x17C5,
+    /// 6086 - Spending limit is insufficient
+    #[error("Spending limit is insufficient")]
+    SpendingLimitInsufficientRemainingAmount = 0x17C6,
+    /// 6087 - Spending limit invariant violation: max per period must be non-zero
+    #[error("Spending limit invariant violation: max per period must be non-zero")]
+    SpendingLimitInvariantMaxPerPeriodZero = 0x17C7,
+    /// 6088 - Spending limit invariant violation: start time must be positive
+    #[error("Spending limit invariant violation: start time must be positive")]
+    SpendingLimitInvariantStartTimePositive = 0x17C8,
+    /// 6089 - Spending limit invariant violation: expiration must be greater than start
+    #[error("Spending limit invariant violation: expiration must be greater than start")]
+    SpendingLimitInvariantExpirationSmallerThanStart = 0x17C9,
+    /// 6090 - Spending limit invariant violation: overflow enabled must have expiration
+    #[error("Spending limit invariant violation: overflow enabled must have expiration")]
+    SpendingLimitInvariantOverflowEnabledMustHaveExpiration = 0x17CA,
+    /// 6091 - Spending limit invariant violation: one time period cannot have overflow enabled
+    #[error("Spending limit invariant violation: one time period cannot have overflow enabled")]
+    SpendingLimitInvariantOneTimePeriodCannotHaveOverflowEnabled = 0x17CB,
+    /// 6092 - Spending limit invariant violation: remaining amount must be less than max amount
+    #[error("Spending limit invariant violation: remaining amount must be less than max amount")]
+    SpendingLimitInvariantOverflowRemainingAmountGreaterThanMaxAmount = 0x17CC,
+    /// 6093 - Spending limit invariant violation: remaining amount must be less than or equal to max per period
+    #[error("Spending limit invariant violation: remaining amount must be less than or equal to max per period")]
+    SpendingLimitInvariantRemainingAmountGreaterThanMaxPerPeriod = 0x17CD,
+    /// 6094 - Spending limit invariant violation: exact quantity must have max per use non-zero
+    #[error("Spending limit invariant violation: exact quantity must have max per use non-zero")]
+    SpendingLimitInvariantExactQuantityMaxPerUseZero = 0x17CE,
+    /// 6095 - Spending limit invariant violation: max per use must be less than or equal to max per period
+    #[error("Spending limit invariant violation: max per use must be less than or equal to max per period")]
+    SpendingLimitInvariantMaxPerUseGreaterThanMaxPerPeriod = 0x17CF,
+    /// 6096 - Spending limit invariant violation: custom period must be positive
+    #[error("Spending limit invariant violation: custom period must be positive")]
+    SpendingLimitInvariantCustomPeriodNegative = 0x17D0,
+    /// 6097 - Spending limit policy invariant violation: cannot have duplicate destinations for the same mint
+    #[error("Spending limit policy invariant violation: cannot have duplicate destinations for the same mint")]
+    SpendingLimitPolicyInvariantDuplicateDestinations = 0x17D1,
+    /// 6098 - Spending limit invariant violation: last reset must be between start and expiration
+    #[error("Spending limit invariant violation: last reset must be between start and expiration")]
+    SpendingLimitInvariantLastResetOutOfBounds = 0x17D2,
+    /// 6099 - Spending limit invariant violation: last reset must be greater than start
+    #[error("Spending limit invariant violation: last reset must be greater than start")]
+    SpendingLimitInvariantLastResetSmallerThanStart = 0x17D3,
+    /// 6100 - Internal fund transfer policy invariant violation: source account index is not allowed
+    #[error(
+        "Internal fund transfer policy invariant violation: source account index is not allowed"
+    )]
+    InternalFundTransferPolicyInvariantSourceAccountIndexNotAllowed = 0x17D4,
+    /// 6101 - Internal fund transfer policy invariant violation: destination account index is not allowed
+    #[error("Internal fund transfer policy invariant violation: destination account index is not allowed")]
+    InternalFundTransferPolicyInvariantDestinationAccountIndexNotAllowed = 0x17D5,
+    /// 6102 - Internal fund transfer policy invariant violation: source and destination cannot be the same
+    #[error("Internal fund transfer policy invariant violation: source and destination cannot be the same")]
+    InternalFundTransferPolicyInvariantSourceAndDestinationCannotBeTheSame = 0x17D6,
+    /// 6103 - Internal fund transfer policy invariant violation: mint is not allowed
+    #[error("Internal fund transfer policy invariant violation: mint is not allowed")]
+    InternalFundTransferPolicyInvariantMintNotAllowed = 0x17D7,
+    /// 6104 - Internal fund transfer policy invariant violation: amount must be greater than 0
+    #[error("Internal fund transfer policy invariant violation: amount must be greater than 0")]
+    InternalFundTransferPolicyInvariantAmountZero = 0x17D8,
+    /// 6105 - Internal fund transfer policy invariant violation: cannot have duplicate mints
+    #[error("Internal fund transfer policy invariant violation: cannot have duplicate mints")]
+    InternalFundTransferPolicyInvariantDuplicateMints = 0x17D9,
+    /// 6106 - Consensus account is not a settings
+    #[error("Consensus account is not a settings")]
+    ConsensusAccountNotSettings = 0x17DA,
+    /// 6107 - Consensus account is not a policy
+    #[error("Consensus account is not a policy")]
+    ConsensusAccountNotPolicy = 0x17DB,
+    /// 6108 - Settings change policy invariant violation: actions must be non-zero
+    #[error("Settings change policy invariant violation: actions must be non-zero")]
+    SettingsChangePolicyActionsMustBeNonZero = 0x17DC,
+    /// 6109 - Settings change policy violation: submitted settings account must match policy settings key
+    #[error("Settings change policy violation: submitted settings account must match policy settings key")]
+    SettingsChangeInvalidSettingsKey = 0x17DD,
+    /// 6110 - Settings change policy violation: submitted settings account must be writable
+    #[error("Settings change policy violation: submitted settings account must be writable")]
+    SettingsChangeInvalidSettingsAccount = 0x17DE,
+    /// 6111 - Settings change policy violation: rent payer must be writable and signer
+    #[error("Settings change policy violation: rent payer must be writable and signer")]
+    SettingsChangeInvalidRentPayer = 0x17DF,
+    /// 6112 - Settings change policy violation: system program must be the system program
+    #[error("Settings change policy violation: system program must be the system program")]
+    SettingsChangeInvalidSystemProgram = 0x17E0,
+    /// 6113 - Settings change policy violation: signer does not match allowed signer
+    #[error("Settings change policy violation: signer does not match allowed signer")]
+    SettingsChangeAddSignerViolation = 0x17E1,
+    /// 6114 - Settings change policy violation: signer permissions does not match allowed signer permissions
+    #[error("Settings change policy violation: signer permissions does not match allowed signer permissions")]
+    SettingsChangeAddSignerPermissionsViolation = 0x17E2,
+    /// 6115 - Settings change policy violation: signer removal does not mach allowed signer removal
+    #[error(
+        "Settings change policy violation: signer removal does not mach allowed signer removal"
+    )]
+    SettingsChangeRemoveSignerViolation = 0x17E3,
+    /// 6116 - Settings change policy violation: time lock does not match allowed time lock
+    #[error("Settings change policy violation: time lock does not match allowed time lock")]
+    SettingsChangeChangeTimelockViolation = 0x17E4,
+    /// 6117 - Settings change policy violation: action does not match allowed action
+    #[error("Settings change policy violation: action does not match allowed action")]
+    SettingsChangeActionMismatch = 0x17E5,
+    /// 6118 - Settings change policy invariant violation: cannot have duplicate actions
+    #[error("Settings change policy invariant violation: cannot have duplicate actions")]
+    SettingsChangePolicyInvariantDuplicateActions = 0x17E6,
+    /// 6119 - Settings change policy invariant violation: action indices must match actions length
+    #[error(
+        "Settings change policy invariant violation: action indices must match actions length"
+    )]
+    SettingsChangePolicyInvariantActionIndicesActionsLengthMismatch = 0x17E7,
+    /// 6120 - Settings change policy invariant violation: action index out of bounds
+    #[error("Settings change policy invariant violation: action index out of bounds")]
+    SettingsChangePolicyInvariantActionIndexOutOfBounds = 0x17E8,
+    /// 6121 - Policy is not active yet
+    #[error("Policy is not active yet")]
+    PolicyNotActiveYet = 0x17E9,
+    /// 6122 - Policy invariant violation: invalid policy expiration
+    #[error("Policy invariant violation: invalid policy expiration")]
+    PolicyInvariantInvalidExpiration = 0x17EA,
+    /// 6123 - Policy expiration violation: submitted settings key does not match policy settings key
+    #[error(
+        "Policy expiration violation: submitted settings key does not match policy settings key"
+    )]
+    PolicyExpirationViolationPolicySettingsKeyMismatch = 0x17EB,
+    /// 6124 - Policy expiration violation: state expiration requires the settings to be submitted
+    #[error("Policy expiration violation: state expiration requires the settings to be submitted")]
+    PolicyExpirationViolationSettingsAccountNotPresent = 0x17EC,
+    /// 6125 - Policy expiration violation: state hash has expired
+    #[error("Policy expiration violation: state hash has expired")]
+    PolicyExpirationViolationHashExpired = 0x17ED,
+    /// 6126 - Policy expiration violation: timestamp has expired
+    #[error("Policy expiration violation: timestamp has expired")]
+    PolicyExpirationViolationTimestampExpired = 0x17EE,
 }
 
 impl From<SquadsSmartAccountProgramError> for solana_program_error::ProgramError {

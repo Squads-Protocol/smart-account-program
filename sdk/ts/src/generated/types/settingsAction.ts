@@ -40,10 +40,18 @@ import {
 import {
   getPeriodDecoder,
   getPeriodEncoder,
+  getPolicyCreationPayloadDecoder,
+  getPolicyCreationPayloadEncoder,
+  getPolicyExpirationArgsDecoder,
+  getPolicyExpirationArgsEncoder,
   getSmartAccountSignerDecoder,
   getSmartAccountSignerEncoder,
   type Period,
   type PeriodArgs,
+  type PolicyCreationPayload,
+  type PolicyCreationPayloadArgs,
+  type PolicyExpirationArgs,
+  type PolicyExpirationArgsArgs,
   type SmartAccountSigner,
   type SmartAccountSignerArgs,
 } from ".";
@@ -90,7 +98,44 @@ export type SettingsAction =
       expiration: bigint;
     }
   | { __kind: "RemoveSpendingLimit"; spendingLimit: Address }
-  | { __kind: "SetArchivalAuthority"; newArchivalAuthority: Option<Address> };
+  | { __kind: "SetArchivalAuthority"; newArchivalAuthority: Option<Address> }
+  | {
+      __kind: "PolicyCreate";
+      /** Key that is used to seed the Policy PDA. */
+      seed: bigint;
+      /** The policy creation payload containing policy-specific configuration. */
+      policyCreationPayload: PolicyCreationPayload;
+      /** Signers attached to the policy with their permissions. */
+      signers: Array<SmartAccountSigner>;
+      /** Threshold for approvals on the policy. */
+      threshold: number;
+      /** How many seconds must pass between approval and execution. */
+      timeLock: number;
+      /** Timestamp when the policy becomes active. */
+      startTimestamp: Option<bigint>;
+      /** Policy expiration - either time-based or state-based. */
+      expirationArgs: Option<PolicyExpirationArgs>;
+    }
+  | {
+      __kind: "PolicyUpdate";
+      /** The policy account to update. */
+      policy: Address;
+      /** Signers attached to the policy with their permissions. */
+      signers: Array<SmartAccountSigner>;
+      /** Threshold for approvals on the policy. */
+      threshold: number;
+      /** How many seconds must pass between approval and execution. */
+      timeLock: number;
+      /** The policy update payload containing policy-specific configuration. */
+      policyUpdatePayload: PolicyCreationPayload;
+      /** Policy expiration - either time-based or state-based. */
+      expirationArgs: Option<PolicyExpirationArgs>;
+    }
+  | {
+      __kind: "PolicyRemove";
+      /** The policy account to remove. */
+      policy: Address;
+    };
 
 export type SettingsActionArgs =
   | { __kind: "AddSigner"; newSigner: SmartAccountSignerArgs }
@@ -137,6 +182,43 @@ export type SettingsActionArgs =
   | {
       __kind: "SetArchivalAuthority";
       newArchivalAuthority: OptionOrNullable<Address>;
+    }
+  | {
+      __kind: "PolicyCreate";
+      /** Key that is used to seed the Policy PDA. */
+      seed: number | bigint;
+      /** The policy creation payload containing policy-specific configuration. */
+      policyCreationPayload: PolicyCreationPayloadArgs;
+      /** Signers attached to the policy with their permissions. */
+      signers: Array<SmartAccountSignerArgs>;
+      /** Threshold for approvals on the policy. */
+      threshold: number;
+      /** How many seconds must pass between approval and execution. */
+      timeLock: number;
+      /** Timestamp when the policy becomes active. */
+      startTimestamp: OptionOrNullable<number | bigint>;
+      /** Policy expiration - either time-based or state-based. */
+      expirationArgs: OptionOrNullable<PolicyExpirationArgsArgs>;
+    }
+  | {
+      __kind: "PolicyUpdate";
+      /** The policy account to update. */
+      policy: Address;
+      /** Signers attached to the policy with their permissions. */
+      signers: Array<SmartAccountSignerArgs>;
+      /** Threshold for approvals on the policy. */
+      threshold: number;
+      /** How many seconds must pass between approval and execution. */
+      timeLock: number;
+      /** The policy update payload containing policy-specific configuration. */
+      policyUpdatePayload: PolicyCreationPayloadArgs;
+      /** Policy expiration - either time-based or state-based. */
+      expirationArgs: OptionOrNullable<PolicyExpirationArgsArgs>;
+    }
+  | {
+      __kind: "PolicyRemove";
+      /** The policy account to remove. */
+      policy: Address;
     };
 
 export function getSettingsActionEncoder(): Encoder<SettingsActionArgs> {
@@ -171,6 +253,30 @@ export function getSettingsActionEncoder(): Encoder<SettingsActionArgs> {
         ["newArchivalAuthority", getOptionEncoder(getAddressEncoder())],
       ]),
     ],
+    [
+      "PolicyCreate",
+      getStructEncoder([
+        ["seed", getU64Encoder()],
+        ["policyCreationPayload", getPolicyCreationPayloadEncoder()],
+        ["signers", getArrayEncoder(getSmartAccountSignerEncoder())],
+        ["threshold", getU16Encoder()],
+        ["timeLock", getU32Encoder()],
+        ["startTimestamp", getOptionEncoder(getI64Encoder())],
+        ["expirationArgs", getOptionEncoder(getPolicyExpirationArgsEncoder())],
+      ]),
+    ],
+    [
+      "PolicyUpdate",
+      getStructEncoder([
+        ["policy", getAddressEncoder()],
+        ["signers", getArrayEncoder(getSmartAccountSignerEncoder())],
+        ["threshold", getU16Encoder()],
+        ["timeLock", getU32Encoder()],
+        ["policyUpdatePayload", getPolicyCreationPayloadEncoder()],
+        ["expirationArgs", getOptionEncoder(getPolicyExpirationArgsEncoder())],
+      ]),
+    ],
+    ["PolicyRemove", getStructEncoder([["policy", getAddressEncoder()]])],
   ]);
 }
 
@@ -206,6 +312,30 @@ export function getSettingsActionDecoder(): Decoder<SettingsAction> {
         ["newArchivalAuthority", getOptionDecoder(getAddressDecoder())],
       ]),
     ],
+    [
+      "PolicyCreate",
+      getStructDecoder([
+        ["seed", getU64Decoder()],
+        ["policyCreationPayload", getPolicyCreationPayloadDecoder()],
+        ["signers", getArrayDecoder(getSmartAccountSignerDecoder())],
+        ["threshold", getU16Decoder()],
+        ["timeLock", getU32Decoder()],
+        ["startTimestamp", getOptionDecoder(getI64Decoder())],
+        ["expirationArgs", getOptionDecoder(getPolicyExpirationArgsDecoder())],
+      ]),
+    ],
+    [
+      "PolicyUpdate",
+      getStructDecoder([
+        ["policy", getAddressDecoder()],
+        ["signers", getArrayDecoder(getSmartAccountSignerDecoder())],
+        ["threshold", getU16Decoder()],
+        ["timeLock", getU32Decoder()],
+        ["policyUpdatePayload", getPolicyCreationPayloadDecoder()],
+        ["expirationArgs", getOptionDecoder(getPolicyExpirationArgsDecoder())],
+      ]),
+    ],
+    ["PolicyRemove", getStructDecoder([["policy", getAddressDecoder()]])],
   ]);
 }
 
@@ -289,6 +419,30 @@ export function settingsAction(
   "__kind",
   "SetArchivalAuthority"
 >;
+export function settingsAction(
+  kind: "PolicyCreate",
+  data: GetDiscriminatedUnionVariantContent<
+    SettingsActionArgs,
+    "__kind",
+    "PolicyCreate"
+  >,
+): GetDiscriminatedUnionVariant<SettingsActionArgs, "__kind", "PolicyCreate">;
+export function settingsAction(
+  kind: "PolicyUpdate",
+  data: GetDiscriminatedUnionVariantContent<
+    SettingsActionArgs,
+    "__kind",
+    "PolicyUpdate"
+  >,
+): GetDiscriminatedUnionVariant<SettingsActionArgs, "__kind", "PolicyUpdate">;
+export function settingsAction(
+  kind: "PolicyRemove",
+  data: GetDiscriminatedUnionVariantContent<
+    SettingsActionArgs,
+    "__kind",
+    "PolicyRemove"
+  >,
+): GetDiscriminatedUnionVariant<SettingsActionArgs, "__kind", "PolicyRemove">;
 export function settingsAction<K extends SettingsActionArgs["__kind"], Data>(
   kind: K,
   data?: Data,

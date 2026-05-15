@@ -40,7 +40,7 @@ impl SettingsExt for Settings {
         + 4   // signers vec length prefix
         + signers_length * SMART_ACCOUNT_SIGNER_INIT_SPACE
         + 1   // account_utilization
-        + 1   // reserved1
+        + 1 + 8 // policy_seed (Option<u64>) — anchor reserves the Some-payload bytes
         + 1 // reserved2
     }
 

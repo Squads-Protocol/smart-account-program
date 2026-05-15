@@ -55,20 +55,22 @@ export function getCreateProposalDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type CreateProposalInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountProposal extends string | AccountMeta<string> = string,
   TAccountCreator extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? ReadonlyAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountProposal extends string
         ? WritableAccount<TAccountProposal>
         : TAccountProposal,
@@ -83,6 +85,9 @@ export type CreateProposalInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -132,47 +137,52 @@ export function getCreateProposalInstructionDataCodec(): FixedSizeCodec<
 }
 
 export type CreateProposalInput<
-  TAccountSettings extends string = string,
+  TAccountConsensusAccount extends string = string,
   TAccountProposal extends string = string,
   TAccountCreator extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  consensusAccount: Address<TAccountConsensusAccount>;
   proposal: Address<TAccountProposal>;
   /** The signer on the smart account that is creating the proposal. */
   creator: TransactionSigner<TAccountCreator>;
   /** The payer for the proposal account rent. */
   rentPayer: TransactionSigner<TAccountRentPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
   transactionIndex: CreateProposalInstructionDataArgs["transactionIndex"];
   draft: CreateProposalInstructionDataArgs["draft"];
 };
 
 export function getCreateProposalInstruction<
-  TAccountSettings extends string,
+  TAccountConsensusAccount extends string,
   TAccountProposal extends string,
   TAccountCreator extends string,
   TAccountRentPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
   input: CreateProposalInput<
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
 ): CreateProposalInstruction<
   TProgramAddress,
-  TAccountSettings,
+  TAccountConsensusAccount,
   TAccountProposal,
   TAccountCreator,
   TAccountRentPayer,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountProgram
 > {
   // Program address.
   const programAddress =
@@ -180,11 +190,15 @@ export function getCreateProposalInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: false,
+    },
     proposal: { value: input.proposal ?? null, isWritable: true },
     creator: { value: input.creator ?? null, isWritable: false },
     rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -199,15 +213,20 @@ export function getCreateProposalInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("proposal", accounts.proposal),
       getAccountMeta("creator", accounts.creator),
       getAccountMeta("rentPayer", accounts.rentPayer),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCreateProposalInstructionDataEncoder().encode(
       args as CreateProposalInstructionDataArgs,
@@ -215,11 +234,12 @@ export function getCreateProposalInstruction<
     programAddress,
   } as CreateProposalInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountProposal,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -229,13 +249,14 @@ export type ParsedCreateProposalInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     proposal: TAccountMetas[1];
     /** The signer on the smart account that is creating the proposal. */
     creator: TAccountMetas[2];
     /** The payer for the proposal account rent. */
     rentPayer: TAccountMetas[3];
     systemProgram: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: CreateProposalInstructionData;
 };
@@ -248,12 +269,12 @@ export function parseCreateProposalInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCreateProposalInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 6) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 6,
       },
     );
   }
@@ -266,11 +287,12 @@ export function parseCreateProposalInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       proposal: getNextAccount(),
       creator: getNextAccount(),
       rentPayer: getNextAccount(),
       systemProgram: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getCreateProposalInstructionDataDecoder().decode(instruction.data),
   };

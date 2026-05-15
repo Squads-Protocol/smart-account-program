@@ -101,7 +101,7 @@ impl InitializeProgramConfigInstructionArgs {
 /// ### Accounts:
 ///
 ///   0. `[writable]` program_config
-///   1. `[writable, signer]` initializer
+///   1. `[writable, signer, optional]` initializer (default to `init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8`)
 ///   2. `[optional]` system_program (default to `11111111111111111111111111111111`)
 #[derive(Clone, Debug, Default)]
 pub struct InitializeProgramConfigBuilder {
@@ -123,6 +123,7 @@ impl InitializeProgramConfigBuilder {
         self.program_config = Some(program_config);
         self
     }
+    /// `[optional account, default to 'init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8']`
     /// The hard-coded account that is used to initialize the program config once.
     #[inline(always)]
     pub fn initializer(&mut self, initializer: solana_address::Address) -> &mut Self {
@@ -169,7 +170,9 @@ impl InitializeProgramConfigBuilder {
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = InitializeProgramConfig {
             program_config: self.program_config.expect("program_config is not set"),
-            initializer: self.initializer.expect("initializer is not set"),
+            initializer: self.initializer.unwrap_or(solana_address::address!(
+                "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8"
+            )),
             system_program: self
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),

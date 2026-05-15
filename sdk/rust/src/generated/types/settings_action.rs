@@ -6,6 +6,8 @@
 //!
 
 use crate::generated::types::Period;
+use crate::generated::types::PolicyCreationPayload;
+use crate::generated::types::PolicyExpirationArgs;
 use crate::generated::types::SmartAccountSigner;
 use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
@@ -55,5 +57,39 @@ pub enum SettingsAction {
     },
     SetArchivalAuthority {
         new_archival_authority: Option<Address>,
+    },
+    PolicyCreate {
+        /// Key that is used to seed the Policy PDA.
+        seed: u64,
+        /// The policy creation payload containing policy-specific configuration.
+        policy_creation_payload: PolicyCreationPayload,
+        /// Signers attached to the policy with their permissions.
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// Timestamp when the policy becomes active.
+        start_timestamp: Option<i64>,
+        /// Policy expiration - either time-based or state-based.
+        expiration_args: Option<PolicyExpirationArgs>,
+    },
+    PolicyUpdate {
+        /// The policy account to update.
+        policy: Address,
+        /// Signers attached to the policy with their permissions.
+        signers: Vec<SmartAccountSigner>,
+        /// Threshold for approvals on the policy.
+        threshold: u16,
+        /// How many seconds must pass between approval and execution.
+        time_lock: u32,
+        /// The policy update payload containing policy-specific configuration.
+        policy_update_payload: PolicyCreationPayload,
+        /// Policy expiration - either time-based or state-based.
+        expiration_args: Option<PolicyExpirationArgs>,
+    },
+    PolicyRemove {
+        /// The policy account to remove.
+        policy: Address,
     },
 }

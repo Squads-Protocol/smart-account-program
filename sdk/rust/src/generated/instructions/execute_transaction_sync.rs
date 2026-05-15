@@ -13,7 +13,7 @@ pub const EXECUTE_TRANSACTION_SYNC_DISCRIMINATOR: [u8; 8] = [43, 102, 248, 89, 2
 /// Accounts.
 #[derive(Debug)]
 pub struct ExecuteTransactionSync {
-    pub settings: solana_address::Address,
+    pub consensus_account: solana_address::Address,
 
     pub program: solana_address::Address,
 }
@@ -34,7 +34,7 @@ impl ExecuteTransactionSync {
     ) -> solana_instruction::Instruction {
         let mut accounts = Vec::with_capacity(2 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            self.settings,
+            self.consensus_account,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -96,11 +96,11 @@ impl ExecuteTransactionSyncInstructionArgs {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
-///   1. `[]` program
+///   0. `[]` consensus_account
+///   1. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct ExecuteTransactionSyncBuilder {
-    settings: Option<solana_address::Address>,
+    consensus_account: Option<solana_address::Address>,
     program: Option<solana_address::Address>,
     account_index: Option<u8>,
     num_signers: Option<u8>,
@@ -113,10 +113,11 @@ impl ExecuteTransactionSyncBuilder {
         Self::default()
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: solana_address::Address) -> &mut Self {
-        self.settings = Some(settings);
+    pub fn consensus_account(&mut self, consensus_account: solana_address::Address) -> &mut Self {
+        self.consensus_account = Some(consensus_account);
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
     #[inline(always)]
     pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
         self.program = Some(program);
@@ -155,8 +156,12 @@ impl ExecuteTransactionSyncBuilder {
     #[allow(clippy::clone_on_copy)]
     pub fn instruction(&self) -> solana_instruction::Instruction {
         let accounts = ExecuteTransactionSync {
-            settings: self.settings.expect("settings is not set"),
-            program: self.program.expect("program is not set"),
+            consensus_account: self
+                .consensus_account
+                .expect("consensus_account is not set"),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
         let args = ExecuteTransactionSyncInstructionArgs {
             account_index: self
@@ -173,7 +178,7 @@ impl ExecuteTransactionSyncBuilder {
 
 /// `execute_transaction_sync` CPI accounts.
 pub struct ExecuteTransactionSyncCpiAccounts<'a, 'b> {
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
 }
@@ -183,7 +188,7 @@ pub struct ExecuteTransactionSyncCpi<'a, 'b> {
     /// The program to invoke.
     pub __program: &'b solana_account_info::AccountInfo<'a>,
 
-    pub settings: &'b solana_account_info::AccountInfo<'a>,
+    pub consensus_account: &'b solana_account_info::AccountInfo<'a>,
 
     pub program: &'b solana_account_info::AccountInfo<'a>,
     /// The arguments for the instruction.
@@ -198,7 +203,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpi<'a, 'b> {
     ) -> Self {
         Self {
             __program: program,
-            settings: accounts.settings,
+            consensus_account: accounts.consensus_account,
             program: accounts.program,
             __args: args,
         }
@@ -228,7 +233,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpi<'a, 'b> {
     ) -> solana_program_error::ProgramResult {
         let mut accounts = Vec::with_capacity(2 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
-            *self.settings.key,
+            *self.consensus_account.key,
             false,
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
@@ -255,7 +260,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpi<'a, 'b> {
         };
         let mut account_infos = Vec::with_capacity(3 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
-        account_infos.push(self.settings.clone());
+        account_infos.push(self.consensus_account.clone());
         account_infos.push(self.program.clone());
         remaining_accounts
             .iter()
@@ -273,7 +278,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpi<'a, 'b> {
 ///
 /// ### Accounts:
 ///
-///   0. `[]` settings
+///   0. `[]` consensus_account
 ///   1. `[]` program
 #[derive(Clone, Debug)]
 pub struct ExecuteTransactionSyncCpiBuilder<'a, 'b> {
@@ -284,7 +289,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpiBuilder<'a, 'b> {
     pub fn new(program: &'b solana_account_info::AccountInfo<'a>) -> Self {
         let instruction = Box::new(ExecuteTransactionSyncCpiBuilderInstruction {
             __program: program,
-            settings: None,
+            consensus_account: None,
             program: None,
             account_index: None,
             num_signers: None,
@@ -294,8 +299,11 @@ impl<'a, 'b> ExecuteTransactionSyncCpiBuilder<'a, 'b> {
         Self { instruction }
     }
     #[inline(always)]
-    pub fn settings(&mut self, settings: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
-        self.instruction.settings = Some(settings);
+    pub fn consensus_account(
+        &mut self,
+        consensus_account: &'b solana_account_info::AccountInfo<'a>,
+    ) -> &mut Self {
+        self.instruction.consensus_account = Some(consensus_account);
         self
     }
     #[inline(always)]
@@ -372,7 +380,10 @@ impl<'a, 'b> ExecuteTransactionSyncCpiBuilder<'a, 'b> {
         let instruction = ExecuteTransactionSyncCpi {
             __program: self.instruction.__program,
 
-            settings: self.instruction.settings.expect("settings is not set"),
+            consensus_account: self
+                .instruction
+                .consensus_account
+                .expect("consensus_account is not set"),
 
             program: self.instruction.program.expect("program is not set"),
             __args: args,
@@ -387,7 +398,7 @@ impl<'a, 'b> ExecuteTransactionSyncCpiBuilder<'a, 'b> {
 #[derive(Clone, Debug)]
 struct ExecuteTransactionSyncCpiBuilderInstruction<'a, 'b> {
     __program: &'b solana_account_info::AccountInfo<'a>,
-    settings: Option<&'b solana_account_info::AccountInfo<'a>>,
+    consensus_account: Option<&'b solana_account_info::AccountInfo<'a>>,
     program: Option<&'b solana_account_info::AccountInfo<'a>>,
     account_index: Option<u8>,
     num_signers: Option<u8>,

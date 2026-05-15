@@ -35,8 +35,13 @@ pub fn build_message_v0(
     address_lookup_table_accounts: &[AddressLookupTableAccount],
     recent_blockhash: Hash,
 ) -> Result<MessageV0, TxBuilderError> {
-    MessageV0::try_compile(payer, instructions, address_lookup_table_accounts, recent_blockhash)
-        .map_err(|e| TxBuilderError::Compile(e.to_string()))
+    MessageV0::try_compile(
+        payer,
+        instructions,
+        address_lookup_table_accounts,
+        recent_blockhash,
+    )
+    .map_err(|e| TxBuilderError::Compile(e.to_string()))
 }
 
 /// Compile instructions into a [`VersionedMessage::V0`].
@@ -97,8 +102,12 @@ pub fn compile_unsigned_versioned_transaction(
     address_lookup_table_accounts: &[AddressLookupTableAccount],
     recent_blockhash: Hash,
 ) -> Result<VersionedTransaction, TxBuilderError> {
-    let message =
-        build_versioned_message(payer, instructions, address_lookup_table_accounts, recent_blockhash)?;
+    let message = build_versioned_message(
+        payer,
+        instructions,
+        address_lookup_table_accounts,
+        recent_blockhash,
+    )?;
     Ok(build_unsigned_versioned_transaction(message))
 }
 

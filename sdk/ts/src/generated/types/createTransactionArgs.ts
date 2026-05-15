@@ -7,73 +7,72 @@
  */
 
 import {
-  addDecoderSizePrefix,
-  addEncoderSizePrefix,
   combineCodec,
-  getBytesDecoder,
-  getBytesEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
+  getDiscriminatedUnionDecoder,
+  getDiscriminatedUnionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU32Decoder,
-  getU32Encoder,
-  getU8Decoder,
-  getU8Encoder,
-  getUtf8Decoder,
-  getUtf8Encoder,
+  getTupleDecoder,
+  getTupleEncoder,
   type Codec,
   type Decoder,
   type Encoder,
-  type Option,
-  type OptionOrNullable,
-  type ReadonlyUint8Array,
+  type GetDiscriminatedUnionVariant,
+  type GetDiscriminatedUnionVariantContent,
 } from "@solana/kit";
+import {
+  getPolicyPayloadDecoder,
+  getPolicyPayloadEncoder,
+  getTransactionPayloadDecoder,
+  getTransactionPayloadEncoder,
+  type PolicyPayload,
+  type PolicyPayloadArgs,
+  type TransactionPayload,
+  type TransactionPayloadArgs,
+} from ".";
 
-export type CreateTransactionArgs = {
-  /** Index of the smart account this transaction belongs to. */
-  accountIndex: number;
-  /** Number of ephemeral signing PDAs required by the transaction. */
-  ephemeralSigners: number;
-  transactionMessage: ReadonlyUint8Array;
-  memo: Option<string>;
-};
+export type CreateTransactionArgs =
+  | { __kind: "TransactionPayload"; fields: readonly [TransactionPayload] }
+  | {
+      __kind: "PolicyPayload";
+      /** The payload of the policy transaction. */
+      payload: PolicyPayload;
+    };
 
-export type CreateTransactionArgsArgs = {
-  /** Index of the smart account this transaction belongs to. */
-  accountIndex: number;
-  /** Number of ephemeral signing PDAs required by the transaction. */
-  ephemeralSigners: number;
-  transactionMessage: ReadonlyUint8Array;
-  memo: OptionOrNullable<string>;
-};
+export type CreateTransactionArgsArgs =
+  | { __kind: "TransactionPayload"; fields: readonly [TransactionPayloadArgs] }
+  | {
+      __kind: "PolicyPayload";
+      /** The payload of the policy transaction. */
+      payload: PolicyPayloadArgs;
+    };
 
 export function getCreateTransactionArgsEncoder(): Encoder<CreateTransactionArgsArgs> {
-  return getStructEncoder([
-    ["accountIndex", getU8Encoder()],
-    ["ephemeralSigners", getU8Encoder()],
+  return getDiscriminatedUnionEncoder([
     [
-      "transactionMessage",
-      addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
+      "TransactionPayload",
+      getStructEncoder([
+        ["fields", getTupleEncoder([getTransactionPayloadEncoder()])],
+      ]),
     ],
     [
-      "memo",
-      getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
+      "PolicyPayload",
+      getStructEncoder([["payload", getPolicyPayloadEncoder()]]),
     ],
   ]);
 }
 
 export function getCreateTransactionArgsDecoder(): Decoder<CreateTransactionArgs> {
-  return getStructDecoder([
-    ["accountIndex", getU8Decoder()],
-    ["ephemeralSigners", getU8Decoder()],
+  return getDiscriminatedUnionDecoder([
     [
-      "transactionMessage",
-      addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
+      "TransactionPayload",
+      getStructDecoder([
+        ["fields", getTupleDecoder([getTransactionPayloadDecoder()])],
+      ]),
     ],
     [
-      "memo",
-      getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+      "PolicyPayload",
+      getStructDecoder([["payload", getPolicyPayloadDecoder()]]),
     ],
   ]);
 }
@@ -86,4 +85,47 @@ export function getCreateTransactionArgsCodec(): Codec<
     getCreateTransactionArgsEncoder(),
     getCreateTransactionArgsDecoder(),
   );
+}
+
+// Data Enum Helpers.
+export function createTransactionArgs(
+  kind: "TransactionPayload",
+  data: GetDiscriminatedUnionVariantContent<
+    CreateTransactionArgsArgs,
+    "__kind",
+    "TransactionPayload"
+  >["fields"],
+): GetDiscriminatedUnionVariant<
+  CreateTransactionArgsArgs,
+  "__kind",
+  "TransactionPayload"
+>;
+export function createTransactionArgs(
+  kind: "PolicyPayload",
+  data: GetDiscriminatedUnionVariantContent<
+    CreateTransactionArgsArgs,
+    "__kind",
+    "PolicyPayload"
+  >,
+): GetDiscriminatedUnionVariant<
+  CreateTransactionArgsArgs,
+  "__kind",
+  "PolicyPayload"
+>;
+export function createTransactionArgs<
+  K extends CreateTransactionArgsArgs["__kind"],
+  Data,
+>(kind: K, data?: Data) {
+  return Array.isArray(data)
+    ? { __kind: kind, fields: data }
+    : { __kind: kind, ...(data ?? {}) };
+}
+
+export function isCreateTransactionArgs<
+  K extends CreateTransactionArgs["__kind"],
+>(
+  kind: K,
+  value: CreateTransactionArgs,
+): value is CreateTransactionArgs & { __kind: K } {
+  return value.__kind === kind;
 }

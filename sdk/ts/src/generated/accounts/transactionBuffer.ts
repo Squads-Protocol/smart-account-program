@@ -54,7 +54,7 @@ export function getTransactionBufferDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type TransactionBuffer = {
   discriminator: ReadonlyUint8Array;
-  /** The settings this belongs to. */
+  /** The consensus account (settings or policy) this belongs to. */
   settings: Address;
   /** Signer of the smart account who created the TransactionBuffer. */
   creator: Address;
@@ -71,7 +71,7 @@ export type TransactionBuffer = {
 };
 
 export type TransactionBufferArgs = {
-  /** The settings this belongs to. */
+  /** The consensus account (settings or policy) this belongs to. */
   settings: Address;
   /** Signer of the smart account who created the TransactionBuffer. */
   creator: Address;

@@ -7,8 +7,6 @@
  */
 
 import {
-  addDecoderSizePrefix,
-  addEncoderSizePrefix,
   assertAccountExists,
   assertAccountsExist,
   combineCodec,
@@ -23,12 +21,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU32Decoder,
-  getU32Encoder,
   getU64Decoder,
   getU64Encoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
   type Account,
   type Address,
@@ -43,10 +37,10 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 import {
-  getSmartAccountTransactionMessageDecoder,
-  getSmartAccountTransactionMessageEncoder,
-  type SmartAccountTransactionMessage,
-  type SmartAccountTransactionMessageArgs,
+  getPayloadDecoder,
+  getPayloadEncoder,
+  type Payload,
+  type PayloadArgs,
 } from "../types";
 
 export const TRANSACTION_DISCRIMINATOR: ReadonlyUint8Array = new Uint8Array([
@@ -57,72 +51,31 @@ export function getTransactionDiscriminatorBytes(): ReadonlyUint8Array {
   return fixEncoderSize(getBytesEncoder(), 8).encode(TRANSACTION_DISCRIMINATOR);
 }
 
-/**
- * Stores data required for tracking the voting and execution status of a smart
- * account transaction.
- * Smart Account transaction is a transaction that's executed on behalf of the
- * smart account PDA
- * and wraps arbitrary Solana instructions, typically calling into other Solana programs.
- */
 export type Transaction = {
   discriminator: ReadonlyUint8Array;
-  /** The settings this belongs to. */
-  settings: Address;
+  /** The consensus account this belongs to. */
+  consensusAccount: Address;
   /** Signer of the Smart Account who submitted the transaction. */
   creator: Address;
   /** The rent collector for the transaction account. */
   rentCollector: Address;
-  /** Index of this transaction within the smart account. */
+  /** Index of this transaction within the consensus account. */
   index: bigint;
-  /** bump for the transaction seeds. */
-  bump: number;
-  /** The account index of the smart account this transaction belongs to. */
-  accountIndex: number;
-  /** Derivation bump of the smart account PDA this transaction belongs to. */
-  accountBump: number;
-  /**
-   * Derivation bumps for additional signers.
-   * Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
-   * that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
-   * When wrapping such transactions into smart account ones, we replace these "ephemeral" signing keypairs
-   * with PDAs derived from the SmartAccountTransaction's `transaction_index`
-   * and controlled by the Smart Account Program;
-   * during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,
-   * thus "signing" on behalf of these PDAs.
-   */
-  ephemeralSignerBumps: ReadonlyUint8Array;
-  /** data required for executing the transaction. */
-  message: SmartAccountTransactionMessage;
+  /** The payload of the transaction. */
+  payload: Payload;
 };
 
 export type TransactionArgs = {
-  /** The settings this belongs to. */
-  settings: Address;
+  /** The consensus account this belongs to. */
+  consensusAccount: Address;
   /** Signer of the Smart Account who submitted the transaction. */
   creator: Address;
   /** The rent collector for the transaction account. */
   rentCollector: Address;
-  /** Index of this transaction within the smart account. */
+  /** Index of this transaction within the consensus account. */
   index: number | bigint;
-  /** bump for the transaction seeds. */
-  bump: number;
-  /** The account index of the smart account this transaction belongs to. */
-  accountIndex: number;
-  /** Derivation bump of the smart account PDA this transaction belongs to. */
-  accountBump: number;
-  /**
-   * Derivation bumps for additional signers.
-   * Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
-   * that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.
-   * When wrapping such transactions into smart account ones, we replace these "ephemeral" signing keypairs
-   * with PDAs derived from the SmartAccountTransaction's `transaction_index`
-   * and controlled by the Smart Account Program;
-   * during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,
-   * thus "signing" on behalf of these PDAs.
-   */
-  ephemeralSignerBumps: ReadonlyUint8Array;
-  /** data required for executing the transaction. */
-  message: SmartAccountTransactionMessageArgs;
+  /** The payload of the transaction. */
+  payload: PayloadArgs;
 };
 
 /** Gets the encoder for {@link TransactionArgs} account data. */
@@ -130,18 +83,11 @@ export function getTransactionEncoder(): Encoder<TransactionArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["settings", getAddressEncoder()],
+      ["consensusAccount", getAddressEncoder()],
       ["creator", getAddressEncoder()],
       ["rentCollector", getAddressEncoder()],
       ["index", getU64Encoder()],
-      ["bump", getU8Encoder()],
-      ["accountIndex", getU8Encoder()],
-      ["accountBump", getU8Encoder()],
-      [
-        "ephemeralSignerBumps",
-        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
-      ],
-      ["message", getSmartAccountTransactionMessageEncoder()],
+      ["payload", getPayloadEncoder()],
     ]),
     (value) => ({ ...value, discriminator: TRANSACTION_DISCRIMINATOR }),
   );
@@ -151,18 +97,11 @@ export function getTransactionEncoder(): Encoder<TransactionArgs> {
 export function getTransactionDecoder(): Decoder<Transaction> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["settings", getAddressDecoder()],
+    ["consensusAccount", getAddressDecoder()],
     ["creator", getAddressDecoder()],
     ["rentCollector", getAddressDecoder()],
     ["index", getU64Decoder()],
-    ["bump", getU8Decoder()],
-    ["accountIndex", getU8Decoder()],
-    ["accountBump", getU8Decoder()],
-    [
-      "ephemeralSignerBumps",
-      addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
-    ],
-    ["message", getSmartAccountTransactionMessageDecoder()],
+    ["payload", getPayloadDecoder()],
   ]);
 }
 

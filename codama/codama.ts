@@ -57,8 +57,12 @@ async function main() {
     )
   );
 
-  // Inject PDA definitions hand-ported from sdk/smart-account/src/pda.ts.
-  codama.update(addPdasVisitor({ [programName]: smartAccountPdas() }));
+  // PDA definitions are now embedded in the anchor 0.30+ IDL itself (the
+  // anchor IDL builder emits PDA seeds from `#[account(seeds = [...])]`
+  // constraints), so we no longer need to inject them via addPdasVisitor.
+  // Kept import for the case where a future legacy IDL needs hand-ported PDAs.
+  void smartAccountPdas;
+  void addPdasVisitor;
 
   const restore = preserveConfigFiles();
   try {

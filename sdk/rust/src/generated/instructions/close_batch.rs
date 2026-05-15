@@ -24,6 +24,8 @@ pub struct CloseBatch {
     pub batch_rent_collector: solana_address::Address,
 
     pub system_program: solana_address::Address,
+
+    pub program: solana_address::Address,
 }
 
 impl CloseBatch {
@@ -36,7 +38,7 @@ impl CloseBatch {
         &self,
         remaining_accounts: &[solana_instruction::AccountMeta],
     ) -> solana_instruction::Instruction {
-        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.settings,
             false,
@@ -53,6 +55,10 @@ impl CloseBatch {
         ));
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             self.system_program,
+            false,
+        ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            self.program,
             false,
         ));
         accounts.extend_from_slice(remaining_accounts);
@@ -99,6 +105,7 @@ impl Default for CloseBatchInstructionData {
 ///   3. `[writable]` proposal_rent_collector
 ///   4. `[writable]` batch_rent_collector
 ///   5. `[optional]` system_program (default to `11111111111111111111111111111111`)
+///   6. `[optional]` program (default to `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`)
 #[derive(Clone, Debug, Default)]
 pub struct CloseBatchBuilder {
     settings: Option<solana_address::Address>,
@@ -107,6 +114,7 @@ pub struct CloseBatchBuilder {
     proposal_rent_collector: Option<solana_address::Address>,
     batch_rent_collector: Option<solana_address::Address>,
     system_program: Option<solana_address::Address>,
+    program: Option<solana_address::Address>,
     __remaining_accounts: Vec<solana_instruction::AccountMeta>,
 }
 
@@ -155,6 +163,12 @@ impl CloseBatchBuilder {
         self.system_program = Some(system_program);
         self
     }
+    /// `[optional account, default to 'SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG']`
+    #[inline(always)]
+    pub fn program(&mut self, program: solana_address::Address) -> &mut Self {
+        self.program = Some(program);
+        self
+    }
     /// Add an additional account to the instruction.
     #[inline(always)]
     pub fn add_remaining_account(&mut self, account: solana_instruction::AccountMeta) -> &mut Self {
@@ -185,6 +199,9 @@ impl CloseBatchBuilder {
             system_program: self
                 .system_program
                 .unwrap_or(solana_address::address!("11111111111111111111111111111111")),
+            program: self.program.unwrap_or(solana_address::address!(
+                "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+            )),
         };
 
         accounts.instruction_with_remaining_accounts(&self.__remaining_accounts)
@@ -204,6 +221,8 @@ pub struct CloseBatchCpiAccounts<'a, 'b> {
     pub batch_rent_collector: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
 /// `close_batch` CPI instruction.
@@ -222,6 +241,8 @@ pub struct CloseBatchCpi<'a, 'b> {
     pub batch_rent_collector: &'b solana_account_info::AccountInfo<'a>,
 
     pub system_program: &'b solana_account_info::AccountInfo<'a>,
+
+    pub program: &'b solana_account_info::AccountInfo<'a>,
 }
 
 impl<'a, 'b> CloseBatchCpi<'a, 'b> {
@@ -237,6 +258,7 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
             proposal_rent_collector: accounts.proposal_rent_collector,
             batch_rent_collector: accounts.batch_rent_collector,
             system_program: accounts.system_program,
+            program: accounts.program,
         }
     }
     #[inline(always)]
@@ -262,7 +284,7 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
         signers_seeds: &[&[&[u8]]],
         remaining_accounts: &[(&'b solana_account_info::AccountInfo<'a>, bool, bool)],
     ) -> solana_program_error::ProgramResult {
-        let mut accounts = Vec::with_capacity(6 + remaining_accounts.len());
+        let mut accounts = Vec::with_capacity(7 + remaining_accounts.len());
         accounts.push(solana_instruction::AccountMeta::new_readonly(
             *self.settings.key,
             false,
@@ -284,6 +306,10 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
             *self.system_program.key,
             false,
         ));
+        accounts.push(solana_instruction::AccountMeta::new_readonly(
+            *self.program.key,
+            false,
+        ));
         remaining_accounts.iter().for_each(|remaining_account| {
             accounts.push(solana_instruction::AccountMeta {
                 pubkey: *remaining_account.0.key,
@@ -298,7 +324,7 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
             accounts,
             data,
         };
-        let mut account_infos = Vec::with_capacity(7 + remaining_accounts.len());
+        let mut account_infos = Vec::with_capacity(8 + remaining_accounts.len());
         account_infos.push(self.__program.clone());
         account_infos.push(self.settings.clone());
         account_infos.push(self.proposal.clone());
@@ -306,6 +332,7 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
         account_infos.push(self.proposal_rent_collector.clone());
         account_infos.push(self.batch_rent_collector.clone());
         account_infos.push(self.system_program.clone());
+        account_infos.push(self.program.clone());
         remaining_accounts
             .iter()
             .for_each(|remaining_account| account_infos.push(remaining_account.0.clone()));
@@ -328,6 +355,7 @@ impl<'a, 'b> CloseBatchCpi<'a, 'b> {
 ///   3. `[writable]` proposal_rent_collector
 ///   4. `[writable]` batch_rent_collector
 ///   5. `[]` system_program
+///   6. `[]` program
 #[derive(Clone, Debug)]
 pub struct CloseBatchCpiBuilder<'a, 'b> {
     instruction: Box<CloseBatchCpiBuilderInstruction<'a, 'b>>,
@@ -343,6 +371,7 @@ impl<'a, 'b> CloseBatchCpiBuilder<'a, 'b> {
             proposal_rent_collector: None,
             batch_rent_collector: None,
             system_program: None,
+            program: None,
             __remaining_accounts: Vec::new(),
         });
         Self { instruction }
@@ -388,6 +417,11 @@ impl<'a, 'b> CloseBatchCpiBuilder<'a, 'b> {
         system_program: &'b solana_account_info::AccountInfo<'a>,
     ) -> &mut Self {
         self.instruction.system_program = Some(system_program);
+        self
+    }
+    #[inline(always)]
+    pub fn program(&mut self, program: &'b solana_account_info::AccountInfo<'a>) -> &mut Self {
+        self.instruction.program = Some(program);
         self
     }
     /// Add an additional account to the instruction.
@@ -447,6 +481,8 @@ impl<'a, 'b> CloseBatchCpiBuilder<'a, 'b> {
                 .instruction
                 .system_program
                 .expect("system_program is not set"),
+
+            program: self.instruction.program.expect("program is not set"),
         };
         instruction.invoke_signed_with_remaining_accounts(
             signers_seeds,
@@ -464,6 +500,7 @@ struct CloseBatchCpiBuilderInstruction<'a, 'b> {
     proposal_rent_collector: Option<&'b solana_account_info::AccountInfo<'a>>,
     batch_rent_collector: Option<&'b solana_account_info::AccountInfo<'a>>,
     system_program: Option<&'b solana_account_info::AccountInfo<'a>>,
+    program: Option<&'b solana_account_info::AccountInfo<'a>>,
     /// Additional instruction accounts `(AccountInfo, is_writable, is_signer)`.
     __remaining_accounts: Vec<(&'b solana_account_info::AccountInfo<'a>, bool, bool)>,
 }

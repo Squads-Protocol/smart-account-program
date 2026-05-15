@@ -10,14 +10,10 @@ use borsh::BorshDeserialize;
 use borsh::BorshSerialize;
 use solana_address::Address;
 
-/// Stores the data required for tracking the status of a smart account proposal.
-/// Each `Proposal` has a 1:1 association with a transaction account, e.g. a `Transaction` or a `SettingsTransaction`;
-/// the latter can be executed only after the `Proposal` has been approved and its time lock is released.
-
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, Eq, PartialEq)]
 pub struct Proposal {
     pub discriminator: [u8; 8],
-    /// The settings this belongs to.
+    /// The consensus account (settings or policy) this belongs to.
     pub settings: Address,
     /// Index of the smart account transaction this proposal is associated with.
     pub transaction_index: u64,

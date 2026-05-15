@@ -35,8 +35,10 @@ import {
 } from "@solana/kit";
 import {
   getAccountMetaFactory,
+  getAddressFromResolvedInstructionAccount,
   type ResolvedInstructionAccount,
 } from "@solana/program-client-core";
+import { findTransactionPda } from "../pdas";
 import { SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS } from "../programs";
 import {
   getCreateTransactionArgsDecoder,
@@ -56,20 +58,22 @@ export function getCreateTransactionDiscriminatorBytes(): ReadonlyUint8Array {
 
 export type CreateTransactionInstruction<
   TProgram extends string = typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
-  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountConsensusAccount extends string | AccountMeta<string> = string,
   TAccountTransaction extends string | AccountMeta<string> = string,
   TAccountCreator extends string | AccountMeta<string> = string,
   TAccountRentPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends string | AccountMeta<string> =
     "11111111111111111111111111111111",
+  TAccountProgram extends string | AccountMeta<string> =
+    "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
-        : TAccountSettings,
+      TAccountConsensusAccount extends string
+        ? WritableAccount<TAccountConsensusAccount>
+        : TAccountConsensusAccount,
       TAccountTransaction extends string
         ? WritableAccount<TAccountTransaction>
         : TAccountTransaction,
@@ -84,6 +88,9 @@ export type CreateTransactionInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountProgram extends string
+        ? ReadonlyAccount<TAccountProgram>
+        : TAccountProgram,
       ...TRemainingAccounts,
     ]
   >;
@@ -124,47 +131,54 @@ export function getCreateTransactionInstructionDataCodec(): Codec<
   );
 }
 
-export type CreateTransactionInput<
-  TAccountSettings extends string = string,
+export type CreateTransactionAsyncInput<
+  TAccountConsensusAccount extends string = string,
   TAccountTransaction extends string = string,
   TAccountCreator extends string = string,
   TAccountRentPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
-  transaction: Address<TAccountTransaction>;
+  consensusAccount: Address<TAccountConsensusAccount>;
+  transaction?: Address<TAccountTransaction>;
   /** The member of the multisig that is creating the transaction. */
   creator: TransactionSigner<TAccountCreator>;
   /** The payer for the transaction account rent. */
   rentPayer: TransactionSigner<TAccountRentPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
   args: CreateTransactionInstructionDataArgs["args"];
 };
 
-export function getCreateTransactionInstruction<
-  TAccountSettings extends string,
+export async function getCreateTransactionInstructionAsync<
+  TAccountConsensusAccount extends string,
   TAccountTransaction extends string,
   TAccountCreator extends string,
   TAccountRentPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountProgram extends string,
   TProgramAddress extends Address =
     typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
 >(
-  input: CreateTransactionInput<
-    TAccountSettings,
+  input: CreateTransactionAsyncInput<
+    TAccountConsensusAccount,
     TAccountTransaction,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >,
   config?: { programAddress?: TProgramAddress },
-): CreateTransactionInstruction<
-  TProgramAddress,
-  TAccountSettings,
-  TAccountTransaction,
-  TAccountCreator,
-  TAccountRentPayer,
-  TAccountSystemProgram
+): Promise<
+  CreateTransactionInstruction<
+    TProgramAddress,
+    TAccountConsensusAccount,
+    TAccountTransaction,
+    TAccountCreator,
+    TAccountRentPayer,
+    TAccountSystemProgram,
+    TAccountProgram
+  >
 > {
   // Program address.
   const programAddress =
@@ -172,11 +186,133 @@ export function getCreateTransactionInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: true },
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: true,
+    },
     transaction: { value: input.transaction ?? null, isWritable: true },
     creator: { value: input.creator ?? null, isWritable: false },
     rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedInstructionAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.transaction.value) {
+    accounts.transaction.value = await findTransactionPda({
+      consensusAccount: getAddressFromResolvedInstructionAccount(
+        "consensusAccount",
+        accounts.consensusAccount.value,
+      ),
+      consensusAccount: getAddressFromResolvedInstructionAccount(
+        "consensusAccount",
+        accounts.consensusAccount.value,
+      ),
+    });
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
+      getAccountMeta("transaction", accounts.transaction),
+      getAccountMeta("creator", accounts.creator),
+      getAccountMeta("rentPayer", accounts.rentPayer),
+      getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
+    ],
+    data: getCreateTransactionInstructionDataEncoder().encode(
+      args as CreateTransactionInstructionDataArgs,
+    ),
+    programAddress,
+  } as CreateTransactionInstruction<
+    TProgramAddress,
+    TAccountConsensusAccount,
+    TAccountTransaction,
+    TAccountCreator,
+    TAccountRentPayer,
+    TAccountSystemProgram,
+    TAccountProgram
+  >);
+}
+
+export type CreateTransactionInput<
+  TAccountConsensusAccount extends string = string,
+  TAccountTransaction extends string = string,
+  TAccountCreator extends string = string,
+  TAccountRentPayer extends string = string,
+  TAccountSystemProgram extends string = string,
+  TAccountProgram extends string = string,
+> = {
+  consensusAccount: Address<TAccountConsensusAccount>;
+  transaction: Address<TAccountTransaction>;
+  /** The member of the multisig that is creating the transaction. */
+  creator: TransactionSigner<TAccountCreator>;
+  /** The payer for the transaction account rent. */
+  rentPayer: TransactionSigner<TAccountRentPayer>;
+  systemProgram?: Address<TAccountSystemProgram>;
+  program?: Address<TAccountProgram>;
+  args: CreateTransactionInstructionDataArgs["args"];
+};
+
+export function getCreateTransactionInstruction<
+  TAccountConsensusAccount extends string,
+  TAccountTransaction extends string,
+  TAccountCreator extends string,
+  TAccountRentPayer extends string,
+  TAccountSystemProgram extends string,
+  TAccountProgram extends string,
+  TProgramAddress extends Address =
+    typeof SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS,
+>(
+  input: CreateTransactionInput<
+    TAccountConsensusAccount,
+    TAccountTransaction,
+    TAccountCreator,
+    TAccountRentPayer,
+    TAccountSystemProgram,
+    TAccountProgram
+  >,
+  config?: { programAddress?: TProgramAddress },
+): CreateTransactionInstruction<
+  TProgramAddress,
+  TAccountConsensusAccount,
+  TAccountTransaction,
+  TAccountCreator,
+  TAccountRentPayer,
+  TAccountSystemProgram,
+  TAccountProgram
+> {
+  // Program address.
+  const programAddress =
+    config?.programAddress ?? SQUADS_SMART_ACCOUNT_PROGRAM_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    consensusAccount: {
+      value: input.consensusAccount ?? null,
+      isWritable: true,
+    },
+    transaction: { value: input.transaction ?? null, isWritable: true },
+    creator: { value: input.creator ?? null, isWritable: false },
+    rentPayer: { value: input.rentPayer ?? null, isWritable: true },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    program: { value: input.program ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -191,15 +327,20 @@ export function getCreateTransactionInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.program.value) {
+    accounts.program.value =
+      "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG" as Address<"SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG">;
+  }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta("settings", accounts.settings),
+      getAccountMeta("consensusAccount", accounts.consensusAccount),
       getAccountMeta("transaction", accounts.transaction),
       getAccountMeta("creator", accounts.creator),
       getAccountMeta("rentPayer", accounts.rentPayer),
       getAccountMeta("systemProgram", accounts.systemProgram),
+      getAccountMeta("program", accounts.program),
     ],
     data: getCreateTransactionInstructionDataEncoder().encode(
       args as CreateTransactionInstructionDataArgs,
@@ -207,11 +348,12 @@ export function getCreateTransactionInstruction<
     programAddress,
   } as CreateTransactionInstruction<
     TProgramAddress,
-    TAccountSettings,
+    TAccountConsensusAccount,
     TAccountTransaction,
     TAccountCreator,
     TAccountRentPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountProgram
   >);
 }
 
@@ -221,13 +363,14 @@ export type ParsedCreateTransactionInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settings: TAccountMetas[0];
+    consensusAccount: TAccountMetas[0];
     transaction: TAccountMetas[1];
     /** The member of the multisig that is creating the transaction. */
     creator: TAccountMetas[2];
     /** The payer for the transaction account rent. */
     rentPayer: TAccountMetas[3];
     systemProgram: TAccountMetas[4];
+    program: TAccountMetas[5];
   };
   data: CreateTransactionInstructionData;
 };
@@ -240,12 +383,12 @@ export function parseCreateTransactionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCreateTransactionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 6) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 5,
+        expectedAccountMetas: 6,
       },
     );
   }
@@ -258,11 +401,12 @@ export function parseCreateTransactionInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settings: getNextAccount(),
+      consensusAccount: getNextAccount(),
       transaction: getNextAccount(),
       creator: getNextAccount(),
       rentPayer: getNextAccount(),
       systemProgram: getNextAccount(),
+      program: getNextAccount(),
     },
     data: getCreateTransactionInstructionDataDecoder().decode(instruction.data),
   };

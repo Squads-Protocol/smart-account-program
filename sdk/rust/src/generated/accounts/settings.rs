@@ -54,7 +54,8 @@ pub struct Settings {
     pub signers: Vec<SmartAccountSigner>,
     /// Counter for how many sub accounts are in use (improves off-chain indexing)
     pub account_utilization: u8,
-    pub reserved1: u8,
+    /// Seed used for deterministic policy creation.
+    pub policy_seed: Option<u64>,
     pub reserved2: u8,
 }
 

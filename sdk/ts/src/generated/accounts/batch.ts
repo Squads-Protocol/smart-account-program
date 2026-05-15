@@ -49,15 +49,9 @@ export function getBatchDiscriminatorBytes(): ReadonlyUint8Array {
   return fixEncoderSize(getBytesEncoder(), 8).encode(BATCH_DISCRIMINATOR);
 }
 
-/**
- * Stores data required for serial execution of a batch of smart account transactions.
- * A smart account transaction is a transaction that's executed on behalf of the smart account
- * and wraps arbitrary Solana instructions, typically calling into other Solana programs.
- * The transactions themselves are stored in separate PDAs associated with the this account.
- */
 export type Batch = {
   discriminator: ReadonlyUint8Array;
-  /** The settings this belongs to. */
+  /** The consensus account (settings or policy) this belongs to. */
   settings: Address;
   /** Signer of the smart account who submitted the batch. */
   creator: Address;
@@ -81,7 +75,7 @@ export type Batch = {
 };
 
 export type BatchArgs = {
-  /** The settings this belongs to. */
+  /** The consensus account (settings or policy) this belongs to. */
   settings: Address;
   /** Signer of the smart account who submitted the batch. */
   creator: Address;
