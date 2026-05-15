@@ -87,32 +87,51 @@ async function main() {
 
 /**
  * Codama renderers honour `deleteFolderBeforeRendering` by removing the
- * package root, which would also delete the hand-curated manifests.  Snapshot
- * them to `.temp` siblings and restore after the renderers finish.
+ * package root, which would also delete hand-curated manifests and the
+ * hand-written `src/helpers/` companion layer.  Snapshot them to `.temp`
+ * siblings and restore after the renderers finish.
  */
 function preserveConfigFiles(): () => void {
-  const preserved = new Map<string, string>();
-  const snapshot = (file: string) => {
+  const fileRestores = new Map<string, string>();
+  const dirRestores: Array<{ original: string; temp: string }> = [];
+
+  const snapshotFile = (file: string) => {
     if (!fs.existsSync(file)) return;
     const temp = `${file}.codama-temp`;
     fs.copyFileSync(file, temp);
-    preserved.set(file, temp);
+    fileRestores.set(file, temp);
+  };
+
+  const snapshotDir = (dir: string) => {
+    if (!fs.existsSync(dir)) return;
+    const temp = `${dir}.codama-temp`;
+    fs.rmSync(temp, { recursive: true, force: true });
+    fs.cpSync(dir, temp, { recursive: true });
+    dirRestores.push({ original: dir, temp });
   };
 
   for (const f of ["package.json", "tsconfig.json", ".npmignore"]) {
-    snapshot(path.join(tsClientDir, f));
+    snapshotFile(path.join(tsClientDir, f));
   }
   for (const f of ["Cargo.toml", "Cargo.lock"]) {
-    snapshot(path.join(rustClientDir, f));
+    snapshotFile(path.join(rustClientDir, f));
   }
-  snapshot(path.join(rustClientDir, "src", "lib.rs"));
+  snapshotFile(path.join(rustClientDir, "src", "lib.rs"));
+  snapshotDir(path.join(rustClientDir, "src", "helpers"));
 
   return () => {
-    for (const [original, temp] of preserved) {
+    for (const [original, temp] of fileRestores) {
       if (fs.existsSync(temp)) {
         fs.mkdirSync(path.dirname(original), { recursive: true });
         fs.copyFileSync(temp, original);
         fs.unlinkSync(temp);
+      }
+    }
+    for (const { original, temp } of dirRestores) {
+      if (fs.existsSync(temp)) {
+        fs.rmSync(original, { recursive: true, force: true });
+        fs.cpSync(temp, original, { recursive: true });
+        fs.rmSync(temp, { recursive: true, force: true });
       }
     }
   };
