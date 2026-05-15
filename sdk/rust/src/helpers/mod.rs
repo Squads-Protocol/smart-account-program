@@ -15,13 +15,16 @@ pub mod transaction_message;
 #[cfg(feature = "ephemeral-signers")]
 pub mod ephemeral_signers;
 
+#[cfg(feature = "tx-builder")]
+pub mod versioned_tx;
+
 pub mod domain;
 pub mod events;
 
 pub use domain::{
     BatchExt, BatchTransactionExt, ProgramConfigExt, ProposalExt, SettingsExt, SpendingLimitExt,
 };
-pub use events::{parse_squads_event, LogEventArgsV2, SmartAccountEvent};
+pub use events::{parse_squads_event, LogEventArgsV2, ParseError, SmartAccountEvent};
 pub use pda::{
     find_batch_transaction_pda, find_ephemeral_signer_pda, find_policy_pda,
     find_program_config_pda, find_proposal_pda, find_settings_pda, find_smart_account_pda,
@@ -34,3 +37,9 @@ pub use transaction_message::{TransactionMessageBuilder, TransactionMessageError
 
 #[cfg(feature = "ephemeral-signers")]
 pub use ephemeral_signers::derive_ephemeral_signers;
+
+#[cfg(feature = "tx-builder")]
+pub use versioned_tx::{
+    build_message_v0, build_unsigned_versioned_transaction, build_versioned_message,
+    compile_unsigned_versioned_transaction, TxBuilderError,
+};
