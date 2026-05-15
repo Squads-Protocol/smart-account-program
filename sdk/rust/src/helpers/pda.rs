@@ -137,6 +137,29 @@ pub fn find_policy_pda(settings: &Address, policy_seed: u64) -> (Address, u8) {
     )
 }
 
+/// Derives the PDA for a `TransactionBuffer` account.
+///
+/// `consensus_account` is either a `Settings` or a `Policy` PDA, depending on
+/// which consensus governs the buffer. `creator` is the signer who opens the
+/// buffer. `buffer_index` is the caller-chosen u8 slot.
+pub fn find_transaction_buffer_pda(
+    consensus_account: &Address,
+    creator: &Address,
+    buffer_index: u8,
+) -> (Address, u8) {
+    let index_bytes = buffer_index.to_le_bytes();
+    Address::find_program_address(
+        &[
+            SEED_PREFIX,
+            consensus_account.as_ref(),
+            SEED_TRANSACTION_BUFFER,
+            creator.as_ref(),
+            &index_bytes,
+        ],
+        &SQUADS_SMART_ACCOUNT_PROGRAM_ID,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +182,16 @@ mod tests {
         let (a, _) = find_settings_pda(0);
         let (b, _) = find_settings_pda(1);
         assert_ne!(a, b);
+    }
+
+    #[test]
+    fn transaction_buffer_pda_changes_with_buffer_index() {
+        let consensus = Address::new_from_array([0x11; 32]);
+        let creator = Address::new_from_array([0x22; 32]);
+        let (a, _) = find_transaction_buffer_pda(&consensus, &creator, 0);
+        let (b, _) = find_transaction_buffer_pda(&consensus, &creator, 1);
+        let (c, _) = find_transaction_buffer_pda(&consensus, &creator, 0);
+        assert_ne!(a, b);
+        assert_eq!(a, c);
     }
 }
