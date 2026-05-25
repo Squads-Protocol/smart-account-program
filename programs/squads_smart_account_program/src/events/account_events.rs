@@ -165,3 +165,9 @@ pub struct SettingsChangePolicyEvent {
     pub settings: Settings,
     pub changes: Vec<LimitedSettingsAction>,
 }
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct SetAccountIndexEvent {
+    pub settings: Settings,
+    pub settings_pubkey: Pubkey,
+}

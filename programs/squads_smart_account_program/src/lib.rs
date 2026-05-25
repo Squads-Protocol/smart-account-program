@@ -340,4 +340,10 @@ pub mod squads_smart_account_program {
     ) -> Result<()> {
         LogEvent::log_event(ctx, args)
     }
+
+    /// Set the account utilization index for a smart account.
+    /// Callable only by the paymaster key.
+    pub fn set_account_index(ctx: Context<SetAccountIndex>, args: SetAccountIndexArgs) -> Result<()> {
+        SetAccountIndex::set_account_index(ctx, args)
+    }
 }

@@ -22,6 +22,7 @@ pub enum SmartAccountEvent {
     SynchronousTransactionEventV2(SynchronousTransactionEventV2),
     SettingsChangePolicyEvent(SettingsChangePolicyEvent),
     PolicyEvent(PolicyEvent),
+    SetAccountIndexEvent(SetAccountIndexEvent),
 }
 pub struct LogAuthorityInfo<'info> {
     pub authority: AccountInfo<'info>,

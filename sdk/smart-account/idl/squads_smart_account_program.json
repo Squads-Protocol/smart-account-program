@@ -1858,6 +1858,38 @@
           }
         }
       ]
+    },
+    {
+      "name": "setAccountIndex",
+      "docs": [
+        "Set the account utilization index for a smart account.",
+        "Callable only by the paymaster key."
+      ],
+      "accounts": [
+        {
+          "name": "settings",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "paymaster",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "program",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SetAccountIndexArgs"
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -3110,6 +3142,18 @@
             "type": {
               "option": "string"
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetAccountIndexArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "newIndex",
+            "type": "u8"
           }
         ]
       }
