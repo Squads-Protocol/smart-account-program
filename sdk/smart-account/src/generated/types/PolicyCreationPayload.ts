@@ -19,6 +19,10 @@ import {
   settingsChangePolicyCreationPayloadBeet,
 } from './SettingsChangePolicyCreationPayload'
 import {
+  ProgramInteractionPolicyCreationPayloadLegacy,
+  programInteractionPolicyCreationPayloadLegacyBeet,
+} from './ProgramInteractionPolicyCreationPayloadLegacy'
+import {
   ProgramInteractionPolicyCreationPayload,
   programInteractionPolicyCreationPayloadBeet,
 } from './ProgramInteractionPolicyCreationPayload'
@@ -35,6 +39,9 @@ export type PolicyCreationPayloadRecord = {
   InternalFundTransfer: { fields: [InternalFundTransferPolicyCreationPayload] }
   SpendingLimit: { fields: [SpendingLimitPolicyCreationPayload] }
   SettingsChange: { fields: [SettingsChangePolicyCreationPayload] }
+  LegacyProgramInteraction: {
+    fields: [ProgramInteractionPolicyCreationPayloadLegacy]
+  }
   ProgramInteraction: { fields: [ProgramInteractionPolicyCreationPayload] }
 }
 
@@ -64,6 +71,10 @@ export const isPolicyCreationPayloadSettingsChange = (
   x: PolicyCreationPayload
 ): x is PolicyCreationPayload & { __kind: 'SettingsChange' } =>
   x.__kind === 'SettingsChange'
+export const isPolicyCreationPayloadLegacyProgramInteraction = (
+  x: PolicyCreationPayload
+): x is PolicyCreationPayload & { __kind: 'LegacyProgramInteraction' } =>
+  x.__kind === 'LegacyProgramInteraction'
 export const isPolicyCreationPayloadProgramInteraction = (
   x: PolicyCreationPayload
 ): x is PolicyCreationPayload & { __kind: 'ProgramInteraction' } =>
@@ -105,6 +116,20 @@ export const policyCreationPayloadBeet =
       >(
         [['fields', beet.tuple([settingsChangePolicyCreationPayloadBeet])]],
         'PolicyCreationPayloadRecord["SettingsChange"]'
+      ),
+    ],
+    [
+      'LegacyProgramInteraction',
+      new beet.FixableBeetArgsStruct<
+        PolicyCreationPayloadRecord['LegacyProgramInteraction']
+      >(
+        [
+          [
+            'fields',
+            beet.tuple([programInteractionPolicyCreationPayloadLegacyBeet]),
+          ],
+        ],
+        'PolicyCreationPayloadRecord["LegacyProgramInteraction"]'
       ),
     ],
     [

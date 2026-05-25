@@ -1,12 +1,13 @@
 use std::io::{Read, Write};
 use std::marker::PhantomData;
+use std::ops::Deref;
 
 use anchor_lang::prelude::*;
 
 /// Concise serialization schema for vectors where the length can be represented
 /// by any type `L` (typically unsigned integer like `u8` or `u16`)
 /// that implements AnchorDeserialize and can be converted to `u32`.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SmallVec<L, T>(Vec<T>, PhantomData<L>);
 
 impl<L, T> SmallVec<L, T> {
@@ -16,6 +17,14 @@ impl<L, T> SmallVec<L, T> {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+}
+
+impl<L, T> Deref for SmallVec<L, T> {
+    type Target = Vec<T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

@@ -10,6 +10,8 @@ pub struct TrackedTokenAccount<'info> {
     pub balance: u64,
     pub delegate: Option<(Pubkey, u64)>,
     pub authority: Pubkey,
+    pub mint: Pubkey,
+    pub close_authority: Option<Pubkey>,
 }
 
 pub struct TrackedExecutingAccount<'info> {
@@ -53,13 +55,22 @@ pub fn check_pre_balances<'info>(
             };
             // Only track token accounts that are owned by the executing account
             if token_account.owner == executing_account {
-                let balance = token_account.amount;
+                // For native (WSOL) token accounts, use lamports - rent_reserve
+                // instead of amount to get the accurate balance even if SyncNative
+                // hasn't been called. This prevents spending limit bypass attacks.
+                let balance = if let Some(rent_reserve) = Option::<u64>::from(token_account.is_native) {
+                    account.lamports().saturating_sub(rent_reserve)
+                } else {
+                    token_account.amount
+                };
                 let delegate = if let Some(delegate_key) = Option::from(token_account.delegate) {
                     Some((delegate_key, token_account.delegated_amount))
                 } else {
                     None
                 };
                 let authority = token_account.owner;
+                let mint = token_account.mint;
+                let close_authority = Option::from(token_account.close_authority);
 
                 // Add the token account to the tracked token accounts
                 tracked_token_accounts.push(TrackedTokenAccount {
@@ -67,6 +78,8 @@ pub fn check_pre_balances<'info>(
                     balance,
                     delegate,
                     authority,
+                    mint,
+                    close_authority,
                 });
             }
         }
@@ -120,6 +133,7 @@ impl<'info> Balances<'info> {
         }
 
         // Check all of the token accounts
+        let token_program_ids = TokenInterface::ids();
         for tracked_token_account in &self.token_accounts {
             // Ensure that any tracked token account is not closed
             if tracked_token_account.account.data_is_empty() {
@@ -127,9 +141,29 @@ impl<'info> Balances<'info> {
                     SmartAccountError::ProgramInteractionIllegalTokenAccountModification.into(),
                 );
             }
+            // Ensure the account is still owned by a token program
+            require!(
+                token_program_ids.contains(&tracked_token_account.account.owner),
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
             // Re-deserialize the token account
             let post_token_account =
-                InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account).unwrap();
+                InterfaceAccount::<TokenAccount>::try_from(tracked_token_account.account)
+                    .map_err(|_| SmartAccountError::ProgramInteractionIllegalTokenAccountModification)?;
+            // Ensure the mint has not changed
+            require_eq!(
+                post_token_account.mint,
+                tracked_token_account.mint,
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
+
+            // For native (WSOL) token accounts, use lamports - rent_reserve
+            // instead of amount to get the accurate balance
+            let post_balance = if let Some(rent_reserve) = Option::<u64>::from(post_token_account.is_native) {
+                tracked_token_account.account.lamports().saturating_sub(rent_reserve)
+            } else {
+                post_token_account.amount
+            };
 
             // Find the spending limit for the token account if it exists and is active
             if let Some(spending_limit) = spending_limits.iter_mut().find(|spending_limit| {
@@ -145,29 +179,29 @@ impl<'info> Balances<'info> {
 
                     // Ensure the token account has no greater difference than the allowed change
                     require_gte!(
-                        post_token_account.amount,
+                        post_balance,
                         minimum_balance,
                         SmartAccountError::ProgramInteractionInsufficientTokenAllowance
                     );
 
                     // If the token account has a lower balance than before, decrement the spending limit
-                    if post_token_account.amount < tracked_token_account.balance {
+                    if post_balance < tracked_token_account.balance {
                         spending_limit
-                            .decrement(tracked_token_account.balance - post_token_account.amount);
+                            .decrement(tracked_token_account.balance - post_balance);
                     }
                 }
             } else {
                 // Ensure the token account has the exact or greater balance
                 // than before
                 require_gte!(
-                    post_token_account.amount,
+                    post_balance,
                     tracked_token_account.balance,
                     SmartAccountError::ProgramInteractionModifiedIllegalBalance
                 );
             }
 
-            // Ensure the delegate, and authority have not changed. Delegated
-            // amount may decrease
+            // Ensure the delegate and authority have not changed. Delegated
+            // amount must not decrease (to prevent unauthorized spending via delegate)
             let post_delegate: Option<(Pubkey, u64)> =
                 if let Some(delegate_key) = Option::from(post_token_account.delegate) {
                     Some((delegate_key, post_token_account.delegated_amount))
@@ -187,6 +221,13 @@ impl<'info> Balances<'info> {
             require_eq!(
                 post_token_account.owner,
                 tracked_token_account.authority,
+                SmartAccountError::ProgramInteractionIllegalTokenAccountModification
+            );
+            // Ensure the close_authority has not changed
+            let post_close_authority: Option<Pubkey> =
+                Option::from(post_token_account.close_authority);
+            require!(
+                post_close_authority == tracked_token_account.close_authority,
                 SmartAccountError::ProgramInteractionIllegalTokenAccountModification
             );
         }
