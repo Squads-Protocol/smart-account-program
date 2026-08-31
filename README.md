@@ -135,7 +135,7 @@ solana-verify get-executable-hash target/deploy/squads_smart_account_program.so
 Get the hash from the bytecode of the on-chain Squads program you want to verify.
 
 ```bash
-solana-verify get-program-hash -u <cluster url> SMRTe6bnZAgJmXt9aJin7XgAzDn1XMHGNy95QATyzpk
+solana-verify get-program-hash -u <cluster url> SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG
 ```
 
 If the hash outputs of those two commands match, the code in the repository matches the on-chain programs code.
