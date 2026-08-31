@@ -5,7 +5,8 @@ use crate::{
         UsageState,
     },
     utils::{
-        derive_ephemeral_signers, ExecutableTransactionMessage, SynchronousTransactionMessage,
+        derive_ephemeral_signers, CompiledAccountIndex, ExecutableTransactionMessage,
+        SynchronousTransactionMessage,
     },
     CompiledInstruction, PolicyExecutionContext, PolicyPayloadConversionTrait, PolicySizeTrait,
     PolicyTrait, SmallVec, SmartAccountCompiledInstruction, SmartAccountSigner, TransactionMessage,
@@ -278,14 +279,17 @@ impl DataConstraint {
 
 impl AccountConstraint {
     /// Evaluate the account constraint for a given set of instruction_account_indices and accounts
-    pub fn evaluate_against_instruction_indices_and_accounts(
+    pub fn evaluate_against_instruction_indices_and_accounts<'info, A>(
         &self,
         instruction_account_indices: &[u8],
-        accounts: &[AccountInfo],
-    ) -> Result<()> {
+        accounts: &A,
+    ) -> Result<()>
+    where
+        A: CompiledAccountIndex<'info> + ?Sized,
+    {
         // Get the account at the given constraint index
         let mapped_account_index = instruction_account_indices[self.account_index as usize];
-        let account = &accounts[mapped_account_index as usize];
+        let account = accounts.account_at(mapped_account_index as usize);
 
         self.evaluate_against_account_info(account)?;
 
@@ -406,12 +410,15 @@ pub struct ProgramInteractionExecutionArgs {
 // =============================================================================
 
 impl Hook {
-    pub fn execute<'info>(
+    pub fn execute<'info, A>(
         &self,
         hook_accounts: &'info [AccountInfo<'info>],
         instructions: &[SmartAccountCompiledInstruction],
-        instruction_accounts: &[AccountInfo<'info>],
-    ) -> Result<()> {
+        instruction_accounts: &A,
+    ) -> Result<()>
+    where
+        A: CompiledAccountIndex<'info> + ?Sized,
+    {
         use borsh::BorshSerialize;
 
         // Evaluate the hook accounts
@@ -421,7 +428,10 @@ impl Hook {
 
         // Build the necessary account metas
         let mut account_metas =
-            Vec::with_capacity(1 + hook_accounts.len() + instruction_accounts.len());
+            Vec::with_capacity(1 + hook_accounts.len() + instruction_accounts.account_count());
+        let mut account_infos =
+            Vec::with_capacity(hook_accounts.len() + instruction_accounts.account_count());
+        account_infos.extend_from_slice(hook_accounts);
 
         // Add the hook accounts to the account metas
         for account in hook_accounts.iter() {
@@ -447,9 +457,13 @@ impl Hook {
                 ix.serialize(&mut instruction_data)
                     .map_err(|_| SmartAccountError::ProgramInteractionTemplateHookError)?;
             }
+        }
 
-            // Add the instruction accounts
-            for account in instruction_accounts.iter() {
+        // Resolve instruction accounts in the same canonical compiled-index order used by
+        // constraint evaluation and instruction execution.
+        for index in 0..instruction_accounts.account_count() {
+            let account = instruction_accounts.account_at(index);
+            if self.pass_inner_instructions {
                 // Allow the hook authority, as long as it is readonly
                 let meta = if account.key == &HOOK_AUTHORITY_PUBKEY {
                     AccountMeta::new_readonly(*account.key, true)
@@ -460,6 +474,7 @@ impl Hook {
                 };
                 account_metas.push(meta);
             }
+            account_infos.push(account.clone());
         }
 
         // Build the instruction
@@ -472,8 +487,7 @@ impl Hook {
         // Invoke the instruction
         anchor_lang::solana_program::program::invoke_signed(
             &instruction,
-            // Concatenate the hook accounts and the instruction accounts
-            &[hook_accounts, instruction_accounts].concat(),
+            &account_infos,
             &[&[SEED_HOOK_AUTHORITY]],
         )?;
         Ok(())
@@ -481,12 +495,15 @@ impl Hook {
 }
 impl ProgramInteractionPolicy {
     /// Evaluate the instruction constraints for a given instruction
-    pub fn evaluate_instruction_constraints<'info>(
+    pub fn evaluate_instruction_constraints<'info, A>(
         &self,
         instruction_constraint_indices: &[u8],
         instructions: &[SmartAccountCompiledInstruction],
-        accounts: &[AccountInfo<'info>],
-    ) -> Result<()> {
+        accounts: &A,
+    ) -> Result<()>
+    where
+        A: CompiledAccountIndex<'info> + ?Sized,
+    {
         // Iterate over instruction and their corresponding instruction constraint
         for (instruction, instruction_constraint_index) in
             instructions.iter().zip(instruction_constraint_indices)
@@ -495,7 +512,9 @@ impl ProgramInteractionPolicy {
                 &self.instructions_constraints[*instruction_constraint_index as usize];
             // Evaluate the program id constraint
             require!(
-                accounts[instruction.program_id_index as usize].key
+                accounts
+                    .account_at(instruction.program_id_index as usize)
+                    .key
                     == &instruction_constraint.program_id,
                 SmartAccountError::ProgramInteractionProgramIdMismatch
             );
@@ -925,12 +944,25 @@ impl ProgramInteractionPolicy {
             .get(..num_lookups)
             .ok_or(SmartAccountError::InvalidNumberOfAccounts)?;
 
+        let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
+            args.transaction_key,
+            &transaction_payload.ephemeral_signer_bumps,
+        );
+
+        let mut executable_message = ExecutableTransactionMessage::new_validated(
+            transaction_payload.message.clone(),
+            message_account_infos,
+            address_lookup_table_account_infos,
+            &smart_account_pubkey,
+            &ephemeral_signer_keys,
+        )?;
+
         // Evaluate the instruction constraints
         if let Some(instruction_constraint_indices) = &payload.instruction_constraint_indices {
             self.evaluate_instruction_constraints(
                 instruction_constraint_indices,
                 &transaction_payload.message.instructions,
-                message_account_infos,
+                &executable_message,
             )?;
         }
 
@@ -939,21 +971,9 @@ impl ProgramInteractionPolicy {
             pre_hook.execute(
                 pre_hook_accounts,
                 &transaction_payload.message.instructions,
-                &accounts[num_lookups..],
+                &executable_message,
             )?;
         }
-        let (ephemeral_signer_keys, ephemeral_signer_seeds) = derive_ephemeral_signers(
-            args.transaction_key,
-            &transaction_payload.ephemeral_signer_bumps,
-        );
-
-        let executable_message = ExecutableTransactionMessage::new_validated(
-            transaction_payload.message.clone(),
-            message_account_infos,
-            address_lookup_table_account_infos,
-            &smart_account_pubkey,
-            &ephemeral_signer_keys,
-        )?;
 
         let protected_accounts = &[args.proposal_key];
 
@@ -967,11 +987,9 @@ impl ProgramInteractionPolicy {
 
             let tracked_pre_balances = check_pre_balances(smart_account_pubkey, accounts);
             // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
+            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`,
+            // which calls `take()` on `self.message.instructions`. After this point,
+            // only the canonical account resolver should be used.
             executable_message.execute_message(
                 smart_account_signer_seeds,
                 &ephemeral_signer_seeds,
@@ -981,11 +999,9 @@ impl ProgramInteractionPolicy {
             tracked_pre_balances.evaluate_balance_changes(&mut self.spending_limits)?;
         } else {
             // Execute the transaction message instructions one-by-one.
-            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-            // which in turn calls `take()` on
-            // `self.message.instructions`, therefore after this point no more
-            // references or usages of `self.message` should be made to avoid
-            // faulty behavior.
+            // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`,
+            // which calls `take()` on `self.message.instructions`. After this point,
+            // only the canonical account resolver should be used.
             executable_message.execute_message(
                 smart_account_signer_seeds,
                 &ephemeral_signer_seeds,
@@ -998,7 +1014,7 @@ impl ProgramInteractionPolicy {
             post_hook.execute(
                 post_hook_accounts,
                 &transaction_payload.message.instructions,
-                &accounts[num_lookups..],
+                &executable_message,
             )?;
         }
         Ok(())
@@ -1064,11 +1080,7 @@ impl ProgramInteractionPolicy {
 
         // Execute the pre hook
         if let Some(pre_hook) = &self.pre_hook {
-            pre_hook.execute(
-                pre_hook_accounts,
-                &settings_compiled_instructions,
-                &accounts,
-            )?;
+            pre_hook.execute(pre_hook_accounts, &settings_compiled_instructions, accounts)?;
         }
 
         let executable_message = SynchronousTransactionMessage::new_validated(
@@ -1111,7 +1123,7 @@ impl ProgramInteractionPolicy {
             post_hook.execute(
                 post_hook_accounts,
                 &settings_compiled_instructions,
-                &accounts,
+                accounts,
             )?;
         }
 

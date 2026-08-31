@@ -156,7 +156,7 @@ impl<'info> ExecuteTransaction<'info> {
                     &transaction_payload.ephemeral_signer_bumps,
                 );
 
-                let executable_message = ExecutableTransactionMessage::new_validated(
+                let mut executable_message = ExecutableTransactionMessage::new_validated(
                     transaction_payload.message.clone(),
                     message_account_infos,
                     address_lookup_table_account_infos,
@@ -167,11 +167,9 @@ impl<'info> ExecuteTransaction<'info> {
                 let protected_accounts = &[proposal.key()];
 
                 // Execute the transaction message instructions one-by-one.
-                // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`
-                // which in turn calls `take()` on
-                // `self.message.instructions`, therefore after this point no more
-                // references or usages of `self.message` should be made to avoid
-                // faulty behavior.
+                // NOTE: `execute_message()` calls `self.to_instructions_and_accounts()`,
+                // which calls `take()` on `self.message.instructions`. After this point,
+                // only the canonical account resolver should be used.
                 executable_message.execute_message(
                     smart_account_signer_seeds,
                     &ephemeral_signer_seeds,

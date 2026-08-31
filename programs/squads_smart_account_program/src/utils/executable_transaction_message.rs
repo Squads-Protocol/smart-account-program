@@ -23,6 +23,23 @@ pub struct ExecutableTransactionMessage<'a, 'info> {
     loaded_readonly_accounts: Vec<&'a AccountInfo<'info>>,
 }
 
+/// Resolves indices in a compiled transaction message to account infos.
+pub trait CompiledAccountIndex<'info> {
+    fn account_count(&self) -> usize;
+
+    fn account_at(&self, index: usize) -> &AccountInfo<'info>;
+}
+
+impl<'info> CompiledAccountIndex<'info> for [AccountInfo<'info>] {
+    fn account_count(&self) -> usize {
+        self.len()
+    }
+
+    fn account_at(&self, index: usize) -> &AccountInfo<'info> {
+        &self[index]
+    }
+}
+
 impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     /// # Arguments
     /// `message` - a `MsTransactionMessage`.
@@ -179,7 +196,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     /// * `ephemeral_signer_seeds` - Seeds for the ephemeral signer PDAs.
     /// * `protected_accounts` - Accounts that must not be passed as writable to the CPI calls to prevent potential reentrancy attacks.
     pub fn execute_message(
-        self,
+        &mut self,
         smart_account_seeds: &[&[u8]],
         ephemeral_signer_seeds: &[Vec<Vec<u8>>],
         protected_accounts: &[Pubkey],
@@ -197,10 +214,6 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         // Add the smart account seeds.
         signer_seeds.push(&smart_account_seeds);
 
-        // NOTE: `self.to_instructions_and_accounts()` calls `take()` on
-        // `self.message.instructions`, therefore after this point no more
-        // references or usages of `self.message` should be made to avoid
-        // faulty behavior.
         for (ix, account_infos) in self.to_instructions_and_accounts().iter() {
             // Make sure we don't pass protected accounts as writable to CPI calls.
             for account_meta in ix.accounts.iter().filter(|m| m.is_writable) {
@@ -209,7 +222,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     SmartAccountError::ProtectedAccount
                 );
             }
-            LogEvent::check_instruction(ix)?;
+            LogEvent::check_instruction(&ix)?;
             invoke_signed(&ix, &account_infos, &signer_seeds)?;
         }
         Ok(())
@@ -254,11 +267,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         index < self.loaded_writable_accounts.len()
     }
 
-    pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
+    pub fn to_instructions_and_accounts(&mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
         let mut executable_instructions = vec![];
 
-        for sa_compiled_instruction in std::mem::take(&mut self.message.instructions) {
-            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = sa_compiled_instruction
+        for compiled_instruction in std::mem::take(&mut self.message.instructions) {
+            let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = compiled_instruction
                 .account_indexes
                 .iter()
                 .map(|account_index| {
@@ -280,7 +293,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .collect();
 
             let ix_program_account_info = self
-                .get_account_by_index(usize::from(sa_compiled_instruction.program_id_index))
+                .get_account_by_index(usize::from(compiled_instruction.program_id_index))
                 .unwrap();
 
             let ix = Instruction {
@@ -289,7 +302,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     .iter()
                     .map(|(_, account_meta)| account_meta.clone())
                     .collect(),
-                data: sa_compiled_instruction.data,
+                data: compiled_instruction.data,
             };
 
             let mut account_infos: Vec<AccountInfo> = ix_accounts
@@ -306,5 +319,18 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         }
 
         executable_instructions
+    }
+}
+
+impl<'a, 'info> CompiledAccountIndex<'info> for ExecutableTransactionMessage<'a, 'info> {
+    fn account_count(&self) -> usize {
+        self.static_accounts.len()
+            + self.loaded_writable_accounts.len()
+            + self.loaded_readonly_accounts.len()
+    }
+
+    fn account_at(&self, index: usize) -> &AccountInfo<'info> {
+        self.get_account_by_index(index)
+            .expect("account index was validated")
     }
 }

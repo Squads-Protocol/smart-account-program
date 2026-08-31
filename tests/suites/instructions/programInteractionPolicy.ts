@@ -902,6 +902,505 @@ describe("Flow / ProgramInteractionPolicy", () => {
   //   );
   // });
 
+  it("uses canonical mixed multi-ALT ordering for constraints and hooks", async () => {
+    const settingsPda = (
+      await createAutonomousMultisig({
+        connection,
+        members,
+        threshold: 1,
+        timeLock: 0,
+        programId,
+      })
+    )[0];
+    const [sourceSmartAccountPda] = getSmartAccountPda({
+      settingsPda,
+      accountIndex: 0,
+      programId,
+    });
+    const [allowedDestinationSmartAccountPda] = getSmartAccountPda({
+      settingsPda,
+      accountIndex: 1,
+      programId,
+    });
+
+    const [mint] = await createMintAndTransferTo(
+      connection,
+      members.voter,
+      sourceSmartAccountPda,
+      1_500_000_000
+    );
+    const sourceTokenAccount = getAssociatedTokenAddressSync(
+      mint,
+      sourceSmartAccountPda,
+      true
+    );
+    const allowedDestinationTokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        members.voter,
+        mint,
+        allowedDestinationSmartAccountPda,
+        true
+      )
+    ).address;
+    const attackerTokenAccount = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        members.voter,
+        mint,
+        members.executor.publicKey
+      )
+    ).address;
+    const noopProgramId = new web3.PublicKey(
+      "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+    );
+
+    const policySeed = 1;
+    const [policyPda] = smartAccount.getPolicyPda({
+      settingsPda,
+      policySeed,
+      programId,
+    });
+    const policyCreationPayload: smartAccount.generated.PolicyCreationPayload =
+      {
+        __kind: "ProgramInteraction",
+        fields: [
+          {
+            accountIndex: 0,
+            preHook: null,
+            postHook: {
+              numExtraAccounts: 0,
+              accountConstraints: [],
+              instructionData: new Uint8Array(),
+              programId: noopProgramId,
+              passInnerInstructions: true,
+            },
+            instructionsConstraints: [
+              {
+                programId: TOKEN_PROGRAM_ID,
+                accountConstraints: [
+                  {
+                    accountIndex: 0,
+                    accountConstraint: {
+                      __kind: "Pubkey",
+                      fields: [[sourceTokenAccount]],
+                    },
+                    owner: null,
+                  },
+                  {
+                    accountIndex: 1,
+                    accountConstraint: {
+                      __kind: "Pubkey",
+                      fields: [[allowedDestinationTokenAccount]],
+                    },
+                    owner: null,
+                  },
+                ],
+                dataConstraints: [],
+              },
+              {
+                programId: noopProgramId,
+                accountConstraints: [
+                  {
+                    accountIndex: 0,
+                    accountConstraint: {
+                      __kind: "Pubkey",
+                      fields: [[sourceTokenAccount]],
+                    },
+                    owner: null,
+                  },
+                  {
+                    accountIndex: 2,
+                    accountConstraint: {
+                      __kind: "Pubkey",
+                      fields: [[allowedDestinationTokenAccount]],
+                    },
+                    owner: null,
+                  },
+                ],
+                dataConstraints: [],
+              },
+            ],
+            spendingLimits: [],
+          },
+        ],
+      };
+
+    const settingsTransactionIndex = 1n;
+    let signature = await smartAccount.rpc.createSettingsTransaction({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: settingsTransactionIndex,
+      creator: members.proposer.publicKey,
+      actions: [
+        {
+          __kind: "PolicyCreate",
+          seed: policySeed,
+          policyCreationPayload,
+          signers: [
+            {
+              key: members.voter.publicKey,
+              permissions: { mask: 7 },
+            },
+          ],
+          threshold: 1,
+          timeLock: 0,
+          startTimestamp: null,
+          expirationArgs: null,
+        },
+      ],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.proposer,
+      settingsPda,
+      transactionIndex: settingsTransactionIndex,
+      creator: members.proposer,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda,
+      transactionIndex: settingsTransactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.executeSettingsTransaction({
+      connection,
+      feePayer: members.almighty,
+      settingsPda,
+      transactionIndex: settingsTransactionIndex,
+      signer: members.almighty,
+      rentPayer: members.almighty,
+      policies: [policyPda],
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    const {
+      context: { slot },
+      value: { blockhash },
+    } = await connection.getLatestBlockhashAndContext("finalized");
+    const [createLookupTable1, lookupTable1] =
+      web3.AddressLookupTableProgram.createLookupTable({
+        authority: members.voter.publicKey,
+        payer: members.voter.publicKey,
+        recentSlot: slot,
+      });
+    const [createLookupTable2, lookupTable2] =
+      web3.AddressLookupTableProgram.createLookupTable({
+        authority: members.proposer.publicKey,
+        payer: members.proposer.publicKey,
+        recentSlot: slot,
+      });
+    const extendLookupTable1 = web3.AddressLookupTableProgram.extendLookupTable(
+      {
+        authority: members.voter.publicKey,
+        payer: members.voter.publicKey,
+        lookupTable: lookupTable1,
+        addresses: [sourceTokenAccount, allowedDestinationTokenAccount],
+      }
+    );
+    const extendLookupTable2 = web3.AddressLookupTableProgram.extendLookupTable(
+      {
+        authority: members.proposer.publicKey,
+        payer: members.proposer.publicKey,
+        lookupTable: lookupTable2,
+        addresses: [attackerTokenAccount],
+      }
+    );
+    const createLookupTablesTransaction = new web3.VersionedTransaction(
+      new web3.TransactionMessage({
+        payerKey: members.voter.publicKey,
+        recentBlockhash: blockhash,
+        instructions: [
+          createLookupTable1,
+          extendLookupTable1,
+          createLookupTable2,
+          extendLookupTable2,
+        ],
+      }).compileToV0Message()
+    );
+    createLookupTablesTransaction.sign([members.voter, members.proposer]);
+    signature = await connection.sendRawTransaction(
+      createLookupTablesTransaction.serialize()
+    );
+    await connection.confirmTransaction(signature);
+
+    const transferInstruction = createTransferInstruction(
+      sourceTokenAccount,
+      attackerTokenAccount,
+      sourceSmartAccountPda,
+      500_000_000n
+    );
+    const [transactionMessageBytes] =
+      smartAccount.types.transactionMessageBeet.serialize({
+        numSigners: 1,
+        numWritableSigners: 1,
+        numWritableNonSigners: 0,
+        accountKeys: [sourceSmartAccountPda, TOKEN_PROGRAM_ID],
+        instructions: [
+          {
+            programIdIndex: 1,
+            // Canonical order is static, all writable lookups, all readonly lookups:
+            // [sourceSmartAccountPda, TOKEN_PROGRAM_ID, source, attacker, allowed].
+            accountIndexes: [2, 3, 0],
+            data: Array.from(transferInstruction.data),
+          },
+        ],
+        addressTableLookups: [
+          {
+            accountKey: lookupTable1,
+            writableIndexes: [0],
+            readonlyIndexes: [1],
+          },
+          {
+            accountKey: lookupTable2,
+            writableIndexes: [0],
+            readonlyIndexes: [],
+          },
+        ],
+      });
+    const policyPayload: smartAccount.generated.PolicyPayload = {
+      __kind: "ProgramInteraction",
+      fields: [
+        {
+          instructionConstraintIndices: new Uint8Array([0]),
+          transactionPayload: {
+            __kind: "AsyncTransaction",
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: transactionMessageBytes,
+                memo: null,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const policyTransactionIndex = 1n;
+    signature = await smartAccount.rpc.createPolicyTransaction({
+      connection,
+      feePayer: members.voter,
+      policy: policyPda,
+      accountIndex: 0,
+      transactionIndex: policyTransactionIndex,
+      creator: members.voter.publicKey,
+      policyPayload,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda: policyPda,
+      transactionIndex: policyTransactionIndex,
+      creator: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda: policyPda,
+      transactionIndex: policyTransactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    const sourceBalanceBefore = await connection.getTokenAccountBalance(
+      sourceTokenAccount
+    );
+    const attackerBalanceBefore = await connection.getTokenAccountBalance(
+      attackerTokenAccount
+    );
+    const rejectedRemainingAccounts: AccountMeta[] = [
+      { pubkey: noopProgramId, isWritable: false, isSigner: false },
+      { pubkey: lookupTable1, isWritable: false, isSigner: false },
+      { pubkey: lookupTable2, isWritable: false, isSigner: false },
+      { pubkey: sourceSmartAccountPda, isWritable: true, isSigner: false },
+      { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
+      { pubkey: sourceTokenAccount, isWritable: true, isSigner: false },
+      {
+        pubkey: allowedDestinationTokenAccount,
+        isWritable: false,
+        isSigner: false,
+      },
+      { pubkey: attackerTokenAccount, isWritable: true, isSigner: false },
+    ];
+
+    await assert.rejects(
+      smartAccount.rpc.executePolicyTransaction({
+        connection,
+        feePayer: members.voter,
+        policy: policyPda,
+        transactionIndex: policyTransactionIndex,
+        signer: members.voter.publicKey,
+        anchorRemainingAccounts: rejectedRemainingAccounts,
+        programId,
+      }),
+      (error: Error) =>
+        error.name === "ProgramInteractionAccountConstraintViolated"
+    );
+
+    const sourceBalanceAfter = await connection.getTokenAccountBalance(
+      sourceTokenAccount
+    );
+    const attackerBalanceAfter = await connection.getTokenAccountBalance(
+      attackerTokenAccount
+    );
+    assert.strictEqual(
+      sourceBalanceAfter.value.amount,
+      sourceBalanceBefore.value.amount
+    );
+    assert.strictEqual(
+      attackerBalanceAfter.value.amount,
+      attackerBalanceBefore.value.amount
+    );
+
+    const [hookTransactionMessageBytes] =
+      smartAccount.types.transactionMessageBeet.serialize({
+        numSigners: 1,
+        numWritableSigners: 1,
+        numWritableNonSigners: 0,
+        accountKeys: [sourceSmartAccountPda, TOKEN_PROGRAM_ID, noopProgramId],
+        instructions: [
+          {
+            programIdIndex: 2,
+            accountIndexes: [3, 4, 5],
+            data: [],
+          },
+        ],
+        addressTableLookups: [
+          {
+            accountKey: lookupTable1,
+            writableIndexes: [0],
+            readonlyIndexes: [1],
+          },
+          {
+            accountKey: lookupTable2,
+            writableIndexes: [0],
+            readonlyIndexes: [],
+          },
+        ],
+      });
+    const hookPolicyPayload: smartAccount.generated.PolicyPayload = {
+      __kind: "ProgramInteraction",
+      fields: [
+        {
+          instructionConstraintIndices: new Uint8Array([1]),
+          transactionPayload: {
+            __kind: "AsyncTransaction",
+            fields: [
+              {
+                accountIndex: 0,
+                ephemeralSigners: 0,
+                transactionMessage: hookTransactionMessageBytes,
+                memo: null,
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const hookPolicyTransactionIndex = 2n;
+
+    signature = await smartAccount.rpc.createPolicyTransaction({
+      connection,
+      feePayer: members.voter,
+      policy: policyPda,
+      accountIndex: 0,
+      transactionIndex: hookPolicyTransactionIndex,
+      creator: members.voter.publicKey,
+      policyPayload: hookPolicyPayload,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.createProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda: policyPda,
+      transactionIndex: hookPolicyTransactionIndex,
+      creator: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+    signature = await smartAccount.rpc.approveProposal({
+      connection,
+      feePayer: members.voter,
+      settingsPda: policyPda,
+      transactionIndex: hookPolicyTransactionIndex,
+      signer: members.voter,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    const hookRemainingAccounts: AccountMeta[] = [
+      { pubkey: noopProgramId, isWritable: false, isSigner: false },
+      { pubkey: lookupTable1, isWritable: false, isSigner: false },
+      { pubkey: lookupTable2, isWritable: false, isSigner: false },
+      { pubkey: sourceSmartAccountPda, isWritable: true, isSigner: false },
+      { pubkey: TOKEN_PROGRAM_ID, isWritable: false, isSigner: false },
+      { pubkey: noopProgramId, isWritable: false, isSigner: false },
+      { pubkey: sourceTokenAccount, isWritable: true, isSigner: false },
+      {
+        pubkey: allowedDestinationTokenAccount,
+        isWritable: false,
+        isSigner: false,
+      },
+      { pubkey: attackerTokenAccount, isWritable: true, isSigner: false },
+    ];
+    signature = await smartAccount.rpc.executePolicyTransaction({
+      connection,
+      feePayer: members.voter,
+      policy: policyPda,
+      transactionIndex: hookPolicyTransactionIndex,
+      signer: members.voter.publicKey,
+      anchorRemainingAccounts: hookRemainingAccounts,
+      programId,
+    });
+    await connection.confirmTransaction(signature);
+
+    const executedTransaction = await connection.getParsedTransaction(
+      signature,
+      {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      }
+    );
+    const hookInstruction = executedTransaction?.meta?.innerInstructions
+      ?.flatMap(({ instructions }) => instructions)
+      .find(
+        (instruction) =>
+          "programId" in instruction &&
+          instruction.programId.equals(noopProgramId) &&
+          "accounts" in instruction &&
+          instruction.accounts.length >= 6
+      );
+    assert.ok(hookInstruction && "accounts" in hookInstruction);
+    assert.deepStrictEqual(
+      hookInstruction.accounts.slice(-6).map((account) => account.toBase58()),
+      [
+        sourceSmartAccountPda,
+        TOKEN_PROGRAM_ID,
+        noopProgramId,
+        sourceTokenAccount,
+        attackerTokenAccount,
+        allowedDestinationTokenAccount,
+      ].map((account) => account.toBase58())
+    );
+  });
+
   it("Program Interaction Policy with pre/post hooks", async () => {
     // Create new autonomous smart account with 1/1 threshold for easy testing
     const settingsPda = (
