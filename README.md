@@ -116,14 +116,14 @@ The mainnet deployment at slot `443245754` (August 31, 2026) can be reproduced f
 1cacfe2080faabf33a02ea285b6f8c8182358d3c6e40e3e7375ad0d7baa58cd4
 ```
 
-Use Docker with `solana-verify` version `0.4.9` and the pinned Solana **1.18.16** image below. Although `Cargo.lock` resolves `solana-program` to 1.18.26, the deployed executable was reproduced with the 1.18.16 build image. Specify the image explicitly and retain the committed lockfile. Build with the default production features; `--features testing` selects a different program ID.
+Use Docker with `solana-verify` version [`0.5.2`](https://github.com/solana-foundation/solana-verifiable-build/releases/tag/v0.5.2) and the pinned Solana **1.18.16** image below. Although `Cargo.lock` resolves `solana-program` to 1.18.26, the deployed executable was reproduced with the 1.18.16 build image. Specify the image explicitly and retain the committed lockfile. Build with the default production features; `--features testing` selects a different program ID.
 
 #### Verify the published source against mainnet
 
 Install and start Docker, then install the tested CLI using a recent Rust toolchain:
 
 ```bash
-cargo +stable install solana-verify --version 0.4.9 --locked
+cargo +stable install solana-verify --version 0.5.2 --locked
 
 REPO_URL=https://github.com/Squads-Protocol/smart-account-program
 VERIFIED_COMMIT=0e510821e00bf2a02716e3933b8659fa36ab2bee
