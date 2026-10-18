@@ -33,7 +33,7 @@ The Squads Smart Account Program v0.1 is deployed to:
 - Solana Mainnet-beta: `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`
 - Solana Devnet: `SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG`
 
-Both deployments can be verified using the [Ellipsis Labs verifiable build](https://github.com/Ellipsis-Labs/solana-verifiable-build) tool.
+Deployments can be checked using [Solana Verifiable Build](https://github.com/solana-foundation/solana-verifiable-build). The mainnet build parameters and explorer verification workflow are documented below; devnet must be checked separately.
 
 ## Responsibility
 
@@ -110,35 +110,86 @@ yarn test
 
 ### Verifying the code
 
-First, compile the programs code from the `Squads-Protocol/smart-account-program` Github repository to get its bytecode.
+The mainnet deployment at slot `443245754` (August 31, 2026) can be reproduced from commit [`0e510821e00bf2a02716e3933b8659fa36ab2bee`](https://github.com/Squads-Protocol/smart-account-program/commit/0e510821e00bf2a02716e3933b8659fa36ab2bee), which includes the async ALT account-resolution fix. Its executable hash is:
 
-```bash
-git clone https://github.com/Squads-Protocol/smart-account-program.git
+```text
+1cacfe2080faabf33a02ea285b6f8c8182358d3c6e40e3e7375ad0d7baa58cd4
 ```
 
+Use Docker with `solana-verify` version [`0.5.2`](https://github.com/solana-foundation/solana-verifiable-build/releases/tag/v0.5.2) and the pinned Solana **1.18.16** image below. Although `Cargo.lock` resolves `solana-program` to 1.18.26, the deployed executable was reproduced with the 1.18.16 build image. Specify the image explicitly and retain the committed lockfile. Build with the default production features; `--features testing` selects a different program ID.
+
+#### Verify the published source against mainnet
+
+Install and start Docker, then install the tested CLI using a recent Rust toolchain:
+
 ```bash
-anchor build
+cargo +stable install solana-verify --version 0.5.2 --locked
+
+REPO_URL=https://github.com/Squads-Protocol/smart-account-program
+VERIFIED_COMMIT=0e510821e00bf2a02716e3933b8659fa36ab2bee
+PROGRAM_ID=SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG
+BUILD_IMAGE=solanafoundation/solana-verifiable-build@sha256:1388b6e423013b0a4a1b67b3481b1c35f5a13034af97d9059439d923c19f1c87
+RPC_URL=https://api.mainnet-beta.solana.com
+
+solana-verify verify-from-repo "$REPO_URL" \
+  --commit-hash "$VERIFIED_COMMIT" \
+  --program-id "$PROGRAM_ID" \
+  --library-name squads_smart_account_program \
+  --base-image "$BUILD_IMAGE" \
+  --url "$RPC_URL"
 ```
 
-Now, install the [Ellipsis Labs verifiable build](https://crates.io/crates/solana-verify) crate.
+This clones the pinned commit, builds it in Docker, and compares its executable hash with mainnet. Both hashes must match the value above. Answer **no** when prompted to upload verification data: the upgrade authority is a Squads vault, so maintainers must publish the metadata through Squads as described below. Use a dedicated mainnet RPC endpoint if the public endpoint is rate limited.
+
+The repository root contains the workspace `Cargo.toml` and `Cargo.lock`, so leave `--mount-path` unset. The library name selects the program within that workspace.
+
+To build a local artifact independently, use a clean checkout of the same commit and run from the repository root, with the variables above set:
 
 ```bash
-cargo install solana-verify
-```
-
-Get the executable hash of the bytecode from the Squads program that was compiled.
-
-```bash
+solana-verify build \
+  --library-name squads_smart_account_program \
+  --base-image "$BUILD_IMAGE"
 solana-verify get-executable-hash target/deploy/squads_smart_account_program.so
+solana-verify get-program-hash --url "$RPC_URL" "$PROGRAM_ID"
 ```
 
-Get the hash from the bytecode of the on-chain Squads program you want to verify.
+`anchor build` is intended for development; use the pinned Docker build for this hash comparison. Devnet currently has a different executable and is not covered by this mainnet source/hash claim.
+
+#### Publish verification metadata through Squads (maintainers)
+
+A matching local build does not by itself register a verified build with explorers. The current upgrade authority is `HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2`. Confirm it before exporting metadata:
 
 ```bash
-solana-verify get-program-hash -u <cluster url> SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG
+solana program show --url "$RPC_URL" "$PROGRAM_ID"
+
+solana-verify export-pda-tx "$REPO_URL" \
+  --commit-hash "$VERIFIED_COMMIT" \
+  --program-id "$PROGRAM_ID" \
+  --library-name squads_smart_account_program \
+  --base-image "$BUILD_IMAGE" \
+  --uploader HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2 \
+  --url "$RPC_URL" \
+  --encoding base58 \
+  --compute-unit-price 0
 ```
 
-If the hash outputs of those two commands match, the code in the repository matches the on-chain programs code.
+Import the emitted base58 transaction into the controlling Squads multisig. Check that its top-level instructions call only the verification program (`verifycLy8mB96wd9wqq3WDXQwM4oU6r42Th37Db9fC`) and, optionally, the compute-budget program, then simulate, approve, and execute it through the multisig. This registers the build parameters and does not upgrade the Smart Account Program.
+
+After execution, read back the metadata and submit the remote build:
+
+```bash
+solana-verify get-program-pda --url "$RPC_URL" \
+  --program-id "$PROGRAM_ID" \
+  --signer HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2
+
+solana-verify remote submit-job \
+  --program-id "$PROGRAM_ID" \
+  --uploader HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2
+
+solana-verify remote get-job --job-id REPLACE_WITH_RETURNED_JOB_ID
+```
+
+Confirm that the recorded commit, image, library, and deployment slot are correct before submitting the job. Once the remote job succeeds, check [OtterSec verification status](https://verify.osec.io/status/SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG), [Solana Explorer](https://explorer.solana.com/address/SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG/verified-build), and [Solscan](https://solscan.io/account/SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG). Remote verification is supported on mainnet; see the [Solana verified-builds guide](https://solana.com/docs/programs/verified-builds) for the full workflow. Repeat the metadata and remote verification steps after future program upgrades, using the new source commit and build parameters.
 
 ## Security
 
