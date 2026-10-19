@@ -3,6 +3,11 @@ resolver = "2"
 members = [
     "programs/*",
 ]
+# `sdk/rust` is intentionally *not* a member of this workspace.  It is its own
+# Cargo workspace (see sdk/rust/Cargo.toml) so the client crate can resolve
+# Solana 2.x / 3.x crates independently from the program crate's Solana 1.17
+# dep graph.
+exclude = ["sdk/rust"]
 
 [profile.release]
 overflow-checks = true
