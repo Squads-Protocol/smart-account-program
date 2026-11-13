@@ -1,0 +1,189 @@
+{
+  "case": "create_smart_account_admin_memo_10_candidates",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/solana-adapter/src/provider/smart_account.rs",
+    "fn": "SmartAccountOperations::create_and_confirm_smart_account_with_extra_instructions (instruction-building prefix; helpers::generate_possible_smart_account_addresses, instructions::create_smart_account_ix, helpers::calculate_compute_budget)"
+  },
+  "input": {
+    "programConfig": {
+      "address": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+      "smartAccountIndex": "1000",
+      "treasury": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD"
+    },
+    "creator": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "numConcurrencyAccounts": 10,
+    "createArgs": {
+      "settingsAuthority": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+      "threshold": 2,
+      "signers": [
+        {
+          "key": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+          "mask": 7
+        },
+        {
+          "key": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+          "mask": 3
+        },
+        {
+          "key": "9bydwa51pEgRd576SfrbahGytiZ6Y8CV5Cf77kgsZLc5",
+          "mask": 1
+        }
+      ],
+      "timeLock": 0,
+      "rentCollector": null,
+      "memo": "vector-memo"
+    }
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "2FKPghQNJaCzyejJ5VPHvVie1z7uXgMHx2B7BrecHRQD",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "CeAWh88fcU3Mxv2MFdXEMYxponYyiCLM63rebKTtDdU6",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "CtK4kH5zpjwc7uDQ8j8aVhgHLkVmxEvV1ShX668UsZoJ",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "EfjpHeXEUEY4k5xzTjhdkPgNKtTWQW3XtvRumDYutX1d",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "3T7myREtoPiYRohMwB6fKt7WGx1UJD9pasUAnfg3wZ58",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "ENRM7YbHyPBtNnVmzCccpTWG6QVjEn3GEqq8anbYWsUP",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "6KeS5Rssr8tP5yZWjhdJyJ1bzStHREQc9odFP9mUQTam",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "5M5JV8BvJF3xycE7w8qt8p7WDuzZtFX64zRgjCMKRhdh",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "2EfuzPmkbqaw9MfTZtdWhShF8fD44yGpGTrAUixKDGkg",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "DuY5x8U4JkC31DELAvS12KWs5C8s4ebyidfDqkpkc1L2",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "c566fde74d5432110155a280cf36cc52ac2f25935d741d3a3020a8b54baa7347f93e64f5767ce304b90200030000000dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc07571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e746037fd34850909a6158fd3d6c9011e292b5d0228edd0224c169baf88830297418de010000000000010b000000766563746f722d6d656d6f"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "02b0810000"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "0300093d0000000000"
+      }
+    ],
+    "candidates": [
+      {
+        "smartAccountIndex": "1001",
+        "settingsAddress": "2FKPghQNJaCzyejJ5VPHvVie1z7uXgMHx2B7BrecHRQD",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1002",
+        "settingsAddress": "CeAWh88fcU3Mxv2MFdXEMYxponYyiCLM63rebKTtDdU6",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1003",
+        "settingsAddress": "CtK4kH5zpjwc7uDQ8j8aVhgHLkVmxEvV1ShX668UsZoJ",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1004",
+        "settingsAddress": "EfjpHeXEUEY4k5xzTjhdkPgNKtTWQW3XtvRumDYutX1d",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1005",
+        "settingsAddress": "3T7myREtoPiYRohMwB6fKt7WGx1UJD9pasUAnfg3wZ58",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1006",
+        "settingsAddress": "ENRM7YbHyPBtNnVmzCccpTWG6QVjEn3GEqq8anbYWsUP",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1007",
+        "settingsAddress": "6KeS5Rssr8tP5yZWjhdJyJ1bzStHREQc9odFP9mUQTam",
+        "bump": 254
+      },
+      {
+        "smartAccountIndex": "1008",
+        "settingsAddress": "5M5JV8BvJF3xycE7w8qt8p7WDuzZtFX64zRgjCMKRhdh",
+        "bump": 253
+      },
+      {
+        "smartAccountIndex": "1009",
+        "settingsAddress": "2EfuzPmkbqaw9MfTZtdWhShF8fD44yGpGTrAUixKDGkg",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "1010",
+        "settingsAddress": "DuY5x8U4JkC31DELAvS12KWs5C8s4ebyidfDqkpkc1L2",
+        "bump": 255
+      }
+    ],
+    "candidateCount": 10,
+    "computeUnitLimit": 33200,
+    "computeUnitPriceMicroLamports": 4000000,
+    "note": "generate_possible_smart_account_addresses always yields 15 candidates; take(n) with n > 15 yields 15"
+  }
+}

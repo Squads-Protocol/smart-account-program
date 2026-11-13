@@ -1,0 +1,121 @@
+{
+  "case": "keys_deterministic",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/vector_dump/mod.rs",
+    "fn": "solana_keypair::Keypair::new_from_array"
+  },
+  "input": {
+    "rule": "key N = ed25519 keypair from 32-byte seed sha256(\"vector-key-N\")"
+  },
+  "expected": {
+    "instructions": [],
+    "keys": [
+      {
+        "index": 1,
+        "seedPreimage": "vector-key-1",
+        "seedHex": "b46fe82232f5912acec09e955a0b21150fc2e3ccbaf0c1e97aea94c64a8ceac3",
+        "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+      },
+      {
+        "index": 2,
+        "seedPreimage": "vector-key-2",
+        "seedHex": "7a40389a1844d7514d7b17d333f0423406e6c5a7eee69fb4cdc3bfd57a4de693",
+        "pubkey": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD"
+      },
+      {
+        "index": 3,
+        "seedPreimage": "vector-key-3",
+        "seedHex": "f403c554b7a44702242d609edcaa10a78172dc622698add5c148d6408924c2af",
+        "pubkey": "9bydwa51pEgRd576SfrbahGytiZ6Y8CV5Cf77kgsZLc5"
+      },
+      {
+        "index": 4,
+        "seedPreimage": "vector-key-4",
+        "seedHex": "db768b0dcb568502810ee2462599fb0d4f5eeac6f9813e4f1f1e207ea427a59b",
+        "pubkey": "4Am9Rkg7dFdRwTLNjuxoGTtz2tLwdkHcXZG8ugjwfKTe"
+      },
+      {
+        "index": 5,
+        "seedPreimage": "vector-key-5",
+        "seedHex": "5e3d7f7a7404273d8ae9c92db45273dde03757c64cfb354ab71b07d51e69e43c",
+        "pubkey": "CRiMTpm5Lznu5bkT71MPwCy3BAs4u6HfKY65ahKgYJux"
+      },
+      {
+        "index": 6,
+        "seedPreimage": "vector-key-6",
+        "seedHex": "30d3113898de97143903dd267f22cf3d5541860594d4a335828b295ce45c98d2",
+        "pubkey": "HXP65e7QPVDTXpuQCoPeRByXZc5JQZG5L13xRmwtfwd7"
+      },
+      {
+        "index": 7,
+        "seedPreimage": "vector-key-7",
+        "seedHex": "29f62fbe9aa896a65d08ed453fd88e997f2e8a49f65abec52972daac6814a8fe",
+        "pubkey": "4Y5PSvDDNxGb5bM4egX1Mn72ZZEyNEjaxmtGULmzjv5B"
+      },
+      {
+        "index": 8,
+        "seedPreimage": "vector-key-8",
+        "seedHex": "5a45d2f2024c58d487bde66ba663c1524b2d5ee4022a7b27edb7039a0b5d6a59",
+        "pubkey": "AmESzqjQefEFKTJozDrewTBDPPxNdCbRti83i6g4RXFH"
+      },
+      {
+        "index": 9,
+        "seedPreimage": "vector-key-9",
+        "seedHex": "585faee2764600e4ddd337ac3084f1e5981df4ed2467e731a027bf2e53939bc4",
+        "pubkey": "2fNfVuyHiX5Le2LbtgCQ1eoC7Z63FXZoFNGhDa3bL2N5"
+      },
+      {
+        "index": 10,
+        "seedPreimage": "vector-key-10",
+        "seedHex": "33fc6c2d6977006fae4613c80d193a6a8850f3b84b839bcb45beb179fe13aee3",
+        "pubkey": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG"
+      },
+      {
+        "index": 20,
+        "seedPreimage": "vector-key-20",
+        "seedHex": "0d9d930825a05b59eefe435244c96e211d62e82d66b9480cbabfc93e4c7b273e",
+        "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr"
+      },
+      {
+        "index": 21,
+        "seedPreimage": "vector-key-21",
+        "seedHex": "9a8012ee2988a0eac06f324ca3a9ac7af75517fae7ae961e24236e44d8ed7ad0",
+        "pubkey": "KXG5tZyNivpNxZDprcjfzgm1uQmAJ5KM3T24otXdXu2"
+      },
+      {
+        "index": 30,
+        "seedPreimage": "vector-key-30",
+        "seedHex": "249d73334c344b82f2dacb0955ee7b7a1b9c2a862261bd8ec124e904c30469c1",
+        "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy"
+      },
+      {
+        "index": 50,
+        "seedPreimage": "vector-key-50",
+        "seedHex": "8557493d698a75bb527ea44fa37ee134e304e9335e5e0f9ada8479f1aba79c75",
+        "pubkey": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD"
+      },
+      {
+        "index": 60,
+        "seedPreimage": "vector-key-60",
+        "seedHex": "cf15ee9d74fe5a38265e1bcce57c115907e3cdbdcd1ff20f13305e4c8da6b4f3",
+        "pubkey": "9tLbWMhbubAdCUagBfVbrBCPQ9ywcJwC1okwnyR9MKQf"
+      },
+      {
+        "index": 70,
+        "seedPreimage": "vector-key-70",
+        "seedHex": "4b1e600df681ce85a60592d2da28e026fc53bd4754ccf606d6022633be1ff730",
+        "pubkey": "FKkbTbPnbyepLNwzgg9Be9zXCmCbP6uQBLYssdUAwAkS"
+      },
+      {
+        "index": 99,
+        "seedPreimage": "vector-key-99",
+        "seedHex": "6d48fbc963e0d2e8e95abd1f9b2ca2cfbbc3712ca9d3fe66d1ace78b6bb20c94",
+        "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk"
+      }
+    ],
+    "blockhash": "4ruaGCyaofHWGxPFXFVjuEJCdfBGZ2wCtEx6LzdzVqtV",
+    "blockhashRule": "sha256(\"blockhash\")",
+    "smartAccountProgramId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG"
+  }
+}

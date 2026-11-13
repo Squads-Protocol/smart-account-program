@@ -1,0 +1,65 @@
+name: sdk-core
+
+on:
+  push:
+    paths:
+      - "sdk/smart-account-core/**"
+      - ".github/workflows/sdk-core.yml"
+  pull_request:
+    paths:
+      - "sdk/smart-account-core/**"
+      - ".github/workflows/sdk-core.yml"
+  schedule:
+    # Daily mainnet drift check (program binary / IDL / authorities).
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: sdk/smart-account-core
+
+jobs:
+  check:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/smart-account-core/package-lock.json
+      - run: npm ci
+      - name: Zero runtime dependencies
+        run: npm run check:deps
+      - name: src/ line budget (1500 hand-written lines)
+        run: npm run check:lines
+      - name: No type assertions or any outside src/encoding/
+        run: npm run check:casts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test (LiteSVM against pinned mainnet binary)
+        run: npm test
+      - name: Build (JS + declarations)
+        run: npm run build
+      - name: Check npm package contents
+        run: npm pack --dry-run
+
+  mainnet-pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/smart-account-core/package-lock.json
+      - run: npm ci
+      - name: Mainnet program / IDL still match PINNED.json
+        env:
+          # Falls back to the public mainnet-beta RPC inside the script when the secret is unset.
+          SOLANA_RPC_URL: ${{ secrets.SOLANA_RPC_URL }}
+        run: node scripts/pin-mainnet.mjs --check

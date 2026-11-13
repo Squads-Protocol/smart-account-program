@@ -1,0 +1,13 @@
+{
+  "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+  "programDataAddress": "2g3u9qgz4adKQVN1TUoh7bbBKqaSsjXtz1yX2ptagW5T",
+  "lastDeploySlot": "443245754",
+  "fetchedAtSlot": "468296393",
+  "upgradeAuthority": "HT3JknwuufXdtVJggz5Z9JcnYtanPpLzTCqLWsVX1Vu2",
+  "soSha256": "9a68cf1deeb4a72abb39faad4f3c3772bae25bfbede4b5a7d1bc434a18be9ccf",
+  "soLength": 1648680,
+  "idlAddress": "6smoqe8YGsnBkPAEGDmcnxZe9ErCxDwNTJqUio1DcTDm",
+  "idlSha256": "3afb0745f551a3b2d58e19a004a2fff123b546d3d612c8cdb7c5fad0bf8c5613",
+  "idlAuthority": "sqdcVVoTcKZjXU8yPUwKFbGx1Hig1rhbWJQtMRXp2E1",
+  "rpc": "https://api.mainnet-beta.solana.com"
+}

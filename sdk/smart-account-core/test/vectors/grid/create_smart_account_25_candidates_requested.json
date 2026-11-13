@@ -1,0 +1,235 @@
+{
+  "case": "create_smart_account_25_candidates_requested",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/solana-adapter/src/provider/smart_account.rs",
+    "fn": "SmartAccountOperations::create_and_confirm_smart_account_with_extra_instructions (instruction-building prefix; helpers::generate_possible_smart_account_addresses, instructions::create_smart_account_ix, helpers::calculate_compute_budget)"
+  },
+  "input": {
+    "programConfig": {
+      "address": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+      "smartAccountIndex": "41",
+      "treasury": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD"
+    },
+    "creator": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "numConcurrencyAccounts": 25,
+    "createArgs": {
+      "settingsAuthority": null,
+      "threshold": 1,
+      "signers": [
+        {
+          "key": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+          "mask": 7
+        },
+        {
+          "key": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+          "mask": 7
+        }
+      ],
+      "timeLock": 0,
+      "rentCollector": null,
+      "memo": null
+    }
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "4bRACHzCKjbdoXYezN52GJ86NkYtKmNaDypM95CTKqHy",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "z2hGk5fgXJ5GUafFCHzat7Mof9hiZ77uN7ewi9D9Jhp",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "8GyBQptj8h1FeKqh49jTEZAvNqgcya9bZHVch7BUvzgA",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "8hLHjRBquXw6aeGH9gKEX9TqwKGaFD2mKRbCfSTPBrZF",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "CmZSWvEoENvN7JsXtZPn4ACqUXoEJ2L9tV7ck8defBiq",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "HWXGCTYn5EMm3KrUYYLRj489LtW2ssGJuNAgXs2ynjXz",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "FXg9yb5CjKFugJWRCda78Qd8U576FpK7u5TEcxwyNp6j",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "4tzE35Wq6D6Mnnh4ieiaw9EJ3A6VNoKYmbpYurFPi1Tk",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "EVA6XgNfNka1GTRu9bijKqSdjS1YoDx8JJwn98fjPUPk",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "4oj6UwPtFgz7PkqTyQ9H4Pqw43rcGcm8gwSNdRxDZXC6",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "HQNwh2GNaDvAKZVWm6BhGSqGea4CnFWhzKY44MYVbHB3",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "57aWzH96j9PMSvXzMUNbwMmQDgMxa95j2ehT1H1P2CMq",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "vk1QXkKZs5sKsj8ZVUMKUwHET9kciQCLQiC8BnMiExg",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "4i7LdK2xXyfCkwxSQa3DPWK4C2R88g3gQbxivfKKDn84",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "2C5Qdk1tcpbjBy5LBBSb3tHprFnwgG4piC51kKp9uMGg",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "c566fde74d543211000100020000000dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc07571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e74607000000000000"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "02308e0000"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "0300093d0000000000"
+      }
+    ],
+    "candidates": [
+      {
+        "smartAccountIndex": "42",
+        "settingsAddress": "4bRACHzCKjbdoXYezN52GJ86NkYtKmNaDypM95CTKqHy",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "43",
+        "settingsAddress": "z2hGk5fgXJ5GUafFCHzat7Mof9hiZ77uN7ewi9D9Jhp",
+        "bump": 254
+      },
+      {
+        "smartAccountIndex": "44",
+        "settingsAddress": "8GyBQptj8h1FeKqh49jTEZAvNqgcya9bZHVch7BUvzgA",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "45",
+        "settingsAddress": "8hLHjRBquXw6aeGH9gKEX9TqwKGaFD2mKRbCfSTPBrZF",
+        "bump": 254
+      },
+      {
+        "smartAccountIndex": "46",
+        "settingsAddress": "CmZSWvEoENvN7JsXtZPn4ACqUXoEJ2L9tV7ck8defBiq",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "47",
+        "settingsAddress": "HWXGCTYn5EMm3KrUYYLRj489LtW2ssGJuNAgXs2ynjXz",
+        "bump": 254
+      },
+      {
+        "smartAccountIndex": "48",
+        "settingsAddress": "FXg9yb5CjKFugJWRCda78Qd8U576FpK7u5TEcxwyNp6j",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "49",
+        "settingsAddress": "4tzE35Wq6D6Mnnh4ieiaw9EJ3A6VNoKYmbpYurFPi1Tk",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "50",
+        "settingsAddress": "EVA6XgNfNka1GTRu9bijKqSdjS1YoDx8JJwn98fjPUPk",
+        "bump": 251
+      },
+      {
+        "smartAccountIndex": "51",
+        "settingsAddress": "4oj6UwPtFgz7PkqTyQ9H4Pqw43rcGcm8gwSNdRxDZXC6",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "52",
+        "settingsAddress": "HQNwh2GNaDvAKZVWm6BhGSqGea4CnFWhzKY44MYVbHB3",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "53",
+        "settingsAddress": "57aWzH96j9PMSvXzMUNbwMmQDgMxa95j2ehT1H1P2CMq",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "54",
+        "settingsAddress": "vk1QXkKZs5sKsj8ZVUMKUwHET9kciQCLQiC8BnMiExg",
+        "bump": 255
+      },
+      {
+        "smartAccountIndex": "55",
+        "settingsAddress": "4i7LdK2xXyfCkwxSQa3DPWK4C2R88g3gQbxivfKKDn84",
+        "bump": 251
+      },
+      {
+        "smartAccountIndex": "56",
+        "settingsAddress": "2C5Qdk1tcpbjBy5LBBSb3tHprFnwgG4piC51kKp9uMGg",
+        "bump": 251
+      }
+    ],
+    "candidateCount": 15,
+    "computeUnitLimit": 36400,
+    "computeUnitPriceMicroLamports": 4000000,
+    "note": "generate_possible_smart_account_addresses always yields 15 candidates; take(n) with n > 15 yields 15"
+  }
+}

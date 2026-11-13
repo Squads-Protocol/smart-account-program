@@ -1,0 +1,106 @@
+{
+  "case": "settings_admin_threshold_and_new_admin",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/update_account/handler.rs",
+    "fn": "create_settings_changeset + create_admin_configuration_change"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "settingsAuthority": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+    "rentPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "currentSigners": [
+      {
+        "address": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+        "mask": 7
+      },
+      {
+        "address": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+        "mask": 7
+      }
+    ],
+    "currentThreshold": 1,
+    "request": {
+      "signers": null,
+      "threshold": 2,
+      "timeLock": null,
+      "adminAddress": "2fNfVuyHiX5Le2LbtgCQ1eoC7Z63FXZoFNGhDa3bL2N5"
+    },
+    "transactionSigners": [
+      "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG"
+    ]
+  },
+  "expected": {
+    "actions": [
+      {
+        "type": "ChangeThreshold",
+        "newThreshold": 2,
+        "borshHex": "020200"
+      }
+    ],
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "338d4e85462f5f7c020000"
+      },
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "dd7085e5923a5a3818b040c2b54da20743b5fb50ccfe1e450e67dc4e14b2bc6b1c2aa832ba41488200"
+      }
+    ]
+  }
+}

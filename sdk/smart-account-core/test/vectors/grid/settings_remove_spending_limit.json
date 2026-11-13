@@ -1,0 +1,62 @@
+{
+  "case": "settings_remove_spending_limit",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/update_account/handler.rs",
+    "fn": "create_configuration_change"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "rentPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "actions": [
+      {
+        "type": "RemoveSpendingLimit",
+        "spendingLimit": "DCHptW1j4mHAqU6o3dfJ9aQTaSvNCH2x4WGAkPMSzHjA",
+        "borshHex": "05b530a826e9435920f8ea09f8127999c25062c201e8630a93433136b1dfa5fdc5"
+      }
+    ],
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+    ]
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "DCHptW1j4mHAqU6o3dfJ9aQTaSvNCH2x4WGAkPMSzHjA",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "8ad140a34f43e94c010100000005b530a826e9435920f8ea09f8127999c25062c201e8630a93433136b1dfa5fdc500"
+      }
+    ]
+  }
+}

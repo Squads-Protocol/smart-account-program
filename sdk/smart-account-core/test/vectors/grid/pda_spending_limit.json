@@ -1,0 +1,24 @@
+{
+  "case": "pda_spending_limit",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "get_spending_limit_account_address_with_bump"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "seed": "9tLbWMhbubAdCUagBfVbrBCPQ9ywcJwC1okwnyR9MKQf"
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950",
+      "7370656e64696e675f6c696d6974",
+      "840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f04"
+    ],
+    "address": "DCHptW1j4mHAqU6o3dfJ9aQTaSvNCH2x4WGAkPMSzHjA",
+    "bump": 255
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "case": "pda_program_config",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "get_program_config_account_address"
+  },
+  "input": {},
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "70726f6772616d5f636f6e666967"
+    ],
+    "address": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+    "bump": 253
+  }
+}

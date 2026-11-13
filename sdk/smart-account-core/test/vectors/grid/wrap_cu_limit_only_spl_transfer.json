@@ -1,0 +1,217 @@
+{
+  "case": "wrap_cu_limit_only_spl_transfer",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/prepare_arbitrary_transaction/handler.rs",
+    "fn": "prepare_arbitrary_transaction wrap step: TransactionComponents::decompile (no ALTs, overwrite_blockhash=false) -> TransactionComponents::remove_compute_unit_instructions -> build_sync_transaction_instructions (vault 0)"
+  },
+  "input": {
+    "transactionBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIABgrRgay8/GK7qBKhm6anu+wvKgP+VZYfYCd7oONivTMXN8p39WNuTADJbq4UHnnuQSvArAmNJtAQuVj7E4AKpMgsJupe1lJsMpxf9fcv0ur3hX1Ks9zOtygTsxjTi+nAYczuupXcwmUWqACBg12M1e7MXG3zwwsKZRc75+b7JlsqIQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAEvqtz9cv/nuCwW+csKr1caxxmFxJEdqGOcqqITfNmYQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpKkK93cKVMWqy9KVBWIsatZwtMUzl+xmC5gFY+d2JxmKMlyWPTiSJ8bs9ECkUjg2DC1oTmdr/EIQEjnvY2+n4WTlb9yf5qsXoCRFZEHP8+cgm9CiAQTHKCJvro4aUIXSaAwUABQLwSQIACQYBAwYIBAcBAQcEAggDAQoMCQMAAAAAAAAGAA==",
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "smartAccountAddress": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+    ]
+  },
+  "expected": {
+    "decompiledInstructions": [
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "02f0490200"
+      },
+      {
+        "programId": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        "accounts": [
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "H4u3rJvUYR2gZiGGNzp3aQNxQLRUKtXbkKHoGETmksWG",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "KXG5tZyNivpNxZDprcjfzgm1uQmAJ5KM3T24otXdXu2",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "01"
+      },
+      {
+        "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "accounts": [
+          {
+            "pubkey": "3cumiRrBCFRmZ3c3aWVa7JHinXaPR1gCRkDfzTx6TkqZ",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "H4u3rJvUYR2gZiGGNzp3aQNxQLRUKtXbkKHoGETmksWG",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "0c090300000000000006"
+      }
+    ],
+    "strippedInstructions": [
+      {
+        "programId": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+        "accounts": [
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "H4u3rJvUYR2gZiGGNzp3aQNxQLRUKtXbkKHoGETmksWG",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "KXG5tZyNivpNxZDprcjfzgm1uQmAJ5KM3T24otXdXu2",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "01"
+      },
+      {
+        "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        "accounts": [
+          {
+            "pubkey": "3cumiRrBCFRmZ3c3aWVa7JHinXaPR1gCRkDfzTx6TkqZ",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "H4u3rJvUYR2gZiGGNzp3aQNxQLRUKtXbkKHoGETmksWG",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "0c090300000000000006"
+      }
+    ],
+    "originalMicroLamportsPerCu": null,
+    "originalPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "3cumiRrBCFRmZ3c3aWVa7JHinXaPR1gCRkDfzTx6TkqZ",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "H4u3rJvUYR2gZiGGNzp3aQNxQLRUKtXbkKHoGETmksWG",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "KXG5tZyNivpNxZDprcjfzgm1uQmAJ5KM3T24otXdXu2",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "2b66f859e761688600011e0000000208060103050704060100010604020703010a000c090300000000000006"
+      }
+    ],
+    "skipped": "compute-unit limit/price re-insertion (priority fee + simulation via RPC), fee abstraction, ALT resolution, blockhash overwrite, passkey off-curve handling, signing"
+  }
+}

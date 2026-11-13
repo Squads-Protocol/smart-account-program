@@ -1,0 +1,23 @@
+{
+  "case": "pda_settings_index_18446744073709551616",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "generate_possible_smart_account_addresses (first entry)"
+  },
+  "input": {
+    "smartAccountIndex": "18446744073709551616",
+    "indexEncoding": "u128 little-endian (16 bytes)"
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "73657474696e6773",
+      "00000000000000000100000000000000"
+    ],
+    "address": "715ucpmrJEAYLjHLg2uFX1XNaGoN3PoUWXfxHYr9wbjf",
+    "bump": 255
+  }
+}

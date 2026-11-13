@@ -1,0 +1,24 @@
+{
+  "case": "pda_vault_index_1",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/utils.rs",
+    "fn": "get_subaccount_address"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "accountIndex": 1
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950",
+      "736d6172745f6163636f756e74",
+      "01"
+    ],
+    "address": "HLXfZdNd8Df86bkhQgKrjSWht6AqRSYQR7eE7dE7FQXQ",
+    "bump": 254
+  }
+}
