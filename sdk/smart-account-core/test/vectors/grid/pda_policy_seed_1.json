@@ -1,0 +1,24 @@
+{
+  "case": "pda_policy_seed_1",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "get_policy_address"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "policySeed": 1
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "706f6c696379",
+      "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950",
+      "0100000000000000"
+    ],
+    "address": "622E3Qc1AU49sDhtPaYmSZeBN3dwBKGU8RmnvCp2rR3i",
+    "bump": 253
+  }
+}

@@ -57,6 +57,7 @@ You can interact with the Squads Smart Account Program via our SDKs.
 
 List of SDKs:
 
+- [Smart Account Core](sdk/smart-account-core): `@sqds/smart-account-core`, a standalone TypeScript SDK for synchronous execution with Solana v1 transactions.
 - Typescript SDK: `@sqds/smart-account` (not yet published)
 
 ## Compiling and testing

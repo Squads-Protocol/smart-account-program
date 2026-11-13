@@ -1,0 +1,95 @@
+{
+  "case": "create_smart_account_1_candidate",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/solana-adapter/src/provider/smart_account.rs",
+    "fn": "SmartAccountOperations::create_and_confirm_smart_account_with_extra_instructions (instruction-building prefix; helpers::generate_possible_smart_account_addresses, instructions::create_smart_account_ix, helpers::calculate_compute_budget)"
+  },
+  "input": {
+    "programConfig": {
+      "address": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+      "smartAccountIndex": "41",
+      "treasury": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD"
+    },
+    "creator": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "numConcurrencyAccounts": 1,
+    "createArgs": {
+      "settingsAuthority": null,
+      "threshold": 1,
+      "signers": [
+        {
+          "key": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+          "mask": 7
+        },
+        {
+          "key": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+          "mask": 7
+        }
+      ],
+      "timeLock": 0,
+      "rentCollector": null,
+      "memo": null
+    }
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "37Kf8hHRgsj5pm3u3rE8eRyLLk8WkaqGu6a4Q8kqPvyD",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "4bRACHzCKjbdoXYezN52GJ86NkYtKmNaDypM95CTKqHy",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "c566fde74d543211000100020000000dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc07571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e74607000000000000"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "0230750000"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "0300093d0000000000"
+      }
+    ],
+    "candidates": [
+      {
+        "smartAccountIndex": "42",
+        "settingsAddress": "4bRACHzCKjbdoXYezN52GJ86NkYtKmNaDypM95CTKqHy",
+        "bump": 255
+      }
+    ],
+    "candidateCount": 1,
+    "computeUnitLimit": 30000,
+    "computeUnitPriceMicroLamports": 4000000,
+    "note": "generate_possible_smart_account_addresses always yields 15 candidates; take(n) with n > 15 yields 15"
+  }
+}

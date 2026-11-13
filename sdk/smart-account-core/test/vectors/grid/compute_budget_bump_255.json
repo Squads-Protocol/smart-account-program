@@ -1,0 +1,24 @@
+{
+  "case": "compute_budget_bump_255",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "calculate_compute_budget"
+  },
+  "input": {
+    "bumps": [
+      255
+    ],
+    "formula": "bumps empty ? 30000 : 30000 + (255 - min(bumps)) * 1600"
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "0230750000"
+      }
+    ],
+    "computeUnits": 30000
+  }
+}

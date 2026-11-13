@@ -1,0 +1,94 @@
+{
+  "case": "spending_limit_standing_order_daily_2_signers",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/solana-adapter/src/provider/smart_account.rs",
+    "fn": "SmartAccountOperations::build_create_spending_limit_transaction (body reproduced: seed fixed instead of Keypair::new(), blockhash fixed instead of RPC)"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "seed": "9tLbWMhbubAdCUagBfVbrBCPQ9ywcJwC1okwnyR9MKQf",
+    "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "spendingLimitSigners": [
+      "FKkbTbPnbyepLNwzgg9Be9zXCmCbP6uQBLYssdUAwAkS"
+    ],
+    "destinations": [
+      "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr"
+    ],
+    "amount": "1000000",
+    "period": "Day",
+    "expiration": "1800000000",
+    "payer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+      "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD"
+    ],
+    "blockhash": "4ruaGCyaofHWGxPFXFVjuEJCdfBGZ2wCtEx6LzdzVqtV"
+  },
+  "expected": {
+    "actions": [
+      {
+        "type": "AddSpendingLimit",
+        "seed": "9tLbWMhbubAdCUagBfVbrBCPQ9ywcJwC1okwnyR9MKQf",
+        "accountIndex": 0,
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "amount": "1000000",
+        "period": "Day",
+        "signers": [
+          "FKkbTbPnbyepLNwzgg9Be9zXCmCbP6uQBLYssdUAwAkS"
+        ],
+        "destinations": [
+          "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr"
+        ],
+        "expiration": "1800000000",
+        "borshHex": "04840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f0400c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6140420f00000000000101000000d4d15d11bd69deb058a712e259de3e7c2cd50c1feb0ddd4d61dafd771688d3fb010000000dd763a98805e96e377b8326a138eb3c0440caee26953878d9f1596d9087e5ff00d2496b00000000"
+      }
+    ],
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "DCHptW1j4mHAqU6o3dfJ9aQTaSvNCH2x4WGAkPMSzHjA",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "8ad140a34f43e94c020100000004840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f0400c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6140420f00000000000101000000d4d15d11bd69deb058a712e259de3e7c2cd50c1feb0ddd4d61dafd771688d3fb010000000dd763a98805e96e377b8326a138eb3c0440caee26953878d9f1596d9087e5ff00d2496b0000000000"
+      }
+    ],
+    "spendingLimitAddress": "DCHptW1j4mHAqU6o3dfJ9aQTaSvNCH2x4WGAkPMSzHjA",
+    "compiledMessageHex": "8003020207d181acbcfc62bba812a19ba6a7bbec2f2a03fe55961f60277ba0e362bd3317370dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e7462cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950b530a826e9435920f8ea09f8127999c25062c201e8630a93433136b1dfa5fdc50000000000000000000000000000000000000000000000000000000000000000067e9c7ada5a2d2683c931832c3288da5a914b1cf308166142fb01016ff41c41395bf727f9aac5e80911591073fcf9c826f428804131ca089beba3869421749a01060703000506010204a9018ad140a34f43e94c020100000004840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f0400c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d6140420f00000000000101000000d4d15d11bd69deb058a712e259de3e7c2cd50c1feb0ddd4d61dafd771688d3fb010000000dd763a98805e96e377b8326a138eb3c0440caee26953878d9f1596d9087e5ff00d2496b000000000000",
+    "compiledMessageNote": "TransactionComponents::compile (v0 message, no ALTs) before passkey/priority-fee steps"
+  }
+}

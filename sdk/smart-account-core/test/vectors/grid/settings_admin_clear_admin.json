@@ -1,0 +1,65 @@
+{
+  "case": "settings_admin_clear_admin",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/update_account/handler.rs",
+    "fn": "create_settings_changeset + create_admin_configuration_change"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "settingsAuthority": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+    "rentPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "currentSigners": [
+      {
+        "address": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+        "mask": 7
+      }
+    ],
+    "currentThreshold": 1,
+    "request": {
+      "signers": null,
+      "threshold": null,
+      "timeLock": null,
+      "adminAddress": null
+    },
+    "transactionSigners": [
+      "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG"
+    ]
+  },
+  "expected": {
+    "actions": [],
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "6mHNdY5rnx6oLh3YvED4YmBfJhu8VM1JHoejYSZ1cZEG",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "dd7085e5923a5a38000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "case": "sync_sol_transfer_vault0",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/solana-adapter/src/provider/smart_account.rs",
+    "fn": "SmartAccountOperations::build_sync_transaction_instructions (-> SynchronousTransactionDetails::compile_to_synchronous_message_and_accounts, get_sync_transaction_data)"
+  },
+  "input": {
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "smartAccountAddress": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+    "vaultIndex": 0,
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+    ],
+    "instructions": [
+      {
+        "programId": "11111111111111111111111111111111",
+        "accounts": [
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "0200000040420f0000000000"
+      }
+    ]
+  },
+  "expected": {
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "2b66f859e761688600011300000001030201020c000200000040420f0000000000"
+      }
+    ],
+    "discriminatorHex": "2b66f859e7616886",
+    "syncMessageHex": "01030201020c000200000040420f0000000000",
+    "remainingAccounts": [
+      {
+        "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+        "isSigner": true,
+        "isWritable": false
+      },
+      {
+        "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+        "isSigner": false,
+        "isWritable": true
+      },
+      {
+        "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+        "isSigner": false,
+        "isWritable": true
+      },
+      {
+        "pubkey": "11111111111111111111111111111111",
+        "isSigner": false,
+        "isWritable": false
+      }
+    ]
+  }
+}

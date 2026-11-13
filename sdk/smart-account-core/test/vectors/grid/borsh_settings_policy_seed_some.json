@@ -1,0 +1,40 @@
+{
+  "case": "borsh_settings_policy_seed_some",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/accounts.rs",
+    "fn": "SettingsAccount::try_to_vec"
+  },
+  "input": {
+    "seed": "1",
+    "settingsAuthority": "11111111111111111111111111111111",
+    "threshold": 1,
+    "timeLock": 0,
+    "transactionIndex": "5",
+    "staleTransactionIndex": "3",
+    "archivalAuthority": "2fNfVuyHiX5Le2LbtgCQ1eoC7Z63FXZoFNGhDa3bL2N5",
+    "archivableAfter": "0",
+    "bump": 254,
+    "signers": [
+      {
+        "key": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+        "mask": 7
+      },
+      {
+        "key": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+        "mask": 3
+      }
+    ],
+    "accountUtilization": 1,
+    "policySeed": "7",
+    "reserved2": 0
+  },
+  "expected": {
+    "instructions": [],
+    "discriminatorHex": "dfb3a3beb1e043ad",
+    "borshHex": "010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000050000000000000003000000000000000118b040c2b54da20743b5fb50ccfe1e450e67dc4e14b2bc6b1c2aa832ba4148820000000000000000fe020000000dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc07571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e746030101070000000000000000",
+    "accountDataHex": "dfb3a3beb1e043ad010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000050000000000000003000000000000000118b040c2b54da20743b5fb50ccfe1e450e67dc4e14b2bc6b1c2aa832ba4148820000000000000000fe020000000dd17641418814e381940f086ce6a7f016746a62a417842ff111ecb55eb4efbc07571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e746030101070000000000000000",
+    "accountDataLength": 201,
+    "note": "<Type>Account::try_to_vec / serialize prepends the 8-byte discriminator; plain borsh::to_vec(<Type>) does not"
+  }
+}

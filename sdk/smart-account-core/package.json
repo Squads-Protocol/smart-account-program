@@ -1,0 +1,56 @@
+{
+  "name": "@sqds/smart-account-core",
+  "version": "0.1.0",
+  "description": "Narrow, zero-dependency TypeScript SDK for the Squads Smart Account Program.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Squads-Protocol/smart-account-program.git",
+    "directory": "sdk/smart-account-core"
+  },
+  "homepage": "https://github.com/Squads-Protocol/smart-account-program/tree/main/sdk/smart-account-core#readme",
+  "bugs": {
+    "url": "https://github.com/Squads-Protocol/smart-account-program/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc -p . --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check:deps": "node scripts/ci-guards.mjs deps",
+    "check:lines": "node scripts/ci-guards.mjs lines",
+    "check:casts": "node scripts/ci-guards.mjs casts",
+    "pin:mainnet": "node scripts/pin-mainnet.mjs",
+    "pin:check": "node scripts/pin-mainnet.mjs --check",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "e2e:devnet": "node scripts/e2e-devnet.ts"
+  },
+  "peerDependencies": {
+    "@solana/kit": "^8.6.0"
+  },
+  "devDependencies": {
+    "@solana/kit": "8.6.0",
+    "@types/node": "22.20.5",
+    "litesvm": "1.6.2",
+    "typescript": "7.0.2"
+  }
+}

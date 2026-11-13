@@ -1,0 +1,16 @@
+{
+  "address": "GmY9kVi3FhrCUn2MJkzzpE6C5618YoHuGsgqHU78cKus",
+  "fetchedAtSlot": "468296396",
+  "owner": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+  "lamports": "2004480",
+  "dataLen": 160,
+  "dataBase64": "xNJa55CVjD99YQsAAAAAAAAAAAAAAAAACrSC5ckKnZW/ftwNSaQT3mk57W9prVIGmodlY8isR9EAAAAAAAAAAAq0guXJCp2Vv37cDUmkE95pOe1vaa1SBpqHZWPIrEfRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+  "decoded": {
+    "discriminatorHex": "c4d25ae790958c3f",
+    "smartAccountIndex": "745853",
+    "authority": "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8",
+    "smartAccountCreationFee": "0",
+    "treasury": "init9xckLHfofCRp5SCisRK4f6eDehGRtFSAw5mLhE8",
+    "reservedLen": 64
+  }
+}

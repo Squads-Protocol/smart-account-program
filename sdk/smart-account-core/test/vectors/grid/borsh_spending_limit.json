@@ -1,0 +1,36 @@
+{
+  "case": "borsh_spending_limit",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/accounts.rs",
+    "fn": "SpendingLimitAccount::try_to_vec"
+  },
+  "input": {
+    "settings": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "seed": "9tLbWMhbubAdCUagBfVbrBCPQ9ywcJwC1okwnyR9MKQf",
+    "accountIndex": 0,
+    "mint": "3qy9hWWREDsRQJ9QB7FSkndSFNMUUkK9KmSBrZsGMfvy",
+    "amount": "25000000",
+    "period": "Month",
+    "periodBorshIndex": 3,
+    "remainingAmount": "10000000",
+    "lastReset": "1700000000",
+    "bump": 253,
+    "signers": [
+      "FKkbTbPnbyepLNwzgg9Be9zXCmCbP6uQBLYssdUAwAkS"
+    ],
+    "destinations": [
+      "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+      "KXG5tZyNivpNxZDprcjfzgm1uQmAJ5KM3T24otXdXu2"
+    ],
+    "expiration": "9223372036854775807"
+  },
+  "expected": {
+    "instructions": [],
+    "discriminatorHex": "0ac91ba0dac3de98",
+    "borshHex": "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f04002a42bdddc295316ab2f4a541588b1ab59c2d314ce5fb1982e60158f9dd89c66240787d010000000003809698000000000000f1536500000000fd01000000d4d15d11bd69deb058a712e259de3e7c2cd50c1feb0ddd4d61dafd771688d3fb020000000dd763a98805e96e377b8326a138eb3c0440caee26953878d9f1596d9087e5ff04beab73f5cbff9ee0b05be72c2abd5c6b1c6617124476a18e72aa884df36661ffffffffffffff7f",
+    "accountDataHex": "0ac91ba0dac3de982cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950840445d2034ad5b9a9756ff5302b698143a114b3e60af131368281b43e785f04002a42bdddc295316ab2f4a541588b1ab59c2d314ce5fb1982e60158f9dd89c66240787d010000000003809698000000000000f1536500000000fd01000000d4d15d11bd69deb058a712e259de3e7c2cd50c1feb0ddd4d61dafd771688d3fb020000000dd763a98805e96e377b8326a138eb3c0440caee26953878d9f1596d9087e5ff04beab73f5cbff9ee0b05be72c2abd5c6b1c6617124476a18e72aa884df36661ffffffffffffff7f",
+    "accountDataLength": 243,
+    "note": "<Type>Account::try_to_vec / serialize prepends the 8-byte discriminator; plain borsh::to_vec(<Type>) does not"
+  }
+}

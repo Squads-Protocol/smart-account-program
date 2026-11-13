@@ -1,0 +1,25 @@
+{
+  "case": "pda_proposal_index_1",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "get_proposal_address"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "transactionIndex": 1
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950",
+      "7472616e73616374696f6e",
+      "0100000000000000",
+      "70726f706f73616c"
+    ],
+    "address": "3ACP3AgQ2HpEn6JsFgkYpWeRG1vHofUGX9vrYo618E1a",
+    "bump": 254
+  }
+}

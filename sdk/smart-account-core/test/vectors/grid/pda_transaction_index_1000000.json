@@ -1,0 +1,25 @@
+{
+  "case": "pda_transaction_index_1000000",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "libs/smart_account_program/src/helpers.rs",
+    "fn": "get_transaction_address"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "transactionIndex": 1000000,
+    "indexEncoding": "u64 little-endian"
+  },
+  "expected": {
+    "instructions": [],
+    "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+    "seedsHex": [
+      "736d6172745f6163636f756e74",
+      "2cc01c4eaf436329b0ecf8f94b587940bdce02e1ec572ac3311da70fecb64950",
+      "7472616e73616374696f6e",
+      "40420f0000000000"
+    ],
+    "address": "J8YFRFXiSyct4Y4jHCPkQS1Df845bArwVPzDAMHNqvwe",
+    "bump": 252
+  }
+}

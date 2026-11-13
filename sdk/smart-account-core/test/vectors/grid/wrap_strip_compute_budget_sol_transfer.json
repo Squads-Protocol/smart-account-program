@@ -1,0 +1,105 @@
+{
+  "case": "wrap_strip_compute_budget_sol_transfer",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/prepare_arbitrary_transaction/handler.rs",
+    "fn": "prepare_arbitrary_transaction wrap step: TransactionComponents::decompile (no ALTs, overwrite_blockhash=false) -> TransactionComponents::remove_compute_unit_instructions -> build_sync_transaction_instructions (vault 0)"
+  },
+  "input": {
+    "transactionBase64": "AgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAIAAgXRgay8/GK7qBKhm6anu+wvKgP+VZYfYCd7oONivTMXN8p39WNuTADJbq4UHnnuQSvArAmNJtAQuVj7E4AKpMgsDddjqYgF6W43e4MmoTjrPARAyu4mlTh42fFZbZCH5f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAAOVv3J/mqxegJEVkQc/z5yCb0KIBBMcoIm+ujhpQhdJoDBAAFAkANAwAEAAkD6AMAAAAAAAADAgECDAIAAABAQg8AAAAAAAA=",
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "smartAccountAddress": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+    ]
+  },
+  "expected": {
+    "decompiledInstructions": [
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "02400d0300"
+      },
+      {
+        "programId": "ComputeBudget111111111111111111111111111111",
+        "accounts": [],
+        "dataHex": "03e803000000000000"
+      },
+      {
+        "programId": "11111111111111111111111111111111",
+        "accounts": [
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "0200000040420f0000000000"
+      }
+    ],
+    "strippedInstructions": [
+      {
+        "programId": "11111111111111111111111111111111",
+        "accounts": [
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+            "isSigner": false,
+            "isWritable": true
+          }
+        ],
+        "dataHex": "0200000040420f0000000000"
+      }
+    ],
+    "originalMicroLamportsPerCu": "1000",
+    "originalPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          },
+          {
+            "pubkey": "EdMSvMoHfsemd2s7eHCrRnuM1dzPu2CpUrHJN98XYC9y",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "w2nuVFaXrxHTUxukXnDwwaxU1BANo9dvhdT5ABkVucr",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "2b66f859e761688600011300000001030201020c000200000040420f0000000000"
+      }
+    ],
+    "skipped": "compute-unit limit/price re-insertion (priority fee + simulation via RPC), fee abstraction, ALT resolution, blockhash overwrite, passkey off-curve handling, signing"
+  }
+}

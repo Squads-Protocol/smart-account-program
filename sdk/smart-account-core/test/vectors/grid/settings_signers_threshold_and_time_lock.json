@@ -1,0 +1,104 @@
+{
+  "case": "settings_signers_threshold_and_time_lock",
+  "source": {
+    "commit": "c36f426df1c36995028f8a2a9657ed521cd56231",
+    "file": "services/api/server/src/grid_api/core/v1/accounts/update_account/handler.rs",
+    "fn": "create_settings_changeset + create_configuration_change"
+  },
+  "input": {
+    "settingsAddress": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+    "settingsAuthority": "11111111111111111111111111111111",
+    "rentPayer": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+    "currentSigners": [
+      {
+        "address": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+        "mask": 7
+      }
+    ],
+    "currentThreshold": 1,
+    "request": {
+      "signers": [
+        {
+          "address": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+          "permissions": [
+            "CAN_INITIATE",
+            "CAN_VOTE",
+            "CAN_EXECUTE"
+          ]
+        },
+        {
+          "address": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+          "permissions": [
+            "CAN_VOTE"
+          ]
+        }
+      ],
+      "threshold": 2,
+      "timeLock": 60,
+      "adminAddress": "<missing>"
+    },
+    "transactionSigners": [
+      "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj"
+    ]
+  },
+  "expected": {
+    "actions": [
+      {
+        "type": "ChangeThreshold",
+        "newThreshold": 1,
+        "borshHex": "020100"
+      },
+      {
+        "type": "AddSigner",
+        "newSigner": {
+          "key": "6s335oZfdcJKto9EEvAonj763nTrj6kuf8EAvPwYwYkD",
+          "mask": 2
+        },
+        "borshHex": "00571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e74602"
+      },
+      {
+        "type": "ChangeThreshold",
+        "newThreshold": 2,
+        "borshHex": "020200"
+      },
+      {
+        "type": "SetTimeLock",
+        "newTimeLock": 60,
+        "borshHex": "033c000000"
+      }
+    ],
+    "instructions": [
+      {
+        "programId": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+        "accounts": [
+          {
+            "pubkey": "41gqrPgijYycTaCCzKyLfvqikMEH9fzGCwZYAKQHvMbd",
+            "isSigner": false,
+            "isWritable": true
+          },
+          {
+            "pubkey": "F6ptqu6PKt56WLT3MmqayimN4HL7b8PARFRwWQXi4Quk",
+            "isSigner": true,
+            "isWritable": true
+          },
+          {
+            "pubkey": "11111111111111111111111111111111",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "SMRTzfY6DfH5ik3TKiyLFfXexV8uSG3d2UksSCYdunG",
+            "isSigner": false,
+            "isWritable": false
+          },
+          {
+            "pubkey": "vwYrjUyZbzW4ysgdveAQTKngA5XPTr8e6aqs2T4QhSj",
+            "isSigner": true,
+            "isWritable": false
+          }
+        ],
+        "dataHex": "8ad140a34f43e94c010400000002010000571bc6efd12ef01097af2ee33ea9deb8a9a88e77e5918de411af238e5068e74602020200033c00000000"
+      }
+    ]
+  }
+}
