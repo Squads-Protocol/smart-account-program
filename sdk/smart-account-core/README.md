@@ -12,6 +12,7 @@ A narrow TypeScript SDK for the Squads Smart Account Program
 - `test/spike/litesvm-v1.test.ts`: runs the mainnet binary in LiteSVM with Solana v1 transactions (SIMD-0385).
 - `test/impl/`: implementation checks (vector byte-equality, and every builder on the mainnet binary through a LiteSVM-backed RPC).
 - `scripts/ci-guards.mjs`: three CI checks. `deps` fails if the package has any runtime dependency. `lines` fails if `src/` has more than 1500 hand-written lines. `casts` fails on an `as` type assertion (other than `as const`) or `any` in `src/` outside `src/encoding/`.
+- `examples/check-v1-signer.mjs`: an optional [wallet and key-provider compatibility check](https://github.com/Squads-Protocol/smart-account-program/tree/main/sdk/smart-account-core/examples). It is separate from the SDK tests and CI.
 
 ## Install
 

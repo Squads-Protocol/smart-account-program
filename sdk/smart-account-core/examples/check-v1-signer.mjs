@@ -1,9 +1,9 @@
-// G-v1 signer check: can a given signer sign a Solana v1 (SIMD-0385) transaction?
+// Check whether a signer can sign a Solana v1 (SIMD-0385) transaction.
 //
-//   node scripts/g-v1-signer-check.mjs build  --payer <address> [--rpc <url>]
-//   node scripts/g-v1-signer-check.mjs attach --tx <base64 wire tx> --sig <base58|hex signature> [--signer <address>]
-//   node scripts/g-v1-signer-check.mjs submit --tx <base64 signed wire tx> [--rpc <url>]
-//   node scripts/g-v1-signer-check.mjs selftest
+//   node examples/check-v1-signer.mjs build  --payer <address> [--rpc <url>]
+//   node examples/check-v1-signer.mjs attach --tx <base64 wire tx> --sig <base58|hex signature> [--signer <address>]
+//   node examples/check-v1-signer.mjs submit --tx <base64 signed wire tx> --last-valid-block-height <height> [--rpc <url>]
+//   node examples/check-v1-signer.mjs selftest
 //
 // build:  a v1 transaction with one Memo instruction signed by --payer (who also pays ~5,000 lamports).
 //         Prints the unsigned wire transaction (for wallet / Privy signTransaction) and the message
@@ -55,7 +55,7 @@ function buildMessage(payer, blockhash, lastValidBlockHeight) {
   const memo = {
     programAddress: MEMO_PROGRAM,
     accounts: [{ address: payer, role: 2 /* readonly signer */ }],
-    data: new TextEncoder().encode('squads g-v1 signer check'),
+    data: new TextEncoder().encode('squads v1 signer check'),
   };
   return pipe(
     createTransactionMessage({ version: 1 }),
@@ -103,7 +103,7 @@ async function cmdBuild(opts) {
         wireTransactionBase64: getBase64EncodedWireTransaction(tx),
         messageHex: Buffer.from(tx.messageBytes).toString('hex'),
         lastValidBlockHeight: String(value.lastValidBlockHeight),
-        note: 'Sign within ~60 seconds, before the blockhash expires.',
+        note: 'Sign before the blockhash expires. Pass lastValidBlockHeight to submit.',
       },
       null,
       2,
@@ -121,6 +121,9 @@ async function cmdAttach(opts) {
 }
 
 async function cmdSubmit(opts) {
+  const height = need(opts, 'last-valid-block-height');
+  if (!/^[1-9]\d*$/.test(height)) throw new Error('--last-valid-block-height must be a positive integer from build');
+  const lastValid = BigInt(height);
   const tx = decodeWire(need(opts, 'tx'));
   const results = await verifyAll(tx);
   console.log(JSON.stringify({ verify: results }));
@@ -129,7 +132,6 @@ async function cmdSubmit(opts) {
   const wire = getBase64EncodedWireTransaction(tx);
   const signature = getBase58Decoder().decode(Object.values(tx.signatures)[0]);
   await rpc.sendTransaction(wire, { encoding: 'base64', skipPreflight: false, preflightCommitment: 'confirmed' }).send();
-  const lastValid = BigInt(tx.lifetimeConstraint?.lastValidBlockHeight ?? 0n);
   for (;;) {
     const { value } = await rpc.getSignatureStatuses([signature]).send();
     const status = value[0];
@@ -139,7 +141,7 @@ async function cmdSubmit(opts) {
       return;
     }
     const height = await rpc.getBlockHeight({ commitment: 'confirmed' }).send();
-    if (lastValid > 0n && height > lastValid) throw new Error(`expired without landing (signature ${signature})`);
+    if (height > lastValid) throw new Error(`blockhash lifetime passed before confirmation; check signature ${signature} on-chain before retrying`);
     await new Promise((r) => setTimeout(r, 1500));
   }
 }
@@ -170,7 +172,7 @@ async function cmdSelftest() {
 const { cmd, opts } = args();
 const commands = { build: cmdBuild, attach: cmdAttach, submit: cmdSubmit, selftest: cmdSelftest };
 if (!commands[cmd]) {
-  console.error('usage: g-v1-signer-check.mjs build|attach|submit|selftest [options]');
+  console.error('usage: check-v1-signer.mjs build|attach|submit|selftest [options]');
   process.exit(2);
 }
 commands[cmd](opts).catch((e) => {
